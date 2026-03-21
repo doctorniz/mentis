@@ -1,0 +1,60 @@
+import type { FileSystemAdapter } from '@/lib/fs'
+import {
+  type VaultConfig,
+  DEFAULT_VAULT_CONFIG,
+  MARROW_DIR,
+  INBOX_DIR,
+  SIGNATURES_DIR,
+  TEMPLATES_DIR,
+  SNAPSHOTS_DIR,
+  CONFIG_FILE,
+} from '@/types/vault'
+
+export async function createVault(fs: FileSystemAdapter, name: string): Promise<VaultConfig> {
+  const config: VaultConfig = { ...DEFAULT_VAULT_CONFIG, name }
+
+  await fs.mkdir(MARROW_DIR)
+  await fs.mkdir(INBOX_DIR)
+  await fs.mkdir(SIGNATURES_DIR)
+  await fs.mkdir(TEMPLATES_DIR)
+  await fs.mkdir(SNAPSHOTS_DIR)
+
+  await fs.writeTextFile(CONFIG_FILE, JSON.stringify(config, null, 2))
+
+  const defaultNote = [
+    '---',
+    `title: Welcome to ${name}`,
+    `created: ${new Date().toISOString()}`,
+    '---',
+    '',
+    `# Welcome to ${name}`,
+    '',
+    'Start writing your first note here.',
+    '',
+  ].join('\n')
+
+  await fs.writeTextFile('inbox.md', defaultNote)
+
+  return config
+}
+
+export async function loadVaultConfig(fs: FileSystemAdapter): Promise<VaultConfig> {
+  try {
+    const raw = await fs.readTextFile(CONFIG_FILE)
+    const parsed = JSON.parse(raw) as Partial<VaultConfig>
+    return { ...DEFAULT_VAULT_CONFIG, ...parsed }
+  } catch {
+    return DEFAULT_VAULT_CONFIG
+  }
+}
+
+export async function saveVaultConfig(
+  fs: FileSystemAdapter,
+  config: VaultConfig,
+): Promise<void> {
+  await fs.writeTextFile(CONFIG_FILE, JSON.stringify(config, null, 2))
+}
+
+export async function isVault(fs: FileSystemAdapter): Promise<boolean> {
+  return fs.exists(MARROW_DIR)
+}
