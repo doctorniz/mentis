@@ -61,6 +61,7 @@ Items here are **logged for review before public launch**. When fixed, move note
 ### To do (`- [ ]`)
 
 - [ ] **Branding** — Tab title **Mentis**; landing: title **Mentis** + tagline *an app by Marrow Group*; sidebar + mobile masthead **Mentis**; favicon / PWA icon: brain tile (`/icon.svg`); open-disk error text mentions Mentis vault.
+- [ ] **License & README** — Root `LICENSE` is BSL 1.1; README has **AI assistance** section and **License** summary; legal/compliance owners agree with Parameters (Change Date, Change License, Additional Use Grant).
 - [ ] **Vault** — 🌳 tree vs 🗂️ browse: switch modes, open md / pdf / canvas from each where applicable.
 - [ ] **File browser — context menu & rename** (grid + list): right-click → Open, Rename, Move… (folder modal), Duplicate, Delete (confirm modal); batch Move/Delete. Click-to-rename: click a file to select it, then click the filename again — after a short delay the name becomes editable; **grid** rename field wraps within the column (no overlap into neighbors); double-click still opens instead of renaming. Grid columns must be equal width at all window sizes (no columns wider than others due to long names).
 - [ ] **Canvas** — draw, rename file inline, reopen: strokes still there; undo/redo after edits.

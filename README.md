@@ -116,18 +116,6 @@ Detailed documentation lives in the `docs/` folder:
 | [PDF Workflow](docs/PDF_WORKFLOW.md) | Detailed PDF editing UX specification |
 | [Risks](docs/RISKS.md) | Risk register with mitigations |
 
-## Vault Structure
-
-Mentis stores everything as files in a vault (folder):
-
-```
-my-vault/
-├── _marrow/          # App metadata (config, templates, snapshots, signatures)
-├── _inbox/           # PDF import landing zone
-├── Projects/         # User folders with .md, .pdf, .canvas files
-├── Journal/          # Date-titled daily notes
-└── inbox.md          # Default capture note
-```
 
 ## Development Phases
 
@@ -135,6 +123,10 @@ my-vault/
 2. **Phase 2 (Weeks 13–18):** Desktop app (Tauri), templates, graph view, Marrow Sync
 3. **Phase 3 (Weeks 19–26):** Mobile (Capacitor), stylus support, OCR, plugin system, public launch
 
+## AI Assistance
+
+This project was developed with **AI-assisted** tooling. Human maintainers at Marrow Group review and integrate changes; generated material can still contain mistakes. 
+
 ## License
 
-Proprietary. All rights reserved.
+Licensed under the **Business Source License 1.1** — see [`LICENSE`](./LICENSE).

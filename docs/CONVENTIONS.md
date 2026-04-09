@@ -1,5 +1,9 @@
 # Mentis — Code Conventions
 
+## License
+
+The project is licensed under the **Business Source License 1.1** — see the root [`LICENSE`](../LICENSE) file. `package.json` declares `"license": "SEE LICENSE IN LICENSE"`. The README includes an **AI assistance** notice; it does not override the license.
+
 ## Project Structure
 
 ```
