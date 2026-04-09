@@ -15,6 +15,22 @@ function getSnapshotFilename(originalPath: string): string {
   return `${name}_${timestamp}.pdf`
 }
 
+/**
+ * Parse the encoded ISO timestamp back into a Date.
+ * Format: `YYYY-MM-DDTHH-mm-ss-mmmZ` → `YYYY-MM-DDTHH:mm:ss.mmmZ`
+ */
+export function parseSnapshotTimestamp(ts: string): Date | null {
+  const tIdx = ts.indexOf('T')
+  if (tIdx < 0) return null
+  const datePart = ts.slice(0, tIdx)
+  const timePart = ts.slice(tIdx + 1).replace('Z', '')
+  const parts = timePart.split('-')
+  if (parts.length < 4) return null
+  const iso = `${datePart}T${parts[0]}:${parts[1]}:${parts[2]}.${parts[3]}Z`
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? null : d
+}
+
 export async function createSnapshot(
   fs: FileSystemAdapter,
   pdfPath: string,
@@ -30,7 +46,12 @@ export async function listSnapshots(
   fs: FileSystemAdapter,
   originalFilename?: string,
 ): Promise<SnapshotInfo[]> {
-  const entries = await fs.readdir(SNAPSHOTS_DIR)
+  let entries
+  try {
+    entries = await fs.readdir(SNAPSHOTS_DIR)
+  } catch {
+    return []
+  }
 
   return entries
     .filter((entry) => {
@@ -54,6 +75,27 @@ export async function listSnapshots(
       }
     })
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+}
+
+/**
+ * Restore a snapshot: copy the snapshot over the original file.
+ * Creates a safety snapshot of the current file first.
+ */
+export async function restoreSnapshot(
+  fs: FileSystemAdapter,
+  snapshotPath: string,
+  originalPdfPath: string,
+): Promise<void> {
+  await createSnapshot(fs, originalPdfPath)
+  const bytes = await fs.readFile(snapshotPath)
+  await fs.writeFile(originalPdfPath, bytes)
+}
+
+export async function deleteSnapshot(
+  fs: FileSystemAdapter,
+  snapshotPath: string,
+): Promise<void> {
+  await fs.remove(snapshotPath)
 }
 
 export async function pruneSnapshots(

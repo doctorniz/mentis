@@ -11,6 +11,13 @@ interface EditorState {
   closeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
   markDirty: (tabId: string, isDirty: boolean) => void
+  updateTab: (
+    tabId: string,
+    updates: Partial<Pick<EditorTab, 'title' | 'isDirty' | 'showRawSource' | 'isNew'>>,
+  ) => void
+  clearNew: (tabId: string) => void
+  /** After renaming a file on disk, move the tab to the new path. */
+  retargetTabPath: (tabId: string, newPath: string, newTitle?: string) => void
   addRecentFile: (path: string) => void
   closeAllTabs: () => void
 }
@@ -54,6 +61,32 @@ export const useEditorStore = create<EditorState>()(
       set((state) => {
         const tab = state.tabs.find((t) => t.id === tabId)
         if (tab) tab.isDirty = isDirty
+      }),
+
+    updateTab: (tabId, updates) =>
+      set((state) => {
+        const tab = state.tabs.find((t) => t.id === tabId)
+        if (!tab) return
+        if (updates.title !== undefined) tab.title = updates.title
+        if (updates.isDirty !== undefined) tab.isDirty = updates.isDirty
+        if (updates.showRawSource !== undefined) tab.showRawSource = updates.showRawSource
+        if (updates.isNew !== undefined) tab.isNew = updates.isNew
+      }),
+
+    clearNew: (tabId) =>
+      set((state) => {
+        const tab = state.tabs.find((t) => t.id === tabId)
+        if (tab) tab.isNew = false
+      }),
+
+    retargetTabPath: (tabId, newPath, newTitle) =>
+      set((state) => {
+        const tab = state.tabs.find((t) => t.id === tabId)
+        if (!tab) return
+        const oldPath = tab.path
+        tab.path = newPath
+        if (newTitle !== undefined) tab.title = newTitle
+        state.recentFiles = state.recentFiles.map((p) => (p === oldPath ? newPath : p))
       }),
 
     addRecentFile: (path) =>

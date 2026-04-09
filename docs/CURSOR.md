@@ -1,4 +1,4 @@
-# Cursor & AI workflow (Ink by Marrow)
+# Cursor & AI workflow — Mentis
 
 This project uses **Cursor rules** under `.cursor/rules/` so the assistant stays aligned with team habits.
 
@@ -6,7 +6,7 @@ This project uses **Cursor rules** under `.cursor/rules/` so the assistant stays
 
 | Rule | Purpose |
 |------|---------|
-| `greeting-and-docs.mdc` (`alwaysApply: true`) | Greet with **Assalamualaikum** on substantive replies; after meaningful changes, update `docs/` (and `README.md` when relevant) and note what changed in the closing message. |
+| `greeting-and-docs.mdc` (`alwaysApply: true`) | Greet with **Assalamualaikum** on substantive replies; after meaningful changes, update `docs/` (and `README.md` when relevant), note **Documentation** in the closeout, and add a **Manual verification** checklist (and refresh `docs/LAUNCH_DEFERRALS.md` → *Manual verification queue*) when behavior/UX changes. |
 
 ## For maintainers
 

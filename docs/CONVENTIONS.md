@@ -1,69 +1,101 @@
-# Ink by Marrow — Code Conventions
+# Mentis — Code Conventions
 
 ## Project Structure
 
 ```
 ink-marrow/
-├── docs/                       # Project documentation
-├── public/                     # Static assets (icons, PWA manifest)
+├── docs/                       # Project documentation (9 markdown files)
+├── tests/                      # Vitest unit tests (256 tests, default env node; happy-dom per file where needed)
+│   ├── assets.test.ts          # static asset paths / PWA entries
+│   ├── canvas-undo.test.ts     # canvas undo stack behaviour
+│   ├── canvas.test.ts          # createEmptyCanvas, serialize/deserialize, nodes/edges
+│   ├── daily-note.test.ts      # daily note path + openOrCreate helpers
+│   ├── download-file.test.ts   # download helper
+│   ├── editor-tab-from-path.test.ts
+│   ├── export-pdf.test.ts      # print/export HTML helpers
+│   ├── file-utils.test.ts      # getFileType, isHiddenPath, Result helpers
+│   ├── folder-ops.test.ts      # renameFolder, collectFilePaths
+│   ├── fs-adapter.test.ts      # InMemoryAdapter contract
+│   ├── graph.test.ts           # wiki graph build/resolve
+│   ├── markdown-bridge.test.ts # Tiptap ↔ MD (happy-dom)
+│   ├── markdown.test.ts        # parseNote, wiki-links, tags, resolveWikiLinkPath
+│   ├── pdf-annotation-writer.test.ts # writeAnnotationsIntoPdf /Text + strip
+│   ├── pdf-operations.test.ts  # createBlankPdf, page ops, forms helpers
+│   ├── pdf-search-text.test.ts # in-PDF text search helper
+│   ├── pdf-store-colors.test.ts # pdf store colour keys
+│   ├── search.test.ts          # parseSearchQuery, buildSnippet, index, filters
+│   ├── snapshot.test.ts        # snapshot helpers
+│   └── toast.test.ts           # toast store
+├── public/                     # PWA: manifest.json, icon.svg, sw.js
 ├── src/
-│   ├── app/                    # Next.js App Router pages and layouts
-│   │   ├── (vault)/            # Vault-scoped route group
-│   │   │   ├── files/          # File Browser view
-│   │   │   ├── notes/          # Notes view
-│   │   │   ├── search/         # Search view
-│   │   │   └── new/            # New creation view
-│   │   ├── layout.tsx          # Root layout
-│   │   ├── page.tsx            # Landing / vault selector
-│   │   └── globals.css         # Global styles and Tailwind
+│   ├── app/                    # Next.js App Router (single route, client-side views)
+│   │   ├── layout.tsx          # Root layout (PWA meta, SW registration)
+│   │   ├── page.tsx            # Home → AppRoot
+│   │   └── globals.css         # Tailwind v4 @theme tokens, light/dark palettes, ProseMirror styles
 │   │
-│   ├── components/             # Shared UI components
-│   │   ├── ui/                 # Primitive UI components (Button, Dialog, etc.)
-│   │   ├── layout/             # Layout components (Sidebar, TopBar, etc.)
-│   │   ├── editor/             # Markdown editor components
-│   │   ├── pdf/                # PDF viewer and annotation components
-│   │   ├── canvas/             # Unlimited canvas components
-│   │   └── file-browser/       # File browser components
+│   ├── components/
+│   │   ├── shell/              # AppShell, MainSidebar, ViewRouter, KeyboardShortcutsDialog, ErrorBoundary
+│   │   ├── views/              # NotesView, FileBrowserView, SearchView, NewView
+│   │   ├── notes/              # MarkdownNoteEditor, file tree, tabs, toolbar, slash/wiki, backlinks, rename
+│   │   ├── pdf/                # PdfViewer, toolbar, outline, per-page Fabric canvas, page panel, signature pad, form dialog
+│   │   ├── canvas/             # CanvasEditor + CanvasToolbar (Fabric.js: draw, text, sticky, connect, frames, wiki-links, export)
+│   │   ├── graph/              # GraphCanvas (force-directed Canvas 2D renderer)
+│   │   ├── file-browser/       # FbFileCard/Row, context menu, batch bar, import zone
+│   │   ├── search/             # VaultSearchBootstrap
+│   │   └── ui/                 # Button, Toaster (shared primitives)
+│   │
+│   ├── contexts/               # React context providers
+│   │   ├── vault-fs-context.tsx     # Vault FS adapters, path, config
+│   │   └── notes-workspace-context.tsx  # Markdown paths for wiki-link + backlinks
+│   │
+│   ├── hooks/                  # Reusable React hooks
+│   │   ├── use-auto-save.ts         # Debounced auto-save for editors
+│   │   └── use-keyboard-shortcuts.ts # Global keyboard shortcut registration
 │   │
 │   ├── lib/                    # Core business logic (non-React)
-│   │   ├── fs/                 # File system adapters
-│   │   │   ├── types.ts        # FileSystemAdapter interface
-│   │   │   ├── opfs.ts         # OPFS implementation
-│   │   │   ├── fsapi.ts        # File System Access API implementation
-│   │   │   └── index.ts        # Adapter factory
-│   │   ├── vault/              # Vault management
-│   │   ├── pdf/                # PDF manipulation (pdf-lib wrappers)
-│   │   ├── search/             # MiniSearch integration
-│   │   ├── markdown/           # Markdown parsing (remark/unified)
-│   │   ├── canvas/             # Canvas serialization
-│   │   └── snapshot/           # PDF snapshot management
+│   │   ├── fs/                 # FileSystemAdapter interface, OpfsAdapter, FsapiAdapter, scoped adapter
+│   │   ├── vault/              # Vault lifecycle (create, discover, config, session)
+│   │   ├── editor/             # Tiptap extensions, slash/wiki, markdown ↔ JSON bridge, vault-image, pdf-embed
+│   │   ├── markdown/           # gray-matter parsing, wiki-link/tag extraction
+│   │   ├── notes/              # Tree filtering, new-note paths, daily-note, folder-ops, assets, export-pdf, template store, backlinks
+│   │   ├── pdf/                # pdfjs-loader, annotation R/W, page ops, signatures, thumbnails
+│   │   ├── search/             # MiniSearch index, build, query, snippets, parse-query
+│   │   ├── canvas/             # Canvas JSON serialization (nodes, edges, frames), undo-stack
+│   │   ├── graph/              # Graph data model: build-graph (nodes from notes, edges from wiki-links, folder filter)
+│   │   ├── file-browser/       # File collection, sort, filter helpers
+│   │   ├── snapshot/           # PDF snapshot management
+│   │   └── keyboard-shortcuts.ts  # Global shortcut definitions + formatter
 │   │
-│   ├── stores/                 # Zustand stores
-│   │   ├── vault.ts
-│   │   ├── file-tree.ts
-│   │   ├── editor.ts
-│   │   ├── pdf.ts
-│   │   ├── canvas.ts
-│   │   ├── search.ts
-│   │   └── ui.ts
+│   ├── stores/                 # Zustand + Immer stores
+│   │   ├── vault.ts            # Active vault session
+│   │   ├── ui.ts               # View mode, sidebar, theme
+│   │   ├── file-tree.ts        # File tree, selection, starred
+│   │   ├── editor.ts           # Tabs, active tab, recent files
+│   │   ├── pdf.ts              # PDF state, annotations, tools
+│   │   ├── canvas.ts           # Canvas state, tools, dirty flag
+│   │   ├── search.ts           # Search query, results, filters
+│   │   ├── file-browser.ts     # Browser view mode, sort, multi-select
+│   │   └── toast.ts            # Toast notifications (info/success/error/warning)
 │   │
-│   ├── hooks/                  # Custom React hooks
 │   ├── types/                  # Shared TypeScript types
-│   └── utils/                  # General utility functions
+│   │   ├── vault.ts            # VaultConfig, ViewMode, well-known dirs
+│   │   ├── files.ts            # FileEntry, FileType, FileStats
+│   │   ├── editor.ts           # EditorTab, NoteFrontmatter
+│   │   ├── pdf.ts              # Annotations, tools, signatures
+│   │   ├── canvas.ts           # CanvasFile, nodes, edges, frames
+│   │   ├── search.ts           # SearchResult, SearchFilters, SearchIndexDocument
+│   │   └── file-browser.ts     # FbViewMode, FbFileItem, sorts/filters
+│   │
+│   └── utils/                  # cn.ts (clsx + tailwind-merge)
 │
-├── tests/                      # Test files
-│   ├── unit/                   # Unit tests (Vitest)
-│   ├── integration/            # Integration tests
-│   └── e2e/                    # E2E tests (Playwright)
-│
-├── .cursor/                    # Cursor IDE config
-│   └── rules/                  # Cursor rules for AI assistance
-├── next.config.ts              # Next.js configuration
-├── tailwind.config.ts          # Tailwind configuration
-├── tsconfig.json               # TypeScript configuration
+├── .cursor/rules/              # Cursor AI rules (.mdc files)
+├── next.config.ts              # Static export, COOP/COEP headers, canvas=false alias
+├── postcss.config.mjs          # @tailwindcss/postcss (no tailwind.config file — v4)
+├── tsconfig.json               # strict, ES2022, @/* paths
+├── .npmrc                      # pnpm hoist-pattern for Turbopack
 ├── package.json                # Dependencies and scripts
-├── pnpm-lock.yaml              # Lockfile
-└── README.md                   # Project overview
+├── pnpm-lock.yaml
+└── README.md
 ```
 
 ## Naming Conventions
@@ -94,6 +126,14 @@ ink-marrow/
 | Event handlers | `handle[Event]` or `on[Event]` | `handleFileClick`, `onDrop` |
 
 ## Component Patterns
+
+### Accessibility (HTML)
+
+- Never nest interactive elements (`<button>` inside `<button>`, etc.). For tab UIs with a close control, use a focusable `<div role="tab">` (with `tabIndex` and keyboard activation) and keep actions like “close” as separate `<button>`s.
+
+### Notes editor & vault rename
+
+- After a file rename, `MarkdownNoteEditor`’s `useEffect` cleanup still closes over the **previous** `path`. Flushing save with that path **recreates** the old file (duplicate next to the new one). Skip the flush when `pathRef.current !== path` (tab path already retargeted).
 
 ### Component File Structure
 
@@ -166,6 +206,8 @@ export const useVaultStore = create<VaultState>()(
 )
 ```
 
+**Immer + collections:** Do not put `Set` or `Map` in Zustand state when using the `immer` middleware unless you call `enableMapSet()` at app init. Prefer `Record<string, true>` (or string arrays) for set-like data—see `file-tree`, `pdf`, and `canvas` stores.
+
 ## Import Aliases
 
 ```json
@@ -183,14 +225,14 @@ Always use `@/` path aliases for imports within `src/`. Never use relative paths
 - Use CSS variables in `globals.css` for theme tokens (colors, spacing, radii).
 - Component variants defined with `class-variance-authority` (CVA).
 - No CSS modules or styled-components.
-- Dark mode via Tailwind `dark:` variant, driven by a class on `<html>`.
+- Dark mode via Tailwind v4 `@variant dark` (class-based): `.dark` on `<html>` toggles CSS custom properties. Anti-flash inline script in `layout.tsx` reads `localStorage('ink-theme')` before paint. Three-state toggle (Light / System / Dark) in sidebar. `useUiStore.setTheme()` persists choice and syncs the class.
 
 ## Error Handling
 
 - File system operations are wrapped in try/catch and return `Result<T, Error>` types where possible.
-- User-facing errors are shown via toast notifications.
-- Errors are logged to console in development.
-- Critical errors (vault corruption, write failures) show modal dialogs with recovery options.
+- User-facing errors are shown via toast notifications — import `toast` from `@/stores/toast` and call `toast.error(msg)`, `toast.warning(msg)`, `toast.success(msg)`, or `toast.info(msg)`. The `<Toaster>` component is mounted in `app-root.tsx`.
+- Always keep the `console.error` alongside the toast so developers see full stack traces.
+- Critical errors (vault corruption, write failures) show modal dialogs with recovery options (`ErrorBoundary`).
 
 ## Testing Strategy
 
@@ -234,3 +276,4 @@ docs(readme): add development setup instructions
 
 - Project rules live in **`.cursor/rules/`** (`.mdc` files). See **`docs/CURSOR.md`** for the current list and purpose.
 - When using Cursor Agent on this repo, the default expectation is: greet with **Assalamualaikum** on substantive help, and **update `docs/`** (and `README.md` when needed) at the end of runs that change behavior, architecture, or dependencies—then summarize which doc files changed in the final reply.
+- For **UX or user-visible behavior** changes, also refresh **`docs/LAUNCH_DEFERRALS.md` → *Manual verification queue* → *To do*** (and move verified rows to **Done**); repeat that checklist in the closeout under **Manual verification** so a human can smoke-test in the app.

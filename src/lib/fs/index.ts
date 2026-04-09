@@ -5,6 +5,12 @@ export type { FileSystemAdapter } from './types'
 export { ok, err } from './types'
 export type { Result } from './types'
 export { createScopedAdapter } from './scoped'
+export { FsapiAdapter, isFsapiSupported, pickDirectoryFsapi } from './fsapi'
+export {
+  storeDirectoryHandle,
+  getStoredDirectoryHandle,
+  clearStoredDirectoryHandle,
+} from './handle-store'
 
 let adapter: FileSystemAdapter | null = null
 

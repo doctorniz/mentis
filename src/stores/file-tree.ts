@@ -2,10 +2,13 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import type { FileEntry } from '@/types/files'
 
+/** Path → expanded (Immer-friendly; avoid `Set` without enableMapSet). */
+export type ExpandedPathsMap = Record<string, true>
+
 interface FileTreeState {
   root: FileEntry | null
   selectedPath: string | null
-  expandedPaths: Set<string>
+  expandedPaths: ExpandedPathsMap
   starredPaths: string[]
 
   setRoot: (root: FileEntry) => void
@@ -20,7 +23,7 @@ export const useFileTreeStore = create<FileTreeState>()(
   immer((set, get) => ({
     root: null,
     selectedPath: null,
-    expandedPaths: new Set<string>(),
+    expandedPaths: {},
     starredPaths: [],
 
     setRoot: (root) =>
@@ -35,19 +38,19 @@ export const useFileTreeStore = create<FileTreeState>()(
 
     toggleExpanded: (path) =>
       set((state) => {
-        if (state.expandedPaths.has(path)) {
-          state.expandedPaths.delete(path)
+        if (state.expandedPaths[path]) {
+          delete state.expandedPaths[path]
         } else {
-          state.expandedPaths.add(path)
+          state.expandedPaths[path] = true
         }
       }),
 
     setExpanded: (path, expanded) =>
       set((state) => {
         if (expanded) {
-          state.expandedPaths.add(path)
+          state.expandedPaths[path] = true
         } else {
-          state.expandedPaths.delete(path)
+          delete state.expandedPaths[path]
         }
       }),
 

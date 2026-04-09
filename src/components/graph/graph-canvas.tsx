@@ -1,0 +1,479 @@
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { GraphNode, GraphEdge } from '@/lib/graph/build-graph'
+
+interface Props {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  onClickNode?: (nodeId: string) => void
+}
+
+const MIN_RADIUS = 6
+const MAX_RADIUS = 22
+const LABEL_OFFSET = 4
+
+const REPULSION = 3000
+const ATTRACTION = 0.004
+const DAMPING = 0.85
+const CENTER_GRAVITY = 0.01
+const VELOCITY_THRESHOLD = 0.01
+
+// Per-type colors: [default, hover, stroke]
+const TYPE_COLORS = {
+  note: {
+    fill: { dark: 'rgba(148,163,184,0.75)', light: 'rgba(100,116,139,0.65)' },
+    hover: { dark: '#60a5fa', light: '#3b82f6' },
+    stroke: { dark: '#93c5fd', light: '#2563eb' },
+  },
+  pdf: {
+    fill: { dark: 'rgba(252,165,165,0.75)', light: 'rgba(239,68,68,0.55)' },
+    hover: { dark: '#f87171', light: '#dc2626' },
+    stroke: { dark: '#fca5a5', light: '#b91c1c' },
+  },
+  canvas: {
+    fill: { dark: 'rgba(196,181,253,0.75)', light: 'rgba(139,92,246,0.55)' },
+    hover: { dark: '#c084fc', light: '#7c3aed' },
+    stroke: { dark: '#d8b4fe', light: '#6d28d9' },
+  },
+} as const
+
+function nodeRadius(n: GraphNode, maxLinks: number): number {
+  if (maxLinks <= 0) return MIN_RADIUS
+  const t = n.linkCount / maxLinks
+  return MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS)
+}
+
+/** Trace a node's shape path (without filling/stroking). */
+function traceNodeShape(ctx: CanvasRenderingContext2D, n: GraphNode, r: number): void {
+  ctx.beginPath()
+  if (n.type === 'note') {
+    ctx.arc(n.x, n.y, r, 0, Math.PI * 2)
+  } else if (n.type === 'pdf') {
+    const s = r * 1.4
+    const corner = s * 0.3
+    const x = n.x - s
+    const y = n.y - s
+    const w = s * 2
+    const h = s * 2
+    ctx.moveTo(x + corner, y)
+    ctx.lineTo(x + w - corner, y)
+    ctx.arcTo(x + w, y, x + w, y + corner, corner)
+    ctx.lineTo(x + w, y + h - corner)
+    ctx.arcTo(x + w, y + h, x + w - corner, y + h, corner)
+    ctx.lineTo(x + corner, y + h)
+    ctx.arcTo(x, y + h, x, y + h - corner, corner)
+    ctx.lineTo(x, y + corner)
+    ctx.arcTo(x, y, x + corner, y, corner)
+    ctx.closePath()
+  } else {
+    const d = r * 1.5
+    ctx.moveTo(n.x, n.y - d)
+    ctx.lineTo(n.x + d, n.y)
+    ctx.lineTo(n.x, n.y + d)
+    ctx.lineTo(n.x - d, n.y)
+    ctx.closePath()
+  }
+}
+
+/** Draw a node shape based on its type and state. */
+function drawNode(
+  ctx: CanvasRenderingContext2D,
+  n: GraphNode,
+  r: number,
+  isHover: boolean,
+  isSelected: boolean,
+  isDimmed: boolean,
+  isDark: boolean,
+  zoom: number,
+): void {
+  const scheme = TYPE_COLORS[n.type]
+  const theme = isDark ? 'dark' : 'light'
+
+  let fill: string
+  if (isSelected) {
+    fill = scheme.hover[theme]
+  } else if (isHover) {
+    fill = scheme.hover[theme]
+  } else {
+    fill = scheme.fill[theme]
+  }
+
+  if (isDimmed) {
+    ctx.globalAlpha = 0.2
+  }
+
+  traceNodeShape(ctx, n, r)
+  ctx.fillStyle = fill
+  ctx.fill()
+
+  if (isSelected) {
+    // Outer selection ring
+    ctx.save()
+    ctx.globalAlpha = isDimmed ? 0.15 : 1
+    traceNodeShape(ctx, n, r + 4 / zoom)
+    ctx.strokeStyle = scheme.stroke[theme]
+    ctx.lineWidth = 2.5 / zoom
+    ctx.stroke()
+    ctx.restore()
+  } else if (isHover) {
+    ctx.strokeStyle = scheme.stroke[theme]
+    ctx.lineWidth = 2 / zoom
+    ctx.stroke()
+  }
+
+  ctx.globalAlpha = 1
+}
+
+const DBLCLICK_MS = 280
+
+export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const rafRef = useRef(0)
+
+  const nodesRef = useRef(nodes)
+  const edgesRef = useRef(edges)
+
+  const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 })
+  const cameraRef = useRef(camera)
+  cameraRef.current = camera
+
+  const dragRef = useRef<{ node: GraphNode; offsetX: number; offsetY: number } | null>(null)
+  const panRef = useRef<{ startX: number; startY: number; camX: number; camY: number } | null>(null)
+  const hoverRef = useRef<GraphNode | null>(null)
+  const selectedRef = useRef<GraphNode | null>(null)
+  // Track last click time + node for double-click detection
+  const lastClickRef = useRef<{ node: GraphNode; time: number } | null>(null)
+
+  useEffect(() => {
+    nodesRef.current = nodes
+    edgesRef.current = edges
+  }, [nodes, edges])
+
+  const screenToWorld = useCallback(
+    (sx: number, sy: number) => {
+      const c = cameraRef.current
+      const canvas = canvasRef.current
+      if (!canvas) return { wx: 0, wy: 0 }
+      const cx = canvas.width / 2
+      const cy = canvas.height / 2
+      return {
+        wx: (sx - cx) / c.zoom - c.x,
+        wy: (sy - cy) / c.zoom - c.y,
+      }
+    },
+    [],
+  )
+
+  const findNodeAt = useCallback(
+    (sx: number, sy: number): GraphNode | null => {
+      const { wx, wy } = screenToWorld(sx, sy)
+      const maxLinks = Math.max(1, ...nodesRef.current.map((n) => n.linkCount))
+      for (let i = nodesRef.current.length - 1; i >= 0; i--) {
+        const n = nodesRef.current[i]!
+        const r = nodeRadius(n, maxLinks) * 1.5 // generous hit area for all shapes
+        const dx = n.x - wx
+        const dy = n.y - wy
+        if (dx * dx + dy * dy <= r * r) return n
+      }
+      return null
+    },
+    [screenToWorld],
+  )
+
+  // Force simulation + draw loop
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+
+    function resize() {
+      const container = containerRef.current
+      if (!container || !canvas) return
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = container.clientWidth * dpr
+      canvas.height = container.clientHeight * dpr
+      canvas.style.width = `${container.clientWidth}px`
+      canvas.style.height = `${container.clientHeight}px`
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+    resize()
+    const ro = new ResizeObserver(resize)
+    if (containerRef.current) ro.observe(containerRef.current)
+
+    let isSimulating = true
+    let cooldown = 300
+
+    function tick() {
+      const ns = nodesRef.current
+      const es = edgesRef.current
+      const cam = cameraRef.current
+
+      if (isSimulating && cooldown > 0) {
+        cooldown--
+
+        // Repulsion (all pairs)
+        for (let i = 0; i < ns.length; i++) {
+          for (let j = i + 1; j < ns.length; j++) {
+            const a = ns[i]!
+            const b = ns[j]!
+            let dx = a.x - b.x
+            let dy = a.y - b.y
+            let dist2 = dx * dx + dy * dy
+            if (dist2 < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; dist2 = 1 }
+            const force = REPULSION / dist2
+            const fx = dx / Math.sqrt(dist2) * force
+            const fy = dy / Math.sqrt(dist2) * force
+            a.vx += fx; a.vy += fy
+            b.vx -= fx; b.vy -= fy
+          }
+        }
+
+        // Attraction (edges)
+        const nodeIdx = new Map<string, GraphNode>()
+        for (const n of ns) nodeIdx.set(n.id, n)
+
+        for (const e of es) {
+          const a = nodeIdx.get(e.source)
+          const b = nodeIdx.get(e.target)
+          if (!a || !b) continue
+          const dx = b.x - a.x
+          const dy = b.y - a.y
+          const fx = dx * ATTRACTION
+          const fy = dy * ATTRACTION
+          a.vx += fx; a.vy += fy
+          b.vx -= fx; b.vy -= fy
+        }
+
+        // Center gravity
+        for (const n of ns) {
+          n.vx -= n.x * CENTER_GRAVITY
+          n.vy -= n.y * CENTER_GRAVITY
+        }
+
+        // Apply velocity
+        let totalV = 0
+        for (const n of ns) {
+          if (dragRef.current?.node === n) { n.vx = 0; n.vy = 0; continue }
+          n.vx *= DAMPING
+          n.vy *= DAMPING
+          n.x += n.vx
+          n.y += n.vy
+          totalV += Math.abs(n.vx) + Math.abs(n.vy)
+        }
+
+        if (totalV / Math.max(1, ns.length) < VELOCITY_THRESHOLD) {
+          isSimulating = false
+        }
+      }
+
+      // Draw
+      if (!canvas) return
+      const w = canvas.clientWidth
+      const h = canvas.clientHeight
+      ctx.clearRect(0, 0, w, h)
+      ctx.save()
+      ctx.translate(w / 2, h / 2)
+      ctx.scale(cam.zoom, cam.zoom)
+      ctx.translate(cam.x, cam.y)
+
+      const maxLinks = Math.max(1, ...ns.map((n) => n.linkCount))
+      const nodeIdx = new Map<string, GraphNode>()
+      for (const n of ns) nodeIdx.set(n.id, n)
+      const isDark = document.documentElement.classList.contains('dark')
+
+      // Build selection neighbourhood (selected node + directly connected nodes/edges)
+      const sel = selectedRef.current
+      const hasSelection = sel !== null
+      const connectedNodeIds = new Set<string>()
+      const connectedEdgeKeys = new Set<string>()
+      if (sel) {
+        connectedNodeIds.add(sel.id)
+        for (const e of es) {
+          if (e.source === sel.id || e.target === sel.id) {
+            connectedNodeIds.add(e.source)
+            connectedNodeIds.add(e.target)
+            connectedEdgeKeys.add(`${e.source}→${e.target}`)
+          }
+        }
+      }
+
+      // Edges
+      for (const e of es) {
+        const a = nodeIdx.get(e.source)
+        const b = nodeIdx.get(e.target)
+        if (!a || !b) continue
+        const isConnected = connectedEdgeKeys.has(`${e.source}→${e.target}`)
+        ctx.beginPath()
+        ctx.moveTo(a.x, a.y)
+        ctx.lineTo(b.x, b.y)
+        if (hasSelection) {
+          if (isConnected) {
+            ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)'
+            ctx.lineWidth = 1.5 / cam.zoom
+          } else {
+            ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'
+            ctx.lineWidth = 1 / cam.zoom
+          }
+        } else {
+          ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'
+          ctx.lineWidth = 1 / cam.zoom
+        }
+        ctx.stroke()
+      }
+
+      // Nodes
+      for (const n of ns) {
+        const r = nodeRadius(n, maxLinks)
+        const isHover = hoverRef.current === n
+        const isSelected = sel === n
+        const isDimmed = hasSelection && !connectedNodeIds.has(n.id)
+        ctx.save()
+        drawNode(ctx, n, r, isHover, isSelected, isDimmed, isDark, cam.zoom)
+        ctx.restore()
+      }
+
+      // Labels
+      const fontSize = Math.max(9, 11 / cam.zoom)
+      ctx.font = `${fontSize}px system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+      for (const n of ns) {
+        const r = nodeRadius(n, maxLinks) * 1.5
+        const isHover = hoverRef.current === n
+        const isSelected = sel === n
+        const isDimmed = hasSelection && !connectedNodeIds.has(n.id)
+        ctx.globalAlpha = isDimmed ? 0.2 : 1
+        ctx.fillStyle = isSelected || isHover
+          ? (isDark ? '#f1f5f9' : '#1e293b')
+          : (isDark ? 'rgba(203,213,225,0.8)' : 'rgba(51,65,85,0.75)')
+        ctx.fillText(n.label, n.x, n.y + r + LABEL_OFFSET)
+        ctx.globalAlpha = 1
+      }
+
+      ctx.restore()
+      rafRef.current = requestAnimationFrame(tick)
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(rafRef.current)
+      ro.disconnect()
+    }
+  }, [])
+
+  // Mouse interactions
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    function onMouseDown(e: MouseEvent) {
+      const rect = canvas!.getBoundingClientRect()
+      const sx = e.clientX - rect.left
+      const sy = e.clientY - rect.top
+      const node = findNodeAt(sx, sy)
+      if (node) {
+        const { wx, wy } = screenToWorld(sx, sy)
+        dragRef.current = { node, offsetX: node.x - wx, offsetY: node.y - wy }
+      } else {
+        panRef.current = { startX: e.clientX, startY: e.clientY, camX: cameraRef.current.x, camY: cameraRef.current.y }
+      }
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      const rect = canvas!.getBoundingClientRect()
+      const sx = e.clientX - rect.left
+      const sy = e.clientY - rect.top
+
+      if (dragRef.current) {
+        const { wx, wy } = screenToWorld(sx, sy)
+        dragRef.current.node.x = wx + dragRef.current.offsetX
+        dragRef.current.node.y = wy + dragRef.current.offsetY
+        dragRef.current.node.vx = 0
+        dragRef.current.node.vy = 0
+        return
+      }
+
+      if (panRef.current) {
+        const dx = (e.clientX - panRef.current.startX) / cameraRef.current.zoom
+        const dy = (e.clientY - panRef.current.startY) / cameraRef.current.zoom
+        setCamera((c) => ({ ...c, x: panRef.current!.camX + dx, y: panRef.current!.camY + dy }))
+        return
+      }
+
+      hoverRef.current = findNodeAt(sx, sy)
+      canvas!.style.cursor = hoverRef.current ? 'pointer' : 'grab'
+    }
+
+    function onMouseUp(e: MouseEvent) {
+      const wasDragging = dragRef.current
+      if (wasDragging) {
+        const rect = canvas!.getBoundingClientRect()
+        const sx = e.clientX - rect.left
+        const sy = e.clientY - rect.top
+        const node = findNodeAt(sx, sy)
+
+        if (node && node === wasDragging.node) {
+          const now = Date.now()
+          const last = lastClickRef.current
+
+          if (last && last.node === node && now - last.time < DBLCLICK_MS) {
+            // Double-click → open the file
+            lastClickRef.current = null
+            onClickNode?.(node.id)
+          } else {
+            // Single click → select (or deselect if already selected)
+            lastClickRef.current = { node, time: now }
+            selectedRef.current = selectedRef.current === node ? null : node
+          }
+        } else if (!node) {
+          // Clicked empty canvas → clear selection
+          selectedRef.current = null
+          lastClickRef.current = null
+        }
+      } else if (panRef.current) {
+        // Finished panning (not a node click)
+        const dx = Math.abs(e.clientX - panRef.current.startX)
+        const dy = Math.abs(e.clientY - panRef.current.startY)
+        if (dx < 4 && dy < 4) {
+          // Stationary click on empty canvas → clear selection
+          selectedRef.current = null
+        }
+      }
+      dragRef.current = null
+      panRef.current = null
+    }
+
+    function onWheel(e: WheelEvent) {
+      e.preventDefault()
+      const factor = e.deltaY > 0 ? 0.9 : 1.1
+      setCamera((c) => ({ ...c, zoom: Math.max(0.1, Math.min(5, c.zoom * factor)) }))
+    }
+
+    canvas.addEventListener('mousedown', onMouseDown)
+    canvas.addEventListener('mousemove', onMouseMove)
+    canvas.addEventListener('mouseup', onMouseUp)
+    canvas.addEventListener('mouseleave', () => { dragRef.current = null; panRef.current = null; hoverRef.current = null })
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+
+    return () => {
+      canvas.removeEventListener('mousedown', onMouseDown)
+      canvas.removeEventListener('mousemove', onMouseMove)
+      canvas.removeEventListener('mouseup', onMouseUp)
+      canvas.removeEventListener('mouseleave', () => {})
+      canvas.removeEventListener('wheel', onWheel)
+    }
+  }, [findNodeAt, screenToWorld, onClickNode])
+
+  return (
+    <div ref={containerRef} className="relative h-full w-full">
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 h-full w-full"
+        aria-label="Vault knowledge graph"
+        role="application"
+      />
+    </div>
+  )
+}

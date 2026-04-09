@@ -1,73 +1,147 @@
 import MiniSearch from 'minisearch'
-import type { SearchIndexEntry, SearchResult, SearchFilters } from '@/types/search'
+import type { SearchFilters, SearchIndexDocument, SearchResult } from '@/types/search'
+import { parseSearchQuery } from '@/lib/search/parse-query'
+import { buildSnippet } from '@/lib/search/snippet'
 
-const SEARCH_FIELDS = ['title', 'content', 'tags'] as const
-const STORED_FIELDS = ['path', 'title', 'type', 'tags', 'modifiedAt'] as const
+let searchIndex: MiniSearch<SearchIndexDocument> | null = null
 
-let searchIndex: MiniSearch<SearchIndexEntry> | null = null
+function createIndex(): MiniSearch<SearchIndexDocument> {
+  return new MiniSearch<SearchIndexDocument>({
+    idField: 'id',
+    fields: ['title', 'content', 'tags'],
+    storeFields: ['path', 'title', 'fileType', 'tagCsv', 'modifiedAt', 'content'],
+    searchOptions: {
+      boost: { title: 3, tags: 2, content: 1 },
+      fuzzy: 0.2,
+      prefix: true,
+    },
+  })
+}
 
-export function getSearchIndex(): MiniSearch<SearchIndexEntry> {
+export function getSearchIndex(): MiniSearch<SearchIndexDocument> {
   if (!searchIndex) {
-    searchIndex = new MiniSearch<SearchIndexEntry>({
-      fields: [...SEARCH_FIELDS],
-      storeFields: [...STORED_FIELDS],
-      searchOptions: {
-        boost: { title: 3, tags: 2, content: 1 },
-        fuzzy: 0.2,
-        prefix: true,
-      },
-    })
+    searchIndex = createIndex()
   }
   return searchIndex
 }
 
-export function addToIndex(entry: SearchIndexEntry): void {
-  const index = getSearchIndex()
-  if (index.has(entry.id)) {
-    index.replace(entry)
-  } else {
-    index.add(entry)
+export function clearSearchIndex(): void {
+  searchIndex = null
+}
+
+/** Replace the entire index (e.g. vault open or full rebuild). */
+export function replaceSearchIndex(documents: SearchIndexDocument[]): void {
+  searchIndex = createIndex()
+  if (documents.length > 0) {
+    searchIndex.addAll(documents)
   }
 }
 
-export function removeFromIndex(id: string): void {
+export function upsertSearchDocument(doc: SearchIndexDocument): void {
+  const index = getSearchIndex()
+  if (index.has(doc.id)) {
+    index.replace(doc)
+  } else {
+    index.add(doc)
+  }
+}
+
+export function removeSearchDocument(id: string): void {
   const index = getSearchIndex()
   if (index.has(id)) {
     index.discard(id)
   }
 }
 
-export function search(query: string, filters?: SearchFilters): SearchResult[] {
-  const index = getSearchIndex()
-  if (!query.trim()) return []
-
-  const results = index.search(query)
-
-  return results
-    .filter((result) => {
-      const doc = result as unknown as SearchIndexEntry
-      if (filters?.fileType?.length && !filters.fileType.includes(doc.type as never)) {
-        return false
-      }
-      if (filters?.folder && !doc.path.startsWith(filters.folder)) {
-        return false
-      }
-      return true
-    })
-    .map((result) => ({
-      id: result.id as string,
-      path: (result as unknown as SearchIndexEntry).path,
-      title: (result as unknown as SearchIndexEntry).title,
-      type: (result as unknown as SearchIndexEntry).type as SearchResult['type'],
-      score: result.score,
-      matches: Object.entries(result.match).map(([term, fields]) => ({
-        field: fields[0],
-        term,
-        context: '',
-      })),
-    }))
+function applyFilters(result: SearchIndexDocument, filters: SearchFilters): boolean {
+  if (filters.fileType !== undefined) {
+    if (filters.fileType.length === 0) return false
+    if (!filters.fileType.includes(result.fileType)) return false
+  }
+  if (filters.folder?.trim()) {
+    const prefix = filters.folder.replace(/^\/+|\/+$/g, '')
+    const p = result.path.replace(/^\/+/, '')
+    if (!p.startsWith(prefix) && p !== prefix) return false
+  }
+  if (filters.tags?.length) {
+    const docTags = new Set(
+      result.tagCsv
+        .split(',')
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean),
+    )
+    for (const tag of filters.tags) {
+      if (!docTags.has(tag.toLowerCase())) return false
+    }
+  }
+  if (filters.dateRange?.from || filters.dateRange?.to) {
+    const t = new Date(result.modifiedAt).getTime()
+    if (Number.isNaN(t)) return false
+    if (filters.dateRange.from) {
+      const from = new Date(filters.dateRange.from)
+      from.setHours(0, 0, 0, 0)
+      if (t < from.getTime()) return false
+    }
+    if (filters.dateRange.to) {
+      const to = new Date(filters.dateRange.to)
+      to.setHours(23, 59, 59, 999)
+      if (t > to.getTime()) return false
+    }
+  }
+  return true
 }
 
+function matchInfoToLegacy(match: Record<string, string[]>): SearchResult['matches'] {
+  const out: SearchResult['matches'] = []
+  for (const [term, fields] of Object.entries(match)) {
+    for (const field of fields) {
+      out.push({ field, term, context: '' })
+    }
+  }
+  return out
+}
+
+/**
+ * Run search with optional `#tag` tokens in `rawQuery` (AND with `filters.tags`).
+ */
+export function searchVault(rawQuery: string, filters: SearchFilters = {}): SearchResult[] {
+  const index = getSearchIndex()
+  const { text, hashTags } = parseSearchQuery(rawQuery)
+  const tagSet = new Set([
+    ...(filters.tags ?? []).map((t) => t.toLowerCase()),
+    ...hashTags,
+  ])
+  const mergedFilters: SearchFilters = {
+    ...filters,
+    tags: tagSet.size > 0 ? [...tagSet] : undefined,
+  }
+
+  const query: string | typeof MiniSearch.wildcard =
+    text.length > 0 ? text : MiniSearch.wildcard
+
+  const raw = index.search(query, {
+    filter: (result) =>
+      applyFilters(result as unknown as SearchIndexDocument, mergedFilters),
+  })
+
+  return raw.map((r) => {
+    const doc = r as unknown as SearchIndexDocument
+    const sn = buildSnippet(doc.content, r.queryTerms)
+    return {
+      id: String(r.id),
+      path: doc.path,
+      title: doc.title,
+      type: doc.fileType,
+      score: r.score,
+      matches: matchInfoToLegacy(r.match),
+      snippetBefore: sn?.before ?? '',
+      snippetHit: sn?.hit ?? '',
+      snippetAfter: sn?.after ?? '',
+    }
+  })
+}
+
+/** @deprecated use clearSearchIndex */
 export function clearIndex(): void {
-  searchIndex = null
+  clearSearchIndex()
 }

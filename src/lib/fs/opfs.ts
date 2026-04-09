@@ -140,6 +140,29 @@ export class OpfsAdapter implements FileSystemAdapter {
   }
 
   async rename(oldPath: string, newPath: string): Promise<void> {
+    if (oldPath === newPath) return
+
+    const oldResolved = await this.resolvePath(oldPath)
+    const newResolved = await this.resolvePath(newPath)
+    const fileHandle = await oldResolved.parent.getFileHandle(oldResolved.name)
+
+    // Chromium: atomic rename/move (avoids duplicate if copy succeeds but remove fails).
+    type HandleWithMove = FileSystemFileHandle & {
+      move?: (
+        name: string,
+        options?: { parent?: FileSystemDirectoryHandle },
+      ) => Promise<void>
+    }
+    const h = fileHandle as HandleWithMove
+    if (typeof h.move === 'function') {
+      try {
+        await h.move(newResolved.name, { parent: newResolved.parent })
+        return
+      } catch {
+        // Fall back below (older engines or edge cases).
+      }
+    }
+
     const data = await this.readFile(oldPath)
     await this.writeFile(newPath, data)
     await this.remove(oldPath)

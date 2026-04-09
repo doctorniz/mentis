@@ -1,4 +1,4 @@
-# Ink by Marrow — Tech Stack
+# Mentis — Tech Stack
 
 ## Phase 1: Web App
 
@@ -15,22 +15,24 @@
 | Technology | Purpose |
 |---|---|
 | **Tiptap** | ProseMirror-based rich text editor with extension system |
+| **@tiptap/suggestion** | `/` slash menu and `[[` wiki-link note picker (filtered list + keyboard nav) |
 | **@tiptap/starter-kit** | Base editor extensions (bold, italic, lists, etc.) |
 | **@tiptap/extension-task-list** | Task list / checkbox support |
 | **@tiptap/extension-table** | GFM table support |
-| **@tiptap/extension-code-block-lowlight** | Syntax-highlighted code blocks |
+| **@tiptap/extension-code-block-lowlight** + **lowlight** | Syntax-highlighted code blocks (common languages bundle) |
 | **@tiptap/extension-placeholder** | Placeholder text for empty documents |
-| **remark / unified** | Markdown ↔ AST parsing for frontmatter, link resolution, indexing |
-| **remark-gfm** | GitHub Flavored Markdown support |
-| **remark-frontmatter** | YAML frontmatter parsing |
-| **remark-math + rehype-katex** | LaTeX math rendering |
+| **KaTeX** | LaTeX math rendering for `$...$` (inline) and `$$...$$` (display) via custom Tiptap nodes |
+| **gray-matter** | Frontmatter read/write for note files |
+| **marked** | Markdown → HTML for loading into Tiptap |
+| **@tiptap/html** | HTML ↔ Tiptap JSON (`generateJSON` / `generateHTML`) |
+| **turndown** | HTML → Markdown on save (round-trip with editor; some GFM fidelity gaps) |
 
 ### PDF Engine
 
 | Technology | Purpose |
 |---|---|
 | **pdfjs-dist** (PDF.js) | PDF rendering, text layer, search, outline extraction |
-| **pdf-lib** | Client-side PDF manipulation — annotation writing, page management, merge/split, form filling, signature stamping |
+| **pdf-lib** | Client-side PDF manipulation — annotation writing, page management, merge, page extract/reorder, form filling, signature stamping |
 | **Fabric.js** | Canvas overlay for annotation editing on PDF pages; also powers the unlimited canvas |
 
 ### Search
@@ -55,6 +57,7 @@
 | **class-variance-authority (CVA)** | Type-safe component variant definitions |
 | **Lucide React** | Icon library (consistent, tree-shakeable) |
 | **Radix UI** | Unstyled, accessible UI primitives (dialogs, dropdowns, tooltips, etc.) |
+| **@tanstack/react-virtual** | Virtualized list/grid rendering for large vaults (file browser, search results) |
 | **Framer Motion** | Animations and transitions |
 
 ### File System & Offline
@@ -62,8 +65,8 @@
 | Technology | Purpose |
 |---|---|
 | **Origin Private File System (OPFS)** | Browser-native performant local storage |
-| **File System Access API** | "Open folder" vault access on Chromium browsers |
-| **Workbox** | Service Worker tooling for offline caching and PWA |
+| **File System Access API** | `FsapiAdapter` wraps `showDirectoryPicker()` for "open folder" vault access on Chromium browsers |
+| **Service Worker** | Hand-written `public/sw.js` with stale-while-revalidate caching (no Workbox dependency) |
 
 ### Build & Dev Tooling
 
@@ -72,7 +75,8 @@
 | **pnpm** | Fast, disk-efficient package manager |
 | **ESLint** | Linting with flat config |
 | **Prettier** | Code formatting |
-| **Vitest** | Unit and integration testing |
+| **Vitest** | Unit and integration testing (256 tests across 20 suite files under `tests/`) |
+| **happy-dom** | Lightweight DOM implementation for Vitest tests requiring a browser environment (Tiptap bridge) |
 | **Playwright** | E2E browser testing |
 | **Husky + lint-staged** | Pre-commit hooks |
 

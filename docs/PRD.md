@@ -1,8 +1,10 @@
-# Ink by Marrow — Product Requirements Document
+# Mentis — Product Requirements Document
+
+*An app by Marrow Group.*
 
 ## 1. Vision
 
-Ink by Marrow is a cross-platform note-taking application built on a **local-first, markdown-file architecture**. It treats the filesystem as the source of truth — every note is a `.md` file, every asset lives alongside it, and the user always owns their data. On top of this foundation, Ink is also a **full-featured PDF file browser and editor**: import, create, organise, annotate, highlight, sign, and manage PDFs as first-class citizens. All PDF edits are written directly into the file — one file, one source of truth, no sidecar layers.
+Mentis is a cross-platform note-taking application built on a **local-first, markdown-file architecture**. It treats the filesystem as the source of truth — every note is a `.md` file, every asset lives alongside it, and the user always owns their data. On top of this foundation, Mentis is also a **full-featured PDF file browser and editor**: import, create, organise, annotate, highlight, sign, and manage PDFs as first-class citizens. All PDF edits are written directly into the file — one file, one source of truth, no sidecar layers.
 
 **Web-first**, then native.
 
@@ -15,7 +17,7 @@ Ink by Marrow is a cross-platform note-taking application built on a **local-fir
 | **File-over-database** | Notes are `.md` files on disk (or synced storage), not rows in a proprietary database. Users can open their vault in any text editor. |
 | **Offline-capable** | The web app works without a connection. Native apps work natively. |
 | **Destructive PDF workflow** | Annotations, highlights, signatures, and drawings are written directly into the PDF file. One file = one source of truth. No sidecar files, no overlay layers. |
-| **PDF as first-class citizen** | Ink is also a PDF file browser and manager. Import, create, organise, annotate, sign, and export PDFs with the same fluency as markdown notes. |
+| **PDF as first-class citizen** | Mentis is also a PDF file browser and manager. Import, create, organise, annotate, sign, and export PDFs with the same fluency as markdown notes. |
 | **Progressive complexity** | A new user writes a note in 3 seconds. Power features reveal themselves gradually. |
 
 ---
@@ -59,15 +61,15 @@ All edits written directly into the PDF file on save.
 - **Merge & split**: Combine multiple PDFs or extract page ranges.
 - **New PDF note**: Create a blank PDF canvas (lined, grid, dot grid, or blank pages).
 - **Export**: Download as-is or flatten (removes annotation editability).
-- **Auto-save**: Configurable interval (default: on blur or every 30s).
+- **Auto-save**: Configurable interval (default 5s and on blur; overridable in Settings).
 - **Version snapshots**: Pre-edit safety copies in `_marrow/snapshots/`.
 
 ### 3.4 App Views
 
 | View | Description |
 |---|---|
-| **File Browser** | PDF-centric grid/list view with sort, filter, batch operations, inbox. |
-| **Notes** | Markdown-centric with folder tree, starred/pinned notes, recent files, daily note shortcut. |
+| **Vault (browse)** | Grid/list file browser: sort, filter, batch operations, move/delete modals, inbox. |
+| **Vault (tree)** | Folder tree + inline editors for markdown, PDF, and canvas; starred paths; no separate “Notes” nav label. |
 | **Search** | Full-text search across vault. Results grouped by file type with filters. |
 | **New** | Quick-create launcher for Markdown Note, PDF Note, or Unlimited Canvas. |
 

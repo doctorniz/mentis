@@ -1,4 +1,4 @@
-# Ink by Marrow — Risks & Mitigations
+# Mentis — Risks & Mitigations
 
 ## Technical Risks
 

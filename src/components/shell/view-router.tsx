@@ -1,25 +1,36 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useUiStore } from '@/stores/ui'
 import { ViewMode } from '@/types/vault'
-import { FileBrowserView } from '@/components/views/file-browser-view'
-import { NotesView } from '@/components/views/notes-view'
+import { VaultView } from '@/components/views/vault-view'
 import { SearchView } from '@/components/views/search-view'
+import { GraphView } from '@/components/views/graph-view'
 import { NewView } from '@/components/views/new-view'
 
 export function ViewRouter() {
   const activeView = useUiStore((s) => s.activeView)
 
+  let body: ReactNode
   switch (activeView) {
+    case ViewMode.Vault:
+    // legacy routes — redirect into the unified vault view
     case ViewMode.FileBrowser:
-      return <FileBrowserView />
     case ViewMode.Notes:
-      return <NotesView />
+      body = <VaultView />
+      break
     case ViewMode.Search:
-      return <SearchView />
+      body = <SearchView />
+      break
+    case ViewMode.Graph:
+      body = <GraphView />
+      break
     case ViewMode.New:
-      return <NewView />
+      body = <NewView />
+      break
     default:
-      return <NotesView />
+      body = <VaultView />
   }
+
+  return <div className="flex h-full min-h-0 flex-1 flex-col">{body}</div>
 }

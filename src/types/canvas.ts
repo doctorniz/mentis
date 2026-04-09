@@ -2,9 +2,10 @@ export interface CanvasFile {
   version: number
   nodes: CanvasNode[]
   edges: CanvasEdge[]
+  frames: CanvasFrame[]
 }
 
-export type CanvasNode = CanvasTextNode | CanvasImageNode | CanvasStickyNode | CanvasDrawingNode
+export type CanvasNode = CanvasTextNode | CanvasImageNode | CanvasStickyNode | CanvasDrawingNode | CanvasWikiLinkNode
 
 interface CanvasNodeBase {
   id: string
@@ -18,6 +19,13 @@ interface CanvasNodeBase {
 export interface CanvasTextNode extends CanvasNodeBase {
   type: 'text'
   text: string
+  /** Text fill (maps to Fabric `fill`) */
+  color?: string
+  fontSize?: number
+  fontFamily?: string
+  fontWeight?: string | number
+  fontStyle?: string
+  underline?: boolean
 }
 
 export interface CanvasImageNode extends CanvasNodeBase {
@@ -40,6 +48,12 @@ export interface CanvasPath {
   points: { x: number; y: number; pressure?: number }[]
   strokeColor: string
   strokeWidth: number
+}
+
+export interface CanvasWikiLinkNode extends CanvasNodeBase {
+  type: 'wiki-link'
+  target: string
+  alias?: string
 }
 
 export interface CanvasEdge {

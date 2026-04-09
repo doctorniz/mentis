@@ -54,19 +54,42 @@ export function extractTags(content: string): string[] {
   return Array.from(tags)
 }
 
+/** Strip the vault file extension from a basename for comparison purposes. */
+function stripVaultExt(name: string): string {
+  return name.replace(/\.(md|pdf|canvas)$/i, '')
+}
+
+/** Collapse whitespace and lowercase — used for partial path fallback. */
+function normStr(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Basename / link target key: lowercase, strip extension, remove spaces, hyphens, underscores
+ * so `My Note`, `my-note`, and `my_note` match the same file.
+ */
+function wikiStemKey(s: string): string {
+  return stripVaultExt(s)
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '')
+    .trim()
+}
+
 export function resolveWikiLinkPath(
   link: string,
   allPaths: string[],
 ): string | null {
-  const normalized = link.toLowerCase().replace(/\s+/g, '-')
+  const needleKey = wikiStemKey(link)
 
+  // Exact basename match (e.g. "My Note" ↔ `my-note.md`)
   const exact = allPaths.find((p) => {
-    const filename = p.split('/').pop()?.replace(/\.md$/, '').toLowerCase()
-    return filename === normalized
+    const stem = p.split('/').pop() ?? ''
+    return wikiStemKey(stem) === needleKey
   })
-
   if (exact) return exact
 
-  const partial = allPaths.find((p) => p.toLowerCase().includes(normalized))
+  // Partial path match (fallback)
+  const needle = normStr(link)
+  const partial = allPaths.find((p) => normStr(p).includes(needle))
   return partial ?? null
 }

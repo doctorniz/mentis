@@ -14,6 +14,7 @@ interface VaultState {
 
   setActiveVaultPath: (path: string | null) => void
   setConfig: (config: VaultConfig) => void
+  updateConfig: (patch: Partial<VaultConfig>) => void
   setMetadata: (metadata: VaultMetadata) => void
   setOpen: (isOpen: boolean) => void
   setLoading: (isLoading: boolean) => void
@@ -40,6 +41,13 @@ export const useVaultStore = create<VaultState>()(
     setConfig: (config) =>
       set((state) => {
         state.config = config
+      }),
+
+    updateConfig: (patch) =>
+      set((state) => {
+        if (state.config) {
+          Object.assign(state.config, patch)
+        }
       }),
 
     setMetadata: (metadata) =>

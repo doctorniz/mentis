@@ -23,19 +23,33 @@ export async function createVault(fs: FileSystemAdapter, name: string): Promise<
 
   await fs.writeTextFile(CONFIG_FILE, JSON.stringify(config, null, 2))
 
-  const defaultNote = [
-    '---',
-    `title: Welcome to ${name}`,
-    `created: ${new Date().toISOString()}`,
-    '---',
-    '',
-    `# Welcome to ${name}`,
-    '',
-    'Start writing your first note here.',
-    '',
-  ].join('\n')
+  // Only seed Welcome.md when the folder is truly empty (no existing user files).
+  const hasExistingFiles = await (async () => {
+    try {
+      const entries = await fs.readdir('/')
+      return entries.some(
+        (e) => !e.isDirectory && !e.name.startsWith('_') && !e.name.startsWith('.'),
+      )
+    } catch {
+      return false
+    }
+  })()
 
-  await fs.writeTextFile('inbox.md', defaultNote)
+  if (!hasExistingFiles) {
+    const defaultNote = [
+      '---',
+      'title: Welcome',
+      `created: ${new Date().toISOString()}`,
+      '---',
+      '',
+      '# Welcome',
+      '',
+      `This is your **${name}** vault. Start writing your first note here.`,
+      '',
+    ].join('\n')
+
+    await fs.writeTextFile('Welcome.md', defaultNote)
+  }
 
   return config
 }

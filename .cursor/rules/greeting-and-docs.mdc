@@ -24,3 +24,9 @@ When this run changed **code, architecture, dependencies, user-facing behavior, 
 2. If **no** `docs/` or `README` change is needed (e.g. typo-only fix), say so briefly in the closing message.
 
 3. In the **final message to the user**, include a short **Documentation** line listing which files were updated (or “none”).
+
+4. When this run **updated `docs/`** (or `README.md`) because of **behavior, UX, or verification-worthy fixes**, also do both of the following:
+   - **In `docs/LAUNCH_DEFERRALS.md`**: add or refresh the **Manual verification queue** section (see “How to use this file” there) with concrete bullets or table rows the human should run in the app.
+   - **In the final message to the user**: include a **Manual verification** subsection — a copy of that checklist (or the new/changed items only) so they can tick through without opening the doc first.
+
+   Skip the queue update only for pure doc typo/formatting, or when changes are non-UI (e.g. internal types only).

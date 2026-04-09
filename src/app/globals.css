@@ -1,42 +1,139 @@
 @import 'tailwindcss';
+@import 'katex/dist/katex.min.css';
+
+@variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-bg: #ffffff;
-  --color-bg-secondary: #f8f9fa;
-  --color-bg-tertiary: #f1f3f5;
-  --color-bg-hover: #e9ecef;
-  --color-bg-active: #dee2e6;
+  --color-bg: var(--ink-bg);
+  --color-bg-secondary: var(--ink-bg-secondary);
+  --color-bg-tertiary: var(--ink-bg-tertiary);
+  --color-bg-hover: var(--ink-bg-hover);
+  --color-bg-active: var(--ink-bg-active);
 
-  --color-fg: #212529;
-  --color-fg-secondary: #495057;
-  --color-fg-tertiary: #868e96;
-  --color-fg-muted: #adb5bd;
+  --color-fg: var(--ink-fg);
+  --color-fg-secondary: var(--ink-fg-secondary);
+  --color-fg-tertiary: var(--ink-fg-tertiary);
+  --color-fg-muted: var(--ink-fg-muted);
 
-  --color-border: #dee2e6;
-  --color-border-strong: #ced4da;
+  --color-border: var(--ink-border);
+  --color-border-strong: var(--ink-border-strong);
 
-  --color-accent: #5c4ee5;
-  --color-accent-hover: #4c3ed5;
-  --color-accent-light: #ece9fd;
-  --color-accent-fg: #ffffff;
+  --color-accent: var(--ink-accent);
+  --color-accent-hover: var(--ink-accent-hover);
+  --color-accent-light: var(--ink-accent-light);
+  --color-accent-fg: var(--ink-accent-fg);
 
-  --color-sidebar-bg: #f8f9fa;
-  --color-sidebar-hover: #e9ecef;
+  --color-sidebar-bg: var(--ink-sidebar-bg);
+  --color-sidebar-hover: var(--ink-sidebar-hover);
 
-  --color-highlight-yellow: #fff3bf;
-  --color-highlight-green: #d3f9d8;
-  --color-highlight-blue: #d0ebff;
-  --color-highlight-pink: #fcc2d7;
-  --color-highlight-red: #ffc9c9;
+  --color-highlight-yellow: var(--ink-highlight-yellow);
+  --color-highlight-green: var(--ink-highlight-green);
+  --color-highlight-blue: var(--ink-highlight-blue);
+  --color-highlight-pink: var(--ink-highlight-pink);
+  --color-highlight-red: var(--ink-highlight-red);
 
-  --color-danger: #e03131;
-  --color-warning: #f08c00;
-  --color-success: #2f9e44;
+  --color-danger: var(--ink-danger);
+  --color-warning: var(--ink-warning);
+  --color-success: var(--ink-success);
 
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+}
+
+/* ---- Light palette (default) ---- */
+:root {
+  --ink-bg: #ffffff;
+  --ink-bg-secondary: #f8f9fa;
+  --ink-bg-tertiary: #f1f3f5;
+  --ink-bg-hover: #e9ecef;
+  --ink-bg-active: #dee2e6;
+
+  --ink-fg: #212529;
+  --ink-fg-secondary: #495057;
+  --ink-fg-tertiary: #868e96;
+  --ink-fg-muted: #adb5bd;
+
+  --ink-border: #dee2e6;
+  --ink-border-strong: #ced4da;
+
+  --ink-accent: #5c4ee5;
+  --ink-accent-hover: #4c3ed5;
+  --ink-accent-light: #ece9fd;
+  --ink-accent-fg: #ffffff;
+
+  --ink-sidebar-bg: #f8f9fa;
+  --ink-sidebar-hover: #e9ecef;
+
+  --ink-highlight-yellow: #fff3bf;
+  --ink-highlight-green: #d3f9d8;
+  --ink-highlight-blue: #d0ebff;
+  --ink-highlight-pink: #fcc2d7;
+  --ink-highlight-red: #ffc9c9;
+
+  --ink-danger: #e03131;
+  --ink-warning: #f08c00;
+  --ink-success: #2f9e44;
+
+  --hl-keyword: #8250df;
+  --hl-string: #0a3069;
+  --hl-comment: #6e7781;
+  --hl-function: #8250df;
+  --hl-number: #0550ae;
+  --hl-tag: #116329;
+  --hl-attr: #953800;
+  --hl-builtin: #0550ae;
+  --hl-operator: #cf222e;
+  --hl-punctuation: #24292f;
+}
+
+/* ---- Dark palette ---- */
+.dark {
+  --ink-bg: #1a1b1e;
+  --ink-bg-secondary: #25262b;
+  --ink-bg-tertiary: #2c2e33;
+  --ink-bg-hover: #373a40;
+  --ink-bg-active: #495057;
+
+  --ink-fg: #e9ecef;
+  --ink-fg-secondary: #ced4da;
+  --ink-fg-tertiary: #909296;
+  --ink-fg-muted: #5c5f66;
+
+  --ink-border: #373a40;
+  --ink-border-strong: #495057;
+
+  --ink-accent: #7c6ef5;
+  --ink-accent-hover: #9184f5;
+  --ink-accent-light: #2b2541;
+  --ink-accent-fg: #ffffff;
+
+  --ink-sidebar-bg: #1a1b1e;
+  --ink-sidebar-hover: #2c2e33;
+
+  --ink-highlight-yellow: #5c4b00;
+  --ink-highlight-green: #1b4332;
+  --ink-highlight-blue: #1a3a52;
+  --ink-highlight-pink: #4a1531;
+  --ink-highlight-red: #5c1313;
+
+  --ink-danger: #ff6b6b;
+  --ink-warning: #ffa94d;
+  --ink-success: #51cf66;
+
+  --hl-keyword: #d2a8ff;
+  --hl-string: #a5d6ff;
+  --hl-comment: #8b949e;
+  --hl-function: #d2a8ff;
+  --hl-number: #79c0ff;
+  --hl-tag: #7ee787;
+  --hl-attr: #ffa657;
+  --hl-builtin: #79c0ff;
+  --hl-operator: #ff7b72;
+  --hl-punctuation: #c9d1d9;
+
+  color-scheme: dark;
 }
 
 @layer base {
@@ -54,4 +151,318 @@
       Roboto,
       sans-serif;
   }
+}
+
+/* Tiptap: classes are on the same node (div.ProseMirror.tiptap-editor) */
+.ProseMirror.tiptap-editor {
+  outline: none;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-fg);
+}
+
+.ProseMirror.tiptap-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--ink-fg-muted);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+.ProseMirror.tiptap-editor p {
+  margin: 0.4em 0;
+}
+
+.ProseMirror.tiptap-editor h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 1.2em 0 0.4em;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: var(--color-fg);
+}
+
+.ProseMirror.tiptap-editor h2 {
+  font-size: 1.35rem;
+  font-weight: 650;
+  margin: 1em 0 0.35em;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--color-fg);
+}
+
+.ProseMirror.tiptap-editor h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0.8em 0 0.3em;
+  line-height: 1.3;
+  color: var(--color-fg);
+}
+
+.ProseMirror.tiptap-editor strong,
+.ProseMirror.tiptap-editor b {
+  font-weight: 650;
+}
+
+.ProseMirror.tiptap-editor em,
+.ProseMirror.tiptap-editor i {
+  font-style: italic;
+}
+
+.ProseMirror.tiptap-editor s,
+.ProseMirror.tiptap-editor del {
+  text-decoration: line-through;
+  color: var(--color-fg-tertiary);
+}
+
+.ProseMirror.tiptap-editor ul,
+.ProseMirror.tiptap-editor ol {
+  margin: 0.4em 0;
+  padding-left: 1.75rem;
+}
+
+/* Tailwind preflight strips list-style — restore it explicitly */
+.ProseMirror.tiptap-editor ul {
+  list-style-type: disc;
+}
+
+.ProseMirror.tiptap-editor ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror.tiptap-editor li {
+  margin: 0.2em 0;
+  display: list-item;
+}
+
+/* Nested lists */
+.ProseMirror.tiptap-editor li ul {
+  list-style-type: circle;
+}
+
+.ProseMirror.tiptap-editor li li ul {
+  list-style-type: square;
+}
+
+/* ---- Task list ---- */
+.ProseMirror.tiptap-editor ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+
+.ProseMirror.tiptap-editor ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+  margin: 0.25em 0;
+}
+
+/* The <label> wraps the checkbox */
+.ProseMirror.tiptap-editor ul[data-type='taskList'] li > label {
+  flex-shrink: 0;
+  margin-top: 0.2em;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ProseMirror.tiptap-editor ul[data-type='taskList'] li > label > input[type='checkbox'] {
+  cursor: pointer;
+  width: 1em;
+  height: 1em;
+  accent-color: var(--color-accent);
+}
+
+/* The <div> wraps the paragraph content — must fill remaining width */
+.ProseMirror.tiptap-editor ul[data-type='taskList'] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Strike through checked items */
+.ProseMirror.tiptap-editor ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--color-fg-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-fg-tertiary);
+}
+
+.ProseMirror.tiptap-editor code {
+  font-size: 0.875em;
+  background: var(--color-bg-tertiary);
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  color: var(--color-accent);
+}
+
+.ProseMirror.tiptap-editor pre {
+  background: var(--color-bg-tertiary);
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: 0.75em 0;
+  border: 1px solid var(--color-border);
+}
+
+.ProseMirror.tiptap-editor pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.ProseMirror.tiptap-editor blockquote {
+  border-left: 3px solid var(--color-accent);
+  margin: 0.75em 0;
+  padding: 0.1em 0 0.1em 1rem;
+  color: var(--color-fg-secondary);
+}
+
+.ProseMirror.tiptap-editor hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5em 0;
+}
+
+.ProseMirror.tiptap-editor a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.ProseMirror.tiptap-editor span.wiki-link {
+  color: var(--color-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  font-weight: 500;
+}
+
+/* Code block syntax highlighting (lowlight / highlight.js classes) */
+.ProseMirror.tiptap-editor pre {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.84em;
+  line-height: 1.65;
+}
+
+.ProseMirror .hljs-keyword,
+.ProseMirror .hljs-selector-tag { color: var(--hl-keyword); }
+
+.ProseMirror .hljs-string,
+.ProseMirror .hljs-regexp { color: var(--hl-string); }
+
+.ProseMirror .hljs-comment,
+.ProseMirror .hljs-doctag { color: var(--hl-comment); font-style: italic; }
+
+.ProseMirror .hljs-title,
+.ProseMirror .hljs-title\.function_,
+.ProseMirror .hljs-section { color: var(--hl-function); font-weight: 600; }
+
+.ProseMirror .hljs-number,
+.ProseMirror .hljs-literal { color: var(--hl-number); }
+
+.ProseMirror .hljs-tag,
+.ProseMirror .hljs-name { color: var(--hl-tag); }
+
+.ProseMirror .hljs-attr,
+.ProseMirror .hljs-attribute { color: var(--hl-attr); }
+
+.ProseMirror .hljs-built_in,
+.ProseMirror .hljs-type,
+.ProseMirror .hljs-class { color: var(--hl-builtin); }
+
+.ProseMirror .hljs-operator,
+.ProseMirror .hljs-deletion { color: var(--hl-operator); }
+
+.ProseMirror .hljs-punctuation { color: var(--hl-punctuation); }
+
+.ProseMirror .hljs-variable,
+.ProseMirror .hljs-template-variable { color: var(--hl-attr); }
+
+.ProseMirror .hljs-addition { color: var(--hl-tag); }
+
+.ProseMirror .hljs-meta { color: var(--hl-comment); }
+
+/* Math (KaTeX) styles */
+.ProseMirror.tiptap-editor .math-inline {
+  display: inline;
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 3px;
+  background: var(--ink-bg-tertiary);
+}
+
+.ProseMirror.tiptap-editor .math-block {
+  display: block;
+  text-align: center;
+  padding: 0.75em 1em;
+  margin: 0.5em 0;
+  background: var(--ink-bg-tertiary);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.ProseMirror.tiptap-editor .math-inline .katex,
+.ProseMirror.tiptap-editor .math-block .katex {
+  font-size: 1.05em;
+}
+
+/* Embedded images */
+.ProseMirror.tiptap-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  margin: 0.5em 0;
+}
+
+.ProseMirror.tiptap-editor .node-image {
+  max-width: 100%;
+}
+
+.ProseMirror.tiptap-editor .node-image.ProseMirror-selectednode img {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+/* Table styles */
+.ProseMirror.tiptap-editor table.ink-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.ProseMirror.tiptap-editor table.ink-table th,
+.ProseMirror.tiptap-editor table.ink-table td {
+  border: 1px solid var(--ink-border);
+  padding: 0.4em 0.6em;
+  vertical-align: top;
+  min-width: 80px;
+}
+
+.ProseMirror.tiptap-editor table.ink-table th {
+  background: var(--ink-bg-secondary);
+  font-weight: 600;
+}
+
+.ProseMirror.tiptap-editor table.ink-table .selectedCell {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+}
+
+/* Toast enter animation */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 0.2s ease-out;
 }

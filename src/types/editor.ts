@@ -39,7 +39,11 @@ export interface SlashCommand {
 export interface EditorTab {
   id: string
   path: string
-  type: 'markdown' | 'pdf' | 'canvas'
+  type: 'markdown' | 'pdf' | 'canvas' | 'image'
   title: string
   isDirty: boolean
+  /** When true, notes editor shows full-file markdown source (incl. frontmatter). */
+  showRawSource?: boolean
+  /** When true, the title input is auto-focused and selected so the user can rename immediately. */
+  isNew?: boolean
 }

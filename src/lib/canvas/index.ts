@@ -7,6 +7,7 @@ export function createEmptyCanvas(): CanvasFile {
     version: CANVAS_VERSION,
     nodes: [],
     edges: [],
+    frames: [],
   }
 }
 
@@ -20,6 +21,7 @@ export function deserializeCanvas(json: string): CanvasFile {
     version: parsed.version ?? CANVAS_VERSION,
     nodes: parsed.nodes ?? [],
     edges: parsed.edges ?? [],
+    frames: parsed.frames ?? [],
   }
 }
 
