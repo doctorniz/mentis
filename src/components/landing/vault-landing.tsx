@@ -328,7 +328,7 @@ export function VaultLanding({ onVaultReady }: VaultLandingProps) {
               onClick={() => void handleOpenFolder()}
             >
               <FolderOpen className="size-4" />
-              Open a folder on disk
+              Open a folder
             </Button>
             <p className="text-fg-muted mt-2 text-center text-xs">
               Chromium only

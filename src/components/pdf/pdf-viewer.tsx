@@ -5,6 +5,7 @@ import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 import { usePdfStore } from '@/stores/pdf'
 import { useVaultStore } from '@/stores/vault'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { useSyncPush } from '@/contexts/sync-context'
 import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
 import { loadPdfjs } from '@/lib/pdf/pdfjs-loader'
 import { readPageAnnotations } from '@/lib/pdf/annotation-reader'
@@ -39,6 +40,7 @@ import type { PdfTextSearchMatch } from '@/lib/pdf/search-pdf-text'
 
 export function PdfViewer({ path }: { path: string }) {
   const { vaultFs } = useVaultSession()
+  const syncPush = useSyncPush()
   const autoSaveConfig = useVaultStore((s) => s.config?.autoSave ?? DEFAULT_VAULT_CONFIG.autoSave)
   const setDocument = usePdfStore((s) => s.setDocument)
   const currentPage = usePdfStore((s) => s.currentPage)
@@ -250,8 +252,8 @@ export function PdfViewer({ path }: { path: string }) {
         }
       }
       await vaultFs.rename(tmpPath, path)
+      syncPush(path)
       markSaved()
-      // Reload so flattened graphics show in the raster layer and the store does not re-apply the same marks on the next save (P5).
       const savedPage = usePdfStore.getState().currentPage
       const savedZoom = usePdfStore.getState().zoom
       await loadPdf({ cancelled: false })
@@ -317,6 +319,7 @@ export function PdfViewer({ path }: { path: string }) {
         undoStackRef.current.push(bytes)
         const newBytes = await transform(bytes)
         await vaultFs.writeFile(path, newBytes)
+        syncPush(path)
         setRawPdfBytes(newBytes)
         syncUndoState()
         await loadPdf({ cancelled: false })
@@ -325,7 +328,7 @@ export function PdfViewer({ path }: { path: string }) {
         toast.error('Could not update PDF pages')
       }
     },
-    [rawPdfBytes, vaultFs, path, loadPdf, syncUndoState],
+    [rawPdfBytes, vaultFs, path, loadPdf, syncUndoState, syncPush],
   )
 
   const handleInsertBlank = useCallback(

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { FileText, Folder } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { NotesWorkspaceProvider, useNotesWorkspace } from '@/contexts/notes-workspace-context'
 import { NotesFileTree } from '@/components/notes/notes-file-tree'
 import { EditorTabBar } from '@/components/notes/editor-tab-bar'
@@ -194,8 +195,8 @@ function NotesViewInner() {
     const fullName = sanitized.endsWith(ext) ? sanitized : `${sanitized}${ext}`
     const parent = oldPath.includes('/') ? oldPath.slice(0, oldPath.lastIndexOf('/')) : ''
     const newPath = parent ? `${parent}/${fullName}` : fullName
-    if (newPath === oldPath) return
-    if (await vaultFs.exists(newPath)) {
+    if (vaultPathsPointToSameFile(newPath, oldPath)) return
+    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, oldPath)) {
       toast.error('A file with that name already exists')
       return
     }

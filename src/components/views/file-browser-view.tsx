@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import type { FileSystemAdapter } from '@/lib/fs'
 import { useFileBrowserStore } from '@/stores/file-browser'
 import { useEditorStore } from '@/stores/editor'
@@ -99,7 +100,7 @@ function computeRubberBandSelection(
 /* ------------------------------------------------------------------ */
 
 export function FileBrowserView() {
-  const { vaultFs } = useVaultSession()
+  const { vaultFs, config } = useVaultSession()
   const viewMode = useFileBrowserStore((s) => s.viewMode)
   const sort = useFileBrowserStore((s) => s.sort)
   const _filters = useFileBrowserStore((s) => s.filters)
@@ -235,6 +236,7 @@ export function FileBrowserView() {
 
   /* ---- Rubber-band pointer handlers (on listScrollRef) ---- */
   function handleScrollPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!e.currentTarget.contains(e.target as Node)) return
     if (skipRubberBandForRenameCloseRef.current) {
       skipRubberBandForRenameCloseRef.current = false
       const onItem = (e.target as Element).closest('[data-fb-item]')
@@ -330,7 +332,7 @@ export function FileBrowserView() {
     if (!sanitized || sanitized === item.name) return
     const parent = item.path.includes('/') ? item.path.slice(0, item.path.lastIndexOf('/')) : ''
     const newPath = parent ? `${parent}/${sanitized}` : sanitized
-    if (await vaultFs.exists(newPath)) {
+    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, item.path)) {
       toast.error('A file with that name already exists')
       return
     }
@@ -370,8 +372,8 @@ export function FileBrowserView() {
     const fileName = srcPath.split('/').pop()
     if (!fileName) return
     const newPath = destFolder ? `${destFolder}/${fileName}` : fileName
-    if (newPath === srcPath) return
-    if (await vaultFs.exists(newPath)) {
+    if (vaultPathsPointToSameFile(newPath, srcPath)) return
+    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, srcPath)) {
       toast.error('A file with that name already exists in the target folder')
       return
     }
@@ -441,10 +443,32 @@ export function FileBrowserView() {
     if (!paths) return
     const folder = destFolder.trim().replace(/^\/+|\/+$/g, '')
     if (folder) await vaultFs.mkdir(folder)
-    for (const p of paths) {
-      const name = p.split('/').pop() ?? p
-      const newPath = folder ? `${folder}/${name}` : name
-      if (newPath !== p) await vaultFs.rename(p, newPath)
+    try {
+      for (const p of paths) {
+        const name = p.split('/').pop() ?? p
+        const newPath = folder ? `${folder}/${name}` : name
+        if (vaultPathsPointToSameFile(newPath, p)) continue
+        const item = rawFiles.find((f) => f.path === p)
+        await vaultFs.rename(p, newPath)
+
+        if (item?.isDirectory) {
+          const { tabs, retargetTabPath } = useEditorStore.getState()
+          for (const tab of tabs) {
+            if (tab.path.startsWith(p + '/')) {
+              const updated = newPath + tab.path.slice(p.length)
+              retargetTabPath(tab.id, updated, titleFromVaultPath(updated))
+            }
+          }
+        } else {
+          removeSearchDocument(p)
+          if (newPath.endsWith('.md')) await reindexMarkdownPath(vaultFs, newPath)
+          const tab = useEditorStore.getState().tabs.find((t) => t.path === p)
+          if (tab) useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
+        }
+      }
+    } catch (e) {
+      console.error('Move failed', e)
+      toast.error(e instanceof Error ? e.message : 'Failed to move items')
     }
     clearSelection()
     setRefreshKey((n) => n + 1)
@@ -475,8 +499,11 @@ export function FileBrowserView() {
     const fullName = sanitized.endsWith(ext) ? sanitized : `${sanitized}${ext}`
     const parent = oldPath.includes('/') ? oldPath.slice(0, oldPath.lastIndexOf('/')) : ''
     const newPath = parent ? `${parent}/${fullName}` : fullName
-    if (newPath === oldPath) return
-    if (await vaultFs.exists(newPath)) { toast.error('A file with that name already exists'); return }
+    if (vaultPathsPointToSameFile(newPath, oldPath)) return
+    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, oldPath)) {
+      toast.error('A file with that name already exists')
+      return
+    }
     try {
       await vaultFs.rename(oldPath, newPath)
       removeSearchDocument(oldPath)
@@ -622,8 +649,8 @@ export function FileBrowserView() {
             <ChevronLeft className="size-4" />
           </Button>
         )}
-        <h2 className="text-fg text-xl font-semibold tracking-tight">
-          {currentFolder || 'File Browser'}
+        <h2 className="text-fg min-w-0 max-w-full truncate text-xl font-semibold tracking-tight">
+          {currentFolder ? `${config.name} / ${currentFolder}` : config.name}
         </h2>
 
         <div className="ml-auto flex items-center gap-1.5">

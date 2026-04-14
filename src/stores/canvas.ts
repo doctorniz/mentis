@@ -5,12 +5,15 @@ import type { CanvasFile, CanvasViewport } from '@/types/canvas'
 /** Selected node ids as a map (Immer-friendly). */
 export type SelectedNodeIdsMap = Record<string, true>
 
+/** Toolbar tools (sticky/connect creation removed from UI; existing nodes still load). */
+export type CanvasActiveTool = 'select' | 'draw' | 'text' | 'erase'
+
 interface CanvasState {
   file: CanvasFile | null
   path: string | null
   viewport: CanvasViewport
   selectedNodeIds: SelectedNodeIdsMap
-  activeTool: 'select' | 'draw' | 'text' | 'sticky' | 'connect' | 'erase'
+  activeTool: CanvasActiveTool
   strokeColor: string
   strokeWidth: number
   strokeOpacity: number

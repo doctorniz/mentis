@@ -75,7 +75,7 @@
 | **pnpm** | Fast, disk-efficient package manager |
 | **ESLint** | Linting with flat config |
 | **Prettier** | Code formatting |
-| **Vitest** | Unit and integration testing (256 tests across 20 suite files under `tests/`) |
+| **Vitest** | Unit and integration testing (261 tests across 21 suite files under `tests/`) |
 | **happy-dom** | Lightweight DOM implementation for Vitest tests requiring a browser environment (Tiptap bridge) |
 | **Playwright** | E2E browser testing |
 | **Husky + lint-staged** | Pre-commit hooks |
@@ -144,3 +144,17 @@
 - Strict dependency resolution prevents phantom dependencies
 - Workspace support for potential monorepo structure
 - Disk space efficient (shared packages across projects)
+
+---
+
+## License & repository metadata
+
+| Item | Value |
+|---|---|
+| **License** | [Business Source License 1.1](../LICENSE) (BSL 1.1) — not OSI-open-source until the **Change Date** in `LICENSE`; then **MPL 2.0** for that version as specified there. |
+| **`package.json` `license`** | `SEE LICENSE IN LICENSE` |
+| **AI assistance** | Disclosed in the root [README](../README.md); does not override the license. |
+
+Dependency licenses are those of each npm package (see lockfile / `pnpm licenses`); the **Mentis** application source is under BSL as above.
+
+**Static hosting:** `output: 'export'` — configure COOP/COEP at the edge if you need cross-origin isolation; see [DEPLOYMENT.md](./DEPLOYMENT.md).

@@ -14,6 +14,7 @@ import { removeSearchDocument } from '@/lib/search/index'
 import { saveAsset, isImagePath } from '@/lib/notes/assets'
 import { buildExportHtml, printExportHtml } from '@/lib/notes/export-pdf'
 import { downloadTextFile } from '@/lib/browser/download-file'
+import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import type { NoteFrontmatter } from '@/types/editor'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
@@ -21,6 +22,7 @@ import { toast } from '@/stores/toast'
 import { cn } from '@/utils/cn'
 import { NoteEditorToolbar } from '@/components/notes/note-editor-toolbar'
 import { NoteEditorModeBar } from '@/components/notes/note-editor-mode-bar'
+import { useSyncPush } from '@/contexts/sync-context'
 
 function titleFromPath(p: string): string {
   return p.replace(/\.md$/i, '').split('/').pop() ?? p
@@ -59,6 +61,7 @@ export function MarkdownNoteEditor({
   onRenamed?: () => void
 }) {
   const { vaultFs } = useVaultSession()
+  const syncPush = useSyncPush()
   const markDirty = useEditorStore((s) => s.markDirty)
   const updateTab = useEditorStore((s) => s.updateTab)
   const showRawSource = useEditorStore(
@@ -128,6 +131,7 @@ export function MarkdownNoteEditor({
             const raw = serializeNote(frontmatterRef.current, body)
             await vaultFs.writeTextFile(pathRef.current, raw)
           }
+          syncPush(pathRef.current)
           markDirty(tabIdRef.current, false)
           onPersistedRef.current?.()
         } catch (e) {
@@ -368,9 +372,12 @@ export function MarkdownNoteEditor({
     const fileName = sanitized.endsWith('.md') ? sanitized : `${sanitized}.md`
     const parent = parentDir(pathRef.current)
     const newPath = joinPath(parent, fileName)
-    if (newPath === pathRef.current) return
+    if (vaultPathsPointToSameFile(newPath, pathRef.current)) return
 
-    if (await vaultFs.exists(newPath)) {
+    if (
+      (await vaultFs.exists(newPath)) &&
+      !vaultPathsPointToSameFile(newPath, pathRef.current)
+    ) {
       toast.error('A note with that name already exists')
       setInlineTitle(currentTitle)
       return

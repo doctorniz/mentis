@@ -3,9 +3,9 @@ import { FileType } from '@/types/files'
 
 /** Hide app-internal dirs from the Notes sidebar. */
 export function isNotesTreeHidden(entry: FileEntry): boolean {
-  if (entry.name === '_marrow' || entry.name === '_assets') return true
+  if (entry.name === '_marrow' || entry.name === '_assets' || entry.name === '_board') return true
   const parts = entry.path.split('/')
-  return parts.some((p) => p === '_marrow' || p === '_assets')
+  return parts.some((p) => p === '_marrow' || p === '_assets' || p === '_board')
 }
 
 /** Folders always (if not hidden). Files: markdown, PDF, canvas, and images. */

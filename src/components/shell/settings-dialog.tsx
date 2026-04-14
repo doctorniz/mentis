@@ -1,13 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Check, FolderOpen, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Check, FolderOpen, Loader2, X } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Tabs from '@radix-ui/react-tabs'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useVaultStore } from '@/stores/vault'
 import { DEFAULT_VAULT_CONFIG, type VaultConfig } from '@/types/vault'
 import { saveVaultConfig } from '@/lib/vault'
+import { VaultDropboxSyncPanel } from '@/components/views/vault-dropbox-sync-panel'
 import { cn } from '@/utils/cn'
 
 /* ------------------------------------------------------------------ */
@@ -53,14 +54,15 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative h-5 w-9 rounded-full transition-colors',
-        checked ? 'bg-accent' : 'bg-bg-tertiary border-border border',
+        'inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors',
+        'border border-transparent',
+        checked ? 'bg-accent' : 'bg-bg-tertiary border-border',
       )}
     >
       <span
         className={cn(
-          'absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform',
-          checked ? 'translate-x-4' : 'translate-x-0.5',
+          'pointer-events-none size-4 rounded-full bg-white shadow transition-transform duration-200 ease-out',
+          checked ? 'translate-x-6' : 'translate-x-0',
         )}
       />
     </button>
@@ -168,7 +170,7 @@ function VaultTab({
     <div>
       <SectionHeader>General</SectionHeader>
       <div className="divide-border divide-y">
-        <Row label="Vault name" hint="Display name shown in the sidebar header.">
+        <Row label="Vault name">
           <input
             value={draft.name}
             onChange={(e) => set('name', e.target.value)}
@@ -176,28 +178,19 @@ function VaultTab({
             placeholder="My Vault"
           />
         </Row>
-        <Row
-          label="Default folder for new files"
-          hint="Where new notes, PDFs and drawings are placed unless overridden."
-        >
+        <Row label="Default folder for new files">
           <FolderPicker
             value={draft.defaultNewFileFolder}
             onChange={(v) => set('defaultNewFileFolder', v)}
           />
         </Row>
-        <Row
-          label="Template folder"
-          hint="Markdown files in this folder appear as templates when creating a note."
-        >
+        <Row label="Template folder">
           <FolderPicker
             value={draft.templateFolder}
             onChange={(v) => set('templateFolder', v)}
           />
         </Row>
-        <Row
-          label="Default PDF page style"
-          hint="Style applied when creating a blank PDF from the New menu."
-        >
+        <Row label="Default PDF page style">
           <select
             value={draft.pdfPageStyle ?? 'blank'}
             onChange={(e) => set('pdfPageStyle', e.target.value as VaultConfig['pdfPageStyle'])}
@@ -224,14 +217,14 @@ function EditorTab({
     <div>
       <SectionHeader>Auto-save</SectionHeader>
       <div className="divide-border divide-y">
-        <Row label="Enable auto-save" hint="Periodically save the active note without prompting.">
+        <Row label="Enable auto-save">
           <Toggle
             checked={draft.autoSave.enabled}
             onChange={(v) => set('autoSave', { ...draft.autoSave, enabled: v })}
           />
         </Row>
         {draft.autoSave.enabled && (
-          <Row label="Save interval" hint="How often (in seconds) the note is auto-saved.">
+          <Row label="Save interval">
             <NumberInput
               value={Math.round(draft.autoSave.intervalMs / 1000)}
               min={5}
@@ -243,10 +236,7 @@ function EditorTab({
             />
           </Row>
         )}
-        <Row
-          label="Save on focus loss"
-          hint="Save the active note whenever the editor loses focus."
-        >
+        <Row label="Save on focus loss">
           <Toggle
             checked={draft.autoSave.saveOnBlur}
             onChange={(v) => set('autoSave', { ...draft.autoSave, saveOnBlur: v })}
@@ -268,10 +258,7 @@ function SnapshotsTab({
     <div>
       <SectionHeader>Version history</SectionHeader>
       <div className="divide-border divide-y">
-        <Row
-          label="Enable version history"
-          hint="Automatically save snapshots of PDF files when changes are made."
-        >
+        <Row label="Enable version history">
           <Toggle
             checked={draft.snapshots.enabled}
             onChange={(v) => set('snapshots', { ...draft.snapshots, enabled: v })}
@@ -279,10 +266,7 @@ function SnapshotsTab({
         </Row>
         {draft.snapshots.enabled && (
           <>
-            <Row
-              label="Max snapshots per file"
-              hint="Older snapshots are pruned once this limit is reached."
-            >
+            <Row label="Max snapshots per file">
               <NumberInput
                 value={draft.snapshots.maxPerFile}
                 min={1}
@@ -292,10 +276,7 @@ function SnapshotsTab({
                 }
               />
             </Row>
-            <Row
-              label="Retention period"
-              hint="Snapshots older than this many days are automatically deleted."
-            >
+            <Row label="Retention period">
               <NumberInput
                 value={draft.snapshots.retentionDays}
                 min={1}
@@ -321,6 +302,7 @@ const TABS = [
   { id: 'vault', label: 'Vault' },
   { id: 'editor', label: 'Editor' },
   { id: 'snapshots', label: 'Snapshots' },
+  { id: 'sync', label: 'Sync' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
@@ -340,11 +322,46 @@ export function SettingsDialog({
   const [activeTab, setActiveTab] = useState<TabId>('vault')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isFirstDraft = useRef(true)
+  const vaultFsRef = useRef(vaultFs)
+  const updateConfigRef = useRef(updateConfig)
+  useEffect(() => { vaultFsRef.current = vaultFs }, [vaultFs])
+  useEffect(() => { updateConfigRef.current = updateConfig }, [updateConfig])
 
   // Reset draft when dialog opens
   useEffect(() => {
-    if (open && config) setDraft({ ...DEFAULT_VAULT_CONFIG, ...config })
+    if (open && config) {
+      isFirstDraft.current = true
+      setDraft({ ...DEFAULT_VAULT_CONFIG, ...config })
+      setSaved(false)
+    }
   }, [open, config])
+
+  // Auto-save 600ms after any draft change
+  useEffect(() => {
+    if (isFirstDraft.current) {
+      isFirstDraft.current = false
+      return
+    }
+    setSaved(false)
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(async () => {
+      setSaving(true)
+      try {
+        await saveVaultConfig(vaultFsRef.current, draft)
+        updateConfigRef.current(draft)
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      } finally {
+        setSaving(false)
+      }
+    }, 600)
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft])
 
   const setField = useCallback(
     <K extends keyof VaultConfig>(key: K, value: VaultConfig[K]) => {
@@ -353,29 +370,39 @@ export function SettingsDialog({
     [],
   )
 
-  const handleSave = useCallback(async () => {
-    setSaving(true)
-    try {
-      await saveVaultConfig(vaultFs, draft)
-      updateConfig(draft)
-      setSaved(true)
-      setTimeout(() => {
-        setSaved(false)
-        onOpenChange(false)
-      }, 800)
-    } finally {
-      setSaving(false)
+  // Used by VaultDropboxSyncPanel before navigating to OAuth — saves immediately without debounce
+  const saveConfigNow = useCallback(async (config: VaultConfig) => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
     }
-  }, [draft, vaultFs, updateConfig, onOpenChange])
+    isFirstDraft.current = true  // prevent the subsequent setDraft from re-triggering auto-save
+    await saveVaultConfig(vaultFs, config)
+    updateConfig(config)
+    setDraft(config)
+    isFirstDraft.current = false
+  }, [vaultFs, updateConfig])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault()
-        void handleSave()
+        if (saveTimerRef.current) {
+          clearTimeout(saveTimerRef.current)
+          saveTimerRef.current = null
+        }
+        setSaving(true)
+        saveVaultConfig(vaultFs, draft)
+          .then(() => {
+            updateConfig(draft)
+            setSaving(false)
+            setSaved(true)
+            setTimeout(() => setSaved(false), 2000)
+          })
+          .catch(() => setSaving(false))
       }
     },
-    [handleSave],
+    [draft, vaultFs, updateConfig],
   )
 
   return (
@@ -434,38 +461,31 @@ export function SettingsDialog({
               <Tabs.Content value="snapshots">
                 <SnapshotsTab draft={draft} set={setField} />
               </Tabs.Content>
+              <Tabs.Content value="sync">
+                <SectionHeader>Cloud sync</SectionHeader>
+                <VaultDropboxSyncPanel
+                  vaultConfig={draft}
+                  setSync={(s) => setField('sync', s)}
+                  saveFullConfig={saveConfigNow}
+                  persistSyncFieldsToDisk={false}
+                />
+              </Tabs.Content>
             </div>
           </Tabs.Root>
 
           {/* Footer */}
-          <div className="border-border flex shrink-0 items-center justify-end gap-2 border-t px-5 py-3">
+          <div className="border-border flex shrink-0 items-center justify-between border-t px-5 py-3">
+            <span className="text-fg-muted flex items-center gap-1.5 text-xs">
+              {saving && <Loader2 className="size-3 animate-spin" />}
+              {saved && <Check className="size-3 text-green-500" />}
+              {saving ? 'Saving…' : saved ? 'Saved' : ''}
+            </span>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="border-border text-fg-secondary hover:text-fg rounded-lg border px-4 py-1.5 text-sm transition-colors"
+              className="bg-accent text-accent-fg hover:bg-accent/90 rounded-lg px-4 py-1.5 text-sm font-medium transition-colors"
             >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={saving || saved}
-              onClick={() => void handleSave()}
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-medium transition-colors',
-                saved
-                  ? 'bg-green-600 text-white'
-                  : 'bg-accent text-accent-fg hover:bg-accent/90 disabled:opacity-50',
-              )}
-            >
-              {saved ? (
-                <>
-                  <Check className="size-3.5" /> Saved
-                </>
-              ) : saving ? (
-                'Saving…'
-              ) : (
-                'Save changes'
-              )}
+              Done
             </button>
           </div>
         </Dialog.Content>

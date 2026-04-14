@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import * as ContextMenu from '@radix-ui/react-context-menu'
 import { toast } from '@/stores/toast'
 import {
   CalendarDays,
   ChevronRight,
   ChevronDown,
+  ExternalLink,
   FileText,
   Folder,
   FolderPlus,
@@ -23,6 +25,7 @@ import { FileType } from '@/types/files'
 import { editorTabTypeFromVaultPath, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
 import type { FileEntry } from '@/types/files'
 import { isNotesTreeEntry, sortTreeEntries } from '@/lib/notes/tree-filter'
+import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { createUntitledNote } from '@/lib/notes/new-note'
 import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
 import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
@@ -135,8 +138,8 @@ export function NotesFileTree({
     const fileName = srcPath.split('/').pop()
     if (!fileName) return
     const newPath = destFolder ? `${destFolder}/${fileName}` : fileName
-    if (newPath === srcPath) return
-    if (await vaultFs.exists(newPath)) {
+    if (vaultPathsPointToSameFile(newPath, srcPath)) return
+    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, srcPath)) {
       toast.error('A file with that name already exists in the target folder')
       return
     }
@@ -169,8 +172,8 @@ export function NotesFileTree({
     const fileName = sanitized.toLowerCase().endsWith(ext.toLowerCase()) ? sanitized : `${sanitized}${ext}`
     const parent = oldPath.lastIndexOf('/') === -1 ? '' : oldPath.slice(0, oldPath.lastIndexOf('/'))
     const newPath = parent ? `${parent}/${fileName}` : fileName
-    if (newPath === oldPath) return
-    if (await vaultFs.exists(newPath)) {
+    if (vaultPathsPointToSameFile(newPath, oldPath)) return
+    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, oldPath)) {
       toast.error('A note with that name already exists')
       return
     }
@@ -410,6 +413,7 @@ export function NotesFileTree({
                 entry={entry}
                 depth={0}
                 vaultFs={vaultFs}
+                refreshToken={refreshToken}
                 selectedPath={selectedPath}
                 inlineEditPath={inlineEditPath}
                 onOpenFile={handleOpenFile}
@@ -462,6 +466,7 @@ function TreeNode({
   entry,
   depth,
   vaultFs,
+  refreshToken,
   selectedPath,
   inlineEditPath,
   onOpenFile,
@@ -478,6 +483,8 @@ function TreeNode({
   entry: FileEntry
   depth: number
   vaultFs: FileSystemAdapter
+  /** Bumped when vault files change (same as parent `NotesFileTree`); reloads expanded folder children. */
+  refreshToken: number
   selectedPath: string | null
   inlineEditPath: string | null
   onOpenFile: (path: string) => void
@@ -512,7 +519,7 @@ function TreeNode({
     return () => {
       cancelled = true
     }
-  }, [entry.isDirectory, entry.path, expanded, vaultFs])
+  }, [entry.isDirectory, entry.path, expanded, vaultFs, refreshToken])
 
   if (!entry.isDirectory) {
     const selected = selectedPath === entry.path
@@ -530,7 +537,7 @@ function TreeNode({
       onCancelInlineEdit()
     }
 
-    return (
+    const fileRow = (
       <div
         role="treeitem"
         aria-selected={selected}
@@ -641,94 +648,120 @@ function TreeNode({
         )}
       </div>
     )
+
+    return (
+      <TreeContextMenu
+        isFile
+        entryName={entry.name}
+        starred={starred}
+        onOpen={() => onOpenFile(entry.path)}
+        onRename={() => onStartInlineEdit(entry.path)}
+        onStar={() => toggleStarred(entry.path)}
+        onDelete={() => onDeleteItem(entry.path, false)}
+      >
+        {fileRow}
+      </TreeContextMenu>
+    )
   }
+
+  const folderRow = (
+    <div
+      className={cn(
+        'group mx-1 flex w-[calc(100%-0.5rem)] items-center gap-0.5 rounded-md py-1 pr-1 text-[13px] transition-colors',
+        dragOver
+          ? 'bg-accent/15 ring-accent/40 ring-1'
+          : 'hover:bg-bg-hover',
+      )}
+      style={{ paddingLeft: 2 + depth * 14 }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes(DND_TYPE) || e.dataTransfer.types.includes('Files')) {
+          e.preventDefault()
+          e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'move'
+          setDragOver(true)
+        }
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
+      }}
+      onDrop={(e) => {
+        setDragOver(false)
+        if (e.dataTransfer.files.length > 0 && !e.dataTransfer.types.includes(DND_TYPE)) {
+          e.preventDefault()
+          e.stopPropagation()
+          onExternalImport(e.dataTransfer.files, entry.path)
+          return
+        }
+        const src = e.dataTransfer.getData(DND_TYPE)
+        if (!src) return
+        e.preventDefault()
+        e.stopPropagation()
+        onMoveFile(src, entry.path)
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => toggleExpanded(entry.path)}
+        aria-label={`${expanded ? 'Collapse' : 'Expand'} ${entry.name}`}
+        className="text-fg flex min-w-0 flex-1 items-center gap-1 text-left"
+      >
+        {expanded ? (
+          <ChevronDown className="text-fg-muted size-4 shrink-0" aria-hidden />
+        ) : (
+          <ChevronRight className="text-fg-muted size-4 shrink-0" aria-hidden />
+        )}
+        <Folder className="text-fg-muted size-4 shrink-0" aria-hidden />
+        <span className="min-w-0 truncate font-medium">{entry.name}</span>
+      </button>
+      <button
+        type="button"
+        className="text-fg-muted hover:text-fg shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+        aria-label={`New subfolder in ${entry.name}`}
+        title="New subfolder"
+        onClick={(e) => {
+          e.stopPropagation()
+          onNewSubfolder(entry.path)
+        }}
+      >
+        <FolderPlus className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        className="text-fg-muted hover:text-fg shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+        aria-label={`Rename ${entry.name}`}
+        title="Rename folder"
+        onClick={(e) => {
+          e.stopPropagation()
+          onRenameFolder(entry.path)
+        }}
+      >
+        <Pencil className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        className="text-fg-muted hover:text-red-500 shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+        aria-label={`Delete ${entry.name}`}
+        title="Delete folder"
+        onClick={(e) => {
+          e.stopPropagation()
+          onDeleteItem(entry.path, true)
+        }}
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    </div>
+  )
 
   return (
     <div role="treeitem" aria-expanded={expanded} aria-level={depth + 1}>
-      <div
-        className={cn(
-          'group mx-1 flex w-[calc(100%-0.5rem)] items-center gap-0.5 rounded-md py-1 pr-1 text-[13px] transition-colors',
-          dragOver
-            ? 'bg-accent/15 ring-accent/40 ring-1'
-            : 'hover:bg-bg-hover',
-        )}
-        style={{ paddingLeft: 2 + depth * 14 }}
-        onDragOver={(e) => {
-          if (e.dataTransfer.types.includes(DND_TYPE) || e.dataTransfer.types.includes('Files')) {
-            e.preventDefault()
-            e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'move'
-            setDragOver(true)
-          }
-        }}
-        onDragLeave={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
-        }}
-        onDrop={(e) => {
-          setDragOver(false)
-          if (e.dataTransfer.files.length > 0 && !e.dataTransfer.types.includes(DND_TYPE)) {
-            e.preventDefault()
-            e.stopPropagation()
-            onExternalImport(e.dataTransfer.files, entry.path)
-            return
-          }
-          const src = e.dataTransfer.getData(DND_TYPE)
-          if (!src) return
-          e.preventDefault()
-          e.stopPropagation()
-          onMoveFile(src, entry.path)
-        }}
+      <TreeContextMenu
+        isFile={false}
+        entryName={entry.name}
+        onRename={() => onRenameFolder(entry.path)}
+        onNewSubfolder={() => onNewSubfolder(entry.path)}
+        onDelete={() => onDeleteItem(entry.path, true)}
       >
-        <button
-          type="button"
-          onClick={() => toggleExpanded(entry.path)}
-          aria-label={`${expanded ? 'Collapse' : 'Expand'} ${entry.name}`}
-          className="text-fg flex min-w-0 flex-1 items-center gap-1 text-left"
-        >
-          {expanded ? (
-            <ChevronDown className="text-fg-muted size-4 shrink-0" aria-hidden />
-          ) : (
-            <ChevronRight className="text-fg-muted size-4 shrink-0" aria-hidden />
-          )}
-          <Folder className="text-fg-muted size-4 shrink-0" aria-hidden />
-          <span className="min-w-0 truncate font-medium">{entry.name}</span>
-        </button>
-        <button
-          type="button"
-          className="text-fg-muted hover:text-fg shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
-          aria-label={`New subfolder in ${entry.name}`}
-          title="New subfolder"
-          onClick={(e) => {
-            e.stopPropagation()
-            onNewSubfolder(entry.path)
-          }}
-        >
-          <FolderPlus className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          className="text-fg-muted hover:text-fg shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
-          aria-label={`Rename ${entry.name}`}
-          title="Rename folder"
-          onClick={(e) => {
-            e.stopPropagation()
-            onRenameFolder(entry.path)
-          }}
-        >
-          <Pencil className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          className="text-fg-muted hover:text-red-500 shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
-          aria-label={`Delete ${entry.name}`}
-          title="Delete folder"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDeleteItem(entry.path, true)
-          }}
-        >
-          <Trash2 className="size-3.5" />
-        </button>
-      </div>
+        {folderRow}
+      </TreeContextMenu>
       {expanded && children && children.length > 0 && (
         <div role="group">
           {children.map((child) => (
@@ -737,6 +770,7 @@ function TreeNode({
               entry={child}
               depth={depth + 1}
               vaultFs={vaultFs}
+              refreshToken={refreshToken}
               selectedPath={selectedPath}
               inlineEditPath={inlineEditPath}
               onOpenFile={onOpenFile}
@@ -762,6 +796,71 @@ function TreeNode({
         </p>
       )}
     </div>
+  )
+}
+
+const CTX_ROW =
+  'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm outline-none transition-colors cursor-pointer data-[highlighted]:bg-bg-hover'
+
+function TreeContextMenu({
+  children,
+  isFile,
+  entryName,
+  starred,
+  onOpen,
+  onRename,
+  onStar,
+  onNewSubfolder,
+  onDelete,
+}: {
+  children: React.ReactNode
+  isFile: boolean
+  entryName: string
+  starred?: boolean
+  onOpen?: () => void
+  onRename: () => void
+  onStar?: () => void
+  onNewSubfolder?: () => void
+  onDelete: () => void
+}) {
+  return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
+      <ContextMenu.Portal>
+        <ContextMenu.Content className="border-border-strong bg-bg z-50 min-w-[180px] rounded-lg border p-1 shadow-lg">
+          {isFile && onOpen && (
+            <ContextMenu.Item className={CTX_ROW} onSelect={onOpen}>
+              <ExternalLink className="size-4" />
+              Open
+            </ContextMenu.Item>
+          )}
+          {isFile && onStar && (
+            <ContextMenu.Item className={CTX_ROW} onSelect={onStar}>
+              <Star className={cn('size-4', starred && 'fill-current')} />
+              {starred ? 'Unstar' : 'Star'}
+            </ContextMenu.Item>
+          )}
+          <ContextMenu.Item className={CTX_ROW} onSelect={onRename}>
+            <Pencil className="size-4" />
+            Rename
+          </ContextMenu.Item>
+          {!isFile && onNewSubfolder && (
+            <ContextMenu.Item className={CTX_ROW} onSelect={onNewSubfolder}>
+              <FolderPlus className="size-4" />
+              New subfolder
+            </ContextMenu.Item>
+          )}
+          <ContextMenu.Separator className="bg-border my-1 h-px" />
+          <ContextMenu.Item
+            className={`${CTX_ROW} text-danger data-[highlighted]:bg-danger/10`}
+            onSelect={onDelete}
+          >
+            <Trash2 className="size-4" />
+            Delete {isFile ? entryName : 'folder'}
+          </ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu.Portal>
+    </ContextMenu.Root>
   )
 }
 
@@ -807,11 +906,11 @@ function RenameFolderDialog({
     }
     const parent = parentDir(currentPath)
     const newPath = parent ? `${parent}/${trimmed}` : trimmed
-    if (newPath === currentPath) {
+    if (vaultPathsPointToSameFile(newPath, currentPath)) {
       onOpenChange(false)
       return
     }
-    if (await vaultFs.exists(newPath)) {
+    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, currentPath)) {
       setError('A folder with that name already exists.')
       return
     }

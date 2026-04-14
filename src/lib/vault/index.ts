@@ -58,7 +58,17 @@ export async function loadVaultConfig(fs: FileSystemAdapter): Promise<VaultConfi
   try {
     const raw = await fs.readTextFile(CONFIG_FILE)
     const parsed = JSON.parse(raw) as Partial<VaultConfig>
-    return { ...DEFAULT_VAULT_CONFIG, ...parsed }
+    const merged = { ...DEFAULT_VAULT_CONFIG, ...parsed }
+
+    // Drop removed Nextcloud provider from legacy JSON
+    if (merged.sync) {
+      const legacyProvider = (parsed as { sync?: { provider?: string | null } }).sync?.provider
+      if (legacyProvider === 'nextcloud') {
+        merged.sync = { ...merged.sync, provider: null }
+      }
+    }
+
+    return merged
   } catch {
     return DEFAULT_VAULT_CONFIG
   }

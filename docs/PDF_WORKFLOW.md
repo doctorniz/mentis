@@ -1,5 +1,7 @@
 # Mentis — PDF Workflow (Detailed UX)
 
+This document describes product behaviour for **Mentis**. Repository **licensing** (BSL 1.1) is defined in the root [`LICENSE`](../LICENSE); see also [`ARCHITECTURE.md`](./ARCHITECTURE.md) §10.
+
 ## 1. File Browser View (PDFs)
 
 1. User switches to the **File Browser** view from the sidebar.

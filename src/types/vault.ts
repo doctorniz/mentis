@@ -1,3 +1,12 @@
+export interface VaultSyncConfig {
+  provider: 'dropbox' | null
+  /** Absolute Dropbox path for this vault, e.g. `/Apps/Mentis/MyVault` */
+  remotePath: string
+  /** Polling interval in ms (default 30 000) */
+  pollIntervalMs: number
+  lastSyncedAt?: string
+}
+
 export interface VaultConfig {
   name: string
   version: number
@@ -11,6 +20,8 @@ export interface VaultConfig {
   defaultNewFileFolder: string
   /** Page style for newly created blank PDFs */
   pdfPageStyle: 'blank' | 'lined' | 'grid'
+  /** Cloud sync settings (Dropbox); self-hosted sync may be added later */
+  sync?: VaultSyncConfig
 }
 
 export interface SnapshotConfig {
@@ -33,10 +44,11 @@ export enum ViewMode {
   Notes = 'notes',
   Search = 'search',
   Graph = 'graph',
+  Board = 'board',
   New = 'new',
 }
 
-/** Sub-mode within the unified Vault view */
+/** Sub-mode within the unified Vault view (toolbar: Preview / Files) */
 export type VaultLayoutMode = 'browse' | 'tree'
 
 export interface VaultMetadata {

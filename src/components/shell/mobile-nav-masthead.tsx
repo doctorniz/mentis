@@ -9,6 +9,7 @@ import {
   FileText,
   GitFork,
   Layout,
+  LayoutGrid,
   LogOut,
   Menu,
   Monitor,
@@ -33,6 +34,7 @@ const NAV: { mode: ViewMode; label: string; icon: typeof Vault }[] = [
   { mode: ViewMode.Vault, label: 'Vault', icon: Vault },
   { mode: ViewMode.Search, label: 'Search', icon: Search },
   { mode: ViewMode.Graph, label: 'Graph', icon: GitFork },
+  { mode: ViewMode.Board, label: 'Board', icon: LayoutGrid },
 ]
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [

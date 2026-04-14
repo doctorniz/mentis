@@ -71,7 +71,8 @@ All edits written directly into the PDF file on save.
 | **Vault (browse)** | Grid/list file browser: sort, filter, batch operations, move/delete modals, inbox. |
 | **Vault (tree)** | Folder tree + inline editors for markdown, PDF, and canvas; starred paths; no separate “Notes” nav label. |
 | **Search** | Full-text search across vault. Results grouped by file type with filters. |
-| **New** | Quick-create launcher for Markdown Note, PDF Note, or Unlimited Canvas. |
+| **Graph** | Force-directed vault graph (notes, PDFs, canvases); wiki-link edges; folder filter; open files from nodes. |
+| **New** | Quick-create launcher (popover): note, file import, drawing; Templates tab in `NewView` where exposed. |
 
 ### 3.5 Unlimited Canvas
 
@@ -117,7 +118,15 @@ Freeform, infinitely scrollable whiteboard:
 
 ---
 
-## 6. Open Questions
+## 6. Licensing & source code
+
+- **Application source** is distributed under the **Business Source License 1.1** — see the repository root [`LICENSE`](../LICENSE). Summary: **Marrow Group** is the Licensor; **Mentis** is the Licensed Work; an **Additional Use Grant** allows production use for any purpose (full wording in `LICENSE`); on the **Change Date** (currently **2030-04-09**) the **Change License** (**MPL 2.0**) applies to that version as defined in BSL. BSL is **not** identical to “OSI open source” before the Change Date — distributors and integrators should read the full file.
+- **Third-party dependencies** retain their own licenses (npm packages).
+- **AI-assisted development** is disclosed in the README. It does not change license terms; enterprise or regulated users should run their own review of generated and hand-written code.
+
+---
+
+## 7. Open Questions
 
 1. Default view on vault open — single view or combined "Home" dashboard?
 2. Canvas file format — Obsidian-compatible `.canvas` JSON or custom format?

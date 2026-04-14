@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   ActiveSelection,
   Canvas as FabricCanvas,
@@ -12,14 +12,17 @@ import {
   Line as FabricLine,
   Triangle as FabricTriangle,
   Shadow as FabricShadow,
+  type TPointerEvent,
   type TPointerEventInfo,
   type FabricObject,
+  type TextStyleDeclaration,
   Point as FabricPoint,
   util as fabricUtil,
 } from 'fabric'
-import { useCanvasStore } from '@/stores/canvas'
+import { useCanvasStore, type CanvasActiveTool } from '@/stores/canvas'
 import { toast } from '@/stores/toast'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { useSyncPush } from '@/contexts/sync-context'
 import { resolveWikiLinkPath } from '@/lib/markdown'
 import { collectMarkdownPaths } from '@/lib/notes/collect-markdown-paths'
 import { deserializeCanvas, serializeCanvas, generateNodeId } from '@/lib/canvas'
@@ -52,12 +55,10 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
-type CanvasToolId = 'select' | 'draw' | 'text' | 'sticky' | 'connect' | 'erase'
-
 /** Keep Fabric interaction mode aligned with the toolbar (and re-apply after async file load). */
 function applyFabricToolMode(
   fc: FabricCanvas,
-  activeTool: CanvasToolId,
+  activeTool: CanvasActiveTool,
   strokeColor: string,
   strokeWidth: number,
   strokeOpacity: number,
@@ -73,8 +74,8 @@ function applyFabricToolMode(
     fc.isDrawingMode = false
   }
 
-  const canSelect = activeTool === 'select' || activeTool === 'connect'
-  const lockMove = activeTool === 'connect'
+  const canSelect = activeTool === 'select'
+  const lockMove = false
   const isErase = activeTool === 'erase'
   fc.forEachObject((obj) => {
     obj.selectable = canSelect
@@ -92,11 +93,9 @@ function applyFabricToolMode(
   })
   fc.selection = activeTool === 'select'
 
-  const cursorMap: Partial<Record<CanvasToolId, string>> = {
+  const cursorMap: Partial<Record<CanvasActiveTool, string>> = {
     erase: 'crosshair',
-    connect: 'crosshair',
     text: 'text',
-    sticky: 'cell',
   }
   fc.defaultCursor = cursorMap[activeTool] ?? 'default'
   fc.hoverCursor = isErase ? 'crosshair' : 'move'
@@ -136,8 +135,39 @@ function resolveFormattableTextbox(fc: FabricCanvas | null | undefined): FabricT
   return undefined
 }
 
+function toFabricStylePatch(patch: Partial<CanvasTextBarState>): TextStyleDeclaration {
+  const out: TextStyleDeclaration = {}
+  if (patch.fill !== undefined) out.fill = patch.fill
+  if (patch.fontSize !== undefined) out.fontSize = patch.fontSize
+  if (patch.fontFamily !== undefined) out.fontFamily = patch.fontFamily
+  if (patch.fontWeight !== undefined) out.fontWeight = patch.fontWeight
+  if (patch.fontStyle !== undefined) out.fontStyle = patch.fontStyle
+  if (patch.underline !== undefined) out.underline = patch.underline
+  return out
+}
+
 function readTextBarFromObject(obj: FabricObject | undefined): CanvasTextBarState | null {
   if (!isFormattableTextbox(obj)) return null
+  if (obj.isEditing) {
+    const len = obj.text?.length ?? 0
+    const pos = len === 0 ? 0 : Math.min(obj.selectionStart ?? 0, len - 1)
+    const chunk = obj.getSelectionStyles(pos, pos + 1, true)
+    const s = chunk[0] ?? {}
+    const fill = s.fill ?? obj.fill
+    return {
+      fontSize: (s.fontSize as number | undefined) ?? obj.fontSize ?? 16,
+      fontFamily:
+        typeof s.fontFamily === 'string'
+          ? s.fontFamily
+          : typeof obj.fontFamily === 'string'
+            ? obj.fontFamily
+            : 'system-ui, sans-serif',
+      fontWeight: String(s.fontWeight ?? obj.fontWeight ?? 'normal'),
+      fontStyle: String(s.fontStyle ?? obj.fontStyle ?? 'normal'),
+      underline: !!(s.underline ?? obj.underline),
+      fill: typeof fill === 'string' ? fill : '#212529',
+    }
+  }
   const fill = obj.fill
   return {
     fontSize: obj.fontSize ?? 16,
@@ -151,6 +181,7 @@ function readTextBarFromObject(obj: FabricObject | undefined): CanvasTextBarStat
 
 export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNotePath?: (path: string) => void }) {
   const { vaultFs } = useVaultSession()
+  const syncPush = useSyncPush()
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const fcRef = useRef<FabricCanvas | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -161,9 +192,13 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
   const undoRef = useRef(new CanvasUndoStack())
   const [undoState, setUndoState] = useState({ canUndo: false, canRedo: false })
   const [textBar, setTextBar] = useState<CanvasTextBarState | null>(null)
-  const connectFromRef = useRef<{ obj: FabricObject; nodeId: string; ring: FabricObject | null } | null>(null)
 
   const activeTool = useCanvasStore((s) => s.activeTool)
+  useLayoutEffect(() => {
+    const st = useCanvasStore.getState()
+    const t = st.activeTool as unknown
+    if (t === 'connect' || t === 'sticky') st.setActiveTool('select')
+  }, [path])
   const strokeColor = useCanvasStore((s) => s.strokeColor)
   const strokeWidth = useCanvasStore((s) => s.strokeWidth)
   const strokeOpacity = useCanvasStore((s) => s.strokeOpacity)
@@ -192,14 +227,31 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
       const fc = fcRef.current
       const obj = resolveFormattableTextbox(fc)
       if (!obj) return
-      const next: Record<string, unknown> = { ...patch }
-      if (patch.fill !== undefined) next.fill = patch.fill
-      if (patch.fontSize !== undefined) next.fontSize = patch.fontSize
-      if (patch.fontFamily !== undefined) next.fontFamily = patch.fontFamily
-      if (patch.fontWeight !== undefined) next.fontWeight = patch.fontWeight
-      if (patch.fontStyle !== undefined) next.fontStyle = patch.fontStyle
-      if (patch.underline !== undefined) next.underline = patch.underline
-      obj.set(next)
+      const stylePatch = toFabricStylePatch(patch)
+      if (Object.keys(stylePatch).length === 0) return
+
+      const wasEditing = obj.isEditing
+      if (!wasEditing) {
+        obj.enterEditing()
+        const tlen = obj.text?.length ?? 0
+        if (tlen > 0) obj.selectAll()
+      }
+
+      const textLen = obj.text?.length ?? 0
+      let start = obj.selectionStart ?? 0
+      let end = obj.selectionEnd ?? start
+
+      if (textLen === 0) {
+        start = 0
+        end = 1
+      } else if (start === end) {
+        end = Math.min(start + 1, textLen + 1)
+      } else {
+        start = Math.min(start, textLen)
+        end = Math.min(end, textLen)
+      }
+
+      obj.setSelectionStyles(stylePatch, start, end)
       obj.initDimensions()
       obj.setCoords()
       fc!.requestRenderAll()
@@ -224,19 +276,48 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
     })
     fcRef.current = fc
 
+    /** First `text:editing:entered` after this textbox became active (by __nodeId) selects all for quick replace. */
+    const selectAllPendingRef = { current: null as FabricTextbox | null }
+    const prevFormattableNodeIdRef = { current: undefined as string | undefined }
+
     function syncSelectionToTextBar() {
       const tb = resolveFormattableTextbox(fc)
+      if (tb) {
+        const nid = (tb as unknown as Record<string, unknown>).__nodeId as string | undefined
+        if (nid !== prevFormattableNodeIdRef.current) {
+          selectAllPendingRef.current = tb
+          prevFormattableNodeIdRef.current = nid
+        }
+      } else {
+        selectAllPendingRef.current = null
+        prevFormattableNodeIdRef.current = undefined
+      }
       setTextBar(tb ? readTextBarFromObject(tb) : null)
     }
     function onTextEditEntered(opt: { target?: FabricObject }) {
       const t = opt.target
-      setTextBar(isFormattableTextbox(t) ? readTextBarFromObject(t) : null)
+      if (!isFormattableTextbox(t)) {
+        setTextBar(null)
+        return
+      }
+      if (selectAllPendingRef.current === t) {
+        t.cmdAll()
+        selectAllPendingRef.current = null
+      }
+      setTextBar(readTextBarFromObject(t))
     }
     function onTextEditExited() {
       const tb = resolveFormattableTextbox(fc)
       setTextBar(tb ? readTextBarFromObject(tb) : null)
     }
+    function onTextSelectionChanged(opt: { target?: FabricObject }) {
+      const t = opt.target
+      if (!isFormattableTextbox(t) || !t.isEditing) return
+      setTextBar(readTextBarFromObject(t))
+    }
     function clearTextBarOnDeselect() {
+      selectAllPendingRef.current = null
+      prevFormattableNodeIdRef.current = undefined
       setTextBar(null)
     }
 
@@ -245,6 +326,7 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
     fc.on('selection:cleared', clearTextBarOnDeselect as never)
     fc.on('text:editing:entered', onTextEditEntered as never)
     fc.on('text:editing:exited', onTextEditExited as never)
+    fc.on('text:selection:changed', onTextSelectionChanged as never)
 
     fabricBootstrapRef.current = true
     let cancelled = false
@@ -346,6 +428,7 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
       fc.off('selection:cleared', clearTextBarOnDeselect as never)
       fc.off('text:editing:entered', onTextEditEntered as never)
       fc.off('text:editing:exited', onTextEditExited as never)
+      fc.off('text:selection:changed', onTextSelectionChanged as never)
       fc.off('object:modified', snapshotOnModified as never)
       fc.off('object:scaling', markDirtyOnFabricChange as never)
       fc.off('object:rotating', markDirtyOnFabricChange as never)
@@ -360,7 +443,6 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
       }
       fc.dispose()
       fcRef.current = null
-      connectFromRef.current = null
       resetStore()
     }
   }, [path, vaultFs, resetStore, markDirty])
@@ -456,43 +538,131 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
     }
   }
 
-  /** Strip sub-object suffixes so edges always reference the canonical node id. */
-  function canonicalNodeId(obj: FabricObject): string | undefined {
-    const raw = (obj as unknown as Record<string, unknown>).__nodeId as string | undefined
-    if (!raw) return undefined
-    return raw.replace(/_(text|wl)$/, '')
-  }
+  /* ---- Partial-erase helper: split a FabricPath, removing the segment near (ex,ey) ---- */
+  function splitFabricPath(
+    pathObj: FabricPath,
+    ex: number,
+    ey: number,
+    radius: number,
+  ): { d: string; points: { x: number; y: number }[]; stroke: string; strokeWidth: number }[] {
+    const pathData = pathObj.path as unknown[][]
+    if (!pathData || pathData.length === 0) return []
 
-  /** Remove the visual ring placed on the first-click connect target. */
-  function clearConnectRing(fc: FabricCanvas) {
-    const ref = connectFromRef.current
-    if (ref?.ring) {
-      fc.remove(ref.ring)
-      fc.requestRenderAll()
+    const stroke = typeof pathObj.stroke === 'string' ? pathObj.stroke : '#000000'
+    const sw = pathObj.strokeWidth ?? 2
+    const matrix = pathObj.calcTransformMatrix()
+    const r2 = radius * radius
+
+    const worldPts: { x: number; y: number }[] = []
+    let lx = 0, ly = 0
+    for (const cmd of pathData) {
+      const t = cmd[0] as string
+      if (t === 'M' || t === 'L') { lx = cmd[1] as number; ly = cmd[2] as number }
+      else if (t === 'Q') { lx = cmd[3] as number; ly = cmd[4] as number }
+      else if (t === 'C') { lx = cmd[5] as number; ly = cmd[6] as number }
+      else if (t === 'z' || t === 'Z') continue
+      const wp = fabricUtil.transformPoint(new FabricPoint(lx, ly), matrix)
+      worldPts.push({ x: wp.x, y: wp.y })
     }
-    connectFromRef.current = null
+    if (worldPts.length < 2) return []
+
+    const hit = worldPts.map(p => (p.x - ex) ** 2 + (p.y - ey) ** 2 <= r2)
+
+    for (let i = 0; i < worldPts.length - 1; i++) {
+      if (hit[i] && hit[i + 1]) continue
+      const a = worldPts[i], b = worldPts[i + 1]
+      const dx = b.x - a.x, dy = b.y - a.y
+      const len2 = dx * dx + dy * dy
+      if (len2 === 0) continue
+      const t = Math.max(0, Math.min(1, ((ex - a.x) * dx + (ey - a.y) * dy) / len2))
+      const px = a.x + t * dx, py = a.y + t * dy
+      if ((px - ex) ** 2 + (py - ey) ** 2 <= r2) {
+        hit[i] = true
+        hit[i + 1] = true
+      }
+    }
+
+    const runs: { x: number; y: number }[][] = []
+    let run: { x: number; y: number }[] = []
+    for (let i = 0; i < worldPts.length; i++) {
+      if (hit[i]) {
+        if (run.length >= 2) runs.push(run)
+        run = []
+      } else {
+        run.push(worldPts[i])
+      }
+    }
+    if (run.length >= 2) runs.push(run)
+
+    return runs.map(pts => ({
+      d: pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' '),
+      points: pts,
+      stroke,
+      strokeWidth: sw,
+    }))
   }
 
-  /* ---- Text / Sticky / Erase / Connect click ---- */
+  /* ---- Text / Erase click ---- */
   useEffect(() => {
     const fc = fcRef.current
     if (!fc) return
-    const toolsHandled: string[] = ['text', 'sticky', 'erase', 'connect']
-    if (!toolsHandled.includes(activeTool)) return
-
-    // Clear stale connect state when switching away from connect tool
-    if (activeTool !== 'connect') clearConnectRing(fc)
+    if (activeTool !== 'text' && activeTool !== 'erase') return
 
     let erasing = false
     let erasedAny = false
 
     function tryEraseAt(e: Event) {
-      const target = fc!.findTarget(e)
-      if (target) {
-        removeCanvasObject(fc!, target)
-        fc!.requestRenderAll()
-        erasedAny = true
+      const target = fc!.findTarget(e as TPointerEvent)
+      if (!target) return
+
+      if (target instanceof FabricPath) {
+        const nid = (target as unknown as Record<string, unknown>).__nodeId as string | undefined
+        if (nid && fileRef.current) {
+          const node = fileRef.current.nodes.find(n => n.id === nid)
+          if (node && node.type === 'drawing') {
+            const vp = fc!.getViewportPoint(e as TPointerEvent)
+            const inv = fabricUtil.invertTransform(fc!.viewportTransform!)
+            const pt = fabricUtil.transformPoint(new FabricPoint(vp.x, vp.y), inv)
+            const eraseRadius = Math.max(8, (node.paths[0]?.strokeWidth ?? 4) * 1.5)
+            const remaining = splitFabricPath(target, pt.x, pt.y, eraseRadius)
+
+            fc!.remove(target)
+            fileRef.current.nodes = fileRef.current.nodes.filter(n => n.id !== nid)
+
+            for (const sub of remaining) {
+              const newId = generateNodeId()
+              const fp = new FabricPath(sub.d, {
+                stroke: sub.stroke,
+                strokeWidth: sub.strokeWidth,
+                fill: '',
+                selectable: true,
+                evented: true,
+              })
+              ;(fp as unknown as Record<string, unknown>).__nodeId = newId
+              fc!.add(fp)
+
+              const bb = fp.getBoundingRect()
+              const newNode: CanvasDrawingNode = {
+                id: newId,
+                type: 'drawing',
+                x: bb.left, y: bb.top,
+                width: bb.width, height: bb.height,
+                paths: [{ points: sub.points, strokeColor: sub.stroke, strokeWidth: sub.strokeWidth }],
+              }
+              fileRef.current!.nodes.push(newNode)
+            }
+
+            applyFabricToolModeFromStore(fc!)
+            fc!.requestRenderAll()
+            erasedAny = true
+            return
+          }
+        }
       }
+
+      removeCanvasObject(fc!, target)
+      fc!.requestRenderAll()
+      erasedAny = true
     }
 
     function onEraseMove(e: TPointerEventInfo) {
@@ -513,61 +683,6 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
         erasing = true
         erasedAny = false
         tryEraseAt(e.e)
-        return
-      }
-
-      /* --- Connector tool: click two objects --- */
-      if (activeTool === 'connect') {
-        const target = fc!.findTarget(e.e)
-        if (!target) return
-        const targetCanonId = canonicalNodeId(target)
-        if (!targetCanonId) return
-
-        if (!connectFromRef.current) {
-          // First click: store source and add a visual ring
-          const bb = target.getBoundingRect()
-          const pad = 6
-          const ring = new FabricRect({
-            left: bb.left - pad,
-            top: bb.top - pad,
-            width: bb.width + pad * 2,
-            height: bb.height + pad * 2,
-            fill: 'transparent',
-            stroke: '#e03131',
-            strokeWidth: 2,
-            strokeDashArray: [6, 3],
-            rx: 4, ry: 4,
-            selectable: false,
-            evented: false,
-          })
-          fc!.add(ring)
-          fc!.requestRenderAll()
-          connectFromRef.current = { obj: target, nodeId: targetCanonId, ring }
-          return
-        }
-
-        // Second click
-        const fromId = connectFromRef.current.nodeId
-        if (fromId === targetCanonId) {
-          clearConnectRing(fc!)
-          return
-        }
-
-        const fromCenter = connectFromRef.current.obj.getCenterPoint()
-        const toCenter = target.getCenterPoint()
-        const edgeId = generateNodeId()
-
-        addArrowToCanvas(fc!, fromCenter.x, fromCenter.y, toCenter.x, toCenter.y, edgeId, strokeColor)
-
-        const edge: CanvasEdge = {
-          id: edgeId,
-          fromNode: fromId,
-          toNode: targetCanonId,
-          color: strokeColor,
-        }
-        if (fileRef.current) fileRef.current.edges.push(edge)
-        snapshotAndDirty()
-        clearConnectRing(fc!)
         return
       }
 
@@ -599,42 +714,6 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
 
         const node: CanvasTextNode = {
           id: nodeId, type: 'text', x: pt.x, y: pt.y, width: 200, height: 30, text: 'Type here…',
-        }
-        if (fileRef.current) fileRef.current.nodes.push(node)
-        snapshotAndDirty()
-      }
-
-      /* --- Sticky note --- */
-      if (activeTool === 'sticky') {
-        const nodeId = generateNodeId()
-        const colors = ['#fff3bf', '#d3f9d8', '#d0ebff', '#fcc2d7']
-        const color = colors[Math.floor(Math.random() * colors.length)]!
-        const size = 150
-        const rect = new FabricRect({
-          left: pt.x, top: pt.y, width: size, height: size,
-          fill: color, rx: 6, ry: 6,
-          selectable: true, evented: true,
-          shadow: new FabricShadow({ color: 'rgba(0,0,0,0.12)', blur: 6, offsetX: 2, offsetY: 2 }),
-        })
-        ;(rect as unknown as Record<string, unknown>).__nodeId = nodeId
-        fc!.add(rect)
-
-        const tb = new FabricTextbox('Note…', {
-          left: pt.x + 10, top: pt.y + 10, width: size - 20,
-          fontSize: 14, fill: '#212529', editable: true, selectable: true, evented: true,
-        })
-        ;(tb as unknown as Record<string, unknown>).__nodeId = nodeId + '_text'
-        fc!.add(tb)
-        useCanvasStore.getState().setActiveTool('select')
-        applyFabricToolModeFromStore(fc!)
-        fc!.setActiveObject(tb)
-        tb.enterEditing()
-        fc!.renderAll()
-        setTextBar(readTextBarFromObject(tb))
-
-        const node: CanvasStickyNode = {
-          id: nodeId, type: 'sticky', x: pt.x, y: pt.y,
-          width: size, height: size, text: 'Note…', color,
         }
         if (fileRef.current) fileRef.current.nodes.push(node)
         snapshotAndDirty()
@@ -756,6 +835,7 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
       syncFabricToFile()
       const json = serializeCanvas(fileRef.current)
       await vaultFs.writeTextFile(pathRef.current, json)
+      syncPush(pathRef.current)
       markSaved()
     } catch (e) {
       console.error('Canvas save failed', e)
@@ -823,8 +903,8 @@ export function CanvasEditor({ path, onOpenNotePath }: { path: string; onOpenNot
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
 
-      const toolMap: Record<string, typeof activeTool> = {
-        v: 'select', p: 'draw', t: 'text', n: 'sticky', c: 'connect', e: 'erase',
+      const toolMap: Record<string, CanvasActiveTool> = {
+        v: 'select', p: 'draw', t: 'text', e: 'erase',
       }
       const tool = toolMap[e.key]
       if (tool) {
@@ -967,6 +1047,9 @@ function syncFabricToFileStatic(fc: FabricCanvas | null, file: CanvasFile | null
       if (isStickyText) {
         if (node.type === 'sticky' && obj instanceof FabricTextbox) {
           node.text = obj.text ?? node.text
+          const ranges = fabricUtil.stylesToArray(obj.styles, obj.text ?? '')
+          if (ranges.length > 0) node.textStyles = ranges
+          else delete node.textStyles
         }
         return
       }
@@ -984,6 +1067,9 @@ function syncFabricToFileStatic(fc: FabricCanvas | null, file: CanvasFile | null
         if (obj.fontWeight != null) node.fontWeight = obj.fontWeight as string | number
         if (obj.fontStyle != null) node.fontStyle = obj.fontStyle as string
         if (obj.underline != null) node.underline = obj.underline
+        const ranges = fabricUtil.stylesToArray(obj.styles, obj.text ?? '')
+        if (ranges.length > 0) node.styles = ranges
+        else delete node.styles
       }
       if (node.type === 'sticky') {
         node.width = (obj.width ?? node.width) * (obj.scaleX ?? 1)
@@ -1049,6 +1135,7 @@ function renderCanvasFile(fc: FabricCanvas, file: CanvasFile, isAlive?: () => bo
         fontWeight: node.fontWeight as number | string | undefined,
         fontStyle: node.fontStyle,
         underline: node.underline,
+        styles: fabricUtil.stylesFromArray(node.styles ?? [], node.text),
         editable: true,
         selectable: true, evented: true,
       })
@@ -1068,7 +1155,9 @@ function renderCanvasFile(fc: FabricCanvas, file: CanvasFile, isAlive?: () => bo
 
       const tb = new FabricTextbox(node.text, {
         left: node.x + 10, top: node.y + 10, width: node.width - 20,
-        fontSize: 14, fill: '#212529', editable: true, selectable: true, evented: true,
+        fontSize: 14, fill: '#212529',
+        styles: fabricUtil.stylesFromArray(node.textStyles ?? [], node.text),
+        editable: true, selectable: true, evented: true,
       })
       ;(tb as unknown as Record<string, unknown>).__nodeId = node.id + '_text'
       fc.add(tb)

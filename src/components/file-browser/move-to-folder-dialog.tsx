@@ -40,10 +40,11 @@ function FolderRow({
 
   return (
     <>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         className={cn(
-          'flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
+          'flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors cursor-pointer',
           isSelected
             ? 'bg-accent/15 text-accent font-medium'
             : 'text-fg-secondary hover:bg-bg-tertiary',
@@ -51,6 +52,9 @@ function FolderRow({
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => onSelect(node.path)}
         onDoubleClick={() => onToggle(node.path)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(node.path) }
+        }}
       >
         {hasChildren ? (
           <button
@@ -68,7 +72,7 @@ function FolderRow({
         )}
         <Folder className="size-4 shrink-0 text-amber-500/80" />
         <span className="truncate">{node.name}</span>
-      </button>
+      </div>
 
       {node.expanded && node.children?.map((child) => (
         <FolderRow

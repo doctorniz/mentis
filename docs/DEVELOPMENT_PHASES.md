@@ -2,9 +2,11 @@
 
 ## Phase 1 — Web MVP (Weeks 1–12)
 
-**Goal:** A usable web app with markdown editing, PDF file management, unlimited canvas, and four dedicated views — all in the browser, offline-capable.
+**Goal:** A usable web app with markdown editing, PDF file management, unlimited canvas, wiki graph view, quick-capture Board, and a **Vault / Search / Graph / Board** shell (plus **New** popover) — all in the browser, offline-capable.
 
 **Pre-launch scratch list:** [LAUNCH_DEFERRALS.md](./LAUNCH_DEFERRALS.md) — track items to clear before public release.
+
+**License:** Source is under **BSL 1.1** — [`LICENSE`](../LICENSE). High-level summaries: [ARCHITECTURE.md](./ARCHITECTURE.md) §10, [PRD.md](./PRD.md) §6, [CONVENTIONS.md](./CONVENTIONS.md) (License). **AI-assisted development** is noted in the README and [CURSOR.md](./CURSOR.md).
 
 How this file is organized:
 
@@ -23,10 +25,10 @@ How this file is organized:
 - [x] File System Access API adapter (Chromium) — `FsapiAdapter` wraps `showDirectoryPicker()`; feature-detected on vault landing
 - [x] Vault open/create flow
 - [x] `_marrow/` directory bootstrapping (config.json, empty folders)
-- [x] **View Manager** — four-view navigation shell (File Browser, Notes, Search, New)
+- [x] **View Manager** — shell: Vault, Search, Graph, Board; **New** via popover (`Ctrl+N`); legacy `ViewMode.FileBrowser` / `Notes` route into unified `VaultView`
 - [x] Sidebar navigation component
 - [x] Basic layout: sidebar + main content pane
-- [x] Keyboard shortcut system (Cmd+1/2/3/4 for views; Ctrl/Cmd+B toggles sidebar)
+- [x] Keyboard shortcut system (`Ctrl/Cmd+1` Vault, `+2` Search, `+3` Graph; `Ctrl/Cmd+N` New popover; `Ctrl/Cmd+F` Search; `Ctrl/Cmd+\` toggles sidebar)
 
 ### Week 3–4: Markdown Editor
 
@@ -139,7 +141,7 @@ How this file is organized:
 
 A user can:
 - ✅ Create and open a vault
-- ✅ Navigate via four views (File Browser, Notes, Search, New)
+- ✅ Navigate via Vault (🌳 tree / 🗂️ browse), Search, Graph, and New (popover); open markdown, PDF, canvas, and images from the vault
 - ✅ Write and edit markdown notes with WYSIWYG rendering
 - ✅ Use wiki-links to connect notes with backlink tracking
 - ✅ Use slash commands for quick formatting
@@ -196,7 +198,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 
 ### Completed archive — P2 — Should Fix
 
-- [x] **Tests: unit test suite**: 20 files under `tests/` (256 tests) — core: `markdown.test.ts`, `markdown-bridge.test.ts`, `search.test.ts`, `canvas.test.ts`, `canvas-undo.test.ts`, `toast.test.ts`, `fs-adapter.test.ts`, `file-utils.test.ts`; PDF: `pdf-operations.test.ts`, `pdf-search-text.test.ts`, `pdf-store-colors.test.ts`, `pdf-annotation-writer.test.ts`; notes/vault: `daily-note.test.ts`, `folder-ops.test.ts`, `graph.test.ts`, `snapshot.test.ts`, `editor-tab-from-path.test.ts`; misc: `assets.test.ts`, `download-file.test.ts`, `export-pdf.test.ts`. `vitest.config.ts`; `happy-dom` for DOM-needing suites
+- [x] **Tests: unit test suite**: 21 files under `tests/` (261 tests) — core: `markdown.test.ts`, `markdown-bridge.test.ts`, `search.test.ts`, `canvas.test.ts`, `canvas-undo.test.ts`, `toast.test.ts`, `fs-adapter.test.ts`, `file-utils.test.ts`; PDF: `pdf-operations.test.ts`, `pdf-search-text.test.ts`, `pdf-store-colors.test.ts`, `pdf-annotation-writer.test.ts`; notes/vault: `daily-note.test.ts`, `folder-ops.test.ts`, `graph.test.ts`, `snapshot.test.ts`, `editor-tab-from-path.test.ts`, `image-edit-pipeline.test.ts`; misc: `assets.test.ts`, `download-file.test.ts`, `export-pdf.test.ts`. `vitest.config.ts`; `happy-dom` for DOM-needing suites
 - [x] **Service Worker caching strategy**: `sw.js` upgraded to v2 — `_next/static/*` assets use **cache-first** (immutable content-hashed bundles cached on first fetch, served instantly thereafter); all other same-origin GETs use **stale-while-revalidate** (serve cached, refresh in background); precache still seeds `/`, `/manifest.json`, `/icon.svg` on install; old caches pruned on activate
 - [x] **`next.config.ts` `headers()`**: removed dead `headers()` config (no effect with `output: 'export'`); added inline comment documenting how to set COOP/COEP headers on Vercel, Netlify, Cloudflare, S3+CloudFront, and nginx
 - [x] **PWA icons**: generated `icon-192.png` and `icon-512.png` from SVG via sharp; manifest updated with all three icon entries (SVG `any`, PNG 192 `any maskable`, PNG 512 `any maskable`); `layout.tsx` updated with PNG favicon and apple-touch-icon links; SW precache list includes both PNGs
@@ -225,6 +227,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [x] **Graph view**: `buildNoteGraph` scans all markdown files, extracts wiki-links, and resolves them to build a node+edge model; `filterGraphByFolder` and `graphFolders` support folder filtering; `GraphCanvas` renders an interactive force-directed layout on Canvas 2D (repulsion, attraction, center gravity, damping) with zoom/pan/drag/click-to-open; `GraphView` wired as 5th app view with sidebar nav (GitFork icon, Ctrl+3), folder filter dropdown, node/link counts; 13 tests
 - [x] **`idb-keyval` unused**: removed — zero imports in codebase
 - [x] **Canvas undo/redo**: `CanvasUndoStack` class stores deep-cloned `CanvasFile` snapshots (capped at 50); every mutation (add node/edge/frame, draw, erase, delete) snapshots before changing state; `handleUndo`/`handleRedo` restore the snapshot and re-render the Fabric canvas; Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y keyboard shortcuts; Undo/Redo toolbar buttons with disabled state; 11 tests
+- [x] **Board view**: quick-capture notice board (`Ctrl+4`, sidebar "Board" with `LayoutGrid` icon). **Thoughts** stored as `.md` files in `_board/` (hidden from file tree, file browser, and search index via `isNotesTreeHidden` + `isHiddenPath`). Frontmatter: `type: thought`, `color`, `created`, `modified` — title derived from first `# H1` line if present. Masonry CSS-columns layout with pastel-tinted cards. Click to inline-edit via minimal Tiptap (bold/italic/underline/lists/links — keyboard shortcuts only, no toolbar, no font changes; `board-extensions.ts`). Image thoughts: file picker → `_board/_assets/`, rendered with embedded preview. Color picker via right-click on "Thought" button. `useBoardStore` (Zustand + Immer) manages CRUD; `lib/board/index.ts` for parse/serialize. Future: bookmarks, lists, reminders, tasks, audio — same `_board/` folder differentiated by `type` frontmatter.
 - [x] **Accessibility audit**: comprehensive pass across all components — `aria-label` added to all icon-only `ToolBtn` components (note toolbar, PDF toolbar, canvas toolbar), all `<canvas>` elements labeled (`role="application"` where interactive), file tree uses `role="tree"`/`role="treeitem"`/`role="group"` with `aria-expanded`/`aria-selected`/`aria-level`, PDF outline uses tree roles with separated expand/navigate controls (fixes nested `<button>` issue), PDF page panel buttons labeled with `aria-current="page"`, drop zones labeled with `role="region"`, all dialog inputs have `aria-label`, color swatches have human-readable labels, hidden file inputs labeled, TipTap editor surface has `aria-label`/`role="textbox"`
 
 ### Completed archive — P4 — UX Overhaul & Missing Features
@@ -236,7 +239,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [x] **Tiptap task list formatting error**: TaskItem renders `<label>` + `<div>` inside each `li` — added `flex: 1; min-width: 0` to the `<div>` content wrapper to prevent collapse; styled checkbox with `accent-color`, added checked state strikethrough, fixed `<label>` alignment
 
 #### Architecture / Navigation
-- [x] **Unify File Browser + Notes into "Vault" view**: replaced separate "File Browser" and "Notes" sidebar entries with a single **Vault** entry (`ViewMode.Vault`); `VaultView` renders a segmented control at the top — emoji-only 🌳 (tree: file tree + editor) and 🗂️ (browse: grid/list file browser), with `aria-label` / `title` for accessibility; `vaultMode` persisted to `localStorage`; all cross-view navigation (search result click, canvas "open note" callback, new-file creation) updated to target `ViewMode.Vault` with the correct sub-mode; keyboard shortcut `Ctrl+1` = Vault, `Ctrl+2` = Search, `Ctrl+3` = Graph; `ViewMode.FileBrowser` and `ViewMode.Notes` kept as deprecated aliases that fall through to `VaultView`
+- [x] **Unify File Browser + Notes into "Vault" view**: replaced separate "File Browser" and "Notes" sidebar entries with a single **Vault** entry (`ViewMode.Vault`); `VaultView` renders a tab bar — **Preview** (file tree + editor), **Files** (grid/list browser) — plus a **sync-now** icon button when the vault has `sync.provider === 'dropbox'` (calls `triggerFullSync`; disabled until the sync engine is authenticated). Dropbox setup stays under Settings → Sync (`VaultDropboxSyncPanel`). `vaultMode` is persisted per vault path (`ink-vault-layout:<path>`) with legacy fallback `ink-vault-mode`; cross-view navigation targets `ViewMode.Vault` with sub-mode `tree` / `browse`; keyboard shortcut `Ctrl+1` = Vault, `Ctrl+2` = Search, `Ctrl+3` = Graph; `ViewMode.FileBrowser` and `ViewMode.Notes` kept as deprecated aliases that fall through to `VaultView`
 - [x] **File browser move/delete UX**: `MoveToFolderDialog` replaces `prompt()` for move; `ConfirmDialog` replaces `window.confirm` for delete (single + batch)
 - [x] **New button should be a dropdown, not a view**: replaced sidebar "New" nav entry with a `NewFilePopover` (Radix Popover) anchored to a "New" button at the bottom of the nav; step-1 shows Note / PDF / Drawing type cards; step-2 shows name + folder form + create button; `Enter` key submits; after creation, navigates to `ViewMode.Vault` in the correct sub-mode (tree for notes, browse for PDF/drawing); `Ctrl+N` dispatches `ink:open-new-popover` custom event that the popover listens for; `NewView` is kept for the Templates tab (accessible from future settings)
 - [x] **Settings panel**: `SettingsDialog` (Radix Dialog + Tabs) reachable from sidebar "Settings" button and `Ctrl+,`; three tabs — **Vault** (vault name, default new-file folder, template folder), **Editor** (auto-save toggle, save interval, save-on-blur), **Snapshots** (enabled, max per file, retention days); changes buffered locally until "Save changes" is clicked, which calls `saveVaultConfig(vaultFs, draft)` and `updateConfig(draft)` then closes; `VaultConfig` extended with `templateFolder` and `defaultNewFileFolder`; `template-store.ts` functions accept an optional `dir` parameter so the configured folder is respected; `new-file-popover` and `new-view` use `config.defaultNewFileFolder` as the initial folder selection
@@ -307,7 +310,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [x] Export note as PDF (via browser print or pdf-lib)
 - [x] Export note as plain `.md` (download from Export → Markdown)
 
-### Week 16: Graph View
+### Week 16: Graph View *(delivered in Phase 1 web — rows kept as history)*
 - [x] Graph view of note connections via wiki-links
 - [x] Node rendering: one node per note, sized by connection count
 - [x] Edge rendering: lines connecting linked notes
@@ -315,13 +318,31 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [x] Zoom and pan on graph
 - [x] Filter graph by folder or tag
 
-### Week 17–18: Marrow Sync
+### Week 17–18: Cloud Sync (Dropbox)
+- [x] `RemoteSyncProvider` interface + shared types (`lib/sync/types.ts`)
+- [x] IndexedDB-backed token store (`lib/sync/token-store.ts`)
+- [x] IndexedDB-backed sync manifest / state (`lib/sync/sync-state.ts`)
+- [x] SHA-256 local change detector (`lib/sync/change-detector.ts`)
+- [x] Dropbox provider — HTTP API v2, OAuth 2 PKCE (`lib/sync/providers/dropbox.ts`)
+- [x] Nextcloud provider — WebDAV PROPFIND/GET/PUT; Login Flow v2 (popup) + manual app password + OAuth (`lib/sync/providers/nextcloud.ts`)
+- [x] `SyncManager` — fullSync (vault open), pushFile (after save), pull (periodic poll), last-write-wins conflict resolution (`lib/sync/sync-manager.ts`)
+- [x] `VaultConfig.sync` settings (`types/vault.ts`)
+- [x] Settings dialog **Sync** tab — Dropbox remote path, poll interval, connect/disconnect (no separate “enable sync”)
+- [x] `SyncProvider` React context + `useSyncPush` hook (`contexts/sync-context.tsx`)
+- [x] Sync push hooked into markdown, canvas, and PDF save paths
+- [x] Sidebar sync status icon (idle/syncing/error)
+- [x] OAuth callback route `/auth/dropbox` — `src/app/auth/dropbox/page.tsx` + `lib/sync/oauth-session.ts`
+- [ ] Background poll auto-start on vault open
+- [ ] Exclude patterns (`_marrow/snapshots/`, etc.)
+- [ ] Conflict toast with "View details" link
+- [ ] Bandwidth-aware large file handling
+
+### Week 17–18: Marrow Sync (future proprietary sync)
 - [ ] Account system (email + passphrase)
 - [ ] CRDT implementation for markdown conflict resolution
 - [ ] E2E encryption for sync data
 - [ ] Sync service backend (API, storage, auth)
 - [ ] Last-write-wins with `.conflict` copy for binary files (PDFs)
-- [ ] Sync status indicators in UI
 - [ ] Pricing tiers and payment integration
 
 ---

@@ -35,7 +35,7 @@ src/
 │   └── ui/           # Shared primitives (Button)
 ├── contexts/         # VaultFsProvider, NotesWorkspaceProvider
 ├── lib/
-│   ├── fs/           # FileSystemAdapter interface + OPFS implementation
+│   ├── fs/           # FileSystemAdapter + OPFS + FSAPI (showDirectoryPicker) adapters
 │   ├── vault/        # Vault lifecycle (create, discover, config)
 │   ├── editor/       # Tiptap extensions, slash/wiki, markdown bridge
 │   ├── markdown/     # gray-matter parsing, wiki-link/tag extraction
@@ -61,7 +61,7 @@ src/
 | Canvas | Fabric.js (infinite surface) |
 | Search | MiniSearch |
 | State | Zustand + Immer |
-| File System | OPFS (all browsers) |
+| File System | OPFS (all browsers); File System Access API on Chromium (“open folder”) |
 | Offline | Service Worker (stale-while-revalidate), PWA manifest |
 
 ## Getting Started
@@ -72,6 +72,8 @@ src/
 - [pnpm](https://pnpm.io/) 9+
 
 ### Setup
+
+Optional **Dropbox sync** — set `NEXT_PUBLIC_DROPBOX_CLIENT_ID` in `.env.local`; connect under **Settings → Sync**; when enabled, the Vault toolbar shows a **sync** button next to Preview / Files. See [`docs/CLOUD_SYNC.md`](docs/CLOUD_SYNC.md).
 
 ```bash
 # Install dependencies
@@ -115,18 +117,21 @@ Detailed documentation lives in the `docs/` folder:
 | [Cursor / AI](docs/CURSOR.md) | Cursor rules and AI workflow for this repo |
 | [PDF Workflow](docs/PDF_WORKFLOW.md) | Detailed PDF editing UX specification |
 | [Risks](docs/RISKS.md) | Risk register with mitigations |
+| [Deployment](docs/DEPLOYMENT.md) | Static export, COOP/COEP headers on hosting |
+| [Cloud sync](docs/CLOUD_SYNC.md) | Dropbox env var, OAuth, redirect URI |
+| [License](LICENSE) | Business Source License 1.1 (full text); summaries in Architecture §10, PRD §6, Conventions |
 
 
 ## Development Phases
 
-1. **Phase 1 (Weeks 1–12):** Web MVP — markdown editor, PDF browser/editor, unlimited canvas, four-view navigation, offline PWA ✅
-2. **Phase 2 (Weeks 13–18):** Desktop app (Tauri), templates, graph view, Marrow Sync
+1. **Phase 1 (Weeks 1–12):** Web MVP — markdown editor, PDF browser/editor, unlimited canvas, wiki graph view, Vault (tree + browse) / Search / Graph shell + New popover, offline PWA ✅
+2. **Phase 2 (Weeks 13–18):** Desktop app (Tauri), extended template features, Marrow Sync
 3. **Phase 3 (Weeks 19–26):** Mobile (Capacitor), stylus support, OCR, plugin system, public launch
 
-## AI Assistance
+## AI assistance
 
-This project was developed with **AI-assisted** tooling. Human maintainers at Marrow Group review and integrate changes; generated material can still contain mistakes. 
+This project was developed with **AI-assisted** tooling (e.g. IDE-integrated agents and language models). Human maintainers at Marrow Group review and integrate changes; generated material can still contain mistakes. **You are responsible** for validating behaviour, security, privacy, and licensing for your use case. See [`docs/CURSOR.md`](docs/CURSOR.md) for workflow expectations.
 
 ## License
 
-Licensed under the **Business Source License 1.1** — see [`LICENSE`](./LICENSE).
+Licensed under the **Business Source License 1.1** — see [`LICENSE`](./LICENSE). Short summary: **Marrow Group** / **Mentis**; production use is permitted under the **Additional Use Grant** in `LICENSE`; **Change Date** **2030-04-09**, then **MPL 2.0** for that version as stated in `LICENSE`. BSL is not the same as OSI “open source” before the Change Date — read the full file. Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §10, [`docs/PRD.md`](docs/PRD.md) §6.

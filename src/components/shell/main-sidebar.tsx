@@ -3,6 +3,7 @@
 import {
   FileStack,
   GitFork,
+  LayoutGrid,
   LogOut,
   Monitor,
   Moon,
@@ -27,6 +28,7 @@ const NAV: { mode: ViewMode; label: string; icon: typeof Vault; shortcut: string
   { mode: ViewMode.Vault, label: 'Vault', icon: Vault, shortcut: '1' },
   { mode: ViewMode.Search, label: 'Search', icon: Search, shortcut: '2' },
   { mode: ViewMode.Graph, label: 'Graph', icon: GitFork, shortcut: '3' },
+  { mode: ViewMode.Board, label: 'Board', icon: LayoutGrid, shortcut: '4' },
 ]
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [

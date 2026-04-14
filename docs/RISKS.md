@@ -94,6 +94,22 @@
 | **Mitigation** | Request persistent storage (`navigator.storage.persist()`). Show storage usage in vault settings. Warn users approaching limits. Encourage FSAPI or desktop app for large vaults. Provide vault export/backup functionality. |
 | **Monitoring** | Storage quota monitoring in the app |
 
+## Legal, licensing & process
+
+| | |
+|---|---|
+| **Risk** | Misinterpretation of **BSL 1.1** (distribution, commercial use, or “open source” expectations) |
+| **Impact** | Medium–High — contractual or compliance exposure for Marrow Group or downstream users |
+| **Likelihood** | Moderate — BSL is less familiar than MIT/Apache |
+| **Mitigation** | Single source of truth: root `LICENSE`. Summaries in README + `docs/` (Architecture §10, PRD §6, Conventions) must stay aligned with `LICENSE`. Legal review before changing Parameters. |
+
+| | |
+|---|---|
+| **Risk** | Undetected errors or license conflicts in **AI-suggested** code |
+| **Impact** | Medium — bugs, security issues, or incompatible snippets |
+| **Likelihood** | Moderate |
+| **Mitigation** | Human review for merges; README AI disclosure; security-sensitive paths get extra scrutiny; run tests and lint in CI. |
+
 ## Risk Matrix
 
 | # | Risk | Likelihood | Impact | Priority |

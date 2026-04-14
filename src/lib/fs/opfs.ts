@@ -144,28 +144,49 @@ export class OpfsAdapter implements FileSystemAdapter {
 
     const oldResolved = await this.resolvePath(oldPath)
     const newResolved = await this.resolvePath(newPath)
-    const fileHandle = await oldResolved.parent.getFileHandle(oldResolved.name)
 
-    // Chromium: atomic rename/move (avoids duplicate if copy succeeds but remove fails).
-    type HandleWithMove = FileSystemFileHandle & {
-      move?: (
-        name: string,
-        options?: { parent?: FileSystemDirectoryHandle },
-      ) => Promise<void>
+    type WithMove = { move?: (name: string, options?: { parent?: FileSystemDirectoryHandle }) => Promise<void> }
+
+    let handle: FileSystemFileHandle | FileSystemDirectoryHandle
+    let isDir = false
+    try {
+      handle = await oldResolved.parent.getFileHandle(oldResolved.name)
+    } catch {
+      handle = await oldResolved.parent.getDirectoryHandle(oldResolved.name)
+      isDir = true
     }
-    const h = fileHandle as HandleWithMove
+
+    const h = handle as unknown as WithMove
     if (typeof h.move === 'function') {
       try {
         await h.move(newResolved.name, { parent: newResolved.parent })
         return
-      } catch {
-        // Fall back below (older engines or edge cases).
-      }
+      } catch { /* fall through to manual copy */ }
     }
 
-    const data = await this.readFile(oldPath)
-    await this.writeFile(newPath, data)
-    await this.remove(oldPath)
+    if (isDir) {
+      await this.copyDirRecursive(oldPath, newPath)
+      await this.removeDir(oldPath)
+    } else {
+      const data = await this.readFile(oldPath)
+      await this.writeFile(newPath, data)
+      await this.remove(oldPath)
+    }
+  }
+
+  private async copyDirRecursive(src: string, dest: string): Promise<void> {
+    await this.mkdir(dest)
+    const entries = await this.readdir(src)
+    for (const entry of entries) {
+      const srcChild = entry.path
+      const destChild = dest + '/' + entry.name
+      if (entry.isDirectory) {
+        await this.copyDirRecursive(srcChild, destChild)
+      } else {
+        const data = await this.readFile(srcChild)
+        await this.writeFile(destChild, data)
+      }
+    }
   }
 
   async copy(sourcePath: string, destPath: string): Promise<void> {

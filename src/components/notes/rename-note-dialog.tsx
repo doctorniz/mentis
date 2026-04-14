@@ -8,6 +8,7 @@ import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { removeSearchDocument } from '@/lib/search/index'
 import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
+import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 
 function parentDir(path: string): string {
   const i = path.lastIndexOf('/')
@@ -61,11 +62,11 @@ export function RenameNoteDialog({
     const fileName = trimmed.toLowerCase().endsWith('.md') ? trimmed : `${trimmed}.md`
     const parent = parentDir(currentPath)
     const newPath = joinPath(parent, fileName)
-    if (newPath === currentPath) {
+    if (vaultPathsPointToSameFile(newPath, currentPath)) {
       onOpenChange(false)
       return
     }
-    if (await vaultFs.exists(newPath)) {
+    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, currentPath)) {
       setError('A note with that name already exists.')
       return
     }

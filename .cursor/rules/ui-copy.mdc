@@ -1,0 +1,10 @@
+---
+description: Minimal UI copy — avoid filler hints under labels
+globs: src/components/**/*.tsx
+---
+
+# Settings and form UI
+
+- Prefer **label + control only**. Do not add a second line of “hint” or explanatory text under every row unless it prevents a real mistake (e.g. non-obvious security, destructive action, or a constraint users cannot infer).
+- If copy is optional marketing or restates the label in other words, **omit it**.
+- Reserve subtitles/`hint` for: irreversible actions, format requirements the placeholder does not show, or rare edge cases worth one short sentence.

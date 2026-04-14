@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
-  ArrowRight,
   Bold,
+  ChevronDown,
   Download,
   Eraser,
   ImagePlus,
@@ -11,16 +12,12 @@ import {
   MousePointer2,
   Pencil,
   Redo2,
-
-  StickyNote,
   Type,
   Underline,
   Undo2,
 } from 'lucide-react'
-import { useCanvasStore } from '@/stores/canvas'
+import { useCanvasStore, type CanvasActiveTool } from '@/stores/canvas'
 import { cn } from '@/utils/cn'
-
-type CanvasTool = 'select' | 'draw' | 'text' | 'sticky' | 'connect' | 'erase'
 
 /** Live state for the text-formatting strip (plain + sticky text boxes only). */
 export type CanvasTextBarState = {
@@ -43,12 +40,10 @@ const FONT_CHOICES = [
 
 const FONT_SIZES = [10, 12, 14, 16, 18, 24, 32, 48] as const
 
-const TOOLS: { id: CanvasTool; icon: typeof Pencil; label: string; key: string; hint?: string }[] = [
+const TOOLS: { id: CanvasActiveTool; icon: typeof Pencil; label: string; key: string; hint?: string }[] = [
   { id: 'select', icon: MousePointer2, label: 'Select', key: 'V', hint: 'Move and resize objects. Double-click text to edit.' },
   { id: 'draw', icon: Pencil, label: 'Draw', key: 'P' },
   { id: 'text', icon: Type, label: 'Text', key: 'T', hint: 'Click the canvas to place. Then you are in Select: drag to move, double-click to edit.' },
-  { id: 'sticky', icon: StickyNote, label: 'Sticky', key: 'N', hint: 'Click the canvas to place a note. Double-click the text to edit.' },
-  { id: 'connect', icon: ArrowRight, label: 'Connect', key: 'C' },
   { id: 'erase', icon: Eraser, label: 'Erase', key: 'E' },
 ]
 
@@ -60,6 +55,21 @@ const PALETTE = [
 ]
 
 const GLASS = 'bg-neutral-900/75 backdrop-blur-xl border border-white/[0.08] shadow-2xl'
+
+const fontMenuContentClass = cn(
+  'z-[100] min-w-[10.5rem] rounded-lg border border-white/15 bg-neutral-950/95 p-1 shadow-xl backdrop-blur-md',
+)
+
+const fontMenuItemClass = cn(
+  'flex cursor-pointer items-center rounded-md px-2.5 py-1.5 text-left text-sm outline-none',
+  'text-white/90 data-[highlighted]:bg-white/15 data-[disabled]:pointer-events-none data-[disabled]:opacity-40',
+)
+
+function fontFamilyTriggerMeta(fontFamily: string): { label: string; previewFamily: string } {
+  const preset = FONT_CHOICES.find((f) => f.value === fontFamily)
+  if (preset) return { label: preset.label, previewFamily: preset.value }
+  return { label: 'Custom', previewFamily: fontFamily }
+}
 
 function hexToRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -107,7 +117,7 @@ export function CanvasToolbar({
   const exportRef = useRef<HTMLDivElement>(null)
   const exportBtnRef = useRef<HTMLButtonElement>(null)
 
-  const showBrushControls = activeTool === 'draw' || activeTool === 'connect'
+  const showBrushControls = activeTool === 'draw'
 
   useEffect(() => setHexInput(strokeColor), [strokeColor])
 
@@ -151,6 +161,7 @@ export function CanvasToolbar({
   const sizeOptions = textBar
     ? [...new Set([...FONT_SIZES, roundedSize])].sort((a, b) => a - b)
     : []
+  const fontTriggerMeta = textBar ? fontFamilyTriggerMeta(textBar.fontFamily) : null
 
   return (
     <>
@@ -225,47 +236,60 @@ export function CanvasToolbar({
               </select>
             </label>
 
-            <select
-              aria-label="Font family"
-              value={
-                FONT_CHOICES.some((f) => f.value === textBar.fontFamily)
-                  ? textBar.fontFamily
-                  : '__custom__'
-              }
-              onChange={(e) => {
-                if (e.target.value !== '__custom__') onTextStyleChange({ fontFamily: e.target.value })
-              }}
-              className="max-w-[120px] cursor-pointer rounded-lg border border-white/15 bg-white/10 px-1.5 py-1 text-xs text-white/90 outline-none focus:border-white/30"
-            >
-              {!FONT_CHOICES.some((f) => f.value === textBar.fontFamily) && (
-                <option value="__custom__" className="bg-neutral-900">
-                  Custom
-                </option>
-              )}
-              {FONT_CHOICES.map((f) => (
-                <option key={f.value} value={f.value} className="bg-neutral-900">
-                  {f.label}
-                </option>
-              ))}
-            </select>
+            <DropdownMenu.Root modal={false}>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  type="button"
+                  aria-label="Font family"
+                  title="Font family"
+                  className="flex max-w-[140px] min-w-[6.5rem] cursor-pointer items-center justify-between gap-1 rounded-lg border border-white/15 bg-white/10 px-1.5 py-1 text-left text-xs text-white/90 outline-none focus:border-white/30 focus-visible:ring-1 focus-visible:ring-white/30"
+                >
+                  <span
+                    className="min-w-0 flex-1 truncate"
+                    style={{ fontFamily: fontTriggerMeta!.previewFamily }}
+                  >
+                    {fontTriggerMeta!.label}
+                  </span>
+                  <ChevronDown className="size-3 shrink-0 opacity-70" aria-hidden />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  side="top"
+                  align="start"
+                  sideOffset={6}
+                  className={fontMenuContentClass}
+                >
+                  {FONT_CHOICES.map((f) => (
+                    <DropdownMenu.Item
+                      key={f.value}
+                      className={fontMenuItemClass}
+                      style={{ fontFamily: f.value }}
+                      onSelect={() => onTextStyleChange({ fontFamily: f.value })}
+                    >
+                      {f.label}
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
 
-            <label className="flex cursor-pointer items-center gap-1.5 pl-1">
+            <label className="flex cursor-pointer items-center pl-1">
               <span className="sr-only">Text color</span>
               <input
                 type="color"
                 value={/^#[0-9a-fA-F]{6}$/.test(textBar.fill) ? textBar.fill : '#212529'}
                 onChange={(e) => onTextStyleChange({ fill: e.target.value })}
-                className="size-7 cursor-pointer rounded-md border border-white/20 bg-transparent p-0"
                 title="Text color"
+                className={cn(
+                  'box-border size-7 cursor-pointer rounded-md border border-white/20 p-0',
+                  'appearance-none bg-transparent',
+                  '[&::-webkit-color-swatch-wrapper]:border-none [&::-webkit-color-swatch-wrapper]:p-0',
+                  '[&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-none',
+                  '[&::-moz-color-swatch]:rounded-md [&::-moz-color-swatch]:border-none',
+                )}
               />
             </label>
-
-            <span
-              className="max-w-[11rem] border-l border-white/15 pl-2 text-left text-[10px] leading-tight text-white/55"
-              title="When the box is selected but the cursor is not blinking, double-click to type."
-            >
-              Double-click to edit
-            </span>
           </div>
         </div>
       )}
@@ -280,15 +304,6 @@ export function CanvasToolbar({
             Click the canvas to place a text box. You’ll switch to{' '}
             <span className="font-semibold text-white">Select</span> — drag to move,{' '}
             <span className="font-semibold text-white">double-click</span> to edit.
-          </p>
-        )}
-        {activeTool === 'sticky' && (
-          <p
-            className="max-w-sm px-3 text-center text-[11px] leading-snug text-white/85 drop-shadow-md"
-            role="status"
-          >
-            Click the canvas to place a sticky. Then{' '}
-            <span className="font-semibold text-white">double-click</span> the note text to edit.
           </p>
         )}
         <div

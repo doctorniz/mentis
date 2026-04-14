@@ -5,6 +5,7 @@ import { AppShell } from '@/components/shell/app-shell'
 import { ErrorBoundary } from '@/components/shell/error-boundary'
 import { VaultLanding } from '@/components/landing/vault-landing'
 import { VaultFsProvider, type VaultSessionValue } from '@/contexts/vault-fs-context'
+import { SyncProvider } from '@/contexts/sync-context'
 import { useVaultStore } from '@/stores/vault'
 import { useUiStore } from '@/stores/ui'
 import { useEditorStore } from '@/stores/editor'
@@ -14,6 +15,27 @@ import { setStoredActiveVaultPath } from '@/lib/vault/session-storage'
 import { clearStoredDirectoryHandle } from '@/lib/fs'
 import { clearSearchIndex } from '@/lib/search/index'
 import { Toaster } from '@/components/ui/toaster'
+
+function SyncProviderBridge({
+  session,
+  children,
+}: {
+  session: VaultSessionValue
+  children: React.ReactNode
+}) {
+  const syncConfig = useVaultStore((s) => s.config?.sync)
+  const vaultLabel = useVaultStore((s) => s.config?.name ?? 'My Vault')
+  return (
+    <SyncProvider
+      vaultFs={session.vaultFs}
+      vaultId={session.vaultPath}
+      vaultLabel={vaultLabel}
+      syncConfig={syncConfig}
+    >
+      {children}
+    </SyncProvider>
+  )
+}
 
 export function AppRoot() {
   const [session, setSession] = useState<VaultSessionValue | null>(null)
@@ -58,7 +80,9 @@ export function AppRoot() {
       ) : (
         <ErrorBoundary>
           <VaultFsProvider value={session}>
-            <AppShell onCloseVault={handleCloseVault} />
+            <SyncProviderBridge session={session}>
+              <AppShell onCloseVault={handleCloseVault} />
+            </SyncProviderBridge>
           </VaultFsProvider>
         </ErrorBoundary>
       )}

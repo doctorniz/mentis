@@ -18,6 +18,7 @@ const VIEW_BY_DIGIT: Record<string, ViewMode> = {
   '1': ViewMode.Vault,
   '2': ViewMode.Search,
   '3': ViewMode.Graph,
+  '4': ViewMode.Board,
 }
 
 export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {

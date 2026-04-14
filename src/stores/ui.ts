@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { ViewMode, type VaultLayoutMode } from '@/types/vault'
+import { useVaultStore } from '@/stores/vault'
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
 
@@ -14,6 +15,8 @@ interface UiState {
 
   setActiveView: (view: ViewMode) => void
   setVaultMode: (mode: VaultLayoutMode) => void
+  /** Restore `vaultMode` from `localStorage` for the active vault path (call when vault opens or path changes). */
+  hydrateVaultLayoutForActiveVault: () => void
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   setSidebarWidth: (width: number) => void
@@ -44,6 +47,7 @@ function readStoredVaultMode(): VaultLayoutMode {
   try {
     const v = localStorage.getItem('ink-vault-mode')
     if (v === 'browse' || v === 'tree') return v
+    if (v === 'sync') return 'tree'
   } catch { /* noop */ }
   return 'tree'
 }
@@ -65,7 +69,22 @@ export const useUiStore = create<UiState>()(
     setVaultMode: (mode) =>
       set((state) => {
         state.vaultMode = mode
-        try { localStorage.setItem('ink-vault-mode', mode) } catch { /* noop */ }
+        try {
+          localStorage.setItem('ink-vault-mode', mode)
+          const path = useVaultStore.getState().activeVaultPath
+          if (path) localStorage.setItem(`ink-vault-layout:${path}`, mode)
+        } catch { /* noop */ }
+      }),
+
+    hydrateVaultLayoutForActiveVault: () =>
+      set((state) => {
+        const path = useVaultStore.getState().activeVaultPath
+        if (!path) return
+        try {
+          const v = localStorage.getItem(`ink-vault-layout:${path}`)
+          if (v === 'browse' || v === 'tree') state.vaultMode = v
+          else if (v === 'sync') state.vaultMode = 'tree'
+        } catch { /* noop */ }
       }),
 
     toggleSidebar: () =>

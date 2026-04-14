@@ -152,24 +152,49 @@ export class FsapiAdapter implements FileSystemAdapter {
 
     const oldResolved = await this.resolvePath(oldPath)
     const newResolved = await this.resolvePath(newPath)
-    const fh = await oldResolved.parent.getFileHandle(oldResolved.name)
 
-    type HandleWithMove = FileSystemFileHandle & {
-      move?: (dest: FileSystemDirectoryHandle, name: string) => Promise<void>
+    type WithMove = { move?: (dest: FileSystemDirectoryHandle, name: string) => Promise<void> }
+
+    let handle: FileSystemFileHandle | FileSystemDirectoryHandle
+    let isDir = false
+    try {
+      handle = await oldResolved.parent.getFileHandle(oldResolved.name)
+    } catch {
+      handle = await oldResolved.parent.getDirectoryHandle(oldResolved.name)
+      isDir = true
     }
-    const h = fh as HandleWithMove
+
+    const h = handle as unknown as WithMove
     if (typeof h.move === 'function') {
       try {
         await h.move(newResolved.parent, newResolved.name)
         return
-      } catch {
-        /* fall through to manual copy */
-      }
+      } catch { /* fall through to manual copy */ }
     }
 
-    const data = await this.readFile(oldPath)
-    await this.writeFile(newPath, data)
-    await this.remove(oldPath)
+    if (isDir) {
+      await this.copyDirRecursive(oldPath, newPath)
+      await this.removeDir(oldPath)
+    } else {
+      const data = await this.readFile(oldPath)
+      await this.writeFile(newPath, data)
+      await this.remove(oldPath)
+    }
+  }
+
+  private async copyDirRecursive(src: string, dest: string): Promise<void> {
+    await this.mkdir(dest)
+    const entries = await this.readdir(src)
+    for (const entry of entries) {
+      const srcChild = entry.path
+      const destChild = dest + '/' + entry.name
+      if (entry.isDirectory) {
+        await this.copyDirRecursive(srcChild, destChild)
+      } else {
+        const data = await this.readFile(srcChild)
+        await this.writeFile(destChild, data)
+      }
+    }
   }
 
   async copy(src: string, dest: string): Promise<void> {

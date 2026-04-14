@@ -2,14 +2,24 @@
 
 ## License
 
-The project is licensed under the **Business Source License 1.1** — see the root [`LICENSE`](../LICENSE) file. `package.json` declares `"license": "SEE LICENSE IN LICENSE"`. The README includes an **AI assistance** notice; it does not override the license.
+| Item | Detail |
+|---|---|
+| **Full text** | Root [`LICENSE`](../LICENSE) — **Business Source License 1.1** (MariaDB-style parameters + terms). |
+| **Licensor / work** | **Marrow Group** / **Mentis** (this repository). |
+| **Additional Use Grant** | Production use for **any purpose** (see `LICENSE` — adjust only with legal review). |
+| **Change Date / Change License** | **2030-04-09** / **MPL 2.0** (edit in `LICENSE` if policy changes). |
+| **`package.json`** | `"license": "SEE LICENSE IN LICENSE"`. |
+| **README** | **AI assistance** section — tooling disclosure; **License** section — pointer to BSL; neither replaces `LICENSE`. |
+| **Docs** | [`ARCHITECTURE.md`](./ARCHITECTURE.md) §10, [`TECH_STACK.md`](./TECH_STACK.md) (footer), [`PRD.md`](./PRD.md) §6, [`DEPLOYMENT.md`](./DEPLOYMENT.md) (static hosting / headers), this file, [`CURSOR.md`](./CURSOR.md). |
+
+Third-party npm packages remain under their respective licenses.
 
 ## Project Structure
 
 ```
 ink-marrow/
-├── docs/                       # Project documentation (9 markdown files)
-├── tests/                      # Vitest unit tests (256 tests, default env node; happy-dom per file where needed)
+├── docs/                       # Project documentation (10 markdown files)
+├── tests/                      # Vitest unit tests (261 tests, default env node; happy-dom per file where needed)
 │   ├── assets.test.ts          # static asset paths / PWA entries
 │   ├── canvas-undo.test.ts     # canvas undo stack behaviour
 │   ├── canvas.test.ts          # createEmptyCanvas, serialize/deserialize, nodes/edges
@@ -21,6 +31,7 @@ ink-marrow/
 │   ├── folder-ops.test.ts      # renameFolder, collectFilePaths
 │   ├── fs-adapter.test.ts      # InMemoryAdapter contract
 │   ├── graph.test.ts           # wiki graph build/resolve
+│   ├── image-edit-pipeline.test.ts # vault image rotate/adjust/crop helpers
 │   ├── markdown-bridge.test.ts # Tiptap ↔ MD (happy-dom)
 │   ├── markdown.test.ts        # parseNote, wiki-links, tags, resolveWikiLinkPath
 │   ├── pdf-annotation-writer.test.ts # writeAnnotationsIntoPdf /Text + strip
@@ -38,8 +49,8 @@ ink-marrow/
 │   │   └── globals.css         # Tailwind v4 @theme tokens, light/dark palettes, ProseMirror styles
 │   │
 │   ├── components/
-│   │   ├── shell/              # AppShell, MainSidebar, ViewRouter, KeyboardShortcutsDialog, ErrorBoundary
-│   │   ├── views/              # NotesView, FileBrowserView, SearchView, NewView
+│   │   ├── shell/              # AppShell, MainSidebar, ViewRouter, KeyboardShortcutsDialog, ErrorBoundary, NewFilePopover, SettingsDialog
+│   │   ├── views/              # VaultView, SearchView, GraphView, NewView (+ NotesView/FileBrowserView as vault sub-panes)
 │   │   ├── notes/              # MarkdownNoteEditor, file tree, tabs, toolbar, slash/wiki, backlinks, rename
 │   │   ├── pdf/                # PdfViewer, toolbar, outline, per-page Fabric canvas, page panel, signature pad, form dialog
 │   │   ├── canvas/             # CanvasEditor + CanvasToolbar (Fabric.js: draw, text, sticky, connect, frames, wiki-links, export)
@@ -93,7 +104,7 @@ ink-marrow/
 │   └── utils/                  # cn.ts (clsx + tailwind-merge)
 │
 ├── .cursor/rules/              # Cursor AI rules (.mdc files)
-├── next.config.ts              # Static export, COOP/COEP headers, canvas=false alias
+├── next.config.ts              # Static export; canvas stub alias; hosting headers → docs/DEPLOYMENT.md
 ├── postcss.config.mjs          # @tailwindcss/postcss (no tailwind.config file — v4)
 ├── tsconfig.json               # strict, ES2022, @/* paths
 ├── .npmrc                      # pnpm hoist-pattern for Turbopack
@@ -230,6 +241,7 @@ Always use `@/` path aliases for imports within `src/`. Never use relative paths
 - Component variants defined with `class-variance-authority` (CVA).
 - No CSS modules or styled-components.
 - Dark mode via Tailwind v4 `@variant dark` (class-based): `.dark` on `<html>` toggles CSS custom properties. Anti-flash inline script in `layout.tsx` reads `localStorage('ink-theme')` before paint. Three-state toggle (Light / System / Dark) in sidebar. `useUiStore.setTheme()` persists choice and syncs the class.
+- **Settings / forms:** avoid a second line of explanatory “hint” text under every label unless it prevents a real mistake. AI guidance: `.cursor/rules/ui-copy.mdc`.
 
 ## Error Handling
 

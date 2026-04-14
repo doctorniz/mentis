@@ -7,6 +7,9 @@ export interface CanvasFile {
 
 export type CanvasNode = CanvasTextNode | CanvasImageNode | CanvasStickyNode | CanvasDrawingNode | CanvasWikiLinkNode
 
+/** Fabric `stylesToArray` format — persisted with text / sticky body for mixed formatting. */
+export type CanvasInlineStyleRange = { start: number; end: number; style: Record<string, unknown> }
+
 interface CanvasNodeBase {
   id: string
   x: number
@@ -26,6 +29,8 @@ export interface CanvasTextNode extends CanvasNodeBase {
   fontWeight?: string | number
   fontStyle?: string
   underline?: boolean
+  /** Per-range inline styles (Fabric); omitted when uniform default-only. */
+  styles?: CanvasInlineStyleRange[]
 }
 
 export interface CanvasImageNode extends CanvasNodeBase {
@@ -37,6 +42,8 @@ export interface CanvasStickyNode extends CanvasNodeBase {
   type: 'sticky'
   text: string
   color: string
+  /** Inline styles for sticky body text (same shape as `CanvasTextNode.styles`). */
+  textStyles?: CanvasInlineStyleRange[]
 }
 
 export interface CanvasDrawingNode extends CanvasNodeBase {

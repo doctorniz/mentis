@@ -6,6 +6,7 @@ import { ViewMode } from '@/types/vault'
 import { VaultView } from '@/components/views/vault-view'
 import { SearchView } from '@/components/views/search-view'
 import { GraphView } from '@/components/views/graph-view'
+import { BoardView } from '@/components/views/board-view'
 import { NewView } from '@/components/views/new-view'
 
 export function ViewRouter() {
@@ -24,6 +25,9 @@ export function ViewRouter() {
       break
     case ViewMode.Graph:
       body = <GraphView />
+      break
+    case ViewMode.Board:
+      body = <BoardView />
       break
     case ViewMode.New:
       body = <NewView />
