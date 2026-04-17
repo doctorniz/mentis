@@ -3,9 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import {
+  Bookmark,
+  CalendarDays,
+  CheckSquare,
   ChevronDown,
+  Columns3,
   ChevronRight,
   FileStack,
+  Files,
   FileText,
   GitFork,
   Layout,
@@ -30,11 +35,19 @@ import { ViewMode } from '@/types/vault'
 import { cn } from '@/utils/cn'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 
-const NAV: { mode: ViewMode; label: string; icon: typeof Vault }[] = [
-  { mode: ViewMode.Vault, label: 'Vault', icon: Vault },
-  { mode: ViewMode.Search, label: 'Search', icon: Search },
-  { mode: ViewMode.Graph, label: 'Graph', icon: GitFork },
-  { mode: ViewMode.Board, label: 'Board', icon: LayoutGrid },
+type MobileNavEntry =
+  | { kind: 'view'; mode: ViewMode; label: string; icon: typeof Vault }
+  | { kind: 'todo'; label: string; icon: typeof Vault }
+
+const NAV: MobileNavEntry[] = [
+  { kind: 'view', mode: ViewMode.Vault,     label: 'Vault',     icon: Vault },
+  { kind: 'view', mode: ViewMode.Board,     label: 'Board',     icon: LayoutGrid },
+  { kind: 'view', mode: ViewMode.Tasks,     label: 'Tasks',     icon: CheckSquare },
+  { kind: 'view', mode: ViewMode.Bookmarks, label: 'Bookmarks', icon: Bookmark },
+  { kind: 'todo',                           label: 'Calendar',  icon: CalendarDays },
+  { kind: 'view', mode: ViewMode.Graph,     label: 'Graph',     icon: GitFork },
+  { kind: 'view', mode: ViewMode.Files,     label: 'Files',     icon: Files },
+  { kind: 'view', mode: ViewMode.Search,    label: 'Search',    icon: Search },
 ]
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
@@ -50,6 +63,7 @@ const NEW_SUB_ITEMS: {
   accent: string
 }[] = [
   { id: 'note', label: 'Note', icon: FileText, accent: 'text-blue-500' },
+  { id: 'kanban', label: 'Kanban', icon: Columns3, accent: 'text-amber-500' },
   { id: 'file', label: 'File', icon: Upload, accent: 'text-emerald-500' },
   { id: 'drawing', label: 'Drawing', icon: Layout, accent: 'text-violet-500' },
 ]
@@ -76,7 +90,7 @@ export function MobileNavMasthead({
     setNewExpanded(false)
   }, [])
 
-  const { createNote, createDrawing, importFiles, busy } = useNewFileActions(closeMenu)
+  const { createNote, createDrawing, createKanban, importFiles, busy } = useNewFileActions(closeMenu)
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
@@ -96,6 +110,7 @@ export function MobileNavMasthead({
 
   function handleSubItemClick(id: string) {
     if (id === 'note') void createNote()
+    else if (id === 'kanban') void createKanban()
     else if (id === 'drawing') void createDrawing()
     else if (id === 'file') fileInputRef.current?.click()
   }
@@ -187,7 +202,21 @@ export function MobileNavMasthead({
                 </div>
               )}
 
-              {NAV.map(({ mode, label, icon: Icon }) => {
+              {NAV.map((entry) => {
+                if (entry.kind === 'todo') {
+                  const Icon = entry.icon
+                  return (
+                    <div
+                      key={entry.label}
+                      className="text-fg-muted/40 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium select-none cursor-default"
+                    >
+                      <Icon className="size-5 shrink-0 opacity-50" aria-hidden />
+                      <span className="flex-1 truncate">{entry.label}</span>
+                      <span className="text-[10px] opacity-60">soon</span>
+                    </div>
+                  )
+                }
+                const { mode, label, icon: Icon } = entry
                 const vaultModes = [ViewMode.Vault, ViewMode.FileBrowser, ViewMode.Notes]
                 const active =
                   activeView === mode ||

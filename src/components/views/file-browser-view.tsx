@@ -99,7 +99,7 @@ function computeRubberBandSelection(
 /* Main view                                                           */
 /* ------------------------------------------------------------------ */
 
-export function FileBrowserView() {
+export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }) {
   const { vaultFs, config } = useVaultSession()
   const viewMode = useFileBrowserStore((s) => s.viewMode)
   const sort = useFileBrowserStore((s) => s.sort)
@@ -188,9 +188,9 @@ export function FileBrowserView() {
   }, [pendingPdfPath, setPendingPdfPath])
 
   const refresh = useCallback(async () => {
-    const items = await collectBrowserFiles(vaultFs, currentFolder)
+    const items = await collectBrowserFiles(vaultFs, currentFolder, showHidden)
     setRawFiles(items)
-  }, [vaultFs, currentFolder])
+  }, [vaultFs, currentFolder, showHidden])
 
   useEffect(() => {
     void refresh()

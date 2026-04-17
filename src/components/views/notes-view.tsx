@@ -14,6 +14,7 @@ import {
 } from '@/components/notes/backlinks-panel'
 import { PdfViewer } from '@/components/pdf/pdf-viewer'
 import { CanvasEditor } from '@/components/canvas/canvas-editor'
+import { KanbanEditor } from '@/components/kanban/kanban-editor'
 import { useEditorStore } from '@/stores/editor'
 import { useCanvasStore } from '@/stores/canvas'
 import { useFileTreeStore } from '@/stores/file-tree'
@@ -26,7 +27,7 @@ import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { useMediaQuery } from '@/lib/browser/use-media-query'
 import { createUntitledNote } from '@/lib/notes/new-note'
 import { openOrCreateDailyNote } from '@/lib/notes/daily-note'
-import { editorTabTypeFromVaultPath, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
+import { detectEditorTabType, editorTabTypeFromVaultPath, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
 import { toast } from '@/stores/toast'
 import { removeSearchDocument } from '@/lib/search/index'
 import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
@@ -224,16 +225,20 @@ function NotesViewInner() {
   const openNotePath = useCallback(
     (path: string) => {
       setSelectedPath(path)
-      openTab({
-        id: crypto.randomUUID(),
-        path,
-        type: editorTabTypeFromVaultPath(path),
-        title: titleFromVaultPath(path),
-        isDirty: false,
-      })
       addRecentFile(path)
+
+      void (async () => {
+        const type = await detectEditorTabType(vaultFs, path)
+        openTab({
+          id: crypto.randomUUID(),
+          path,
+          type,
+          title: titleFromVaultPath(path),
+          isDirty: false,
+        })
+      })()
     },
-    [addRecentFile, openTab, setSelectedPath],
+    [addRecentFile, openTab, setSelectedPath, vaultFs],
   )
 
   const bumpScan = useCallback(() => {
@@ -372,6 +377,16 @@ function NotesViewInner() {
               expanded={backlinksExpanded}
               onExpandedChange={setBacklinksExpanded}
               isNarrow={isNarrowBacklinks}
+            />
+          </div>
+        ) : activeTab?.type === 'kanban' ? (
+          <div key={activeTab.id} className="min-h-0 flex-1">
+            <KanbanEditor
+              tabId={activeTab.id}
+              path={activeTab.path}
+              isNew={activeTab.isNew}
+              onRenamed={vaultChanged}
+              onPersisted={bumpScan}
             />
           </div>
         ) : activeTab?.type === 'pdf' ? (

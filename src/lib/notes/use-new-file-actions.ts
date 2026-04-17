@@ -9,6 +9,7 @@ import { useFileTreeStore } from '@/stores/file-tree'
 import { DEFAULT_VAULT_CONFIG, ViewMode } from '@/types/vault'
 import { createBlankPdf } from '@/lib/pdf/page-operations'
 import { createEmptyCanvas, serializeCanvas } from '@/lib/canvas'
+import { createEmptyKanban } from '@/lib/kanban'
 import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
 import { toast } from '@/stores/toast'
 
@@ -177,5 +178,32 @@ export function useNewFileActions(onDone: () => void) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultFs, onDone])
 
-  return { createNote, createDrawing, createPdf, importFiles, busy }
+  const createKanban = useCallback(async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const stem = `Kanban ${new Date().toISOString().slice(0, 10)}`
+      const filename = `${stem}.md`
+      const dir = defaultDir()
+      const filePath = dir ? `${dir}/${filename}` : filename
+      await vaultFs.writeTextFile(filePath, createEmptyKanban())
+      useEditorStore.getState().openTab({
+        id: crypto.randomUUID(),
+        path: filePath,
+        type: 'kanban',
+        title: stem,
+        isDirty: false,
+        isNew: true,
+      })
+      useUiStore.getState().setActiveView(ViewMode.Vault)
+      useUiStore.getState().setVaultMode('tree')
+      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+      onDone()
+    } finally {
+      setBusy(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vaultFs, busy, onDone])
+
+  return { createNote, createDrawing, createPdf, createKanban, importFiles, busy }
 }

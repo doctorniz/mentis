@@ -14,14 +14,15 @@ function toFbItem(e: FileEntry): FbFileItem {
   }
 }
 
-/** Flat list of files in `folder`. Excludes `_marrow`, `_assets`. */
+/** Flat list of files in `folder`. Excludes hidden paths by default. */
 export async function collectBrowserFiles(
   vaultFs: FileSystemAdapter,
   folder: string,
+  showHidden = false,
 ): Promise<FbFileItem[]> {
   const entries = await vaultFs.readdir(folder)
   return entries
-    .filter((e) => !isHiddenPath(e.path))
+    .filter((e) => showHidden || !isHiddenPath(e.path))
     .map(toFbItem)
 }
 

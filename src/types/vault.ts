@@ -45,7 +45,12 @@ export enum ViewMode {
   Search = 'search',
   Graph = 'graph',
   Board = 'board',
+  Tasks = 'tasks',
+  Bookmarks = 'bookmarks',
+  /** Full file browser — shows all folders including hidden system ones */
+  Files = 'files',
   New = 'new',
+  Calendar = 'calendar',
 }
 
 /** Sub-mode within the unified Vault view (toolbar: Preview / Files) */

@@ -89,23 +89,22 @@ export function SearchView() {
   const grouped = useMemo(() => groupByType(results), [results])
 
   const openResult = useCallback((r: SearchResult) => {
-    if (r.type === 'markdown') {
-      useUiStore.getState().setActiveView(ViewMode.Vault)
-      useUiStore.getState().setVaultMode('tree')
-      useFileTreeStore.getState().setSelectedPath(r.path)
+    useUiStore.getState().setActiveView(ViewMode.Vault)
+    useFileTreeStore.getState().setSelectedPath(r.path)
+    useEditorStore.getState().addRecentFile(r.path)
+
+    void (async () => {
+      const { detectEditorTabType } = await import('@/lib/notes/editor-tab-from-path')
+      const type = await detectEditorTabType(vaultFs, r.path)
       useEditorStore.getState().openTab({
         id: crypto.randomUUID(),
         path: r.path,
-        type: 'markdown',
+        type,
         title: r.title,
         isDirty: false,
       })
-      useEditorStore.getState().addRecentFile(r.path)
-    } else {
-      useUiStore.getState().setActiveView(ViewMode.Vault)
-      useUiStore.getState().setVaultMode('browse')
-    }
-  }, [])
+    })()
+  }, [vaultFs])
 
   async function handleReindex() {
     setReindexBusy(true)

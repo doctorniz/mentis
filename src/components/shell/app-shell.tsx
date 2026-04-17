@@ -16,9 +16,13 @@ import { ViewMode } from '@/types/vault'
 
 const VIEW_BY_DIGIT: Record<string, ViewMode> = {
   '1': ViewMode.Vault,
-  '2': ViewMode.Search,
-  '3': ViewMode.Graph,
-  '4': ViewMode.Board,
+  '2': ViewMode.Board,
+  '3': ViewMode.Tasks,
+  '4': ViewMode.Bookmarks,
+  '5': ViewMode.Calendar,
+  '6': ViewMode.Graph,
+  '7': ViewMode.Files,
+  '8': ViewMode.Search,
 }
 
 export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {

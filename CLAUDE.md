@@ -30,9 +30,9 @@ To run a single test file: `pnpm test tests/search.test.ts`
 Components + Stores  ←→  lib/ (business logic)  ←→  FileSystemAdapter
 ```
 
-- **`src/components/`** — React UI, organized by domain (`notes/`, `pdf/`, `canvas/`, `board/`, `shell/`, `views/`, `file-browser/`, `graph/`, `search/`, `ui/`)
-- **`src/stores/`** — Zustand + Immer stores, one per domain (`vault`, `editor`, `pdf`, `canvas`, `board`, `search`, `file-tree`, `file-browser`, `ui`, `toast`)
-- **`src/lib/`** — Framework-free business logic: `fs/`, `vault/`, `editor/`, `markdown/`, `pdf/`, `search/`, `canvas/`, `board/`, `graph/`, `snapshot/`, `sync/`
+- **`src/components/`** — React UI, organized by domain (`notes/`, `pdf/`, `canvas/`, `board/`, `tasks/`, `bookmarks/`, `kanban/`, `shell/`, `views/`, `file-browser/`, `graph/`, `search/`, `ui/`)
+- **`src/stores/`** — Zustand + Immer stores, one per domain (`vault`, `editor`, `pdf`, `canvas`, `board`, `tasks`, `bookmarks`, `search`, `file-tree`, `file-browser`, `ui`, `toast`)
+- **`src/lib/`** — Framework-free business logic: `fs/`, `vault/`, `editor/`, `markdown/`, `pdf/`, `search/`, `canvas/`, `board/`, `tasks/`, `bookmarks/`, `kanban/`, `graph/`, `snapshot/`, `sync/`
 - **`src/types/`** — TypeScript type definitions
 - **`src/contexts/`** — `VaultFsContext` (active adapter + config), `NotesWorkspaceContext` (wiki-link paths)
 
@@ -59,6 +59,10 @@ my-vault/
 ├── _inbox/           # PDF import zone — visible in UI
 ├── _board/           # Board thoughts — hidden from tree/browser/search
 │   └── _assets/      # Board image attachments
+├── _bookmarks/       # Web bookmarks — hidden from tree/browser/search
+│   └── <category>/   # Category subfolders
+├── _tasks/           # Tasks and lists — hidden from tree/browser/search
+│   └── <list>/       # List subfolders
 └── **/_assets/       # Per-folder assets — hidden; shown inline in notes
 ```
 
@@ -87,11 +91,33 @@ const useMyStore = create<MyState>()(
 
 ### Board
 
-Quick-capture notice board (`Ctrl+4`). **Thoughts** are `.md` files in `_board/` with frontmatter (`type`, `color`, timestamps). Title from first `# H1`. Masonry CSS-columns layout. Inline edit via minimal Tiptap (bold/italic/underline/lists — keyboard shortcuts only). Image thoughts in `_board/_assets/`. `useBoardStore` for CRUD; `lib/board/index.ts` parse/serialize; `lib/editor/board-extensions.ts` extensions. Future item types (bookmark, list, reminder, task, audio) share `_board/` differentiated by `type` frontmatter.
+Quick-capture notice board (`Ctrl+2`). **Thoughts** are `.md` files in `_board/` with frontmatter (`type`, `color`, timestamps). Title from first `# H1`. Masonry CSS-columns layout. Inline edit via minimal Tiptap (bold/italic/underline/lists — keyboard shortcuts only). Image thoughts in `_board/_assets/`. `useBoardStore` for CRUD; `lib/board/index.ts` parse/serialize; `lib/editor/board-extensions.ts` extensions. Future item types (bookmark, list, reminder, task, audio) share `_board/` differentiated by `type` frontmatter.
+
+### Bookmarks
+
+Web bookmark manager (`Ctrl+4`). `.md` files in `_bookmarks/` with frontmatter (url, title, description, favicon, ogImage, tags). Categories as subfolders. `fetchOgMetadata` in `lib/bookmarks/og-fetch.ts` scrapes OG + Google favicon — CORS-safe fallback. Two-panel layout: category sidebar + bookmark list. Add/edit via Radix Dialog. `useBookmarksStore` for CRUD + categories; `lib/bookmarks/index.ts` parse/serialize.
+
+### Tasks
+
+CalDAV-compatible local-first task manager (`Ctrl+3`). `.md` files in `_tasks/` with frontmatter mapping to iCalendar VTODO fields (`uid`, `status`, `priority` 1–4, `due`, `created`, `modified`, `completed`, `tags`, `parent`, `order`). Lists are subfolders of `_tasks/`. Subtasks are separate `.md` files linked by `parent` UID in the same folder. Quick-add bar parses natural language: `!1` priority, `#tag` tags, `>tomorrow` / `>YYYY-MM-DD` due dates, phrases like **on Wednesday** (next occurrence) and **every Monday** / **on Wednesdays** (weekly `repeat` + `repeatWeekday` in frontmatter; completing rolls `due` forward). Explicit `>` due wins when both are present. Today/Upcoming filters use an effective due date so weekly tasks are not duplicated. Two-panel layout: sidebar (Inbox/Today/Upcoming smart filters + user lists) + task list with inline quick-add. Task row: checkbox, priority dot, title, due badge, subtask count, tag pills, hover actions. Click opens `TaskDetailDialog` for full edit with subtask management. `.ics` export via `lib/tasks/ical.ts`. `useTasksStore` for CRUD; `lib/tasks/index.ts` parse/serialize/tree; `lib/tasks/parse-quick-add.ts` parser.
+
+### Calendar
+
+Local-first event calendar (`Ctrl+5`). Events are `.md` files in `_calendar/` (hidden from Vault tree/browser/search; visible in Files). Frontmatter fields: `uid`, `start` (ISO date or `YYYY-MM-DDTHH:mm`), `end`, `allDay`, `color` (violet/sky/emerald/amber/rose/slate), `created`, `modified`. Body = markdown notes for the event. Monthly grid view; tasks with due dates appear as greyed "task due" chips alongside event chips. Click a day to create an event; click an event chip to edit/delete. `useCalendarStore` for CRUD; `lib/calendar/index.ts` for parse/serialize/date helpers; `components/calendar/calendar-grid.tsx` for the grid; `components/calendar/event-dialog.tsx` for add/edit. Google Calendar / Apple Calendar / Outlook sync shown as greyed "Coming soon" in **Settings → Calendar**.
+
+### Kanban
+
+Markdown-based Kanban boards. A `.md` file with `type: kanban` in frontmatter renders as a drag-and-drop board. Columns = `## Headings` (optional `<!--kanban:color-->` after the heading for accent: slate, amber, sky, emerald, violet, rose, zinc), cards = `- [ ]`/`- [x]` items. Drag cards by the grip handle; drag columns by the horizontal grip in the header to reorder. Column color swatches under the header. New file default name `Kanban YYYY-MM-DD`. `detectEditorTabType` in `lib/notes/editor-tab-from-path.ts` peeks at frontmatter; `notes-view.tsx` renders `KanbanEditor`. Auto-save debounced ~750ms. `lib/kanban/index.ts` handles parse/serialize. The file is a regular `.md` — searchable, syncable, and readable externally.
 
 ### Routing / Views
 
-Next.js App Router, but the app is a single-page shell. Navigation is state-driven via `useUiStore` (`activeView`). The `app/page.tsx` renders `<AppRoot>` which switches between views (notes, PDF, canvas, graph, board, browse, search, new).
+Next.js App Router, but the app is a single-page shell. Navigation is state-driven via `useUiStore` (`activeView`). The `app/page.tsx` renders `<AppRoot>` which switches between views via `ViewRouter`.
+
+Nav order (sidebar): **Vault** (Ctrl+1) → **Board** (Ctrl+2) → **Tasks** (Ctrl+3) → **Bookmarks** (Ctrl+4) → **Calendar** (Ctrl+5) → **Graph** (Ctrl+6) → **Files** (Ctrl+7) → **Search** (Ctrl+8 / Ctrl+F) → New (Ctrl+N).
+
+- **Vault** (`ViewMode.Vault`) = Notes/Preview pane only — file tree + editor.
+- **Files** (`ViewMode.Files`) = `FileBrowserView` with `showHidden=true`; exposes `_marrow`, `_board`, `_bookmarks`, `_tasks`, etc.
+- The old "Preview / Files" tab strip inside the Vault view has been removed. Opening a file from Files switches to `ViewMode.Vault`.
 
 ### Search
 
