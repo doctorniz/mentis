@@ -224,7 +224,9 @@ export function ImageEditorView({
       setOpts(defaultImageEditOpts())
       toast.success('Image saved')
       let newUrl: string | null = null
-      const fresh = new Blob([buf], { type: mime })
+      // Same `BlobPart` cast as line 125 — Uint8Array<ArrayBufferLike>
+      // doesn't satisfy strict lib.dom's BlobPart constraint.
+      const fresh = new Blob([buf as BlobPart], { type: mime })
       newUrl = URL.createObjectURL(fresh)
       setBlobUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev)

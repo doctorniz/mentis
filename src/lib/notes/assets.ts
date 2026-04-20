@@ -39,7 +39,10 @@ export async function assetToBlobUrl(
   const data = await fs.readFile(vaultPath)
   const ext = vaultPath.split('.').pop()?.toLowerCase() ?? ''
   const mime = MIME_MAP[ext] ?? 'application/octet-stream'
-  const blob = new Blob([data], { type: mime })
+  // `data` is a `Uint8Array<ArrayBufferLike>` — strict lib.dom won't accept
+  // the SharedArrayBuffer half of that union as a `BlobPart`. We always
+  // get plain ArrayBuffer-backed bytes from `readFile`. See canvas-file-io.ts.
+  const blob = new Blob([data as BlobPart], { type: mime })
   return URL.createObjectURL(blob)
 }
 

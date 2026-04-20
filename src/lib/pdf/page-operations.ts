@@ -265,7 +265,11 @@ export async function flattenPdf(pdfBytes: Uint8Array): Promise<Uint8Array> {
  * Trigger a browser download for arbitrary bytes.
  */
 export function downloadBytes(data: Uint8Array, filename: string, mime = 'application/pdf'): void {
-  const blob = new Blob([data], { type: mime })
+  // `Uint8Array` with an `ArrayBufferLike` backing buffer doesn't satisfy
+  // strict lib.dom's `BlobPart` (which requires `ArrayBuffer`, not the
+  // `ArrayBuffer | SharedArrayBuffer` union). Callers always pass plain
+  // ArrayBuffer-backed bytes here. Same pattern as canvas-file-io.ts.
+  const blob = new Blob([data as BlobPart], { type: mime })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

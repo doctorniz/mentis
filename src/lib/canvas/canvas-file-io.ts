@@ -174,7 +174,13 @@ async function loadLayerBitmaps(
   for (const layer of layers) {
     try {
       const bytes = await fs.readFile(pathFor(layer.id))
-      const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }))
+      // Cast required because `fs.readFile` returns a Uint8Array with an
+      // `ArrayBufferLike` backing buffer, which strict lib.dom rejects as
+      // a `BlobPart` (its `ArrayBuffer | SharedArrayBuffer` union includes
+      // SharedArrayBuffer). The bytes are always plain ArrayBuffer here.
+      const bitmap = await createImageBitmap(
+        new Blob([bytes as BlobPart], { type: 'image/png' }),
+      )
       bitmaps.set(layer.id, bitmap)
     } catch {
       // Sidecar missing or undecodable — layer loads blank. Keep going

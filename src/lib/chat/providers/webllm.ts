@@ -79,14 +79,14 @@ function hasWebGpu(): boolean {
 
 async function loadModule(): Promise<MlcModule> {
   // String-literal dynamic import so Webpack/Turbopack emits a separate
-  // chunk and nothing from web-llm touches the main bundle. When the package
-  // is not installed, next.config.ts aliases it to an empty stub so the build
-  // succeeds — the guard below converts that into a clear error for the user.
-  // @ts-expect-error — optional peer dep; install with: pnpm add @mlc-ai/web-llm
+  // chunk and nothing from web-llm touches the main bundle. `@mlc-ai/web-llm`
+  // is a regular dependency, so the import resolves at build time; the
+  // runtime guard below is just belt-and-suspenders in case a future build
+  // ever externalises or stubs the package.
   const mod = (await import('@mlc-ai/web-llm')) as unknown as MlcModule
   if (typeof mod?.CreateMLCEngine !== 'function') {
     throw new Error(
-      '@mlc-ai/web-llm is not installed. Add it with: pnpm add @mlc-ai/web-llm',
+      '@mlc-ai/web-llm failed to load. Reinstall with: pnpm add @mlc-ai/web-llm',
     )
   }
   return mod
@@ -201,7 +201,7 @@ async function* streamWebLlm(
 
 export const webllmProvider: ChatProvider = {
   id: 'webllm',
-  label: 'WebLLM (in-browser, WebGPU)',
+  label: 'WebLLM (WebGPU, in-browser)',
   defaultBaseUrl: '',
   streamChat: streamWebLlm,
 }
