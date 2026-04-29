@@ -4,6 +4,7 @@ import { FileType } from '@/types/files'
 import { isNotesTreeHidden } from '@/lib/notes/tree-filter'
 import { extractTags, parseNote } from '@/lib/markdown'
 import { loadPdfjs } from '@/lib/pdf/pdfjs-loader'
+import { extractXlsxText } from '@/lib/spreadsheet/xlsx-io'
 import type { NoteFrontmatter } from '@/types/editor'
 import type { SearchIndexDocument } from '@/types/search'
 import { replaceSearchIndex, upsertSearchDocument } from '@/lib/search/index'
@@ -40,7 +41,8 @@ async function collectIndexableFiles(
     } else if (
       e.type === FileType.Markdown ||
       e.type === FileType.Pdf ||
-      e.type === FileType.Canvas
+      e.type === FileType.Canvas ||
+      e.type === FileType.Spreadsheet
     ) {
       acc.push(e)
     }
@@ -137,6 +139,24 @@ async function fileTypeToDocument(
       title: titleFromPath(path),
       fileType: 'canvas',
       content: '',
+      tags: '',
+      tagCsv: '',
+      modifiedAt,
+    }
+  }
+
+  if (entry.type === FileType.Spreadsheet) {
+    let content = ''
+    try {
+      const data = await fs.readFile(path)
+      content = extractXlsxText(data)
+    } catch { /* use empty */ }
+    return {
+      id: path,
+      path,
+      title: titleFromPath(path),
+      fileType: 'spreadsheet',
+      content,
       tags: '',
       tagCsv: '',
       modifiedAt,

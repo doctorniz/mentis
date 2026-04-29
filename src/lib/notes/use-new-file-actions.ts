@@ -10,6 +10,7 @@ import { DEFAULT_VAULT_CONFIG, ViewMode } from '@/types/vault'
 import { createBlankPdf } from '@/lib/pdf/page-operations'
 import { createEmptyCanvasJson } from '@/lib/canvas/serializer'
 import { createEmptyKanban } from '@/lib/kanban'
+import { createBlankXlsx } from '@/lib/spreadsheet/xlsx-io'
 import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
 import { toast } from '@/stores/toast'
 
@@ -21,10 +22,11 @@ function usePdfPageStyle() {
   return useVaultStore((s) => s.config?.pdfPageStyle ?? DEFAULT_VAULT_CONFIG.pdfPageStyle)
 }
 
-function fileTypeForPath(path: string): 'pdf' | 'markdown' | 'canvas' | null {
+function fileTypeForPath(path: string): 'pdf' | 'markdown' | 'canvas' | 'spreadsheet' | null {
   if (path.endsWith('.pdf')) return 'pdf'
   if (path.endsWith('.md') || path.endsWith('.markdown')) return 'markdown'
   if (path.endsWith('.canvas')) return 'canvas'
+  if (path.endsWith('.xlsx') || path.endsWith('.xls') || path.endsWith('.csv')) return 'spreadsheet'
   return null
 }
 
@@ -205,5 +207,35 @@ export function useNewFileActions(onDone: () => void) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultFs, busy, onDone])
 
-  return { createNote, createDrawing, createPdf, createKanban, importFiles, busy }
+  const createSpreadsheet = useCallback(async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const stem = `Spreadsheet ${new Date().toISOString().slice(0, 10)}`
+      const filename = `${stem}.xlsx`
+      const dir = defaultDir()
+      const path = dir ? `${dir}/${filename}` : filename
+      const bytes = createBlankXlsx()
+      await vaultFs.writeFile(path, bytes)
+      useUiStore.getState().setActiveView(ViewMode.Vault)
+      useUiStore.getState().setVaultMode('tree')
+      useFileTreeStore.getState().setSelectedPath(path)
+      useEditorStore.getState().openTab({
+        id: crypto.randomUUID(),
+        path,
+        type: 'spreadsheet',
+        title: stem,
+        isDirty: false,
+        isNew: true,
+      })
+      useEditorStore.getState().addRecentFile(path)
+      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+      onDone()
+    } finally {
+      setBusy(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vaultFs, busy, onDone])
+
+  return { createNote, createDrawing, createPdf, createKanban, createSpreadsheet, importFiles, busy }
 }

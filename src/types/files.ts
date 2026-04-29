@@ -3,6 +3,8 @@ export enum FileType {
   Pdf = 'pdf',
   Canvas = 'canvas',
   Image = 'image',
+  Docx = 'docx',
+  Spreadsheet = 'spreadsheet',
   Code = 'code',
   Other = 'other',
 }
@@ -39,6 +41,12 @@ export function getFileType(filename: string): FileType {
       return FileType.Pdf
     case 'canvas':
       return FileType.Canvas
+    case 'docx':
+      return FileType.Docx
+    case 'xlsx':
+    case 'xls':
+    case 'csv':
+      return FileType.Spreadsheet
     case 'png':
     case 'jpg':
     case 'jpeg':

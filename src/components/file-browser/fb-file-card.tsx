@@ -1,7 +1,7 @@
 'use client'
 
 import { forwardRef, useEffect, useRef, useState, type ComponentPropsWithoutRef } from 'react'
-import { File, FileText, FileType as FileTypeIcon, ImageIcon, LayoutGrid } from 'lucide-react'
+import { File, FileText, FileType as FileTypeIcon, ImageIcon, LayoutGrid, Table2 } from 'lucide-react'
 import type { FbFileItem } from '@/types/file-browser'
 import type { FileSystemAdapter } from '@/lib/fs'
 import { getImageThumbnail } from '@/lib/file-browser/image-thumbnail'
@@ -95,6 +95,12 @@ function FileCardIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string |
       return (
         <div className="bg-emerald-50 dark:bg-emerald-950/40 flex h-14 w-14 items-center justify-center rounded-xl">
           <ImageIcon className="text-emerald-500 size-8" />
+        </div>
+      )
+    case 'spreadsheet':
+      return (
+        <div className="bg-green-50 dark:bg-green-950/40 flex h-14 w-14 items-center justify-center rounded-xl">
+          <Table2 className="text-green-500 size-8" />
         </div>
       )
     default:

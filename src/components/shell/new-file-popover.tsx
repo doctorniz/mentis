@@ -1,12 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Columns3, FileText, Layout, Upload, X } from 'lucide-react'
+import { Columns3, FileText, Layout, Table2, Upload, X } from 'lucide-react'
 import * as Popover from '@radix-ui/react-popover'
 import { useNewFileActions } from '@/lib/notes/use-new-file-actions'
 import { cn } from '@/utils/cn'
 
-type MenuType = 'note' | 'file' | 'drawing' | 'kanban'
+type MenuType = 'note' | 'file' | 'drawing' | 'kanban' | 'spreadsheet'
 
 export function NewFilePopover({
   children,
@@ -29,7 +29,7 @@ export function NewFilePopover({
     setShowFileUpload(false)
   }, [])
 
-  const { createNote, createDrawing, createPdf, createKanban, importFiles, busy } = useNewFileActions(close)
+  const { createNote, createDrawing, createPdf, createKanban, createSpreadsheet, importFiles, busy } = useNewFileActions(close)
 
   useEffect(() => {
     if (!enableGlobalShortcut) return
@@ -57,6 +57,7 @@ export function NewFilePopover({
   }[] = [
     { type: 'note', label: 'Note', icon: FileText, accent: 'text-blue-500', action: () => void createNote() },
     { type: 'kanban', label: 'Kanban', icon: Columns3, accent: 'text-amber-500', action: () => void createKanban() },
+    { type: 'spreadsheet', label: 'Spreadsheet', icon: Table2, accent: 'text-green-500', action: () => void createSpreadsheet() },
     { type: 'file', label: 'File', icon: Upload, accent: 'text-emerald-500', action: () => setShowFileUpload(true) },
     { type: 'drawing', label: 'Drawing', icon: Layout, accent: 'text-violet-500', action: () => void createDrawing() },
   ]

@@ -19,7 +19,7 @@ export interface FbFilters {
 export interface FbFileItem {
   path: string
   name: string
-  type: 'pdf' | 'markdown' | 'canvas' | 'image' | 'other'
+  type: 'pdf' | 'markdown' | 'canvas' | 'image' | 'spreadsheet' | 'other'
   isDirectory: boolean
   size: number
   modifiedAt: string

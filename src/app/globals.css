@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'katex/dist/katex.min.css';
+@import '@eigenpal/docx-js-editor/styles.css';
 
 @variant dark (&:where(.dark, .dark *));
 
@@ -526,6 +527,19 @@
 .ProseMirror.board-editor em,
 .ProseMirror.board-editor i { font-style: italic; }
 
+/* ---- DOCX editor (@eigenpal/docx-js-editor) ---- */
+.docx-editor-container {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Let the editor fill the available space */
+.docx-editor-container > * {
+  flex: 1;
+  min-height: 0;
+}
+
 /* Toast enter animation */
 @keyframes toast-in {
   from {
@@ -540,4 +554,60 @@
 
 .toast-enter {
   animation: toast-in 0.2s ease-out;
+}
+
+/* ---- Spreadsheet editor (jspreadsheet-ce) ---- */
+.spreadsheet-container {
+  overflow: auto;
+}
+
+/* Theme overrides so jspreadsheet respects Mentis dark mode */
+.dark .spreadsheet-container .jexcel,
+.dark .spreadsheet-container .jexcel td,
+.dark .spreadsheet-container .jexcel thead td {
+  background-color: var(--color-bg, #1a1a1a);
+  color: var(--color-fg, #e0e0e0);
+  border-color: var(--color-border, #333);
+}
+
+.dark .spreadsheet-container .jexcel thead td {
+  background-color: var(--color-bg-secondary, #222);
+}
+
+.dark .spreadsheet-container .jexcel td.jexcel_cursor,
+.dark .spreadsheet-container .jexcel td.highlight {
+  background-color: var(--color-accent-alpha, rgba(99, 102, 241, 0.15));
+}
+
+.dark .spreadsheet-container .jexcel .jexcel_content,
+.dark .spreadsheet-container .jexcel .jtabs-content {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+/* Fix the toolbar / context menu in dark mode */
+.dark .spreadsheet-container .jexcel_toolbar,
+.dark .spreadsheet-container .jcontextmenu {
+  background-color: var(--color-bg-secondary, #222);
+  color: var(--color-fg, #e0e0e0);
+  border-color: var(--color-border, #333);
+}
+
+.dark .spreadsheet-container .jcontextmenu > div:hover {
+  background-color: var(--color-bg-tertiary, #2a2a2a);
+}
+
+/* Scrollbar styling for spreadsheet */
+.spreadsheet-container ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.spreadsheet-container ::-webkit-scrollbar-thumb {
+  background-color: var(--color-border, #444);
+  border-radius: 4px;
+}
+
+/* Selected tab indicator for sheet tabs */
+.spreadsheet-container .jexcel_tab.jexcel_tab_link_selected {
+  font-weight: 600;
 }

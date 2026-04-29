@@ -11,6 +11,7 @@ import {
   ExternalLink,
   FileCode2,
   FileText,
+  FileType2,
   Folder,
   FolderPlus,
   Image as ImageIcon,
@@ -19,6 +20,7 @@ import {
   Pencil,
   Plus,
   Star,
+  Table2,
   Trash2,
 } from 'lucide-react'
 import type { FileSystemAdapter } from '@/lib/fs'
@@ -528,6 +530,8 @@ function TreeNode({
     const FileIcon =
       entry.type === FileType.Canvas ? Layout
       : entry.type === FileType.Image ? ImageIcon
+      : entry.type === FileType.Docx ? FileType2
+      : entry.type === FileType.Spreadsheet ? Table2
       : entry.type === FileType.Code ? FileCode2
       : FileText
 
@@ -605,6 +609,8 @@ function TreeNode({
                   entry.type === FileType.Pdf && 'text-red-400/70',
                   entry.type === FileType.Canvas && 'text-violet-400/70',
                   entry.type === FileType.Image && 'text-emerald-400/70',
+                  entry.type === FileType.Docx && 'text-indigo-400/70',
+                  entry.type === FileType.Spreadsheet && 'text-green-400/70',
                   entry.type === FileType.Code && 'text-sky-400/70',
                 )}
                 aria-hidden

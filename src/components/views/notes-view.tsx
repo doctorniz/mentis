@@ -27,6 +27,8 @@ import { Button } from '@/components/ui/button'
 import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { ImageEditorView } from '@/components/notes/image-editor-view'
 import { CodeFileEditor } from '@/components/notes/code-file-editor'
+import { DocxEditorView } from '@/components/notes/docx-editor'
+import { SpreadsheetEditor } from '@/components/notes/spreadsheet-editor'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { useMediaQuery } from '@/lib/browser/use-media-query'
 import { createUntitledNote } from '@/lib/notes/new-note'
@@ -489,6 +491,22 @@ function NotesViewInner() {
             tabId={activeTab.id}
             path={activeTab.path}
             onRenamed={vaultChanged}
+          />
+        ) : activeTab?.type === 'docx' ? (
+          <DocxEditorView
+            key={activeTab.id}
+            tabId={activeTab.id}
+            path={activeTab.path}
+            onRenamed={vaultChanged}
+            onPersisted={vaultChanged}
+          />
+        ) : activeTab?.type === 'spreadsheet' ? (
+          <SpreadsheetEditor
+            key={activeTab.id}
+            tabId={activeTab.id}
+            path={activeTab.path}
+            onRenamed={vaultChanged}
+            onPersisted={bumpScan}
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-5 px-8">
