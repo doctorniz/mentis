@@ -61,7 +61,9 @@ class InMemoryAdapter implements FileSystemAdapter {
   }
 
   async rename(): Promise<void> {}
+  async copy(): Promise<void> {}
   async remove(): Promise<void> {}
+  async removeDir(): Promise<void> {}
 }
 
 describe('todayDailyNotePath', () => {

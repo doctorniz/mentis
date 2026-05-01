@@ -3,7 +3,7 @@ import { PDFDocument, PDFDict, PDFName } from 'pdf-lib'
 import { writeAnnotationsIntoPdf } from '@/lib/pdf/annotation-writer'
 import { fabricPathCommandsToPdfPoints } from '@/lib/pdf/fabric-path-to-pdf-points'
 import { createBlankPdf } from '@/lib/pdf/page-operations'
-import { PdfAnnotationType } from '@/types/pdf'
+import { PdfAnnotationType, type PdfTextComment, type PdfInkAnnotation } from '@/types/pdf'
 
 function ts() {
   return new Date().toISOString()
@@ -12,7 +12,7 @@ function ts() {
 function textAnnotContents(dict: PDFDict): string {
   const raw = dict.get(PDFName.of('Contents'))
   if (raw && typeof (raw as { decodeText?: () => string }).decodeText === 'function') {
-    return (raw as { decodeText: () => string }).decodeText()
+    return (raw as unknown as { decodeText: () => string }).decodeText()
   }
   return ''
 }
@@ -30,7 +30,7 @@ describe('writeAnnotationsIntoPdf', () => {
         text: 'Sticky note body',
         createdAt: now,
         modifiedAt: now,
-      },
+      } as PdfTextComment,
     ])
 
     const doc = await PDFDocument.load(out)
@@ -56,8 +56,8 @@ describe('writeAnnotationsIntoPdf', () => {
       modifiedAt: now,
     }
 
-    const pass1 = await writeAnnotationsIntoPdf(blank, [{ ...base, text: 'First' }])
-    const pass2 = await writeAnnotationsIntoPdf(pass1, [{ ...base, text: 'Second' }])
+    const pass1 = await writeAnnotationsIntoPdf(blank, [{ ...base, text: 'First' } as PdfTextComment])
+    const pass2 = await writeAnnotationsIntoPdf(pass1, [{ ...base, text: 'Second' } as PdfTextComment])
 
     const doc = await PDFDocument.load(pass2)
     const annots = doc.getPage(0).node.Annots()
@@ -88,7 +88,7 @@ describe('writeAnnotationsIntoPdf', () => {
         strokeWidth: 2,
         createdAt: now,
         modifiedAt: now,
-      },
+      } as PdfInkAnnotation,
     ])
 
     const reloaded = await PDFDocument.load(out)

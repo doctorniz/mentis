@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ImagePlus, Loader2, Plus } from 'lucide-react'
+import { ImagePlus, Loader2, Mic, Plus } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { ThoughtCard } from '@/components/board/thought-card'
+import { AudioRecorderBar } from '@/components/audio/audio-recorder-bar'
 import { BOARD_ASSETS_DIR } from '@/lib/board'
 import { useBoardStore } from '@/stores/board'
 import type { ThoughtColor } from '@/types/board'
@@ -65,15 +66,26 @@ export function BoardView() {
   const loading = useBoardStore((s) => s.loading)
   const loadBoard = useBoardStore((s) => s.loadBoard)
   const addThought = useBoardStore((s) => s.addThought)
+  const addAudioThought = useBoardStore((s) => s.addAudioThought)
   const updateItem = useBoardStore((s) => s.updateItem)
   const setActiveItem = useBoardStore((s) => s.setActiveItem)
 
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     void loadBoard(vaultFs)
   }, [vaultFs, loadBoard])
+
+  // Listen for global "start recording on board" event (fired from New button)
+  useEffect(() => {
+    function handler() {
+      setIsRecording(true)
+    }
+    window.addEventListener('ink:board-start-recording', handler)
+    return () => window.removeEventListener('ink:board-start-recording', handler)
+  }, [])
 
   const handleAdd = useCallback(
     (color?: ThoughtColor) => {
@@ -116,11 +128,29 @@ export function BoardView() {
     [handleImageUpload],
   )
 
+  const handleRecordingComplete = useCallback(
+    async (mp3Bytes: Uint8Array, durationMs: number) => {
+      await addAudioThought(vaultFs, mp3Bytes, durationMs)
+      setIsRecording(false)
+    },
+    [vaultFs, addAudioThought],
+  )
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <div className="border-border bg-bg-secondary flex shrink-0 items-center justify-between border-b px-4 py-2.5">
         <h1 className="text-fg text-sm font-semibold">Board</h1>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsRecording(true)}
+            disabled={isRecording}
+            className="text-fg-secondary hover:text-fg border-border hover:bg-bg-tertiary flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+            aria-label="Record voice note"
+          >
+            <Mic className="size-3.5" />
+            Record
+          </button>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -163,6 +193,16 @@ export function BoardView() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* Inline recording bar */}
+        {isRecording && (
+          <div className="px-4 pt-4">
+            <AudioRecorderBar
+              onComplete={(bytes, ms) => void handleRecordingComplete(bytes, ms)}
+              onCancel={() => setIsRecording(false)}
+            />
+          </div>
+        )}
+
         {loading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="text-fg-muted size-6 animate-spin" />

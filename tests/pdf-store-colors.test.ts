@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { usePdfStore } from '@/stores/pdf'
-import { PdfTool, PdfAnnotationType } from '@/types/pdf'
+import { PdfTool, PdfAnnotationType, type PdfHighlight } from '@/types/pdf'
 
 describe('pdf store highlight vs draw color (P4)', () => {
   beforeEach(() => {
@@ -59,7 +59,7 @@ describe('pdf store addAnnotation fromLoader (P5)', () => {
         quadPoints: [],
         createdAt: '2026-01-01T00:00:00.000Z',
         modifiedAt: '2026-01-01T00:00:00.000Z',
-      },
+      } as PdfHighlight,
       { fromLoader: true },
     )
     expect(usePdfStore.getState().hasUnsavedChanges).toBe(false)

@@ -5,6 +5,8 @@ export enum FileType {
   Image = 'image',
   Docx = 'docx',
   Spreadsheet = 'spreadsheet',
+  Video = 'video',
+  Audio = 'audio',
   Code = 'code',
   Other = 'other',
 }
@@ -54,6 +56,20 @@ export function getFileType(filename: string): FileType {
     case 'webp':
     case 'svg':
       return FileType.Image
+    case 'mp3':
+    case 'wav':
+    case 'm4a':
+    case 'aac':
+    case 'flac':
+    case 'wma':
+      return FileType.Audio
+    case 'mp4':
+    case 'webm':
+    case 'ogg':
+    case 'mov':
+    case 'mkv':
+    case 'avi':
+      return FileType.Video
     case 'html':
     case 'htm':
     case 'css':

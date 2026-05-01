@@ -14,13 +14,16 @@ export function parseBoardItem(path: string, raw: string): BoardItem {
 
   return {
     path,
-    type: fm.type ?? 'thought',
+    type: (fm.type as BoardItem['type']) ?? 'thought',
     title: h1 ? h1[1].trim() : null,
     body: content,
     color: (fm.color as ThoughtColor) ?? 'yellow',
     created: fm.created ?? new Date().toISOString(),
     modified: fm.modified ?? new Date().toISOString(),
     hasImage: IMAGE_RE.test(content),
+    audioPath: (fm.audioPath as string) ?? null,
+    audioDuration: typeof fm.audioDuration === 'number' ? fm.audioDuration : null,
+    transcript: (fm.transcript as string) ?? null,
   }
 }
 

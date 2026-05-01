@@ -56,9 +56,31 @@ const MIME_MAP: Record<string, string> = {
   bmp: 'image/bmp',
   ico: 'image/x-icon',
   pdf: 'application/pdf',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  ogg: 'video/ogg',
+  mov: 'video/mp4',
+  mkv: 'video/x-matroska',
+  avi: 'video/x-msvideo',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  flac: 'audio/flac',
+  wma: 'audio/x-ms-wma',
 }
 
 export function isImagePath(path: string): boolean {
   const ext = path.split('.').pop()?.toLowerCase() ?? ''
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext)
+}
+
+export function isVideoPath(path: string): boolean {
+  const ext = path.split('.').pop()?.toLowerCase() ?? ''
+  return ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi'].includes(ext)
+}
+
+export function isAudioPath(path: string): boolean {
+  const ext = path.split('.').pop()?.toLowerCase() ?? ''
+  return ['mp3', 'wav', 'm4a', 'aac', 'flac', 'wma'].includes(ext)
 }

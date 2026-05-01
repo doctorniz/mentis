@@ -13,6 +13,10 @@ export function editorTabTypeFromVaultPath(path: string): EditorTab['type'] {
       return 'canvas'
     case FileType.Image:
       return 'image'
+    case FileType.Video:
+      return 'video'
+    case FileType.Audio:
+      return 'audio'
     case FileType.Docx:
       return 'docx'
     case FileType.Spreadsheet:

@@ -22,11 +22,12 @@ function usePdfPageStyle() {
   return useVaultStore((s) => s.config?.pdfPageStyle ?? DEFAULT_VAULT_CONFIG.pdfPageStyle)
 }
 
-function fileTypeForPath(path: string): 'pdf' | 'markdown' | 'canvas' | 'spreadsheet' | null {
+function fileTypeForPath(path: string): 'pdf' | 'markdown' | 'canvas' | 'spreadsheet' | 'audio' | null {
   if (path.endsWith('.pdf')) return 'pdf'
   if (path.endsWith('.md') || path.endsWith('.markdown')) return 'markdown'
   if (path.endsWith('.canvas')) return 'canvas'
   if (path.endsWith('.xlsx') || path.endsWith('.xls') || path.endsWith('.csv')) return 'spreadsheet'
+  if (path.endsWith('.mp3') || path.endsWith('.wav') || path.endsWith('.m4a')) return 'audio'
   return null
 }
 

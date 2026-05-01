@@ -118,6 +118,10 @@ The PixiJS canvas editor has an async init + async flush-save teardown. Key inva
 
 Quick-capture notice board (`Ctrl+2`). **Thoughts** are `.md` files in `_marrow/_board/` with frontmatter (`type`, `color`, timestamps). Title from first `# H1`. Masonry CSS-columns layout. Inline edit via minimal Tiptap (bold/italic/underline/lists — keyboard shortcuts only). Image thoughts in `_marrow/_board/_assets/`. `useBoardStore` for CRUD; `lib/board/index.ts` parse/serialize; `lib/editor/board-extensions.ts` extensions.
 
+**Audio thoughts** (`type: 'audio'`) are voice recordings saved as MP3 in `_marrow/_board/_assets/`. Frontmatter: `audioPath` (vault-relative path to MP3), `audioDuration` (seconds), `transcript` (Whisper-generated text). Recorded via `AudioRecorderBar` component (inline bar with live level metering). MP3 encoding via `lamejs` (client-side, `lib/audio/recorder.ts`). Transcription via Whisper-tiny (`@huggingface/transformers`, ~40MB quantized model cached in browser, `lib/audio/transcribe.ts`). Transcribe button appears on audio cards without transcripts.
+
+**Move to Vault** — all board items have a "Move to Vault" action (arrow icon). Physically moves the `.md` file to vault root, relocates associated assets from `_board/_assets` to `_assets/`, updates internal references, and dispatches `ink:vault-changed`.
+
 ### Bookmarks
 
 Web bookmark manager (`Ctrl+4`). `.md` files in `_marrow/_bookmarks/` with frontmatter (url, title, description, favicon, ogImage, tags). Categories as subfolders. `fetchOgMetadata` in `lib/bookmarks/og-fetch.ts` scrapes OG + Google favicon — CORS-safe fallback. Two-panel layout: category sidebar + bookmark list. Add/edit via Radix Dialog. `useBookmarksStore` for CRUD + categories; `lib/bookmarks/index.ts` parse/serialize.
@@ -184,6 +188,10 @@ Provider: **Dropbox** (OAuth 2 PKCE; Full Dropbox scoped; absolute paths like `/
 
 Image files in the vault tree open as `EditorTab` type `image`. PNG/JPEG/WebP: `ImageEditorView` (rotate, edge-trim crop, brightness/contrast/saturation via `lib/browser/image-edit-pipeline.ts`). GIF/SVG/BMP/ICO: plain preview via `VaultImageView`.
 
+### Audio Files
+
+Audio files (MP3/WAV/M4A/AAC/FLAC/WMA) open as `EditorTab` type `audio`. `AudioPlayerView` shows a centered player with play/pause, seekable progress bar, playback speed (0.5×–2×), and restart. Shared `AudioPlayer` component (`components/audio/audio-player.tsx`) used in both vault tab and board cards. Recording: `AudioRecorder` class (`lib/audio/recorder.ts`) captures via `MediaStreamSource` + `ScriptProcessorNode`, encodes to MP3 client-side via `lamejs`. Transcription: Whisper-tiny via `@huggingface/transformers` (`lib/audio/transcribe.ts`), ~40MB quantized model cached in browser, runs fully offline via WASM. Progress events on `ink:whisper-progress` CustomEvent.
+
 ## Conventions
 
 **Imports:** Always use `@/` alias, never relative paths crossing directory boundaries. External → internal → types ordering.
@@ -217,10 +225,12 @@ Key suites: `search.test.ts`, `markdown.test.ts`, `markdown-bridge.test.ts`, `pd
 
 ## Key Gotchas
 
+- **`Uint8Array<ArrayBufferLike>` vs `Uint8Array<ArrayBuffer>`:** Strict TS (`lib: ["dom"]`) distinguishes these. `new Uint8Array(n)` returns `Uint8Array<ArrayBufferLike>` but DOM APIs like `AnalyserNode.getByteTimeDomainData()` and `Blob` constructor expect `Uint8Array<ArrayBuffer>`. Fix with `as Uint8Array<ArrayBuffer>` cast at the allocation site, or type the field explicitly. This also applies to `FileSystemAdapter.readFile()` return values passed to `Blob` — see `assetToBlobUrl` in `assets.ts` for the existing pattern (`data as BlobPart`).
 - **Rename + auto-save race:** After a file rename, the auto-save cleanup closes over the *old* path. Skip flush if `pathRef.current !== path` to avoid recreating the old file. Canvas unmount saves to `pathRef.current` (live path), not the closure `path`.
 - **COOP/COEP headers** are required for `SharedArrayBuffer` (PDF.js). They must be set at the hosting layer, not in `next.config.ts` (static export doesn't run Next.js middleware). See `docs/DEPLOYMENT.md`.
 - **PDF.js loading:** Use the loader in `src/lib/pdf/pdfjs-loader.ts` — do not import PDF.js directly, as it requires careful worker setup.
 - **Static export:** `pnpm build` uses `output: 'export'`. No server-side rendering, no API routes (except auth pages which are handled client-side).
+- **Browser-only libraries & prerendering:** Libraries that access `document` or `window` at module scope (e.g. `plyr`, `lamejs`) will crash the static-export prerender with `ReferenceError: document is not defined`. **Never add a top-level `import` for such libraries.** Use `await import('lib')` inside a `useEffect` or event handler instead. As a safety net, stub them on the server via `next.config.ts` → `webpack` → `if (isServer) config.resolve.alias['lib'] = false`. Current exclusions: `plyr`, `lamejs`, `@huggingface/transformers`.
 - **Canvas Pixi ticker:** The Pixi Application ticker must be stopped synchronously before async teardown in canvas cleanup, or it renders destroyed geometry. See "Canvas Lifecycle" section above.
 - **Canvas unmount save race:** Unmount cleanup awaits `flushSave` before `engine.destroy()`, and publishes the promise into `pendingCanvasSaves` so the next mount of the same path can await it before reading disk. Skipping either half loses in-flight changes.
 - **Canvas v5 drawings folder:** Pixel data lives at `_marrow/_drawings/<assetId>/<layerId>.png`, hidden from the vault tree. `assetId` is stored in the `.canvas` JSON and is minted on first save if missing (v3 / v4 migrations). Save order is PNGs-first, JSON-last for crash safety. Renaming a `.canvas` file does NOT move its drawings folder — the id travels with the JSON, not the filename. Deleted layers and v4-migration sibling `.assets/` folders leave orphans (out of scope for now).

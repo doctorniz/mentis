@@ -1,12 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { ArrowUpRight, Loader2, Mic, Sparkles, Trash2 } from 'lucide-react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import { marked } from 'marked'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { getBoardEditorExtensions, boardMarkdownToJSON, boardJSONToMarkdown } from '@/lib/editor/board-extensions'
 import { assetToBlobUrl } from '@/lib/notes/assets'
+import { AudioPlayer } from '@/components/audio/audio-player'
 import { useBoardStore } from '@/stores/board'
 import type { BoardItem, ThoughtColor } from '@/types/board'
 import { cn } from '@/utils/cn'
@@ -166,6 +167,29 @@ function parseImageFromBody(body: string): { alt: string; vaultPath: string } | 
   return { alt, vaultPath: src }
 }
 
+/** Audio player for board audio thoughts. */
+function AudioPreview({ audioPath, duration }: { audioPath: string; duration: number | null }) {
+  const { vaultFs } = useVaultSession()
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let url: string | null = null
+    assetToBlobUrl(vaultFs, audioPath)
+      .then((u) => { url = u; setBlobUrl(u) })
+      .catch(() => {/* ignore missing file */})
+    return () => { if (url) URL.revokeObjectURL(url) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioPath])
+
+  if (!blobUrl) return null
+
+  return (
+    <div className="mb-1" onClick={(e) => e.stopPropagation()}>
+      <AudioPlayer src={blobUrl} duration={duration ?? undefined} compact />
+    </div>
+  )
+}
+
 function stripImages(body: string): { stripped: string; imageLines: string[] } {
   const imageLines: string[] = []
   const stripped = body
@@ -175,11 +199,72 @@ function stripImages(body: string): { stripped: string; imageLines: string[] } {
   return { stripped, imageLines }
 }
 
+function TranscribeButton({ item }: { item: BoardItem }) {
+  const { vaultFs } = useVaultSession()
+  const updateItemMeta = useBoardStore((s) => s.updateItemMeta)
+  const [transcribing, setTranscribing] = useState(false)
+  const [progress, setProgress] = useState<string | null>(null)
+
+  useEffect(() => {
+    function handler(e: Event) {
+      const detail = (e as CustomEvent).detail as { status: string; progress?: number }
+      if (detail.status === 'progress' && detail.progress != null) {
+        setProgress(`${Math.round(detail.progress)}%`)
+      } else if (detail.status === 'ready') {
+        setProgress(null)
+      }
+    }
+    window.addEventListener('ink:whisper-progress', handler)
+    return () => window.removeEventListener('ink:whisper-progress', handler)
+  }, [])
+
+  const handleTranscribe = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!item.audioPath || transcribing) return
+    setTranscribing(true)
+    try {
+      const audioBytes = await vaultFs.readFile(item.audioPath)
+      const { transcribeAudio } = await import('@/lib/audio/transcribe')
+      const { text } = await transcribeAudio(audioBytes)
+      if (text) {
+        await updateItemMeta(vaultFs, item.path, { transcript: text })
+      }
+    } catch (err) {
+      console.error('Transcription failed:', err)
+    } finally {
+      setTranscribing(false)
+      setProgress(null)
+    }
+  }, [vaultFs, item.audioPath, item.path, transcribing, updateItemMeta])
+
+  return (
+    <button
+      type="button"
+      onClick={handleTranscribe}
+      disabled={transcribing}
+      className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-hover hover:text-fg disabled:opacity-60"
+    >
+      {transcribing ? (
+        <>
+          <Loader2 className="size-3 animate-spin" />
+          {progress ? `Downloading model… ${progress}` : 'Transcribing…'}
+        </>
+      ) : (
+        <>
+          <Sparkles className="size-3" />
+          Transcribe
+        </>
+      )}
+    </button>
+  )
+}
+
 export function ThoughtCard({ item }: { item: BoardItem }) {
   const { vaultFs } = useVaultSession()
   const activeItemPath = useBoardStore((s) => s.activeItemPath)
   const setActiveItem = useBoardStore((s) => s.setActiveItem)
   const removeItem = useBoardStore((s) => s.removeItem)
+  const moveToVault = useBoardStore((s) => s.moveToVault)
   const isEditing = activeItemPath === item.path
   const [hovered, setHovered] = useState(false)
   const colors = COLOR_CLASSES[item.color] ?? COLOR_CLASSES.yellow
@@ -192,6 +277,14 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
       void removeItem(vaultFs, item.path)
     },
     [vaultFs, item.path, removeItem],
+  )
+
+  const handleMoveToVault = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      void moveToVault(vaultFs, item.path)
+    },
+    [vaultFs, item.path, moveToVault],
   )
 
   const isEmpty = !item.body.trim() && !item.title
@@ -216,12 +309,35 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
       )}
 
       <div className="p-4">
+        {/* Audio player for audio thoughts */}
+        {item.type === 'audio' && item.audioPath && (
+          <div className="mb-2">
+            <div className="mb-1.5 flex items-center gap-1.5">
+              <Mic className="size-3 text-fg-muted" />
+              <span className="text-[10px] font-medium uppercase tracking-wider text-fg-muted">Voice Note</span>
+            </div>
+            <AudioPreview audioPath={item.audioPath} duration={item.audioDuration} />
+          </div>
+        )}
+
+        {/* Transcript for audio thoughts */}
+        {item.type === 'audio' && item.transcript && (
+          <div className="mb-2 rounded-lg bg-fg/[0.03] px-2.5 py-2">
+            <p className="text-xs leading-relaxed text-fg-secondary">{item.transcript}</p>
+          </div>
+        )}
+
+        {/* Transcribe button for audio thoughts without transcript */}
+        {item.type === 'audio' && item.audioPath && !item.transcript && (
+          <TranscribeButton item={item} />
+        )}
+
         {isEditing ? (
           <EditContent item={item} onDone={() => setActiveItem(null)} />
         ) : (
-          <div className={cn('cursor-pointer', isEmpty && 'min-h-[3rem]')}>
+          <div className={cn('cursor-pointer', isEmpty && !item.audioPath && 'min-h-[3rem]')}>
             <ReadContent body={item.body} />
-            {isEmpty && (
+            {isEmpty && !item.audioPath && (
               <p className="text-fg-muted/40 text-sm italic">Empty thought</p>
             )}
           </div>
@@ -232,14 +348,25 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
             {formatRelativeDate(item.modified)}
           </span>
           {(hovered || isEditing) && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="rounded-md p-1 text-fg-muted/40 transition-colors hover:text-destructive hover:bg-destructive/10"
-              aria-label="Delete thought"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={handleMoveToVault}
+                className="rounded-md p-1 text-fg-muted/40 transition-colors hover:text-accent hover:bg-accent/10"
+                aria-label="Move to Vault"
+                title="Move to Vault"
+              >
+                <ArrowUpRight className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="rounded-md p-1 text-fg-muted/40 transition-colors hover:text-destructive hover:bg-destructive/10"
+                aria-label="Delete thought"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </div>
           )}
         </div>
       </div>

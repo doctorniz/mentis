@@ -24,7 +24,7 @@ class InMemoryAdapter implements FileSystemAdapter {
   }
   async exists(path: string): Promise<boolean> { return this.files.has(path) }
   async stat(path: string): Promise<FileStats> {
-    return { size: this.files.get(path)?.length ?? 0, modifiedAt: Date.now(), isDirectory: false }
+    return { size: this.files.get(path)?.length ?? 0, createdAt: new Date(), modifiedAt: new Date() }
   }
   async mkdir(): Promise<void> {}
   async readdir(): Promise<FileEntry[]> { return [] }

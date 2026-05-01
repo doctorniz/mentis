@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'katex/dist/katex.min.css';
 @import '@eigenpal/docx-js-editor/styles.css';
+@import 'plyr/dist/plyr.css';
 
 @variant dark (&:where(.dark, .dark *));
 

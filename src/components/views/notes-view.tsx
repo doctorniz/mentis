@@ -29,6 +29,8 @@ import { ImageEditorView } from '@/components/notes/image-editor-view'
 import { CodeFileEditor } from '@/components/notes/code-file-editor'
 import { DocxEditorView } from '@/components/notes/docx-editor'
 import { SpreadsheetEditor } from '@/components/notes/spreadsheet-editor'
+import { VideoPlayerView } from '@/components/notes/video-player-view'
+import { AudioPlayerView } from '@/components/notes/audio-player-view'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { useMediaQuery } from '@/lib/browser/use-media-query'
 import { createUntitledNote } from '@/lib/notes/new-note'
@@ -74,6 +76,60 @@ function ImagePreviewTabPane({
       </div>
       <div className="bg-bg flex min-h-0 flex-1 flex-col overflow-hidden p-3">
         <ImageEditorView vaultFs={vaultFs} path={path} title={titleFromVaultPath(path)} />
+      </div>
+    </div>
+  )
+}
+
+function VideoPreviewTabPane({
+  tabId,
+  path,
+  onRename,
+}: {
+  tabId: string
+  path: string
+  onRename: (tabId: string, oldPath: string, stem: string, ext: string) => void
+}) {
+  const { vaultFs } = useVaultSession()
+  const ext = imageExtFromPath(path)
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
+        <InlineFileTitle
+          path={path}
+          onRename={(oldPath, newStem) => void onRename(tabId, oldPath, newStem, ext)}
+        />
+      </div>
+      <div className="bg-bg flex min-h-0 flex-1 flex-col overflow-hidden">
+        <VideoPlayerView vaultFs={vaultFs} path={path} title={titleFromVaultPath(path)} />
+      </div>
+    </div>
+  )
+}
+
+function AudioPreviewTabPane({
+  tabId,
+  path,
+  onRename,
+}: {
+  tabId: string
+  path: string
+  onRename: (tabId: string, oldPath: string, stem: string, ext: string) => void
+}) {
+  const { vaultFs } = useVaultSession()
+  const ext = imageExtFromPath(path)
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
+        <InlineFileTitle
+          path={path}
+          onRename={(oldPath, newStem) => void onRename(tabId, oldPath, newStem, ext)}
+        />
+      </div>
+      <div className="bg-bg flex min-h-0 flex-1 flex-col overflow-hidden">
+        <AudioPlayerView vaultFs={vaultFs} path={path} title={titleFromVaultPath(path)} />
       </div>
     </div>
   )
@@ -478,6 +534,24 @@ function NotesViewInner() {
           </div>
         ) : activeTab?.type === 'image' ? (
           <ImagePreviewTabPane
+            key={activeTab.id}
+            tabId={activeTab.id}
+            path={activeTab.path}
+            onRename={(tabId, oldPath, stem, ext) =>
+              void handleRenameVaultFile(tabId, oldPath, stem, ext)
+            }
+          />
+        ) : activeTab?.type === 'video' ? (
+          <VideoPreviewTabPane
+            key={activeTab.id}
+            tabId={activeTab.id}
+            path={activeTab.path}
+            onRename={(tabId, oldPath, stem, ext) =>
+              void handleRenameVaultFile(tabId, oldPath, stem, ext)
+            }
+          />
+        ) : activeTab?.type === 'audio' ? (
+          <AudioPreviewTabPane
             key={activeTab.id}
             tabId={activeTab.id}
             path={activeTab.path}

@@ -10,8 +10,20 @@ const nextConfig: NextConfig = {
       canvas: canvasStub,
     },
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.alias.canvas = false
+    // lamejs is a UMD library that references `document` at module scope.
+    // Exclude it (and @huggingface/transformers) from the server bundle
+    // so static-export prerendering doesn't crash. Both are only used
+    // at runtime via dynamic import in client components.
+    // Libraries that reference `document` at module scope crash
+    // static-export prerendering. Stub them out on the server —
+    // they're only used at runtime via dynamic import in client components.
+    if (isServer) {
+      config.resolve.alias['plyr'] = false
+      config.resolve.alias['lamejs'] = false
+      config.resolve.alias['@huggingface/transformers'] = false
+    }
     return config
   },
   // COOP/COEP headers (needed for SharedArrayBuffer) must be set at the

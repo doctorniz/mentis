@@ -1,12 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Columns3, FileText, Layout, Table2, Upload, X } from 'lucide-react'
+import { Columns3, FileText, Layout, Mic, Table2, Upload, X } from 'lucide-react'
 import * as Popover from '@radix-ui/react-popover'
 import { useNewFileActions } from '@/lib/notes/use-new-file-actions'
+import { useUiStore } from '@/stores/ui'
+import { ViewMode } from '@/types/vault'
 import { cn } from '@/utils/cn'
 
-type MenuType = 'note' | 'file' | 'drawing' | 'kanban' | 'spreadsheet'
+type MenuType = 'note' | 'file' | 'drawing' | 'kanban' | 'spreadsheet' | 'recording'
 
 export function NewFilePopover({
   children,
@@ -58,6 +60,13 @@ export function NewFilePopover({
     { type: 'note', label: 'Note', icon: FileText, accent: 'text-blue-500', action: () => void createNote() },
     { type: 'kanban', label: 'Kanban', icon: Columns3, accent: 'text-amber-500', action: () => void createKanban() },
     { type: 'spreadsheet', label: 'Spreadsheet', icon: Table2, accent: 'text-green-500', action: () => void createSpreadsheet() },
+    { type: 'recording', label: 'Recording', icon: Mic, accent: 'text-red-500', action: () => {
+      // Switch to Board view and fire event to start recording
+      useUiStore.getState().setActiveView(ViewMode.Board)
+      // Small delay so the Board view mounts and can listen for the event
+      setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
+      close()
+    } },
     { type: 'file', label: 'File', icon: Upload, accent: 'text-emerald-500', action: () => setShowFileUpload(true) },
     { type: 'drawing', label: 'Drawing', icon: Layout, accent: 'text-violet-500', action: () => void createDrawing() },
   ]

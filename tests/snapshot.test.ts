@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { FileSystemAdapter } from '@/lib/fs'
 import type { FileEntry, FileStats } from '@/types/files'
+import { FileType, getFileType } from '@/types/files'
 import {
   createSnapshot,
   listSnapshots,
@@ -36,7 +37,7 @@ class InMemoryAdapter implements FileSystemAdapter {
   }
   async stat(path: string): Promise<FileStats> {
     const data = this.files.get(path)
-    return { size: data?.length ?? 0, modifiedAt: Date.now(), isDirectory: this.dirs.has(path) }
+    return { size: data?.length ?? 0, createdAt: new Date(), modifiedAt: new Date() }
   }
   async mkdir(path: string): Promise<void> {
     this.dirs.add(path)
@@ -55,6 +56,7 @@ class InMemoryAdapter implements FileSystemAdapter {
       entries.push({
         name,
         path: prefix + name,
+        type: isDir ? FileType.Other : getFileType(name),
         isDirectory: isDir,
         size: isDir ? undefined : data.length,
       })
