@@ -13,6 +13,13 @@ import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 const SAVE_DEBOUNCE_MS = 750
 
 /**
+ * Approximate rendered page width of a standard DOCX (A4/Letter + margins)
+ * inside @eigenpal/docx-js-editor at 100% zoom. Used to compute the CSS zoom
+ * ratio that fits the page into whatever container width is available.
+ */
+const DOCX_PAGE_WIDTH = 850
+
+/**
  * DOCX editor powered by `@eigenpal/docx-js-editor`.
  *
  * Full WYSIWYG editing with auto-save back to the vault. The library is
@@ -44,6 +51,7 @@ export function DocxEditorView({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onPersistedRef = useRef(onPersisted)
   onPersistedRef.current = onPersisted
@@ -97,6 +105,90 @@ export function DocxEditorView({
     // Re-load only when the tab identity changes (new file opened).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabId])
+
+  // Track whether the editor is zoomed-out (compact mode) so we can show the
+  // alpha disclaimer banner.
+  const [isCompact, setIsCompact] = useState(false)
+
+  // ---- Responsive zoom via ResizeObserver ----
+  // The library renders document pages at a fixed ~850px width and centres
+  // them, so on narrow containers both left and right edges get clipped.
+  // We solve this by writing --docx-zoom onto the container element; the CSS
+  // rule `zoom: var(--docx-zoom)` on the child scales the entire editor down
+  // so the page always fits.  CSS `zoom` (unlike transform: scale) affects
+  // layout, so the container's own scroll area stays correct.
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const applyZoom = (width: number) => {
+      const zoom = width < DOCX_PAGE_WIDTH ? Math.max(0.35, width / DOCX_PAGE_WIDTH) : 1
+      container.style.setProperty('--docx-zoom', String(zoom))
+      setIsCompact(zoom < 1)
+    }
+
+    // Run immediately (container is already in the DOM), then on every resize
+    applyZoom(container.clientWidth)
+
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? container.clientWidth
+      applyZoom(width)
+    })
+    observer.observe(container)
+
+    return () => observer.disconnect()
+    // containerRef is stable; DOCX_PAGE_WIDTH is a module-level const
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ---- Double-tap → dblclick forwarding ----
+  // ProseMirror (which powers this editor) selects a word on dblclick, but
+  // mobile browsers fire touchend rather than dblclick on double-tap.
+  // We detect two taps within 300ms on the same approximate spot and
+  // synthesise a dblclick at those coordinates so the editor's word-select
+  // handler fires normally.
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    let lastTap = 0
+    let lastX = 0
+    let lastY = 0
+
+    const onTouchEnd = (e: TouchEvent) => {
+      const touch = e.changedTouches[0]
+      if (!touch) return
+
+      const now = Date.now()
+      const dx = Math.abs(touch.clientX - lastX)
+      const dy = Math.abs(touch.clientY - lastY)
+
+      if (now - lastTap < 300 && dx < 20 && dy < 20) {
+        // Double-tap detected — find the element under the finger and fire
+        // dblclick so ProseMirror's word-select handler picks it up.
+        const target = document.elementFromPoint(touch.clientX, touch.clientY)
+        if (target) {
+          target.dispatchEvent(
+            new MouseEvent('dblclick', {
+              bubbles: true,
+              cancelable: true,
+              clientX: touch.clientX,
+              clientY: touch.clientY,
+            }),
+          )
+        }
+        lastTap = 0
+      } else {
+        lastTap = now
+        lastX = touch.clientX
+        lastY = touch.clientY
+      }
+    }
+
+    container.addEventListener('touchend', onTouchEnd)
+    return () => container.removeEventListener('touchend', onTouchEnd)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ---- Auto-save logic ----
   const scheduleSave = useCallback(() => {
@@ -208,6 +300,15 @@ export function DocxEditorView({
         <InlineFileTitle path={path} onRename={handleRename} />
         <span className="text-fg-muted text-xs font-mono">.docx</span>
 
+        {isCompact && (
+          <span
+            className="bg-bg-tertiary text-fg-muted rounded px-1.5 py-0.5 text-[10px] font-medium"
+            title="Compact view is experimental on narrow screens"
+          >
+            compact · alpha
+          </span>
+        )}
+
         <div className="ml-auto flex items-center gap-1">
           {/* Download original */}
           <Button
@@ -225,7 +326,7 @@ export function DocxEditorView({
       </div>
 
       {/* Editor area */}
-      <div className="docx-editor-container relative min-h-0 flex-1">
+      <div ref={containerRef} className="docx-editor-container relative min-h-0 flex-1">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-fg-muted text-sm">Loading document…</span>

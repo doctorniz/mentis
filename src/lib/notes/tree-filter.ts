@@ -18,6 +18,8 @@ export function isNotesTreeEntry(entry: FileEntry): boolean {
     entry.type === FileType.Canvas ||
     entry.type === FileType.Image ||
     entry.type === FileType.Docx ||
+    entry.type === FileType.Pptx ||
+    entry.type === FileType.Audio ||
     entry.type === FileType.Video ||
     entry.type === FileType.Spreadsheet ||
     entry.type === FileType.Code

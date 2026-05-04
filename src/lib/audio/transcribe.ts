@@ -1,8 +1,11 @@
 /**
- * Speech-to-text transcription via Whisper-tiny running in the browser
- * through @huggingface/transformers (ONNX runtime / WebGPU / WASM).
+ * Speech-to-text transcription via distil-whisper-small running in the browser
+ * through @huggingface/transformers (ONNX runtime).
  *
- * The model (~40MB quantized) is downloaded once and cached by the browser.
+ * Uses WebGPU where available (Chrome 113+) for GPU-accelerated inference,
+ * falling back to WASM. The model (~166MB quantized) is downloaded once and
+ * cached by the browser.
+ *
  * Progress events are emitted via `ink:whisper-progress` CustomEvent so the
  * UI can show a download bar on first use.
  *
@@ -15,10 +18,21 @@ let pipelineInstance: any = null
 let loading = false
 let loadPromise: Promise<void> | null = null
 
-const MODEL_ID = 'onnx-community/whisper-tiny.en'
+const MODEL_ID = 'onnx-community/distil-whisper-small.en'
+
+/** Prefer WebGPU; fall back to WASM for browsers without it. */
+async function resolveDevice(): Promise<'webgpu' | 'wasm'> {
+  try {
+    if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
+      const adapter = await (navigator as unknown as { gpu: { requestAdapter: () => Promise<unknown> } }).gpu.requestAdapter()
+      if (adapter) return 'webgpu'
+    }
+  } catch { /* ignore */ }
+  return 'wasm'
+}
 
 /**
- * Lazily load the Whisper-tiny pipeline. Caches after first load.
+ * Lazily load the pipeline. Caches after first load.
  * Fires `ink:whisper-progress` CustomEvents during model download.
  */
 async function getPipeline() {
@@ -32,14 +46,17 @@ async function getPipeline() {
   loading = true
   loadPromise = (async () => {
     try {
-      const { pipeline } = await import('@huggingface/transformers')
+      const [{ pipeline }, device] = await Promise.all([
+        import('@huggingface/transformers'),
+        resolveDevice(),
+      ])
 
       pipelineInstance = await pipeline(
         'automatic-speech-recognition',
         MODEL_ID,
         {
-          dtype: 'q8',
-          device: 'wasm',
+          dtype: device === 'webgpu' ? 'fp16' : 'q8',
+          device,
           progress_callback: (progress: { status: string; progress?: number; file?: string }) => {
             window.dispatchEvent(
               new CustomEvent('ink:whisper-progress', { detail: progress }),
@@ -89,13 +106,50 @@ export interface TranscribeResult {
 }
 
 /**
- * Transcribe audio bytes (MP3, WAV, etc.) to text using Whisper-tiny.
- *
- * First call will download the model (~40MB). Subsequent calls use the
- * cached pipeline.
- *
- * @param audioBytes Raw audio file bytes (MP3, WAV, etc.)
- * @returns Transcribed text
+ * A threshold (in seconds) between Whisper chunks above which a new
+ * paragraph is started. Pauses shorter than this are kept as a single
+ * space; longer pauses suggest a topic/thought boundary.
+ */
+const PARAGRAPH_GAP_S = 1.5
+
+interface WhisperChunk {
+  text: string
+  timestamp: [number, number | null]
+}
+
+/**
+ * Join Whisper chunks into paragraphed text.
+ * A gap ≥ PARAGRAPH_GAP_S between the end of one chunk and the start of
+ * the next is treated as a paragraph break; shorter gaps are joined with
+ * a space.
+ */
+function chunksToText(chunks: WhisperChunk[]): string {
+  if (!chunks.length) return ''
+
+  const paragraphs: string[] = []
+  let current = chunks[0].text.trim()
+
+  for (let i = 1; i < chunks.length; i++) {
+    const prevEnd = chunks[i - 1].timestamp[1]
+    const nextStart = chunks[i].timestamp[0]
+    const gap = prevEnd != null ? nextStart - prevEnd : 0
+
+    if (gap >= PARAGRAPH_GAP_S) {
+      if (current) paragraphs.push(current)
+      current = chunks[i].text.trim()
+    } else {
+      current += ' ' + chunks[i].text.trim()
+    }
+  }
+
+  if (current) paragraphs.push(current)
+  return paragraphs.join('\n\n')
+}
+
+/**
+ * Transcribe audio bytes to text using distil-whisper-small (WebGPU or WASM).
+ * First call downloads the model (~166MB); subsequent calls use the cached pipeline.
+ * Pauses ≥ 1.5 s between chunks produce paragraph breaks.
  */
 export async function transcribeAudio(
   audioBytes: Uint8Array,
@@ -106,13 +160,18 @@ export async function transcribeAudio(
   const result = await transcriber(pcm, {
     chunk_length_s: 30,
     stride_length_s: 5,
-    return_timestamps: false,
+    return_timestamps: true,
   })
 
-  const text = typeof result === 'string'
-    ? result
-    : (result as { text: string }).text ?? ''
+  // With return_timestamps: true the pipeline returns { text, chunks[] }.
+  // Fall back to plain text if the shape is unexpected (e.g. very short clips).
+  const raw = result as { text?: string; chunks?: WhisperChunk[] }
 
+  if (raw.chunks && raw.chunks.length > 0) {
+    return { text: chunksToText(raw.chunks) }
+  }
+
+  const text = typeof result === 'string' ? result : (raw.text ?? '')
   return { text: text.trim() }
 }
 

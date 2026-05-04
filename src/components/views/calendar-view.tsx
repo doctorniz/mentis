@@ -5,29 +5,107 @@ import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Plus } from 'lucide-r
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useCalendarStore } from '@/stores/calendar'
 import { useTasksStore } from '@/stores/tasks'
+import { useVaultStore } from '@/stores/vault'
+import { useEditorStore } from '@/stores/editor'
+import { useFileTreeStore } from '@/stores/file-tree'
+import { useUiStore } from '@/stores/ui'
 import { CalendarGrid } from '@/components/calendar/calendar-grid'
+import { WeekGrid } from '@/components/calendar/week-grid'
+import { DayGrid } from '@/components/calendar/day-grid'
 import { EventDialog } from '@/components/calendar/event-dialog'
 import type { CalendarEvent } from '@/types/calendar'
 import { toDateStr } from '@/lib/calendar'
+import { listDailyNoteDates, openOrCreateDailyNote } from '@/lib/notes/daily-note'
+import { DAILY_NOTES_DIR, ViewMode } from '@/types/vault'
 import { cn } from '@/utils/cn'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type CalendarViewMode = 'day' | 'week' | 'month'
+const LS_KEY = 'ink-calendar-view'
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function addDays(date: Date, n: number): Date {
+  const d = new Date(date)
+  d.setDate(d.getDate() + n)
+  return d
+}
+
+function addMonths(date: Date, n: number): Date {
+  const d = new Date(date)
+  d.setMonth(d.getMonth() + n)
+  return d
+}
+
+function isSameMonth(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
+}
+
+function isSameWeek(a: Date, b: Date): boolean {
+  const startA = new Date(a); startA.setDate(a.getDate() - a.getDay())
+  const startB = new Date(b); startB.setDate(b.getDate() - b.getDay())
+  return toDateStr(startA) === toDateStr(startB)
+}
+
+function formatHeading(viewMode: CalendarViewMode, refDate: Date): string {
+  if (viewMode === 'month') {
+    return `${MONTH_NAMES[refDate.getMonth()]} ${refDate.getFullYear()}`
+  }
+  if (viewMode === 'day') {
+    return refDate.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    })
+  }
+  // week: show "Jun 1 – 7, 2026" or "Jun 29 – Jul 5, 2026"
+  const sun = new Date(refDate); sun.setDate(refDate.getDate() - refDate.getDay())
+  const sat = addDays(sun, 6)
+  const sameMonth = sun.getMonth() === sat.getMonth()
+  const sameYear  = sun.getFullYear() === sat.getFullYear()
+  const startStr  = sun.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const endStr    = sat.toLocaleDateString('en-US', {
+    month: sameMonth ? undefined : 'short',
+    day: 'numeric',
+    year: sameYear ? 'numeric' : undefined,
+  })
+  const yearSuffix = `, ${sat.getFullYear()}`
+  return `${startStr} – ${endStr}${yearSuffix}`
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export function CalendarView() {
   const { vaultFs } = useVaultSession()
   const loadEvents = useCalendarStore((s) => s.loadEvents)
   const events = useCalendarStore((s) => s.events)
   const loading = useCalendarStore((s) => s.loading)
+  const config = useVaultStore((s) => s.config)
+  const setActiveView = useUiStore((s) => s.setActiveView)
 
   const loadTasks = useTasksStore((s) => s.loadTasks)
   const tasks = useTasksStore((s) => s.items)
 
-  const now = new Date()
-  const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth())
+  const dailyFolder = config?.dailyNotesFolder ?? DAILY_NOTES_DIR
+  const [dailyNoteDates, setDailyNoteDates] = useState<Set<string>>(new Set())
+
+  // Persisted view mode (default: week)
+  const [viewMode, setViewModeState] = useState<CalendarViewMode>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(LS_KEY) : null
+    return (saved as CalendarViewMode | null) ?? 'week'
+  })
+
+  const setViewMode = (m: CalendarViewMode) => {
+    setViewModeState(m)
+    try { localStorage.setItem(LS_KEY, m) } catch { /* noop */ }
+  }
+
+  // Reference date — the "current" date in view
+  const [refDate, setRefDate] = useState(new Date())
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null)
@@ -38,25 +116,31 @@ export function CalendarView() {
     void loadTasks(vaultFs)
   }, [vaultFs, loadEvents, loadTasks])
 
-  const prevMonth = useCallback(() => {
-    setMonth((m) => {
-      if (m === 0) { setYear((y) => y - 1); return 11 }
-      return m - 1
-    })
-  }, [])
+  useEffect(() => {
+    void listDailyNoteDates(vaultFs, dailyFolder).then(setDailyNoteDates)
+  }, [vaultFs, dailyFolder])
 
-  const nextMonth = useCallback(() => {
-    setMonth((m) => {
-      if (m === 11) { setYear((y) => y + 1); return 0 }
-      return m + 1
-    })
-  }, [])
+  // ── Navigation ──────────────────────────────────────────────────────────────
 
-  const goToday = useCallback(() => {
-    const d = new Date()
-    setYear(d.getFullYear())
-    setMonth(d.getMonth())
-  }, [])
+  const goPrev = useCallback(() => {
+    setRefDate((d) =>
+      viewMode === 'day'   ? addDays(d, -1)
+      : viewMode === 'week'  ? addDays(d, -7)
+      : addMonths(d, -1),
+    )
+  }, [viewMode])
+
+  const goNext = useCallback(() => {
+    setRefDate((d) =>
+      viewMode === 'day'   ? addDays(d, 1)
+      : viewMode === 'week'  ? addDays(d, 7)
+      : addMonths(d, 1),
+    )
+  }, [viewMode])
+
+  const goToday = useCallback(() => setRefDate(new Date()), [])
+
+  // ── Event handlers ──────────────────────────────────────────────────────────
 
   const handleDayClick = useCallback((dateStr: string) => {
     setEditEvent(null)
@@ -64,42 +148,73 @@ export function CalendarView() {
     setDialogOpen(true)
   }, [])
 
+  // Time-slot click from week view — passes a full YYYY-MM-DDTHH:mm string
+  const handleTimeSlotClick = useCallback((dateTimeStr: string) => {
+    setEditEvent(null)
+    setClickedDate(dateTimeStr)
+    setDialogOpen(true)
+  }, [])
+
+  const handleDailyNoteClick = useCallback(async (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-').map(Number) as [number, number, number]
+    const date = new Date(y, m - 1, d)
+    const path = await openOrCreateDailyNote(vaultFs, date, dailyFolder)
+    const { detectEditorTabType, titleFromVaultPath } = await import('@/lib/notes/editor-tab-from-path')
+    const type = await detectEditorTabType(vaultFs, path)
+    useFileTreeStore.getState().setSelectedPath(path)
+    useEditorStore.getState().addRecentFile(path)
+    useEditorStore.getState().openTab({
+      id: crypto.randomUUID(),
+      path,
+      type,
+      title: titleFromVaultPath(path),
+      isDirty: false,
+    })
+    setActiveView(ViewMode.Vault)
+    void listDailyNoteDates(vaultFs, dailyFolder).then(setDailyNoteDates)
+  }, [vaultFs, dailyFolder, setActiveView])
+
   const handleEventClick = useCallback((ev: CalendarEvent) => {
     setEditEvent(ev)
     setClickedDate(undefined)
     setDialogOpen(true)
   }, [])
 
-  const isCurrentMonth =
-    year === now.getFullYear() && month === now.getMonth()
+  // ── "Today" button visibility ───────────────────────────────────────────────
+
+  const now = new Date()
+  const isAtToday =
+    viewMode === 'day'   ? toDateStr(refDate) === toDateStr(now)
+    : viewMode === 'week'  ? isSameWeek(refDate, now)
+    : isSameMonth(refDate, now)
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar */}
       <div className="border-border bg-bg-secondary flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2.5">
         <div className="flex items-center gap-2">
-          {/* Month / Year heading */}
-          <h1 className="text-fg min-w-[11rem] text-sm font-semibold tabular-nums">
-            {MONTH_NAMES[month]} {year}
+          <h1 className="text-fg min-w-[12rem] text-sm font-semibold tabular-nums">
+            {formatHeading(viewMode, refDate)}
           </h1>
-
           <button
             type="button"
-            onClick={prevMonth}
+            onClick={goPrev}
             className="text-fg-secondary hover:bg-bg-hover hover:text-fg rounded-md p-1 transition-colors"
-            aria-label="Previous month"
+            aria-label="Previous"
           >
             <ChevronLeft className="size-4" />
           </button>
           <button
             type="button"
-            onClick={nextMonth}
+            onClick={goNext}
             className="text-fg-secondary hover:bg-bg-hover hover:text-fg rounded-md p-1 transition-colors"
-            aria-label="Next month"
+            aria-label="Next"
           >
             <ChevronRight className="size-4" />
           </button>
-          {!isCurrentMonth && (
+          {!isAtToday && (
             <button
               type="button"
               onClick={goToday}
@@ -110,54 +225,98 @@ export function CalendarView() {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setEditEvent(null)
-            setClickedDate(toDateStr(new Date()))
-            setDialogOpen(true)
-          }}
-          className="bg-accent text-accent-fg hover:bg-accent-hover flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
-        >
-          <Plus className="size-3.5" />
-          New event
-        </button>
+        <div className="flex items-center gap-2">
+          {/* View switcher */}
+          <div className="border-border bg-bg flex rounded-lg border p-0.5">
+            {(['day', 'week', 'month'] as CalendarViewMode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setViewMode(m)}
+                className={cn(
+                  'rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors',
+                  viewMode === m
+                    ? 'bg-accent text-accent-fg'
+                    : 'text-fg-secondary hover:text-fg',
+                )}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEditEvent(null)
+              setClickedDate(toDateStr(new Date()))
+              setDialogOpen(true)
+            }}
+            className="bg-accent text-accent-fg hover:bg-accent-hover flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+          >
+            <Plus className="size-3.5" />
+            New event
+          </button>
+        </div>
       </div>
 
-      {/* Legend row */}
-      <div className="border-border flex shrink-0 items-center gap-4 border-b px-4 py-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className="bg-accent size-2 rounded-full" />
-          <span className="text-fg-muted text-[10px]">Events</span>
+      {/* Legend row — only for month/week views */}
+      {viewMode !== 'day' && (
+        <div className="border-border flex shrink-0 items-center gap-4 border-b px-4 py-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="bg-accent size-2 rounded-full" />
+            <span className="text-fg-muted text-[10px]">Events</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="bg-bg-tertiary border-border size-2 rounded-full border" />
+            <span className="text-fg-muted text-[10px]">Task due</span>
+          </div>
+          {dailyNoteDates.size > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-amber-400 dark:bg-amber-500" />
+              <span className="text-fg-muted text-[10px]">Daily note</span>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="bg-bg-tertiary border-border size-2 rounded-full border" />
-          <span className="text-fg-muted text-[10px]">Task due</span>
-        </div>
-      </div>
+      )}
 
       {/* Calendar body */}
       {loading ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="text-fg-muted size-6 animate-spin" />
         </div>
-      ) : (
+      ) : viewMode === 'month' ? (
         <CalendarGrid
-          year={year}
-          month={month}
+          year={refDate.getFullYear()}
+          month={refDate.getMonth()}
           events={events}
           tasks={tasks}
+          dailyNoteDates={dailyNoteDates}
           onDayClick={handleDayClick}
           onEventClick={handleEventClick}
+          onDailyNoteClick={(d) => void handleDailyNoteClick(d)}
         />
-      )}
-
-      {/* Empty state hint */}
-      {!loading && events.length === 0 && tasks.filter((t) => t.due).length === 0 && (
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <CalendarDays className="text-fg-muted/20 size-12" />
-          <p className="text-fg-muted text-sm">Click any day to add an event</p>
-        </div>
+      ) : viewMode === 'week' ? (
+        <WeekGrid
+          referenceDate={refDate}
+          events={events}
+          tasks={tasks}
+          dailyNoteDates={dailyNoteDates}
+          onDayClick={handleDayClick}
+          onTimeSlotClick={handleTimeSlotClick}
+          onEventClick={handleEventClick}
+          onDailyNoteClick={(d) => void handleDailyNoteClick(d)}
+        />
+      ) : (
+        <DayGrid
+          date={refDate}
+          events={events}
+          tasks={tasks}
+          dailyNoteDates={dailyNoteDates}
+          onAddEvent={handleDayClick}
+          onEventClick={handleEventClick}
+          onDailyNoteClick={(d) => void handleDailyNoteClick(d)}
+        />
       )}
 
       <EventDialog

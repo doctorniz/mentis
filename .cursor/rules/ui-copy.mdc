@@ -3,6 +3,11 @@ description: Minimal UI copy — avoid filler hints under labels
 globs: src/components/**/*.tsx
 ---
 
+# Core principle: simplicity
+
+- **Say as little as possible.** Every word in the UI is a tax on the user's attention. If a word can be cut without losing meaning, cut it.
+- Labels, buttons, and tooltips should be the shortest phrase that conveys full intent. Prefer one word over three.
+
 # Settings and form UI
 
 - Prefer **label + control only**. Do not add a second line of “hint” or explanatory text under every row unless it prevents a real mistake (e.g. non-obvious security, destructive action, or a constraint users cannot infer).

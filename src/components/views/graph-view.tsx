@@ -1,9 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useEditorStore } from '@/stores/editor'
 import { useUiStore } from '@/stores/ui'
+import { Button } from '@/components/ui/button'
 
 import { ViewMode } from '@/types/vault'
 import {
@@ -12,10 +14,21 @@ import {
   graphFolders,
   type GraphData,
 } from '@/lib/graph/build-graph'
+import { getFileType, FileType } from '@/types/files'
 import { GraphCanvas } from '@/components/graph/graph-canvas'
 
 const SKIP_PREFIXES = ['_', '.']
-const VAULT_EXTS = new Set(['.md', '.pdf', '.canvas'])
+
+/** File types included in the graph (excludes image/audio/video/other). */
+const GRAPH_FILE_TYPES = new Set([
+  FileType.Markdown,
+  FileType.Pdf,
+  FileType.Canvas,
+  FileType.Pptx,
+  FileType.Docx,
+  FileType.Spreadsheet,
+  FileType.Code,
+])
 
 /** Recursively collect all vault files we want to show in the graph. */
 async function collectVaultPaths(
@@ -37,9 +50,7 @@ async function collectVaultPaths(
       const sub = await collectVaultPaths(vaultFs, fullPath)
       paths.push(...sub)
     } else {
-      const dotIdx = e.name.lastIndexOf('.')
-      const ext = dotIdx >= 0 ? e.name.slice(dotIdx).toLowerCase() : ''
-      if (VAULT_EXTS.has(ext)) paths.push(fullPath)
+      if (GRAPH_FILE_TYPES.has(getFileType(e.name))) paths.push(fullPath)
     }
   }
   return paths
@@ -111,9 +122,10 @@ export function GraphView() {
     [openTab, setActiveView, setVaultMode],
   )
 
-  const noteCount = filteredData.nodes.filter((n) => n.type === 'note').length
-  const pdfCount = filteredData.nodes.filter((n) => n.type === 'pdf').length
-  const canvasCount = filteredData.nodes.filter((n) => n.type === 'canvas').length
+  const countByType = filteredData.nodes.reduce<Record<string, number>>((acc, n) => {
+    acc[n.type] = (acc[n.type] ?? 0) + 1
+    return acc
+  }, {})
 
   if (loading) {
     return (
@@ -137,16 +149,31 @@ export function GraphView() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar */}
-      <div className="border-border bg-bg-secondary flex items-center gap-3 border-b px-3 py-2">
+      <div className="border-border bg-bg-secondary flex items-center gap-2 border-b px-2 py-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
+          onClick={() => setActiveView(ViewMode.Vault)}
+          aria-label="Back to vault"
+          title="Back to Vault"
+        >
+          <ArrowLeft className="size-3.5" />
+        </Button>
+
         <h2 className="text-fg text-sm font-semibold">Graph</h2>
 
         <span className="text-fg-muted text-xs">
-          {noteCount > 0 && `${noteCount} note${noteCount !== 1 ? 's' : ''}`}
-          {noteCount > 0 && (pdfCount > 0 || canvasCount > 0) && ' · '}
-          {pdfCount > 0 && `${pdfCount} PDF${pdfCount !== 1 ? 's' : ''}`}
-          {pdfCount > 0 && canvasCount > 0 && ' · '}
-          {canvasCount > 0 && `${canvasCount} drawing${canvasCount !== 1 ? 's' : ''}`}
-          {filteredData.edges.length > 0 && ` · ${filteredData.edges.length} link${filteredData.edges.length !== 1 ? 's' : ''}`}
+          {[
+            countByType['note']        && `${countByType['note']} note${countByType['note'] !== 1 ? 's' : ''}`,
+            countByType['pdf']         && `${countByType['pdf']} PDF${countByType['pdf'] !== 1 ? 's' : ''}`,
+            countByType['canvas']      && `${countByType['canvas']} drawing${countByType['canvas'] !== 1 ? 's' : ''}`,
+            countByType['pptx']        && `${countByType['pptx']} presentation${countByType['pptx'] !== 1 ? 's' : ''}`,
+            countByType['docx']        && `${countByType['docx']} doc${countByType['docx'] !== 1 ? 's' : ''}`,
+            countByType['spreadsheet'] && `${countByType['spreadsheet']} sheet${countByType['spreadsheet'] !== 1 ? 's' : ''}`,
+            countByType['code']        && `${countByType['code']} code file${countByType['code'] !== 1 ? 's' : ''}`,
+            filteredData.edges.length  && `${filteredData.edges.length} link${filteredData.edges.length !== 1 ? 's' : ''}`,
+          ].filter(Boolean).join(' · ')}
         </span>
 
         {folders.length > 1 && (
@@ -173,33 +200,11 @@ export function GraphView() {
           onClickNode={handleClickNode}
         />
 
-        {/* Legend */}
-        <div className="bg-bg/80 text-fg-muted pointer-events-none absolute bottom-3 left-3 flex flex-col gap-1.5 rounded-md px-3 py-2 text-[10px] backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <span className="inline-block size-2.5 rounded-full bg-blue-400 opacity-80" />
-              Note
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block size-2.5 rounded-sm bg-red-400 opacity-80" />
-              PDF
-            </span>
-            <span className="flex items-center gap-1">
-              <DiamondIcon />
-              Drawing
-            </span>
-          </div>
-          <p>Scroll to zoom · Drag to pan · Click to select · Double-click to open</p>
-        </div>
+        {/* Hint */}
+        <p className="bg-bg/80 text-fg-muted pointer-events-none absolute bottom-3 left-3 rounded-md px-3 py-1.5 text-[10px] backdrop-blur-sm">
+          Scroll to zoom · Drag to pan · Click to select · Double-click to open
+        </p>
       </div>
     </div>
-  )
-}
-
-function DiamondIcon() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" className="opacity-80" aria-hidden>
-      <polygon points="5,0 10,5 5,10 0,5" fill="#a78bfa" />
-    </svg>
   )
 }

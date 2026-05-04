@@ -74,6 +74,21 @@ export function VaultChatView() {
     void init({ vaultFs })
   }, [vaultFs, init])
 
+  // Auto-create a fresh thread when the provider or model changes.
+  const prevProviderRef = useRef<string | null | undefined>(undefined)
+  const prevModelRef = useRef<string | null | undefined>(undefined)
+  useEffect(() => {
+    const prev = prevProviderRef.current
+    const prevMod = prevModelRef.current
+    prevProviderRef.current = settings.provider
+    prevModelRef.current = settings.model
+    if (prev === undefined && prevMod === undefined) return
+    if (prev === settings.provider && prevMod === settings.model) return
+    if (!isStreaming) {
+      void createThread()
+    }
+  }, [settings.provider, settings.model, isStreaming, createThread])
+
   // Listen for key-changed signal from settings so the view re-reads without refresh.
   const [keyVersion, setKeyVersion] = useState(0)
 

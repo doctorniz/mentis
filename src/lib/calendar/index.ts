@@ -20,6 +20,9 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
   const h1 = H1_RE.exec(content)
   const bodyWithoutH1 = content.replace(/^#\s+.+\n?/, '').trim()
 
+  const location = typeof fm.location === 'string' && fm.location ? fm.location : undefined
+  const url      = typeof fm.url      === 'string' && fm.url      ? fm.url      : undefined
+
   return {
     path,
     uid: (fm.uid as string) ?? '',
@@ -29,6 +32,8 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
     end: (fm.end as string) ?? '',
     allDay: Boolean(fm.allDay),
     color: safeColor(fm.color),
+    ...(location ? { location } : {}),
+    ...(url      ? { url }      : {}),
     created: (fm.created as string) ?? new Date().toISOString(),
     modified: (fm.modified as string) ?? new Date().toISOString(),
   }

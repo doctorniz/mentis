@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import {
   Bookmark,
-  CalendarDays,
-  CheckSquare,
+  CalendarCheck,
   ChevronDown,
   Columns3,
   ChevronRight,
@@ -41,15 +40,14 @@ type MobileNavEntry =
   | { kind: 'todo'; label: string; icon: typeof Vault }
 
 const NAV: MobileNavEntry[] = [
-  { kind: 'view', mode: ViewMode.VaultChat, label: 'Chat',      icon: Sparkles },
-  { kind: 'view', mode: ViewMode.Vault,     label: 'Vault',     icon: Vault },
-  { kind: 'view', mode: ViewMode.Board,     label: 'Board',     icon: LayoutGrid },
-  { kind: 'view', mode: ViewMode.Tasks,     label: 'Tasks',     icon: CheckSquare },
-  { kind: 'view', mode: ViewMode.Bookmarks, label: 'Bookmarks', icon: Bookmark },
-  { kind: 'view', mode: ViewMode.Calendar,  label: 'Calendar',  icon: CalendarDays },
-  { kind: 'view', mode: ViewMode.Graph,     label: 'Graph',     icon: GitFork },
-  { kind: 'view', mode: ViewMode.Files,     label: 'Files',     icon: Files },
-  { kind: 'view', mode: ViewMode.Search,    label: 'Search',    icon: Search },
+  { kind: 'view', mode: ViewMode.VaultChat,  label: 'Chat',      icon: Sparkles },
+  { kind: 'view', mode: ViewMode.Vault,      label: 'Vault',     icon: Vault },
+  { kind: 'view', mode: ViewMode.Board,      label: 'Board',     icon: LayoutGrid },
+  { kind: 'view', mode: ViewMode.Organizer,  label: 'Organizer', icon: CalendarCheck },
+  { kind: 'view', mode: ViewMode.Bookmarks,  label: 'Bookmarks', icon: Bookmark },
+  { kind: 'view', mode: ViewMode.Graph,      label: 'Graph',     icon: GitFork },
+  { kind: 'view', mode: ViewMode.Files,      label: 'Files',     icon: Files },
+  { kind: 'view', mode: ViewMode.Search,     label: 'Search',    icon: Search },
 ]
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
@@ -220,9 +218,11 @@ export function MobileNavMasthead({
                 }
                 const { mode, label, icon: Icon } = entry
                 const vaultModes = [ViewMode.Vault, ViewMode.FileBrowser, ViewMode.Notes]
+                const organizerModes = [ViewMode.Tasks, ViewMode.Calendar]
                 const active =
                   activeView === mode ||
-                  (mode === ViewMode.Vault && vaultModes.includes(activeView))
+                  (mode === ViewMode.Vault && vaultModes.includes(activeView)) ||
+                  (mode === ViewMode.Organizer && organizerModes.includes(activeView))
                 return (
                   <button
                     key={mode}

@@ -7,9 +7,10 @@ import {
   ArrowUpZA,
   ChevronLeft,
   Grid2X2,
-  Inbox,
   List,
+  Search,
   SlidersHorizontal,
+  X,
 } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
@@ -18,7 +19,7 @@ import { useFileBrowserStore } from '@/stores/file-browser'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
-import { ViewMode, INBOX_DIR } from '@/types/vault'
+import { ViewMode } from '@/types/vault'
 import type { FbFileItem, FbSortField, FbViewMode } from '@/types/file-browser'
 import {
   collectBrowserFiles,
@@ -26,8 +27,10 @@ import {
   filterBrowserFiles,
 } from '@/lib/file-browser/collect-files'
 import { toast } from '@/stores/toast'
-import { removeSearchDocument } from '@/lib/search/index'
+import { removeSearchDocument, searchVault } from '@/lib/search/index'
 import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
+import { parseSearchQuery } from '@/lib/search/parse-query'
+import type { SearchResult } from '@/types/search'
 import { Button } from '@/components/ui/button'
 import { FbFileCard, FbFileRow, FB_DND_TYPE } from '@/components/file-browser/fb-file-card'
 import { FbContextMenu } from '@/components/file-browser/fb-context-menu'
@@ -127,6 +130,38 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
   const pendingCanvasPath = useFileBrowserStore((s) => s.pendingCanvasPath)
   const setPendingCanvasPath = useFileBrowserStore((s) => s.setPendingCanvasPath)
 
+  // Search bar state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchDebounced, setSearchDebounced] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearchDebounced(searchQuery), 200)
+    return () => window.clearTimeout(t)
+  }, [searchQuery])
+
+  useEffect(() => {
+    const { text, hashTags } = parseSearchQuery(searchDebounced)
+    if (!text.length && !hashTags.length) { setSearchResults([]); return }
+    setSearchResults(searchVault(searchDebounced, {}))
+  }, [searchDebounced])
+
+  function openSearchResult(r: SearchResult) {
+    useUiStore.getState().setActiveView(ViewMode.Vault)
+    useUiStore.getState().setVaultMode('tree')
+    useFileTreeStore.getState().setSelectedPath(r.path)
+    useEditorStore.getState().addRecentFile(r.path)
+    const editorType = editorTabTypeFromVaultPath(r.path)
+    useEditorStore.getState().openTab({
+      id: crypto.randomUUID(),
+      path: r.path,
+      type: editorType,
+      title: r.title,
+      isDirty: false,
+    })
+  }
+
   const listScrollRef = useRef<HTMLDivElement>(null)
   const [externalDragOver, setExternalDragOver] = useState(false)
   const dragEnterCount = useRef(0)
@@ -202,7 +237,6 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
   }, [rawFiles, sort, typeFilter])
 
   const selectedCount = Object.keys(selected).length
-  const inboxExists = rawFiles.some((f) => f.isDirectory && f.name === INBOX_DIR)
   const isRoot = currentFolder === ''
 
   /* ---- Item click handler (modifier key support) ---- */
@@ -644,17 +678,33 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
           {currentFolder ? `${config.name} / ${currentFolder}` : config.name}
         </h2>
 
-        <div className="ml-auto flex items-center gap-1.5">
-          {isRoot && inboxExists && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setCurrentFolder(INBOX_DIR)}
+        {/* Search bar */}
+        <div className="border-border bg-bg-secondary flex flex-1 items-center gap-2 rounded-lg border px-3 py-1.5" style={{ minWidth: 160, maxWidth: 360 }}>
+          <Search className="text-fg-muted size-3.5 shrink-0" aria-hidden />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search files and content…"
+            className="text-fg placeholder:text-fg-muted min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+            aria-label="Search files"
+            onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery('') }}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="text-fg-muted hover:text-fg shrink-0 rounded p-0.5 transition-colors"
+              aria-label="Clear search"
             >
-              <Inbox className="size-4" />
-              Inbox
-            </Button>
+              <X className="size-3.5" />
+            </button>
           )}
+        </div>
+
+        <div className="ml-auto flex items-center gap-1.5">
+
           <button
             type="button"
             onClick={() => setShowFilters((f) => !f)}
@@ -735,6 +785,35 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
         onConfirm={() => void executeDelete()}
       />
 
+      {/* Search results overlay — shown when query is active */}
+      {searchDebounced.trim() ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {searchResults.length === 0 ? (
+            <p className="text-fg-muted py-10 text-center text-sm">No matches</p>
+          ) : (
+            <div className="flex flex-col gap-1 py-1">
+              {searchResults.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => openSearchResult(r)}
+                  className="border-border hover:border-accent hover:bg-accent-light/40 bg-bg rounded-lg border px-3 py-2.5 text-left transition-colors"
+                >
+                  <div className="text-fg text-sm font-medium">{r.title}</div>
+                  <div className="text-fg-muted mt-0.5 truncate text-xs">{r.path}</div>
+                  {r.snippetHit && (
+                    <p className="text-fg-secondary mt-1.5 line-clamp-2 text-sm leading-relaxed">
+                      {r.snippetBefore}
+                      <mark className="bg-highlight-yellow text-fg rounded px-0.5">{r.snippetHit}</mark>
+                      {r.snippetAfter}
+                    </p>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
       <div
         ref={listScrollRef}
         className="min-h-0 flex-1 overflow-y-auto"
@@ -790,6 +869,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
           />
         )}
       </div>
+      )}
     </div>
   )
 }

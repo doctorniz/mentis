@@ -162,6 +162,7 @@ export const useChatStore = create<ChatState>()(
       set((s) => {
         s.threads.unshift(draft)
         s.activeThreadId = draft.id
+        s.error = null
       })
       // Not persisted until first send — matches `openDocument` contract.
       return draft

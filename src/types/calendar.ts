@@ -32,6 +32,10 @@ export interface CalendarEventFrontmatter {
   end: string
   allDay: boolean
   color: CalendarEventColor
+  /** Physical or virtual location (optional) */
+  location?: string
+  /** URL associated with the event — video call link, ticket, etc. (optional) */
+  url?: string
   created: string
   modified: string
   [key: string]: unknown
@@ -47,6 +51,10 @@ export interface CalendarEvent {
   end: string
   allDay: boolean
   color: CalendarEventColor
+  /** Physical or virtual location (optional) */
+  location?: string
+  /** URL — video call, event page, etc. (optional) */
+  url?: string
   created: string
   modified: string
 }

@@ -39,7 +39,16 @@ export function TaskDetailDialog({
   const [subtaskTitle, setSubtaskTitle] = useState('')
 
   const children = task
-    ? items.filter((i) => i.parent === task.uid)
+    ? items
+        .filter((i) => i.parent === task.uid)
+        .slice()
+        .sort((a, b) => {
+          const aDone = a.status === 'done' || a.status === 'cancelled' ? 1 : 0
+          const bDone = b.status === 'done' || b.status === 'cancelled' ? 1 : 0
+          if (aDone !== bDone) return aDone - bDone
+          if (a.order !== b.order) return a.order - b.order
+          return new Date(b.modified).getTime() - new Date(a.modified).getTime()
+        })
     : []
 
   useEffect(() => {

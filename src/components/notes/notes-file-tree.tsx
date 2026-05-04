@@ -5,20 +5,24 @@ import * as Dialog from '@radix-ui/react-dialog'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import { toast } from '@/stores/toast'
 import {
-  CalendarDays,
   ChevronRight,
   ChevronDown,
   ExternalLink,
   FileCode2,
   FileText,
   FileType2,
+  Film,
   Folder,
   FolderPlus,
   Image as ImageIcon,
+  GitFork,
   Layout,
+  Music,
   PanelLeftClose,
+  Presentation,
   Pencil,
   Plus,
+  Search,
   Star,
   Table2,
   Trash2,
@@ -49,18 +53,20 @@ export function NotesFileTree({
   vaultFs,
   refreshToken = 0,
   onNoteCreated,
-  onDailyNote,
   starredPaths = [],
   onRequestCollapse,
+  onSearchOpen,
+  onGraphOpen,
   rootClassName,
 }: {
   vaultFs: FileSystemAdapter
   /** Increment from parent to reload the tree (e.g. after creating a note elsewhere). */
   refreshToken?: number
   onNoteCreated?: () => void
-  onDailyNote?: () => void
   starredPaths?: string[]
   onRequestCollapse?: () => void
+  onSearchOpen?: () => void
+  onGraphOpen?: () => void
   rootClassName?: string
 }) {
   const [rootEntries, setRootEntries] = useState<FileEntry[]>([])
@@ -349,16 +355,28 @@ export function NotesFileTree({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
-          {onDailyNote && (
+          {onSearchOpen && (
             <Button
               variant="ghost"
               size="sm"
               className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
-              onClick={onDailyNote}
-              aria-label="Open today's daily note"
-              title="Daily note (Ctrl+Shift+D)"
+              onClick={onSearchOpen}
+              aria-label="Search vault"
+              title="Search (Ctrl+F)"
             >
-              <CalendarDays className="size-3.5" />
+              <Search className="size-3.5" />
+            </Button>
+          )}
+          {onGraphOpen && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
+              onClick={onGraphOpen}
+              aria-label="Open graph"
+              title="Graph"
+            >
+              <GitFork className="size-3.5" />
             </Button>
           )}
           <Button
@@ -530,7 +548,10 @@ function TreeNode({
     const FileIcon =
       entry.type === FileType.Canvas ? Layout
       : entry.type === FileType.Image ? ImageIcon
+      : entry.type === FileType.Audio ? Music
+      : entry.type === FileType.Video ? Film
       : entry.type === FileType.Docx ? FileType2
+      : entry.type === FileType.Pptx ? Presentation
       : entry.type === FileType.Spreadsheet ? Table2
       : entry.type === FileType.Code ? FileCode2
       : FileText
@@ -609,7 +630,10 @@ function TreeNode({
                   entry.type === FileType.Pdf && 'text-red-400/70',
                   entry.type === FileType.Canvas && 'text-violet-400/70',
                   entry.type === FileType.Image && 'text-emerald-400/70',
+                  entry.type === FileType.Audio && 'text-pink-400/70',
+                  entry.type === FileType.Video && 'text-cyan-400/70',
                   entry.type === FileType.Docx && 'text-indigo-400/70',
+                  entry.type === FileType.Pptx && 'text-orange-400/70',
                   entry.type === FileType.Spreadsheet && 'text-green-400/70',
                   entry.type === FileType.Code && 'text-sky-400/70',
                 )}

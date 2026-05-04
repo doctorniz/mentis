@@ -5,13 +5,11 @@ import { useUiStore } from '@/stores/ui'
 import { ViewMode } from '@/types/vault'
 import { VaultView } from '@/components/views/vault-view'
 import { FilesView } from '@/components/views/files-view'
-import { SearchView } from '@/components/views/search-view'
 import { GraphView } from '@/components/views/graph-view'
 import { BoardView } from '@/components/views/board-view'
-import { TasksView } from '@/components/views/tasks-view'
 import { BookmarksView } from '@/components/views/bookmarks-view'
 import { NewView } from '@/components/views/new-view'
-import { CalendarView } from '@/components/views/calendar-view'
+import { OrganizerView } from '@/components/views/organizer-view'
 import { VaultChatView } from '@/components/views/vault-chat-view'
 
 export function ViewRouter() {
@@ -31,8 +29,9 @@ export function ViewRouter() {
     case ViewMode.Files:
       body = <FilesView />
       break
+    // Search is now embedded in the Vault left column — redirect to Vault
     case ViewMode.Search:
-      body = <SearchView />
+      body = <VaultView />
       break
     case ViewMode.Graph:
       body = <GraphView />
@@ -40,17 +39,21 @@ export function ViewRouter() {
     case ViewMode.Board:
       body = <BoardView />
       break
+    // Legacy routes — redirect into Organizer
     case ViewMode.Tasks:
-      body = <TasksView />
+      body = <OrganizerView initialTab="tasks" />
+      break
+    case ViewMode.Calendar:
+      body = <OrganizerView initialTab="calendars" />
+      break
+    case ViewMode.Organizer:
+      body = <OrganizerView />
       break
     case ViewMode.Bookmarks:
       body = <BookmarksView />
       break
     case ViewMode.New:
       body = <NewView />
-      break
-    case ViewMode.Calendar:
-      body = <CalendarView />
       break
     default:
       body = <VaultView />

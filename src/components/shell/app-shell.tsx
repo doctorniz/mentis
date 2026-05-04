@@ -17,12 +17,9 @@ const VIEW_BY_DIGIT: Record<string, ViewMode> = {
   '0': ViewMode.VaultChat,
   '1': ViewMode.Vault,
   '2': ViewMode.Board,
-  '3': ViewMode.Tasks,
+  '3': ViewMode.Organizer,
   '4': ViewMode.Bookmarks,
-  '5': ViewMode.Calendar,
-  '6': ViewMode.Graph,
-  '7': ViewMode.Files,
-  '8': ViewMode.Search,
+  '5': ViewMode.Files,
 }
 
 export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
@@ -73,7 +70,9 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
       }
       if (e.key === 'f' || e.key === 'F') {
         e.preventDefault()
-        setActiveView(ViewMode.Search)
+        // Navigate to Vault view and open the left-column search panel
+        setActiveView(ViewMode.Vault)
+        window.dispatchEvent(new CustomEvent('ink:vault-search-open'))
         return
       }
 

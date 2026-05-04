@@ -14,6 +14,8 @@ import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useVaultStore } from '@/stores/vault'
 import { DEFAULT_VAULT_CONFIG, type VaultConfig } from '@/types/vault'
 import { saveVaultConfig } from '@/lib/vault'
+import { migrateDailyNotesFolder } from '@/lib/notes/daily-note'
+import { DAILY_NOTES_DIR } from '@/types/vault'
 import { VaultDropboxSyncPanel } from '@/components/views/vault-dropbox-sync-panel'
 import {
   clearChatKey,
@@ -24,6 +26,8 @@ import {
 import { testConnection } from '@/lib/chat/providers/test-connection'
 import {
   fetchModels,
+  getCuratedModels,
+  getDefaultModel,
   providerNeedsApiKey,
   providerNeedsBaseUrl,
   type ModelEntry,
@@ -239,33 +243,73 @@ function EditorTab({
 }) {
   return (
     <div>
-      <SectionHeader>Auto-save</SectionHeader>
+      <SectionHeader>Attachments</SectionHeader>
       <div className="divide-border divide-y">
-        <Row label="Enable auto-save">
-          <Toggle
-            checked={draft.autoSave.enabled}
-            onChange={(v) => set('autoSave', { ...draft.autoSave, enabled: v })}
+        <Row
+          label="Attachment folder"
+          hint="Where uploaded images and videos are saved when embedded in notes."
+        >
+          <FolderPicker
+            value={draft.attachmentFolder ?? '_assets'}
+            onChange={(v) => set('attachmentFolder', v)}
           />
         </Row>
-        {draft.autoSave.enabled && (
-          <Row label="Save interval">
-            <NumberInput
-              value={Math.round(draft.autoSave.intervalMs / 1000)}
-              min={5}
-              max={3600}
-              suffix="seconds"
-              onChange={(v) =>
-                set('autoSave', { ...draft.autoSave, intervalMs: v * 1000 })
-              }
+      </div>
+
+      <div className="mt-6">
+        <SectionHeader>Daily Notes</SectionHeader>
+        <div className="divide-border divide-y">
+          <Row label="Show today's date in sidebar">
+            <Toggle
+              checked={draft.dailyNotesEnabled !== false}
+              onChange={(v) => set('dailyNotesEnabled', v)}
             />
           </Row>
-        )}
-        <Row label="Save on focus loss">
-          <Toggle
-            checked={draft.autoSave.saveOnBlur}
-            onChange={(v) => set('autoSave', { ...draft.autoSave, saveOnBlur: v })}
-          />
-        </Row>
+          {draft.dailyNotesEnabled !== false && (
+            <Row
+              label="Daily notes folder"
+              hint="Folder is created on first use. Changing this will move existing daily notes."
+            >
+              <input
+                value={draft.dailyNotesFolder ?? DAILY_NOTES_DIR}
+                onChange={(e) => set('dailyNotesFolder', e.target.value)}
+                placeholder={DAILY_NOTES_DIR}
+                className={INPUT_CLS}
+              />
+            </Row>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <SectionHeader>Auto-save</SectionHeader>
+        <div className="divide-border divide-y">
+          <Row label="Enable auto-save">
+            <Toggle
+              checked={draft.autoSave.enabled}
+              onChange={(v) => set('autoSave', { ...draft.autoSave, enabled: v })}
+            />
+          </Row>
+          {draft.autoSave.enabled && (
+            <Row label="Save interval">
+              <NumberInput
+                value={Math.round(draft.autoSave.intervalMs / 1000)}
+                min={5}
+                max={3600}
+                suffix="seconds"
+                onChange={(v) =>
+                  set('autoSave', { ...draft.autoSave, intervalMs: v * 1000 })
+                }
+              />
+            </Row>
+          )}
+          <Row label="Save on focus loss">
+            <Toggle
+              checked={draft.autoSave.saveOnBlur}
+              onChange={(v) => set('autoSave', { ...draft.autoSave, saveOnBlur: v })}
+            />
+          </Row>
+        </div>
       </div>
     </div>
   )
@@ -406,14 +450,14 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
   },
   {
     id: 'anthropic',
-    label: 'Anthropic (direct)',
+    label: 'Anthropic',
     hint: 'Requires a browser-enabled API key with direct browser access enabled.',
     keyPlaceholder: 'sk-ant-…',
     baseUrlPlaceholder: 'https://api.anthropic.com/v1',
   },
   {
     id: 'openai',
-    label: 'OpenAI (direct)',
+    label: 'OpenAI',
     hint: 'Works with Azure OpenAI, LM Studio via a custom base URL.',
     keyPlaceholder: 'sk-…',
     baseUrlPlaceholder: 'https://api.openai.com/v1',
@@ -434,7 +478,7 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
   },
   {
     id: 'ollama',
-    label: 'Ollama (local)',
+    label: 'Ollama',
     hint: 'Run `ollama serve` locally. No API key needed.',
     keyPlaceholder: '(optional)',
     baseUrlPlaceholder: 'http://localhost:11434',
@@ -473,6 +517,8 @@ function AiTab({
   const [keyStatus, setKeyStatus] = useState<'empty' | 'set' | 'loaded'>('empty')
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
   const [testError, setTestError] = useState<string>('')
+  // `models` is only used for dynamic-discovery providers (ollama, webllm, window-ai).
+  // Cloud providers use `getCuratedModels` synchronously instead.
   const [models, setModels] = useState<ModelEntry[]>([])
   const [modelsLoading, setModelsLoading] = useState(false)
   const [webllmLoading, setWebllmLoading] = useState(false)
@@ -481,6 +527,16 @@ function AiTab({
   const provider = chat.provider
   const needsKey = provider ? providerNeedsApiKey(provider) : false
   const needsBaseUrl = provider ? providerNeedsBaseUrl(provider) : false
+
+  // Curated list for this provider (all providers except Ollama have one).
+  const curatedModels = provider ? getCuratedModels(provider) : []
+  const hasCurated = curatedModels.length > 0
+  // Explicit state so selecting "Other (custom)…" reliably shows the text input.
+  // Initialised true when the saved model is already outside the curated list.
+  const [isCustomMode, setIsCustomMode] = useState<boolean>(() => {
+    if (!hasCurated || !chat.model) return false
+    return !curatedModels.some((m) => m.id === chat.model)
+  })
 
   // Load key from IndexedDB whenever provider changes.
   useEffect(() => {
@@ -516,12 +572,13 @@ function AiTab({
     }
   }, [provider, vaultId, needsKey])
 
-  // Reset test/models state when provider changes
+  // Reset UI state when provider changes.
   useEffect(() => {
     setTestStatus('idle')
     setTestError('')
     setModels([])
     setWebllmLoadError('')
+    setIsCustomMode(false)
   }, [provider])
 
   // Auto-fetch models for providers that don't need API keys (webllm, window-ai, ollama)
@@ -562,21 +619,24 @@ function AiTab({
     const result = await testConnection(provider, apiKey.trim(), chat.baseUrl)
     if (result.ok) {
       setTestStatus('success')
-      // On successful test for key-based providers, save the key and fetch models
+      // Save the key for key-based providers.
       if (needsKey && apiKey.trim()) {
         await setChatKey(provider, vaultId, { apiKey: apiKey.trim() })
         setKeyStatus('loaded')
         notifyChatKeyChanged()
       }
-      // Fetch models after successful test
-      setModelsLoading(true)
-      try {
-        const fetched = await fetchModels(provider, apiKey.trim(), chat.baseUrl)
-        setModels(fetched)
-      } catch {
-        // Non-fatal — user can still type a model manually
-      } finally {
-        setModelsLoading(false)
+      // Only fetch models dynamically for local providers (ollama etc.) that
+      // don't have a curated list. Cloud providers use getCuratedModels() directly.
+      if (!getCuratedModels(provider).length) {
+        setModelsLoading(true)
+        try {
+          const fetched = await fetchModels(provider, apiKey.trim(), chat.baseUrl)
+          setModels(fetched)
+        } catch {
+          // Non-fatal — user can still type a model manually
+        } finally {
+          setModelsLoading(false)
+        }
       }
     } else {
       setTestStatus('error')
@@ -591,7 +651,8 @@ function AiTab({
     setApiKey('')
     setKeyStatus('empty')
     setTestStatus('idle')
-    setModels([])
+    // Only clear dynamic models (local providers). Curated list is always available.
+    if (!getCuratedModels(provider).length) setModels([])
   }, [provider, vaultId])
 
   const handleLoadWebLlm = useCallback(async () => {
@@ -637,10 +698,13 @@ function AiTab({
             value={provider ?? ''}
             onChange={(e) => {
               const val = e.target.value
-              setChat(
-                'provider',
-                val === '' ? null : (val as ChatProviderId),
-              )
+              const newProvider = val === '' ? null : (val as ChatProviderId)
+              // Batch provider + model reset so neither call overwrites the other.
+              set('chat', {
+                ...chat,
+                provider: newProvider,
+                model: getDefaultModel(newProvider),
+              })
             }}
             className={INPUT_CLS}
           >
@@ -662,6 +726,74 @@ function AiTab({
                   <p className="text-fg-muted text-xs leading-relaxed">{opt.hint}</p>
                 </div>
               )}
+
+              {/* Model selection — sits right below provider */}
+              <Row label="Model">
+                <div className="flex w-56 flex-col gap-1.5">
+                  {hasCurated ? (
+                    <>
+                      <select
+                        value={isCustomMode ? '__custom__' : ((chat.model || curatedModels[0]?.id) ?? '')}
+                        onChange={(e) => {
+                          if (e.target.value === '__custom__') {
+                            setIsCustomMode(true)
+                          } else {
+                            setIsCustomMode(false)
+                            setChat('model', e.target.value)
+                          }
+                        }}
+                        className={cn(INPUT_CLS, 'w-full')}
+                      >
+                        {curatedModels.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.label}
+                          </option>
+                        ))}
+                        <option value="__custom__">Other (custom)…</option>
+                      </select>
+                      {isCustomMode && (
+                        <input
+                          value={chat.model}
+                          onChange={(e) => setChat('model', e.target.value)}
+                          placeholder="model id"
+                          className={cn(INPUT_CLS, 'w-full')}
+                          spellCheck={false}
+                          // eslint-disable-next-line jsx-a11y/no-autofocus
+                          autoFocus
+                        />
+                      )}
+                    </>
+                  ) : modelsLoading ? (
+                    <div className="text-fg-muted flex items-center gap-1.5 text-xs">
+                      <Loader2 className="size-3 animate-spin" />
+                      Loading models…
+                    </div>
+                  ) : models.length > 0 ? (
+                    <select
+                      value={chat.model}
+                      onChange={(e) => setChat('model', e.target.value)}
+                      className={cn(INPUT_CLS, 'w-full')}
+                    >
+                      {!models.some((m) => m.id === chat.model) && chat.model && (
+                        <option value={chat.model}>{chat.model}</option>
+                      )}
+                      {models.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      value={chat.model}
+                      onChange={(e) => setChat('model', e.target.value)}
+                      placeholder="model-id"
+                      className={cn(INPUT_CLS, 'w-full')}
+                      spellCheck={false}
+                    />
+                  )}
+                </div>
+              </Row>
 
               {/* API key — only for providers that need one */}
               {needsKey && (
@@ -714,6 +846,41 @@ function AiTab({
                 </Row>
               )}
 
+              {/* WebLLM-specific: Load model button */}
+              {provider === 'webllm' && chat.model && (
+                <Row label="Load">
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => void handleLoadWebLlm()}
+                      disabled={webllmLoading || !chat.model}
+                      className={cn(
+                        'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                        'bg-accent text-accent-fg hover:bg-accent/90',
+                        (webllmLoading || !chat.model) && 'cursor-not-allowed opacity-50',
+                      )}
+                    >
+                      {webllmLoading ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Loader2 className="size-3 animate-spin" />
+                          Loading…
+                        </span>
+                      ) : (
+                        'Load'
+                      )}
+                    </button>
+                    {webllmLoadError && (
+                      <p className="text-danger text-[10px] leading-snug">
+                        {webllmLoadError}
+                      </p>
+                    )}
+                    <p className="text-fg-muted text-[10px]">
+                      Downloads model weights (1–3 GB). Cached after first load.
+                    </p>
+                  </div>
+                </Row>
+              )}
+
               {/* Test connection button */}
               <Row label="Connection">
                 <div className="flex flex-col gap-1.5">
@@ -745,83 +912,13 @@ function AiTab({
                       </span>
                     )}
                     {testStatus === 'error' && 'Retry'}
-                    {testStatus === 'idle' && 'Test connection'}
+                    {testStatus === 'idle' && 'Test'}
                   </button>
                   {testStatus === 'error' && testError && (
                     <p className="text-danger text-[10px] leading-snug">{testError}</p>
                   )}
                 </div>
               </Row>
-
-              {/* Model selection — dropdown populated after test/auto-fetch */}
-              <Row label="Model">
-                <div className="flex w-48 flex-col gap-1.5">
-                  {modelsLoading ? (
-                    <div className="text-fg-muted flex items-center gap-1.5 text-xs">
-                      <Loader2 className="size-3 animate-spin" />
-                      Loading models…
-                    </div>
-                  ) : models.length > 0 ? (
-                    <select
-                      value={chat.model}
-                      onChange={(e) => setChat('model', e.target.value)}
-                      className={cn(INPUT_CLS, 'w-full')}
-                    >
-                      {!models.some((m) => m.id === chat.model) && chat.model && (
-                        <option value={chat.model}>{chat.model}</option>
-                      )}
-                      {models.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      value={chat.model}
-                      onChange={(e) => setChat('model', e.target.value)}
-                      placeholder="model-id"
-                      className={cn(INPUT_CLS, 'w-full')}
-                      spellCheck={false}
-                    />
-                  )}
-                </div>
-              </Row>
-
-              {/* WebLLM-specific: Load model button */}
-              {provider === 'webllm' && chat.model && (
-                <Row label="Load model">
-                  <div className="flex flex-col gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => void handleLoadWebLlm()}
-                      disabled={webllmLoading || !chat.model}
-                      className={cn(
-                        'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                        'bg-accent text-accent-fg hover:bg-accent/90',
-                        (webllmLoading || !chat.model) && 'cursor-not-allowed opacity-50',
-                      )}
-                    >
-                      {webllmLoading ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <Loader2 className="size-3 animate-spin" />
-                          Loading…
-                        </span>
-                      ) : (
-                        'Load into browser'
-                      )}
-                    </button>
-                    {webllmLoadError && (
-                      <p className="text-danger text-[10px] leading-snug">
-                        {webllmLoadError}
-                      </p>
-                    )}
-                    <p className="text-fg-muted text-[10px]">
-                      Downloads model weights (1–3 GB). Cached after first load.
-                    </p>
-                  </div>
-                </Row>
-              )}
 
               {/* Context size */}
               <Row
@@ -887,6 +984,8 @@ export function SettingsDialog({
   const isFirstDraft = useRef(true)
   const vaultFsRef = useRef(vaultFs)
   const updateConfigRef = useRef(updateConfig)
+  /** Tracks the last-saved dailyNotesFolder so we can run migration if it changes. */
+  const prevDailyFolderRef = useRef<string>(config?.dailyNotesFolder ?? DAILY_NOTES_DIR)
   useEffect(() => { vaultFsRef.current = vaultFs }, [vaultFs])
   useEffect(() => { updateConfigRef.current = updateConfig }, [updateConfig])
 
@@ -894,6 +993,7 @@ export function SettingsDialog({
   useEffect(() => {
     if (open && config) {
       isFirstDraft.current = true
+      prevDailyFolderRef.current = config.dailyNotesFolder ?? DAILY_NOTES_DIR
       setDraft({ ...DEFAULT_VAULT_CONFIG, ...config })
       setSaved(false)
     }
@@ -910,6 +1010,13 @@ export function SettingsDialog({
     saveTimerRef.current = setTimeout(async () => {
       setSaving(true)
       try {
+        // Migrate daily notes if folder changed
+        const newFolder = draft.dailyNotesFolder ?? DAILY_NOTES_DIR
+        const oldFolder = prevDailyFolderRef.current
+        if (newFolder !== oldFolder) {
+          await migrateDailyNotesFolder(vaultFsRef.current, oldFolder, newFolder)
+          prevDailyFolderRef.current = newFolder
+        }
         await saveVaultConfig(vaultFsRef.current, draft)
         updateConfigRef.current(draft)
         setSaved(true)

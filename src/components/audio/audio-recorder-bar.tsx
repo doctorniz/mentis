@@ -44,7 +44,6 @@ export function AudioRecorderBar({
 
   useEffect(() => {
     const recorder = new AudioRecorder({
-      bitrate: 128,
       onStateChange: setState,
     })
     recorderRef.current = recorder

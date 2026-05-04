@@ -1,6 +1,6 @@
 import type { FileSystemAdapter } from '@/lib/fs'
 
-const ASSETS_DIR = '_assets'
+const DEFAULT_ASSETS_DIR = '_assets'
 
 function uniqueName(originalName: string): string {
   const dot = originalName.lastIndexOf('.')
@@ -13,17 +13,23 @@ function uniqueName(originalName: string): string {
 }
 
 /**
- * Save a binary file to `_assets/` with a unique name.
+ * Save a binary file to the given folder (default `_assets/`) with a unique name.
  * Returns the vault-relative path (e.g. `_assets/photo-abc123.png`).
+ *
+ * @param targetFolder  Optional folder override (vault-relative, no leading slash).
+ *                      Pass `'/'` or `''` to save at vault root.
  */
 export async function saveAsset(
   fs: FileSystemAdapter,
   fileName: string,
   data: Uint8Array,
+  targetFolder?: string,
 ): Promise<string> {
-  await fs.mkdir(ASSETS_DIR)
+  const folder =
+    targetFolder && targetFolder !== '/' ? targetFolder.replace(/^\/+|\/+$/g, '') : DEFAULT_ASSETS_DIR
+  await fs.mkdir(folder)
   const name = uniqueName(fileName)
-  const path = `${ASSETS_DIR}/${name}`
+  const path = `${folder}/${name}`
   await fs.writeFile(path, data)
   return path
 }

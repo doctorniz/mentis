@@ -14,23 +14,35 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { getNoteEditorExtensions } from '@/lib/editor/tiptap-extensions'
 import { setImageVaultFs } from '@/lib/editor/vault-image-extension'
+import { setVideoVaultFs } from '@/lib/editor/vault-video-extension'
 import { setPdfEmbedVaultFs } from '@/lib/editor/pdf-embed-extension'
 import { markdownToTiptapJSON, tiptapJSONToMarkdown } from '@/lib/editor/markdown-bridge'
 import { parseNote, resolveWikiLinkPath, serializeNote } from '@/lib/markdown'
 import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
 import { removeSearchDocument } from '@/lib/search/index'
-import { saveAsset, isImagePath } from '@/lib/notes/assets'
+import { saveAsset } from '@/lib/notes/assets'
+import type { FileEntry } from '@/types/files'
 import { buildExportHtml, printExportHtml } from '@/lib/notes/export-pdf'
 import { downloadTextFile } from '@/lib/browser/download-file'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import type { NoteFrontmatter } from '@/types/editor'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
+import { useVaultStore } from '@/stores/vault'
 import { toast } from '@/stores/toast'
 import { cn } from '@/utils/cn'
 import { NoteEditorToolbar } from '@/components/notes/note-editor-toolbar'
+import type { InsertImageFn } from '@/components/notes/note-editor-toolbar'
 import { NoteEditorModeBar } from '@/components/notes/note-editor-mode-bar'
 import { useSyncPush } from '@/contexts/sync-context'
+
+/** Flatten a FileEntry tree into vault-relative paths (files only, no dirs) */
+function flattenFilePaths(entry: FileEntry | null, depth = 0): string[] {
+  if (!entry) return []
+  if (!entry.isDirectory) return [entry.path]
+  if (depth > 20) return []
+  return (entry.children ?? []).flatMap((c) => flattenFilePaths(c, depth + 1))
+}
 
 function titleFromPath(p: string): string {
   return p.replace(/\.md$/i, '').split('/').pop() ?? p
@@ -80,6 +92,9 @@ export const MarkdownNoteEditor = forwardRef<
   const syncPush = useSyncPush()
   const markDirty = useEditorStore((s) => s.markDirty)
   const updateTab = useEditorStore((s) => s.updateTab)
+  const attachmentFolder = useVaultStore((s) => s.config?.attachmentFolder ?? '_assets')
+  const fileTreeRoot = useFileTreeStore((s) => s.root)
+  const allPaths = useMemo(() => flattenFilePaths(fileTreeRoot), [fileTreeRoot])
   const showRawSource = useEditorStore(
     (s) => s.tabs.find((t) => t.id === tabId)?.showRawSource ?? false,
   )
@@ -95,13 +110,16 @@ export const MarkdownNoteEditor = forwardRef<
   const pathRef = useRef(path)
   const onOpenNotePathRef = useRef(onOpenNotePath)
   const onPersistedRef = useRef(onPersisted)
+  const attachmentFolderRef = useRef(attachmentFolder)
   pathsRef.current = markdownPaths
   pathRef.current = path
   onOpenNotePathRef.current = onOpenNotePath
   onPersistedRef.current = onPersisted
+  attachmentFolderRef.current = attachmentFolder
 
   useEffect(() => {
     setImageVaultFs(vaultFs)
+    setVideoVaultFs(vaultFs)
     setPdfEmbedVaultFs(vaultFs)
   }, [vaultFs])
 
@@ -170,7 +188,7 @@ export const MarkdownNoteEditor = forwardRef<
       if (!file.type.startsWith('image/')) continue
       try {
         const data = new Uint8Array(await file.arrayBuffer())
-        const assetPath = await saveAsset(vaultFs, file.name, data)
+        const assetPath = await saveAsset(vaultFs, file.name, data, attachmentFolderRef.current)
         editorInstance.chain().focus().insertContent({
           type: 'image',
           attrs: { src: assetPath, alt: file.name },
@@ -181,6 +199,38 @@ export const MarkdownNoteEditor = forwardRef<
       }
     }
   })
+
+  /** Called by toolbar image dialog: path is already saved in vault */
+  const handleInsertImage: InsertImageFn = useCallback(
+    async (vaultPath: string, fileName: string) => {
+      const ed = editorRef.current
+      if (!ed) return
+      // If the path was just uploaded it's already on disk; just insert the node.
+      ed.chain().focus().insertContent({
+        type: 'image',
+        attrs: { src: vaultPath, alt: fileName },
+      }).run()
+      markDirty(tabIdRef.current, true)
+      scheduleSaveRef.current()
+    },
+    [markDirty],
+  )
+
+  /** Called by toolbar video dialog: insert a vaultVideo node */
+  const handleInsertVideo = useCallback(
+    (vaultPath: string) => {
+      const ed = editorRef.current
+      if (!ed) return
+      const title = vaultPath.split('/').pop() ?? vaultPath
+      ed.chain().focus().insertContent({
+        type: 'vaultVideo',
+        attrs: { src: vaultPath, title },
+      }).run()
+      markDirty(tabIdRef.current, true)
+      scheduleSaveRef.current()
+    },
+    [markDirty],
+  )
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -567,8 +617,17 @@ export const MarkdownNoteEditor = forwardRef<
           handleShowRaw()
         }}
       />
-      {!showRawSource && <NoteEditorToolbar editor={editor} />}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {!showRawSource && (
+        <NoteEditorToolbar
+          editor={editor}
+          vaultFs={vaultFs}
+          allPaths={allPaths}
+          attachmentFolder={attachmentFolder}
+          onInsertImage={handleInsertImage}
+          onInsertVideo={handleInsertVideo}
+        />
+      )}
+      <div className={cn('min-h-0 flex-1', showRawSource ? 'flex flex-col' : 'overflow-y-auto')}>
         <div className="px-10 pt-6">
           <input
             ref={titleInputRef}
@@ -600,7 +659,7 @@ export const MarkdownNoteEditor = forwardRef<
             value={rawText}
             onChange={(e) => handleRawChange(e.target.value)}
             className={cn(
-              'font-mono text-fg placeholder:text-fg-muted box-border min-h-[min(480px,calc(100vh-14rem))] w-full resize-none px-10 pb-6 pt-2 text-sm leading-relaxed',
+              'font-mono text-fg placeholder:text-fg-muted box-border min-h-0 w-full flex-1 resize-none px-10 pb-6 pt-2 text-sm leading-relaxed',
               'focus:outline-none',
             )}
             spellCheck={false}

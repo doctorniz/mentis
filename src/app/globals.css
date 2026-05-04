@@ -533,12 +533,31 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* JS writes --docx-zoom via ResizeObserver; defaults to 1 (no scaling) */
+  --docx-zoom: 1;
 }
 
-/* Let the editor fill the available space */
+/* Scale the entire editor so the document page always fits the container.
+   CSS `zoom` (unlike transform: scale) reflows the layout box, so the page
+   stays left-aligned and no horizontal clipping occurs. */
 .docx-editor-container > * {
   flex: 1;
   min-height: 0;
+  zoom: var(--docx-zoom);
+}
+
+/* ---- PPTX editor (slidecanvas) ---- */
+.pptx-editor-root {
+  /* Isolate SlideCanvas so its toolbar / dropdowns / popovers
+     cannot escape the editor column and overlap the vault tree. */
+  contain: layout paint;
+  position: relative;
+}
+
+/* Force all SlideCanvas children to respect container bounds */
+.pptx-editor-root > div {
+  max-width: 100%;
+  max-height: 100%;
 }
 
 /* Toast enter animation */
@@ -611,4 +630,43 @@
 /* Selected tab indicator for sheet tabs */
 .spreadsheet-container .jexcel_tab.jexcel_tab_link_selected {
   font-weight: 600;
+}
+
+/* ---- Plyr audio player theme ---- */
+/* Map Plyr's CSS variables to the app's design tokens so the player
+   looks native in both light and dark mode. */
+.plyr {
+  --plyr-color-main: var(--color-accent);
+  --plyr-font-family: inherit;
+  --plyr-badge-background: var(--color-bg-secondary);
+  --plyr-tooltip-background: var(--color-bg-secondary);
+  --plyr-tooltip-color: var(--color-fg);
+  --plyr-tooltip-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --plyr-menu-background: var(--color-bg-secondary);
+  --plyr-menu-color: var(--color-fg);
+  --plyr-menu-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --plyr-menu-back-border-color: var(--color-border);
+  border-radius: 10px;
+}
+
+.plyr--audio .plyr__controls {
+  background: var(--color-bg-secondary);
+  color: var(--color-fg-secondary);
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  padding: 12px 14px;
+}
+
+.plyr--audio .plyr__control:focus-visible,
+.plyr--audio .plyr__control:hover,
+.plyr--audio .plyr__control[aria-expanded='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
+}
+
+.plyr--full-ui.plyr--audio input[type='range']::-webkit-slider-runnable-track {
+  background-color: var(--color-border);
+}
+.plyr--full-ui.plyr--audio input[type='range']::-moz-range-track {
+  background-color: var(--color-border);
 }

@@ -2,7 +2,7 @@ export interface SearchResult {
   id: string
   path: string
   title: string
-  type: 'markdown' | 'pdf' | 'canvas' | 'spreadsheet'
+  type: 'markdown' | 'pdf' | 'canvas' | 'pptx' | 'spreadsheet'
   score: number
   /** Legacy shape; kept for compatibility. */
   matches: SearchMatch[]
@@ -18,7 +18,7 @@ export interface SearchMatch {
 }
 
 export interface SearchFilters {
-  fileType?: ('markdown' | 'pdf' | 'canvas' | 'spreadsheet')[]
+  fileType?: ('markdown' | 'pdf' | 'canvas' | 'pptx' | 'spreadsheet')[]
   /** Path prefix (e.g. `Journal` or `Journal/2026`). */
   folder?: string
   /** All listed tags must be present on the document. */
@@ -34,7 +34,7 @@ export interface SearchIndexDocument {
   id: string
   path: string
   title: string
-  fileType: 'markdown' | 'pdf' | 'canvas' | 'spreadsheet'
+  fileType: 'markdown' | 'pdf' | 'canvas' | 'pptx' | 'spreadsheet'
   content: string
   /** Space-separated tags for the indexed `tags` field. */
   tags: string

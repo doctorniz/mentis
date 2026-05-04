@@ -1,11 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { FileText, Folder, Sparkles } from 'lucide-react'
+import { FileText, Folder, GitFork, Search } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { NotesWorkspaceProvider, useNotesWorkspace } from '@/contexts/notes-workspace-context'
 import { NotesFileTree } from '@/components/notes/notes-file-tree'
+import { VaultLeftSearch } from '@/components/notes/vault-left-search'
 import { EditorTabBar } from '@/components/notes/editor-tab-bar'
 import {
   MarkdownNoteEditor,
@@ -15,7 +16,6 @@ import { ChatPanel } from '@/components/chat/chat-panel'
 import { EditorRightColumn } from '@/components/notes/editor-right-column'
 import { BacklinksSection } from '@/components/notes/backlinks-section'
 import { ensureChatAssetIdForPath } from '@/lib/chat/asset-index'
-import { cn } from '@/utils/cn'
 import { PdfViewer } from '@/components/pdf/pdf-viewer'
 import { CanvasEditor } from '@/components/canvas/canvas-editor'
 import { KanbanEditor } from '@/components/kanban/kanban-editor'
@@ -29,12 +29,13 @@ import { ImageEditorView } from '@/components/notes/image-editor-view'
 import { CodeFileEditor } from '@/components/notes/code-file-editor'
 import { DocxEditorView } from '@/components/notes/docx-editor'
 import { SpreadsheetEditor } from '@/components/notes/spreadsheet-editor'
+import { PptxEditorView } from '@/components/pptx/pptx-editor'
+import { PptxCompactViewer } from '@/components/pptx/pptx-compact-viewer'
 import { VideoPlayerView } from '@/components/notes/video-player-view'
 import { AudioPlayerView } from '@/components/notes/audio-player-view'
-import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
+import { MOBILE_NAV_MEDIA_QUERY, PPTX_COMPACT_MEDIA_QUERY, WIDE_EDITOR_MEDIA_QUERY, CANVAS_TREE_MEDIA_QUERY, CANVAS_SIDEBAR_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { useMediaQuery } from '@/lib/browser/use-media-query'
 import { createUntitledNote } from '@/lib/notes/new-note'
-import { openOrCreateDailyNote } from '@/lib/notes/daily-note'
 import { detectEditorTabType, editorTabTypeFromVaultPath, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
 import { toast } from '@/stores/toast'
 import { removeSearchDocument } from '@/lib/search/index'
@@ -158,6 +159,7 @@ function NotesViewInner() {
   const retargetTabPath = useEditorStore((s) => s.retargetTabPath)
   const setSelectedPath = useFileTreeStore((s) => s.setSelectedPath)
   const starredPaths = useFileTreeStore((s) => s.starredPaths)
+  const setActiveView = useUiStore((s) => s.setActiveView)
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
 
@@ -247,11 +249,11 @@ function NotesViewInner() {
   // Collapsible backlinks section (lives inside the unified right column
   // for markdown tabs). Persisted so the user's choice survives reloads.
   const BACKLINKS_COLLAPSED_KEY = 'ink-marrow:backlinks-collapsed'
-  const [backlinksCollapsed, setBacklinksCollapsed] = useState(false)
+  const [backlinksCollapsed, setBacklinksCollapsed] = useState(true)
   useLayoutEffect(() => {
     try {
       const raw = localStorage.getItem(BACKLINKS_COLLAPSED_KEY)
-      if (raw === '1') setBacklinksCollapsed(true)
+      if (raw === '0') setBacklinksCollapsed(false)
     } catch {
       /* localStorage unavailable */
     }
@@ -264,91 +266,158 @@ function NotesViewInner() {
     }
   }, [backlinksCollapsed])
 
-  // Chat panel — one-at-a-time, per-path. Markdown tabs use frontmatter
-  // via `MarkdownNoteEditor.ensureChatAssetId`; PDFs have no frontmatter,
-  // so their id is resolved through `_marrow/_chats/index.json`.
+  // Chat collapsed state — collapsed = just a header bar at the bottom.
+  const CHAT_COLLAPSED_KEY = 'ink-marrow:chat-collapsed'
+  const [chatCollapsed, setChatCollapsed] = useState(true)
+  useLayoutEffect(() => {
+    try {
+      const raw = localStorage.getItem(CHAT_COLLAPSED_KEY)
+      if (raw === '0') setChatCollapsed(false)
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [])
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAT_COLLAPSED_KEY, chatCollapsed ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [chatCollapsed])
+
+  // Right column collapsed state — collapsed = thin rail with icons.
+  const COLUMN_COLLAPSED_KEY = 'ink-marrow:right-column-collapsed'
+  const [columnCollapsed, setColumnCollapsed] = useState(false)
+  useLayoutEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLUMN_COLLAPSED_KEY)
+      if (raw === '1') setColumnCollapsed(true)
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [])
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLUMN_COLLAPSED_KEY, columnCollapsed ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [columnCollapsed])
+
+  // Chat panel — always present in the right column. Markdown tabs use
+  // frontmatter via `MarkdownNoteEditor.ensureChatAssetId`; PDFs use
+  // `_marrow/_chats/index.json`. The asset id is resolved eagerly
+  // whenever the active tab changes so chat is ready without a toggle.
   const markdownEditorRef = useRef<MarkdownNoteEditorHandle | null>(null)
   const [chatAssetIdByPath, setChatAssetIdByPath] = useState<Record<string, string>>({})
-  const [chatOpenByPath, setChatOpenByPath] = useState<Record<string, boolean>>({})
 
-  const toggleChatForActivePath = useCallback(() => {
+  // Auto-ensure chatAssetId for the active markdown tab.
+  useEffect(() => {
     if (!activeTab || activeTab.type !== 'markdown') return
-    const path = activeTab.path
-    setChatOpenByPath((prev) => {
-      const nextOpen = !prev[path]
-      if (nextOpen) {
-        const id = markdownEditorRef.current?.ensureChatAssetId()
-        if (id) {
-          setChatAssetIdByPath((m) =>
-            m[path] === id ? m : { ...m, [path]: id },
-          )
-        }
+    // Wait a tick for the editor ref to be set by the MarkdownNoteEditor mount.
+    const timer = setTimeout(() => {
+      const id = markdownEditorRef.current?.ensureChatAssetId()
+      if (id) {
+        setChatAssetIdByPath((m) =>
+          m[activeTab.path] === id ? m : { ...m, [activeTab.path]: id },
+        )
       }
-      return { ...prev, [path]: nextOpen }
-    })
-  }, [activeTab])
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [activeTab?.path, activeTab?.type])
 
-  const closeChatForPath = useCallback((path: string) => {
-    setChatOpenByPath((prev) => ({ ...prev, [path]: false }))
-  }, [])
-
-  // PDF chat — async asset-id resolution via the index JSON.
-  const togglePdfChatForActivePath = useCallback(() => {
+  // Auto-ensure chatAssetId for the active PDF tab.
+  useEffect(() => {
     if (!activeTab || activeTab.type !== 'pdf') return
-    const path = activeTab.path
-    const currentlyOpen = chatOpenByPath[path] ?? false
-    if (currentlyOpen) {
-      setChatOpenByPath((prev) => ({ ...prev, [path]: false }))
-      return
-    }
-    // Opening — ensure we have an id, then open.
-    if (chatAssetIdByPath[path]) {
-      setChatOpenByPath((prev) => ({ ...prev, [path]: true }))
-      return
-    }
-    void ensureChatAssetIdForPath(vaultFs, path)
+    if (chatAssetIdByPath[activeTab.path]) return
+    void ensureChatAssetIdForPath(vaultFs, activeTab.path)
       .then((id) => {
-        setChatAssetIdByPath((m) => ({ ...m, [path]: id }))
-        setChatOpenByPath((prev) => ({ ...prev, [path]: true }))
+        setChatAssetIdByPath((m) => ({ ...m, [activeTab.path]: id }))
       })
       .catch(() => {
-        toast.error('Could not open chat for this PDF')
+        // Silently fail — chat will show "not configured" state.
       })
-  }, [activeTab, chatOpenByPath, chatAssetIdByPath, vaultFs])
+  }, [activeTab?.path, activeTab?.type, vaultFs])
 
   const isMobileTree = useMediaQuery(MOBILE_NAV_MEDIA_QUERY)
+  const isPptxCompact = useMediaQuery(PPTX_COMPACT_MEDIA_QUERY)
+  const isWideEditorNarrow = useMediaQuery(WIDE_EDITOR_MEDIA_QUERY)
+  const isCanvasTreeNarrow = useMediaQuery(CANVAS_TREE_MEDIA_QUERY)
+  const isCanvasSidebarNarrow = useMediaQuery(CANVAS_SIDEBAR_MEDIA_QUERY)
+  const isPptxTab = activeTab?.type === 'pptx'
+  const isCanvasTab = activeTab?.type === 'canvas'
+  const isWideEditorTab = activeTab?.type === 'pptx' || activeTab?.type === 'docx' || activeTab?.type === 'spreadsheet'
+
+  const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
+  const isSidebarOpen = useUiStore((s) => s.isSidebarOpen)
+  const canvasSidebarAutoCollapsedRef = useRef(false)
+
   const [notesTreeExpanded, setNotesTreeExpanded] = useState(true)
+  // Whether the user has manually toggled the tree (prevents auto-expand
+  // from fighting the user's intent until the tab or breakpoint changes).
+  const manualTreeToggleRef = useRef(false)
+
   useLayoutEffect(() => {
     setNotesTreeExpanded(!window.matchMedia(MOBILE_NAV_MEDIA_QUERY).matches)
   }, [])
+
+  // Auto-collapse tree: mobile always; canvas at ≤1200px; wide editors at ≤1380px.
+  // Skip if the user has manually toggled the tree (until the active tab changes).
   useEffect(() => {
+    if (manualTreeToggleRef.current) return
     if (isMobileTree) setNotesTreeExpanded(false)
+    else if (isCanvasTab && isCanvasTreeNarrow) setNotesTreeExpanded(false)
+    else if (isWideEditorTab && isWideEditorNarrow) setNotesTreeExpanded(false)
     else setNotesTreeExpanded(true)
-  }, [isMobileTree])
+  }, [isMobileTree, isCanvasTab, isCanvasTreeNarrow, isWideEditorTab, isWideEditorNarrow])
+
+  // Auto-collapse nav sidebar for canvas tabs at ≤1050px. Restores when
+  // the tab changes away from canvas or the viewport widens again.
+  useEffect(() => {
+    if (!isCanvasTab) {
+      if (canvasSidebarAutoCollapsedRef.current) {
+        canvasSidebarAutoCollapsedRef.current = false
+        setSidebarOpen(true)
+      }
+      return
+    }
+    if (isCanvasSidebarNarrow && isSidebarOpen) {
+      canvasSidebarAutoCollapsedRef.current = true
+      setSidebarOpen(false)
+    } else if (!isCanvasSidebarNarrow && !isSidebarOpen && canvasSidebarAutoCollapsedRef.current) {
+      canvasSidebarAutoCollapsedRef.current = false
+      setSidebarOpen(true)
+    }
+  }, [isCanvasTab, isCanvasSidebarNarrow, isSidebarOpen, setSidebarOpen])
+
+  // Reset the manual override when the active tab changes so auto-logic
+  // kicks in again for the new tab.
+  const prevTabIdRef = useRef(activeTabId)
+  useEffect(() => {
+    if (activeTabId !== prevTabIdRef.current) {
+      manualTreeToggleRef.current = false
+      prevTabIdRef.current = activeTabId
+    }
+  }, [activeTabId])
+
+  // Left panel: 'tree' shows the file tree, 'search' shows the search panel
+  const [leftPanel, setLeftPanel] = useState<'tree' | 'search'>('tree')
+
+  // Listen for Ctrl+F → open search panel (dispatched from AppShell)
+  useEffect(() => {
+    function onVaultSearchOpen() {
+      setNotesTreeExpanded(true)
+      setLeftPanel('search')
+    }
+    window.addEventListener('ink:vault-search-open', onVaultSearchOpen)
+    return () => window.removeEventListener('ink:vault-search-open', onVaultSearchOpen)
+  }, [])
 
   async function handleNewNote() {
     const path = await createUntitledNote(vaultFs)
     vaultChanged()
     openNotePath(path)
   }
-
-  const handleDailyNote = useCallback(async () => {
-    const path = await openOrCreateDailyNote(vaultFs)
-    vaultChanged()
-    openNotePath(path)
-  }, [vaultFs, vaultChanged, openNotePath])
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      const mod = navigator.platform.toUpperCase().includes('MAC') ? e.metaKey : e.ctrlKey
-      if (mod && e.shiftKey && e.key.toLowerCase() === 'd') {
-        e.preventDefault()
-        void handleDailyNote()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleDailyNote])
 
   // Refresh the tree whenever any part of the app creates/renames/deletes a vault file
   useEffect(() => {
@@ -364,8 +433,9 @@ function NotesViewInner() {
     onNoteCreated: () => {
       vaultChanged()
     },
-    onDailyNote: () => void handleDailyNote(),
-    onRequestCollapse: () => setNotesTreeExpanded(false),
+    onRequestCollapse: () => { manualTreeToggleRef.current = true; setNotesTreeExpanded(false) },
+    onSearchOpen: () => setLeftPanel('search'),
+    onGraphOpen: () => { manualTreeToggleRef.current = true; setNotesTreeExpanded(false); setActiveView(ViewMode.Graph) },
   }
 
   return (
@@ -377,16 +447,42 @@ function NotesViewInner() {
             variant="ghost"
             size="sm"
             className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
-            onClick={() => setNotesTreeExpanded(true)}
+            onClick={() => { manualTreeToggleRef.current = true; setNotesTreeExpanded(true); setLeftPanel('tree') }}
             aria-label="Open vault tree"
             title="Vault"
           >
             <Folder className="size-5" aria-hidden />
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
+            onClick={() => { manualTreeToggleRef.current = true; setNotesTreeExpanded(true); setLeftPanel('search') }}
+            aria-label="Search vault"
+            title="Search (Ctrl+F)"
+          >
+            <Search className="size-5" aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
+            onClick={() => setActiveView(ViewMode.Graph)}
+            aria-label="Open graph"
+            title="Graph"
+          >
+            <GitFork className="size-5" aria-hidden />
+          </Button>
         </div>
       )}
 
-      {notesTreeExpanded && !isMobileTree && <NotesFileTree {...treeProps} />}
+      {notesTreeExpanded && !isMobileTree && (
+        leftPanel === 'search'
+          ? <VaultLeftSearch onClose={() => setLeftPanel('tree')} />
+          : <NotesFileTree {...treeProps} />
+      )}
 
       {isMobileTree && notesTreeExpanded && (
         <>
@@ -394,13 +490,19 @@ function NotesViewInner() {
             type="button"
             className="absolute inset-0 z-[15] bg-black/20"
             aria-label="Close vault tree"
-            onClick={() => setNotesTreeExpanded(false)}
+            onClick={() => { manualTreeToggleRef.current = true; setNotesTreeExpanded(false) }}
           />
           <div className="border-border bg-bg absolute top-0 left-0 z-20 flex h-full w-[min(100%,280px)] max-w-[min(100vw-2rem,280px)] flex-col border-r shadow-lg">
-            <NotesFileTree
-              {...treeProps}
-              rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
-            />
+            {leftPanel === 'search'
+              ? <VaultLeftSearch
+                  onClose={() => setLeftPanel('tree')}
+                  rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
+                />
+              : <NotesFileTree
+                  {...treeProps}
+                  rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
+                />
+            }
           </div>
         </>
       )}
@@ -414,13 +516,15 @@ function NotesViewInner() {
               defaultRightPx={360}
               minRightPx={240}
               maxRightRatio={0.6}
+              columnCollapsed={columnCollapsed}
+              onColumnCollapsedChange={setColumnCollapsed}
               chat={
-                chatOpenByPath[activeTab.path] &&
                 chatAssetIdByPath[activeTab.path] ? (
                   <ChatPanel
                     chatAssetId={chatAssetIdByPath[activeTab.path]}
                     documentPath={activeTab.path}
-                    onClose={() => closeChatForPath(activeTab.path)}
+                    collapsed={chatCollapsed}
+                    onCollapsedChange={setChatCollapsed}
                   />
                 ) : null
               }
@@ -434,41 +538,21 @@ function NotesViewInner() {
                   collapsed={backlinksCollapsed}
                   onCollapsedChange={setBacklinksCollapsed}
                   maxExpandedHeightClass={
-                    chatOpenByPath[activeTab.path] ? 'max-h-[40%]' : 'flex-1'
+                    !chatCollapsed ? 'max-h-[40%]' : 'flex-1'
                   }
                 />
               }
             >
-              <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col">
-                <MarkdownNoteEditor
-                  key={activeTab.id}
-                  ref={markdownEditorRef}
-                  tabId={activeTab.id}
-                  path={activeTab.path}
-                  markdownPaths={markdownPaths}
-                  onOpenNotePath={openNotePath}
-                  onPersisted={bumpScan}
-                  onRenamed={vaultChanged}
-                />
-                <button
-                  type="button"
-                  onClick={toggleChatForActivePath}
-                  title={
-                    chatOpenByPath[activeTab.path]
-                      ? 'Hide chat'
-                      : 'Chat with this document'
-                  }
-                  aria-label="Toggle chat panel"
-                  className={cn(
-                    'absolute right-3 top-2 z-20 flex size-8 items-center justify-center rounded-md border transition-colors',
-                    chatOpenByPath[activeTab.path]
-                      ? 'border-accent bg-accent/10 text-accent'
-                      : 'border-border bg-bg/80 text-fg-secondary hover:text-accent hover:border-accent/60 backdrop-blur',
-                  )}
-                >
-                  <Sparkles className="size-4" />
-                </button>
-              </div>
+              <MarkdownNoteEditor
+                key={activeTab.id}
+                ref={markdownEditorRef}
+                tabId={activeTab.id}
+                path={activeTab.path}
+                markdownPaths={markdownPaths}
+                onOpenNotePath={openNotePath}
+                onPersisted={bumpScan}
+                onRenamed={vaultChanged}
+              />
             </EditorRightColumn>
           </div>
         ) : activeTab?.type === 'kanban' ? (
@@ -488,38 +572,20 @@ function NotesViewInner() {
               defaultRightPx={420}
               minRightPx={300}
               maxRightRatio={0.6}
+              columnCollapsed={columnCollapsed}
+              onColumnCollapsedChange={setColumnCollapsed}
               chat={
-                chatOpenByPath[activeTab.path] &&
                 chatAssetIdByPath[activeTab.path] ? (
                   <ChatPanel
                     chatAssetId={chatAssetIdByPath[activeTab.path]}
                     documentPath={activeTab.path}
-                    onClose={() => closeChatForPath(activeTab.path)}
+                    collapsed={chatCollapsed}
+                    onCollapsedChange={setChatCollapsed}
                   />
                 ) : null
               }
             >
-              <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col">
-                <PdfViewer path={activeTab.path} />
-                <button
-                  type="button"
-                  onClick={togglePdfChatForActivePath}
-                  title={
-                    chatOpenByPath[activeTab.path]
-                      ? 'Hide chat'
-                      : 'Chat with this PDF'
-                  }
-                  aria-label="Toggle chat panel"
-                  className={cn(
-                    'absolute right-3 top-2 z-20 flex size-8 items-center justify-center rounded-md border transition-colors',
-                    chatOpenByPath[activeTab.path]
-                      ? 'border-accent bg-accent/10 text-accent'
-                      : 'border-border bg-bg/80 text-fg-secondary hover:text-accent hover:border-accent/60 backdrop-blur',
-                  )}
-                >
-                  <Sparkles className="size-4" />
-                </button>
-              </div>
+              <PdfViewer path={activeTab.path} />
             </EditorRightColumn>
           </div>
         ) : activeTab?.type === 'canvas' ? (
@@ -530,6 +596,9 @@ function NotesViewInner() {
               isNew={activeTab.isNew}
               onRenamed={vaultChanged}
               onPersisted={bumpScan}
+              onRename={(tabId, oldPath, stem, ext) =>
+                void handleRenameVaultFile(tabId, oldPath, stem, ext)
+              }
             />
           </div>
         ) : activeTab?.type === 'image' ? (
@@ -574,6 +643,21 @@ function NotesViewInner() {
             onRenamed={vaultChanged}
             onPersisted={vaultChanged}
           />
+        ) : activeTab?.type === 'pptx' ? (
+          isPptxCompact ? (
+            <PptxCompactViewer
+              key={`${activeTab.id}-compact`}
+              path={activeTab.path}
+            />
+          ) : (
+            <PptxEditorView
+              key={activeTab.id}
+              tabId={activeTab.id}
+              path={activeTab.path}
+              onRenamed={vaultChanged}
+              onPersisted={bumpScan}
+            />
+          )
         ) : activeTab?.type === 'spreadsheet' ? (
           <SpreadsheetEditor
             key={activeTab.id}

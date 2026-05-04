@@ -10,34 +10,24 @@ import {
   defaultEventFrontmatter,
 } from '@/lib/calendar'
 
+interface EventOpts {
+  title: string
+  start: string
+  end: string
+  allDay: boolean
+  color: CalendarEventColor
+  location?: string
+  url?: string
+  body?: string
+}
+
 interface CalendarState {
   events: CalendarEvent[]
   loading: boolean
 
   loadEvents: (fs: FileSystemAdapter) => Promise<void>
-  addEvent: (
-    fs: FileSystemAdapter,
-    opts: {
-      title: string
-      start: string
-      end: string
-      allDay: boolean
-      color: CalendarEventColor
-      body?: string
-    },
-  ) => Promise<CalendarEvent>
-  updateEvent: (
-    fs: FileSystemAdapter,
-    path: string,
-    opts: {
-      title: string
-      start: string
-      end: string
-      allDay: boolean
-      color: CalendarEventColor
-      body?: string
-    },
-  ) => Promise<void>
+  addEvent: (fs: FileSystemAdapter, opts: EventOpts) => Promise<CalendarEvent>
+  updateEvent: (fs: FileSystemAdapter, path: string, opts: EventOpts) => Promise<void>
   removeEvent: (fs: FileSystemAdapter, path: string) => Promise<void>
 }
 
@@ -93,6 +83,8 @@ export const useCalendarStore = create<CalendarState>()(
         end: opts.end,
         allDay: opts.allDay,
         color: opts.color,
+        ...(opts.location ? { location: opts.location } : {}),
+        ...(opts.url      ? { url:      opts.url      } : {}),
       })
 
       const filename = generateEventFilename()
@@ -115,6 +107,8 @@ export const useCalendarStore = create<CalendarState>()(
         end: opts.end,
         allDay: opts.allDay,
         color: opts.color,
+        ...(opts.location ? { location: opts.location } : {}),
+        ...(opts.url      ? { url:      opts.url      } : {}),
         created: existing.created,
       })
 

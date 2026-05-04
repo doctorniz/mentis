@@ -41,7 +41,7 @@ const MIN_EXCERPT_CHARS = 400
 export interface VaultRagHit {
   path: string
   title: string
-  type: 'markdown' | 'pdf' | 'canvas' | 'spreadsheet'
+  type: 'markdown' | 'pdf' | 'canvas' | 'spreadsheet' | 'pptx'
   score: number
   excerpt: string
 }
@@ -61,7 +61,7 @@ interface RawHit {
   id: string
   path: string
   title: string
-  type: 'markdown' | 'pdf' | 'canvas' | 'spreadsheet'
+  type: 'markdown' | 'pdf' | 'canvas' | 'spreadsheet' | 'pptx'
   score: number
   content: string
   queryTerms: string[]

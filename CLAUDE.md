@@ -118,7 +118,7 @@ The PixiJS canvas editor has an async init + async flush-save teardown. Key inva
 
 Quick-capture notice board (`Ctrl+2`). **Thoughts** are `.md` files in `_marrow/_board/` with frontmatter (`type`, `color`, timestamps). Title from first `# H1`. Masonry CSS-columns layout. Inline edit via minimal Tiptap (bold/italic/underline/lists — keyboard shortcuts only). Image thoughts in `_marrow/_board/_assets/`. `useBoardStore` for CRUD; `lib/board/index.ts` parse/serialize; `lib/editor/board-extensions.ts` extensions.
 
-**Audio thoughts** (`type: 'audio'`) are voice recordings saved as MP3 in `_marrow/_board/_assets/`. Frontmatter: `audioPath` (vault-relative path to MP3), `audioDuration` (seconds), `transcript` (Whisper-generated text). Recorded via `AudioRecorderBar` component (inline bar with live level metering). MP3 encoding via `lamejs` (client-side, `lib/audio/recorder.ts`). Transcription via Whisper-tiny (`@huggingface/transformers`, ~40MB quantized model cached in browser, `lib/audio/transcribe.ts`). Transcribe button appears on audio cards without transcripts.
+**Audio thoughts** (`type: 'audio'`) are voice recordings saved as MP3 in `_marrow/_board/_assets/`. Frontmatter: `audioPath` (vault-relative path to MP3), `audioDuration` (seconds), `transcript` (Whisper-generated text). Recorded via `AudioRecorderBar` component (inline bar with live level metering). MP3 encoding via `mp3-mediarecorder` (WASM LAME encoder in a Web Worker, `lib/audio/recorder.ts`). Worker JS and `vmsg.wasm` live in `public/` — copied by postinstall script `scripts/copy-mp3-worker.mjs`. Transcription via Whisper-tiny (`@huggingface/transformers`, ~40MB quantized model cached in browser, `lib/audio/transcribe.ts`). Transcribe button appears on audio cards without transcripts.
 
 **Move to Vault** — all board items have a "Move to Vault" action (arrow icon). Physically moves the `.md` file to vault root, relocates associated assets from `_board/_assets` to `_assets/`, updates internal references, and dispatches `ink:vault-changed`.
 
@@ -137,6 +137,10 @@ Local-first event calendar (`Ctrl+5`). Events are `.md` files in `_marrow/_calen
 ### Kanban
 
 Markdown-based Kanban boards. A `.md` file with `type: kanban` in frontmatter renders as a drag-and-drop board. Columns = `## Headings` (optional `<!--kanban:color-->` for accent), cards = `- [ ]`/`- [x]` items. Drag cards by grip handle; drag columns by header grip. `detectEditorTabType` in `lib/notes/editor-tab-from-path.ts` peeks at frontmatter; `notes-view.tsx` renders `KanbanEditor`. Auto-save debounced ~750ms. `lib/kanban/index.ts` parse/serialize. The file is a regular `.md` — searchable, syncable, readable externally.
+
+### PPTX (Presentations)
+
+PowerPoint viewer/editor powered by `slidecanvas` (Fabric.js-based). `.pptx` files in the vault open inline with a full ribbon UI for editing text, shapes, images, and slide management. Lazy-loaded via `import('slidecanvas')` in `components/pptx/pptx-editor.tsx`. Auto-save: `onChange` fires with the `Presentation` state → debounced 3s → `PptxBlobExporter.exportToBlob()` → write bytes back to vault FS. Unmount flushes pending save. Search indexing extracts text from slide XML (`<a:t>` tags) via JSZip without loading the full editor. Graph shows pptx nodes as orange pentagons. File tree icon: `Presentation` (lucide), orange.
 
 ### Chat
 
@@ -190,7 +194,7 @@ Image files in the vault tree open as `EditorTab` type `image`. PNG/JPEG/WebP: `
 
 ### Audio Files
 
-Audio files (MP3/WAV/M4A/AAC/FLAC/WMA) open as `EditorTab` type `audio`. `AudioPlayerView` shows a centered player with play/pause, seekable progress bar, playback speed (0.5×–2×), and restart. Shared `AudioPlayer` component (`components/audio/audio-player.tsx`) used in both vault tab and board cards. Recording: `AudioRecorder` class (`lib/audio/recorder.ts`) captures via `MediaStreamSource` + `ScriptProcessorNode`, encodes to MP3 client-side via `lamejs`. Transcription: Whisper-tiny via `@huggingface/transformers` (`lib/audio/transcribe.ts`), ~40MB quantized model cached in browser, runs fully offline via WASM. Progress events on `ink:whisper-progress` CustomEvent.
+Audio files (MP3/WAV/M4A/AAC/FLAC/WMA) open as `EditorTab` type `audio`. `AudioPlayerView` shows a centered player with play/pause, seekable progress bar, playback speed (0.5×–2×), and restart. Shared `AudioPlayer` component (`components/audio/audio-player.tsx`) used in both vault tab and board cards. Recording: `AudioRecorder` class (`lib/audio/recorder.ts`) wraps `mp3-mediarecorder` — a MediaRecorder ponyfill that encodes MP3 via WASM LAME in a Web Worker. Worker JS + `vmsg.wasm` served from `public/` (postinstall copies from `node_modules`). Level metering via our own `AudioContext` + `AnalyserNode`. Transcription: Whisper-tiny via `@huggingface/transformers` (`lib/audio/transcribe.ts`), ~40MB quantized model cached in browser, runs fully offline via WASM. Progress events on `ink:whisper-progress` CustomEvent.
 
 ## Conventions
 
@@ -208,7 +212,7 @@ Audio files (MP3/WAV/M4A/AAC/FLAC/WMA) open as `EditorTab` type `audio`. `AudioP
 
 **UI primitives:** Radix UI for dialogs, dropdowns, tooltips. Lucide for icons. Never nest interactive elements (e.g. `<button>` inside `<button>`). For tab UIs with close controls, use `<div role="tab">` with separate `<button>`s.
 
-**UI copy:** Prefer label + control only. No subtitle "hints" under labels unless they prevent a real mistake (irreversible actions, format requirements, edge cases). See `.cursor/rules/ui-copy.mdc`.
+**UI copy:** Simplicity is the priority — say as little as possible. Every word costs attention; cut anything that can be removed without losing meaning. Prefer one word over three. Prefer label + control only. No subtitle "hints" under labels unless they prevent a real mistake (irreversible actions, format requirements, edge cases). See `.cursor/rules/ui-copy.mdc`.
 
 **Errors:** File system ops use try/catch. User-facing errors via `toast.error()` (import from `@/stores/toast`). Always also `console.error()` for dev debugging. Critical errors via `ErrorBoundary` (recovery UI).
 
@@ -230,7 +234,7 @@ Key suites: `search.test.ts`, `markdown.test.ts`, `markdown-bridge.test.ts`, `pd
 - **COOP/COEP headers** are required for `SharedArrayBuffer` (PDF.js). They must be set at the hosting layer, not in `next.config.ts` (static export doesn't run Next.js middleware). See `docs/DEPLOYMENT.md`.
 - **PDF.js loading:** Use the loader in `src/lib/pdf/pdfjs-loader.ts` — do not import PDF.js directly, as it requires careful worker setup.
 - **Static export:** `pnpm build` uses `output: 'export'`. No server-side rendering, no API routes (except auth pages which are handled client-side).
-- **Browser-only libraries & prerendering:** Libraries that access `document` or `window` at module scope (e.g. `plyr`, `lamejs`) will crash the static-export prerender with `ReferenceError: document is not defined`. **Never add a top-level `import` for such libraries.** Use `await import('lib')` inside a `useEffect` or event handler instead. As a safety net, stub them on the server via `next.config.ts` → `webpack` → `if (isServer) config.resolve.alias['lib'] = false`. Current exclusions: `plyr`, `lamejs`, `@huggingface/transformers`.
+- **Browser-only libraries & prerendering:** Libraries that access `document` or `window` at module scope (e.g. `plyr`, `lamejs`) will crash the static-export prerender with `ReferenceError: document is not defined`. **Never add a top-level `import` for such libraries.** Use `await import('lib')` inside a `useEffect` or event handler instead. As a safety net, stub them on the server via `next.config.ts` → `webpack` → `if (isServer) config.resolve.alias['lib'] = false`. Current exclusions: `plyr`, `@huggingface/transformers`, `mp3-mediarecorder`.
 - **Canvas Pixi ticker:** The Pixi Application ticker must be stopped synchronously before async teardown in canvas cleanup, or it renders destroyed geometry. See "Canvas Lifecycle" section above.
 - **Canvas unmount save race:** Unmount cleanup awaits `flushSave` before `engine.destroy()`, and publishes the promise into `pendingCanvasSaves` so the next mount of the same path can await it before reading disk. Skipping either half loses in-flight changes.
 - **Canvas v5 drawings folder:** Pixel data lives at `_marrow/_drawings/<assetId>/<layerId>.png`, hidden from the vault tree. `assetId` is stored in the `.canvas` JSON and is minted on first save if missing (v3 / v4 migrations). Save order is PNGs-first, JSON-last for crash safety. Renaming a `.canvas` file does NOT move its drawings folder — the id travels with the JSON, not the filename. Deleted layers and v4-migration sibling `.assets/` folders leave orphans (out of scope for now).
@@ -245,7 +249,7 @@ Key suites: `search.test.ts`, `markdown.test.ts`, `markdown-bridge.test.ts`, `pd
 ## AI / Cursor Rules
 
 - `.cursor/rules/greeting-and-docs.mdc` (`alwaysApply: true`): Greet with **Assalamualaikum** on substantive replies. After meaningful changes, update `docs/` and add **Manual verification** checklist when behavior/UX changes. Refresh `docs/LAUNCH_DEFERRALS.md` verification queue.
-- `.cursor/rules/ui-copy.mdc`: Settings/forms: avoid filler hints under labels unless they prevent a real mistake.
+- `.cursor/rules/ui-copy.mdc`: Simplicity first — fewest words that carry full meaning. No filler hints under labels unless they prevent a real mistake.
 - When suggesting redistribution or "open sourcing," remind readers that **BSL 1.1** governs this repo until the Change Date — point to `LICENSE`.
 - Prefer small, reviewable diffs; match existing patterns in touched files.
 - Security-sensitive areas (crypto, vault paths, FS adapters): extra care and human review.

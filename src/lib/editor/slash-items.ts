@@ -88,6 +88,45 @@ export const slashItems: SlashItem[] = [
       editor.chain().focus().deleteRange(range).setHorizontalRule().run()
     },
   },
+  {
+    title: 'Table',
+    description: 'Insert a 3-column table',
+    keywords: ['table', 'grid', 'rows', 'columns', 'spreadsheet'],
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+        .run()
+    },
+  },
+  {
+    title: 'Math (inline)',
+    description: 'Inline LaTeX formula  $…$',
+    keywords: ['math', 'latex', 'formula', 'equation', '$', 'katex'],
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mathInline', attrs: { latex: '' } })
+        .run()
+    },
+  },
+  {
+    title: 'Math block',
+    description: 'Display LaTeX formula  $$…$$',
+    keywords: ['math', 'latex', 'display', 'block', '$$', 'katex'],
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mathBlock', attrs: { latex: '' } })
+        .run()
+    },
+  },
 ]
 
 export function filterSlashItems(query: string): SlashItem[] {

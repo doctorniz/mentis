@@ -16,6 +16,8 @@ import { WikiLinkNode } from '@/lib/editor/wiki-link-node'
 import { MathInline, MathBlock } from '@/lib/editor/math-node'
 import { VaultImage } from '@/lib/editor/vault-image-node'
 import { VaultImageExtension } from '@/lib/editor/vault-image-extension'
+import { VaultVideo } from '@/lib/editor/vault-video-node'
+import { VaultVideoExtension } from '@/lib/editor/vault-video-extension'
 import { PdfEmbedNode } from '@/lib/editor/pdf-embed-node'
 import { PdfEmbedExtension } from '@/lib/editor/pdf-embed-extension'
 import { createInkWikiLinkSuggestion } from '@/lib/editor/wiki-link-suggestion'
@@ -52,6 +54,7 @@ export function getNoteEditorExtensions(
     MathInline,
     MathBlock,
     options?.liveEditor ? VaultImageExtension : VaultImage,
+    options?.liveEditor ? VaultVideoExtension : VaultVideo,
     options?.liveEditor ? PdfEmbedExtension : PdfEmbedNode,
     Placeholder.configure({ placeholder }),
     inkSlashCommands,

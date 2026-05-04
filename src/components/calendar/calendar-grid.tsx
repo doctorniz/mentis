@@ -39,8 +39,12 @@ interface CalendarGridProps {
   month: number
   events: CalendarEvent[]
   tasks: TaskItem[]
+  /** Set of YYYY-MM-DD strings that have a daily note on disk. */
+  dailyNoteDates?: Set<string>
   onDayClick: (dateStr: string) => void
   onEventClick: (event: CalendarEvent) => void
+  /** Called when the user clicks the daily-note dot on a date. */
+  onDailyNoteClick?: (dateStr: string) => void
 }
 
 export function CalendarGrid({
@@ -48,8 +52,10 @@ export function CalendarGrid({
   month,
   events,
   tasks,
+  dailyNoteDates,
   onDayClick,
   onEventClick,
+  onDailyNoteClick,
 }: CalendarGridProps) {
   const today = toDateStr(new Date())
   const weeks = useMemo(() => buildMonthGrid(year, month), [year, month])
@@ -94,6 +100,7 @@ export function CalendarGrid({
               const dayEvents = eventsForDate(dateStr)
               const dayTasks = tasksForDate(dateStr)
               const hasItems = dayEvents.length > 0 || dayTasks.length > 0
+              const hasDailyNote = dailyNoteDates?.has(dateStr) ?? false
 
               return (
                 <div
@@ -109,18 +116,32 @@ export function CalendarGrid({
                     isCurrentMonth ? 'bg-bg hover:bg-bg-hover' : 'bg-bg-secondary/40 hover:bg-bg-secondary/70',
                   )}
                 >
-                  {/* Date number */}
-                  <div
-                    className={cn(
-                      'mb-0.5 flex size-6 items-center justify-center self-start rounded-full text-xs font-medium leading-none',
-                      isToday
-                        ? 'bg-accent text-accent-fg'
-                        : isCurrentMonth
-                          ? 'text-fg'
-                          : 'text-fg-muted',
+                  {/* Date number row — with optional daily note dot */}
+                  <div className="mb-0.5 flex items-center gap-1 self-start">
+                    <div
+                      className={cn(
+                        'flex size-6 items-center justify-center rounded-full text-xs font-medium leading-none',
+                        isToday
+                          ? 'bg-accent text-accent-fg'
+                          : isCurrentMonth
+                            ? 'text-fg'
+                            : 'text-fg-muted',
+                      )}
+                    >
+                      {day.getDate()}
+                    </div>
+                    {hasDailyNote && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDailyNoteClick?.(dateStr)
+                        }}
+                        title="Open daily note"
+                        className="size-2 rounded-full bg-amber-400 transition-opacity hover:opacity-70 dark:bg-amber-500"
+                        aria-label={`Daily note for ${dateStr}`}
+                      />
                     )}
-                  >
-                    {day.getDate()}
                   </div>
 
                   {/* Event chips */}

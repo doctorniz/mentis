@@ -19,6 +19,8 @@ export function editorTabTypeFromVaultPath(path: string): EditorTab['type'] {
       return 'audio'
     case FileType.Docx:
       return 'docx'
+    case FileType.Pptx:
+      return 'pptx'
     case FileType.Spreadsheet:
       return 'spreadsheet'
     case FileType.Code:

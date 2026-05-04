@@ -153,6 +153,7 @@ export const useVaultChatStore = create<VaultChatState>()(
       set((s) => {
         s.threads.unshift(draft)
         s.activeThreadId = draft.id
+        s.error = null
       })
       return draft
     },

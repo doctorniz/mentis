@@ -42,6 +42,7 @@ async function collectIndexableFiles(
       e.type === FileType.Markdown ||
       e.type === FileType.Pdf ||
       e.type === FileType.Canvas ||
+      e.type === FileType.Pptx ||
       e.type === FileType.Spreadsheet
     ) {
       acc.push(e)
@@ -50,6 +51,48 @@ async function collectIndexableFiles(
 }
 
 const CONTENT_CAP = 14_000
+
+/**
+ * Extract text from a PPTX file by parsing the Open XML slide XML.
+ * Uses JSZip to read the ZIP-compressed .pptx and pulls text from
+ * `<a:t>` tags in each slide's XML. Lightweight — no SlideCanvas import
+ * needed, so this works in the search index builder without pulling
+ * the full editor bundle.
+ */
+async function extractPptxText(data: Uint8Array): Promise<string> {
+  try {
+    const JSZip = (await import('jszip')).default
+    const zip = await JSZip.loadAsync(data)
+    const chunks: string[] = []
+    let len = 0
+
+    // Slides live at ppt/slide1.xml, ppt/slide2.xml, etc.
+    const slideFiles = Object.keys(zip.files)
+      .filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+      .sort((a, b) => {
+        const numA = parseInt(a.match(/slide(\d+)/i)?.[1] ?? '0', 10)
+        const numB = parseInt(b.match(/slide(\d+)/i)?.[1] ?? '0', 10)
+        return numA - numB
+      })
+
+    for (const fileName of slideFiles) {
+      if (len >= CONTENT_CAP) break
+      const xml = await zip.files[fileName].async('text')
+      // Extract all <a:t>...</a:t> text runs
+      const textRuns = xml.match(/<a:t[^>]*>([\s\S]*?)<\/a:t>/g) ?? []
+      const slideText = textRuns
+        .map((tag) => tag.replace(/<[^>]+>/g, ''))
+        .join(' ')
+      if (slideText.trim()) {
+        chunks.push(slideText.trim())
+        len += slideText.length
+      }
+    }
+    return chunks.join('\n')
+  } catch {
+    return ''
+  }
+}
 
 async function extractPdfText(data: Uint8Array): Promise<string> {
   try {
@@ -139,6 +182,24 @@ async function fileTypeToDocument(
       title: titleFromPath(path),
       fileType: 'canvas',
       content: '',
+      tags: '',
+      tagCsv: '',
+      modifiedAt,
+    }
+  }
+
+  if (entry.type === FileType.Pptx) {
+    let content = ''
+    try {
+      const data = await fs.readFile(path)
+      content = await extractPptxText(data)
+    } catch { /* use empty */ }
+    return {
+      id: path,
+      path,
+      title: titleFromPath(path),
+      fileType: 'pptx',
+      content,
       tags: '',
       tagCsv: '',
       modifiedAt,

@@ -4,6 +4,7 @@ export enum FileType {
   Canvas = 'canvas',
   Image = 'image',
   Docx = 'docx',
+  Pptx = 'pptx',
   Spreadsheet = 'spreadsheet',
   Video = 'video',
   Audio = 'audio',
@@ -45,6 +46,8 @@ export function getFileType(filename: string): FileType {
       return FileType.Canvas
     case 'docx':
       return FileType.Docx
+    case 'pptx':
+      return FileType.Pptx
     case 'xlsx':
     case 'xls':
     case 'csv':

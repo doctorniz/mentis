@@ -68,11 +68,38 @@ export class FsapiAdapter implements FileSystemAdapter {
   }
 
   async writeFile(path: string, data: Uint8Array): Promise<void> {
+    // Extract a true ArrayBuffer slice so callers can pass Uint8Array sub-views
+    // (byteOffset > 0) without accidentally writing the whole backing buffer.
+    const buf = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
+
     const { parent, name } = await this.resolvePath(path)
-    const fh = await parent.getFileHandle(name, { create: true })
-    const writable = await fh.createWritable()
-    await writable.write(data.buffer as ArrayBuffer)
-    await writable.close()
+
+    // Chromium throws InvalidStateError on createWritable() when the file was
+    // just created (e.g. right after mkdir) and the FSAPI's internal snapshot
+    // is momentarily stale. Retry once with a fresh handle to work around it.
+    const tryWrite = async (): Promise<void> => {
+      const fh = await parent.getFileHandle(name, { create: true })
+      const writable = await fh.createWritable()
+      try {
+        await writable.write(buf)
+        await writable.close()
+      } catch (err) {
+        try { await writable.abort() } catch { /* ignore */ }
+        throw err
+      }
+    }
+
+    try {
+      await tryWrite()
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'InvalidStateError') {
+        // Brief yield lets the FSAPI settle before the retry.
+        await new Promise<void>((res) => setTimeout(res, 50))
+        await tryWrite()
+      } else {
+        throw err
+      }
+    }
   }
 
   async writeTextFile(path: string, content: string): Promise<void> {

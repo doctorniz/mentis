@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Sparkles, Trash2, X } from 'lucide-react'
 
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { getChatKey, CHAT_KEY_CHANGED_EVENT } from '@/lib/chat/key-store'
@@ -26,6 +26,10 @@ interface ChatPanelProps {
   documentPath: string
   /** Close the panel — typically toggles the editor column back to full width. */
   onClose?: () => void
+  /** When true, render only a thin clickable header bar instead of the full UI. */
+  collapsed?: boolean
+  /** Called when the user clicks the collapsed bar to expand, or the header to collapse. */
+  onCollapsedChange?: (collapsed: boolean) => void
 }
 
 function mergeSettings(from: ChatSettings | undefined): ChatSettings {
@@ -36,6 +40,8 @@ export function ChatPanel({
   chatAssetId,
   documentPath,
   onClose,
+  collapsed = false,
+  onCollapsedChange,
 }: ChatPanelProps) {
   const { vaultFs, vaultPath, config } = useVaultSession()
   const settings = useMemo(() => mergeSettings(config.chat), [config.chat])
@@ -66,6 +72,23 @@ export function ChatPanel({
     // chatAssetId is the stable id — documentPath is informational; reloading
     // on rename is fine because `openDocument` is idempotent.
   }, [vaultFs, chatAssetId, documentPath, openDocument, closeDocument])
+
+  // Auto-create a fresh thread when the provider or model changes so the
+  // user doesn't see stale messages / errors from a prior model.
+  const prevProviderRef = useRef<string | null | undefined>(undefined)
+  const prevModelRef = useRef<string | null | undefined>(undefined)
+  useEffect(() => {
+    const prev = prevProviderRef.current
+    const prevMod = prevModelRef.current
+    prevProviderRef.current = settings.provider
+    prevModelRef.current = settings.model
+    // Skip on the initial render (both refs were undefined).
+    if (prev === undefined && prevMod === undefined) return
+    if (prev === settings.provider && prevMod === settings.model) return
+    if (!isStreaming) {
+      void createThread({ chatAssetId, documentPath })
+    }
+  }, [settings.provider, settings.model, chatAssetId, documentPath, isStreaming, createThread])
 
   // Pull the API key for the configured provider; recheck when provider
   // changes or when the key-changed signal fires from settings.
@@ -144,19 +167,49 @@ export function ChatPanel({
   const keyMissing = keyChecked && !apiKey && !!settings.provider
   const composerDisabled = providerMissing || keyMissing || !activeThread
 
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => onCollapsedChange?.(false)}
+        className="border-border hover:bg-bg-hover flex w-full shrink-0 items-center gap-2 border-t px-3 py-2 text-left transition-colors"
+        aria-expanded={false}
+        aria-label="Expand chat"
+      >
+        <ChevronRight className="text-fg-muted size-3.5 shrink-0" aria-hidden />
+        <Sparkles className="text-accent size-3.5 shrink-0" aria-hidden />
+        <span className="text-fg-secondary min-w-0 flex-1 truncate text-[11px] font-semibold tracking-wide uppercase">
+          Chat
+        </span>
+        {activeThread && activeThread.messages.length > 0 && (
+          <span className="bg-accent/10 text-accent shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
+            {activeThread.messages.length}
+          </span>
+        )}
+      </button>
+    )
+  }
+
   return (
     <div className="bg-bg flex h-full min-h-0 w-full flex-col">
-      <header className="border-border flex items-center justify-between gap-2 border-b px-3 py-2">
-        <div className="flex items-center gap-2">
+      <header className="border-border flex items-center justify-between gap-2 border-t px-3 py-2">
+        <button
+          type="button"
+          onClick={() => onCollapsedChange?.(true)}
+          className="flex items-center gap-2 text-left"
+          aria-expanded={true}
+          aria-label="Collapse chat"
+        >
+          <ChevronDown className="text-fg-muted size-3.5 shrink-0" aria-hidden />
           <Sparkles className="text-accent size-4" />
           <span className="text-fg text-sm font-medium">Chat</span>
+        </button>
+        <div className="flex items-center gap-1">
           {settings.model && (
             <span className="text-fg-muted truncate text-xs" title={settings.model}>
               {settings.model}
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={handleNewThread}

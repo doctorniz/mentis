@@ -1,7 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { PanelRightOpen } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { useCanvasStore } from '@/stores/canvas'
 import { useEditorStore } from '@/stores/editor'
 import { useAutoSave } from '@/hooks/use-auto-save'
@@ -18,6 +20,7 @@ interface CanvasEditorProps {
   path: string
   isNew?: boolean
   onRenamed?: () => void
+  onRename?: (tabId: string, oldPath: string, stem: string, ext: string) => void
   onPersisted?: () => void
 }
 
@@ -35,7 +38,16 @@ interface CanvasEditorProps {
  */
 const pendingCanvasSaves = new Map<string, Promise<void>>()
 
-export function CanvasEditor({ tabId, path, onPersisted }: CanvasEditorProps) {
+const CANVAS_PANEL_STORAGE_KEY = 'ink-marrow:canvas-panel-width'
+const CANVAS_PANEL_DEFAULT_WIDTH = 260
+const CANVAS_PANEL_MIN_WIDTH = 180
+const CANVAS_PANEL_MAX_RATIO = 0.45
+/** Collapse the right panel automatically when the canvas editor container
+ *  is narrower than this (px). Wider than `CANVAS_SIDEBAR_MEDIA_QUERY` so
+ *  the panel collapses before the nav sidebar does. */
+const CANVAS_PANEL_AUTO_COLLAPSE_BELOW = 780
+
+export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEditorProps) {
   const { vaultFs } = useVaultSession()
   const engineRef = useRef<CanvasEngine | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -43,6 +55,75 @@ export function CanvasEditor({ tabId, path, onPersisted }: CanvasEditorProps) {
   pathRef.current = path
 
   const [loading, setLoading] = useState(true)
+
+  /* ---- Right panel collapse / resize ---- */
+
+  const layoutRef = useRef<HTMLDivElement>(null)
+  const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const panelCollapsedRef = useRef(false)
+  const panelAutoCollapsedRef = useRef(false)
+  const dragRef = useRef(false)
+
+  const [panelWidth, setPanelWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return CANVAS_PANEL_DEFAULT_WIDTH
+    const raw = localStorage.getItem(CANVAS_PANEL_STORAGE_KEY)
+    const parsed = raw ? Number(raw) : NaN
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : CANVAS_PANEL_DEFAULT_WIDTH
+  })
+
+  // Keep ref in sync for use inside ResizeObserver callback
+  useEffect(() => { panelCollapsedRef.current = panelCollapsed }, [panelCollapsed])
+
+  // Persist width
+  useEffect(() => {
+    if (!panelCollapsed) localStorage.setItem(CANVAS_PANEL_STORAGE_KEY, String(panelWidth))
+  }, [panelWidth, panelCollapsed])
+
+  // Auto-collapse / restore when the canvas editor container resizes
+  useLayoutEffect(() => {
+    const el = layoutRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? el.clientWidth
+      if (w > 0 && w < CANVAS_PANEL_AUTO_COLLAPSE_BELOW && !panelCollapsedRef.current) {
+        panelAutoCollapsedRef.current = true
+        setPanelCollapsed(true)
+      } else if (w >= CANVAS_PANEL_AUTO_COLLAPSE_BELOW && panelCollapsedRef.current && panelAutoCollapsedRef.current) {
+        panelAutoCollapsedRef.current = false
+        setPanelCollapsed(false)
+      }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // Drag-to-resize handlers
+  function clampPanelWidth(px: number): number {
+    const el = layoutRef.current
+    if (!el) return Math.max(CANVAS_PANEL_MIN_WIDTH, px)
+    const max = Math.max(CANVAS_PANEL_MIN_WIDTH, Math.floor(el.clientWidth * CANVAS_PANEL_MAX_RATIO))
+    return Math.min(Math.max(CANVAS_PANEL_MIN_WIDTH, px), max)
+  }
+
+  function onDragPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.preventDefault()
+    dragRef.current = true
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function onDragPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragRef.current) return
+    const el = layoutRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setPanelWidth(clampPanelWidth(rect.right - e.clientX))
+  }
+
+  function onDragPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragRef.current) return
+    dragRef.current = false
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
+  }
 
   /* ---- Init + Load + Cleanup ---- */
 
@@ -256,16 +337,69 @@ export function CanvasEditor({ tabId, path, onPersisted }: CanvasEditorProps) {
   /* ---- Render ---- */
 
   return (
-    <div className="relative flex h-full min-h-0">
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Title bar — matches docx / xlsx style */}
+      <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
+        <InlineFileTitle
+          path={path}
+          onRename={(oldPath, newStem) => onRename?.(tabId, oldPath, newStem, '.canvas')}
+        />
+        <span className="text-fg-muted font-mono text-xs">.canvas</span>
+      </div>
+
+      <div ref={layoutRef} className="relative flex min-h-0 flex-1">
       {!loading && <CanvasToolStrip engineRef={engineRef} />}
       <CanvasViewport engineRef={engineRef} containerRef={containerRef} />
-      {!loading && <CanvasPropertiesPanel engineRef={engineRef} />}
+
+      {!loading && (
+        <>
+          {/* Drag handle — only visible when panel is open */}
+          {!panelCollapsed && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize properties panel"
+              onPointerDown={onDragPointerDown}
+              onPointerMove={onDragPointerMove}
+              onPointerUp={onDragPointerUp}
+              onPointerCancel={onDragPointerUp}
+              className="group relative z-10 w-1 shrink-0 cursor-col-resize select-none bg-border transition-colors hover:bg-accent/60"
+            >
+              <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
+            </div>
+          )}
+
+          {panelCollapsed ? (
+            /* Collapsed rail */
+            <div className="border-border bg-bg flex h-full w-10 shrink-0 flex-col items-center border-l pt-2">
+              <button
+                type="button"
+                onClick={() => { panelAutoCollapsedRef.current = false; setPanelCollapsed(false) }}
+                title="Expand properties"
+                aria-label="Expand properties panel"
+                className="text-fg-muted hover:text-fg hover:bg-bg-hover flex size-8 items-center justify-center rounded-md transition-colors"
+              >
+                <PanelRightOpen className="size-4" />
+              </button>
+            </div>
+          ) : (
+            /* Expanded panel */
+            <div className="shrink-0 overflow-hidden" style={{ width: `${panelWidth}px` }}>
+              <CanvasPropertiesPanel
+                engineRef={engineRef}
+                onCollapse={() => { panelAutoCollapsedRef.current = false; setPanelCollapsed(true) }}
+              />
+            </div>
+          )}
+        </>
+      )}
 
       {loading && (
         <div className="text-fg-muted absolute inset-0 z-10 flex items-center justify-center bg-neutral-100 text-sm dark:bg-neutral-900">
           Loading canvas…
         </div>
       )}
+      </div>
     </div>
   )
 }

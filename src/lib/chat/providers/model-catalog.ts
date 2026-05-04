@@ -1,13 +1,12 @@
 /**
- * Provider-specific model catalog fetching.
+ * Provider-specific model catalog.
  *
- * Each cloud provider has a "list models" API. After the user validates
- * their API key via `testConnection`, we call `fetchModels` to populate
- * the model dropdown in Settings → AI with real models from their account.
+ * Cloud providers (openai, anthropic, gemini, openrouter, huggingface) expose
+ * a curated short list via `getCuratedModels` — shown immediately in Settings
+ * without needing an API call. A "Custom…" escape hatch lets users type any id.
  *
- * For local/browser providers (window-ai, webllm, ollama) we either return
- * a fixed list or query the local service. WebLLM pulls from the
- * @mlc-ai/web-llm package's prebuilt model catalog dynamically.
+ * Local/browser providers (ollama, webllm, window-ai) use `fetchModels` to
+ * discover what's actually available on the user's machine.
  */
 
 import type { ChatProviderId } from '@/types/chat'
@@ -15,6 +14,76 @@ import type { ChatProviderId } from '@/types/chat'
 export interface ModelEntry {
   id: string
   label: string
+}
+
+/* ------------------------------------------------------------------ */
+/*  Curated model lists — shown immediately, no API call needed        */
+/* ------------------------------------------------------------------ */
+
+const CURATED_MODELS: Partial<Record<ChatProviderId, ModelEntry[]>> = {
+  openrouter: [
+    { id: 'anthropic/claude-opus-4-7', label: 'Claude Opus 4.7' },
+    { id: 'openai/gpt-5.5', label: 'GPT-5.5' },
+    { id: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    { id: 'deepseek/deepseek-chat', label: 'DeepSeek V3' },
+    { id: 'anthropic/claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+    { id: 'google/gemini-2.0-flash-lite-001:free', label: 'Gemini 2.0 Flash Lite (free)' },
+  ],
+  anthropic: [
+    { id: 'claude-opus-4-7', label: 'Claude Opus 4.7' },
+    { id: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+    { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+    { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
+    { id: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
+  ],
+  openai: [
+    { id: 'gpt-5.5', label: 'GPT-5.5' },
+    { id: 'gpt-5', label: 'GPT-5' },
+    { id: 'o3', label: 'O3' },
+    { id: 'gpt-4.1', label: 'GPT-4.1' },
+    { id: 'o4-mini', label: 'O4-mini' },
+    { id: 'gpt-4o', label: 'GPT-4o' },
+  ],
+  gemini: [
+    { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+    { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
+    { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+  ],
+  huggingface: [
+    { id: 'meta-llama/Meta-Llama-3.1-70B-Instruct', label: 'Llama 3.1 70B' },
+    { id: 'Qwen/Qwen2.5-72B-Instruct', label: 'Qwen 2.5 72B' },
+    { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct', label: 'Llama 3.1 8B' },
+    { id: 'mistralai/Mistral-7B-Instruct-v0.3', label: 'Mistral 7B' },
+    { id: 'microsoft/Phi-3.5-mini-instruct', label: 'Phi-3.5 Mini' },
+    { id: 'google/gemma-2-9b-it', label: 'Gemma 2 9B' },
+  ],
+  webllm: [
+    { id: 'gemma-3-4b-it-q4f16_1-MLC', label: 'Gemma 3 4B' },
+    { id: 'gemma-3-1b-it-q4f16_1-MLC', label: 'Gemma 3 1B' },
+    { id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC', label: 'Llama 3.2 3B' },
+    { id: 'Phi-3.5-mini-instruct-q4f16_1-MLC', label: 'Phi-3.5 Mini' },
+    { id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC', label: 'Qwen 2.5 7B' },
+    { id: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC', label: 'SmolLM2 1.7B' },
+  ],
+  'window-ai': [
+    { id: 'gemini-nano', label: 'Gemini Nano' },
+  ],
+}
+
+/**
+ * Returns the curated short-list for cloud providers, or `[]` for local
+ * providers (ollama, webllm, window-ai) which use dynamic discovery instead.
+ */
+export function getCuratedModels(provider: ChatProviderId): ModelEntry[] {
+  return CURATED_MODELS[provider] ?? []
+}
+
+/** Returns the default model id to pre-select when switching to a provider. */
+export function getDefaultModel(provider: ChatProviderId | null): string {
+  if (!provider) return ''
+  return CURATED_MODELS[provider]?.[0]?.id ?? ''
 }
 
 /* ------------------------------------------------------------------ */

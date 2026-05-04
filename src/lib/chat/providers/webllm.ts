@@ -58,14 +58,67 @@ interface MlcEngine {
   interruptGenerate?: () => void
 }
 
+interface MlcEngineInit {
+  initProgressCallback?: (p: MlcInitProgress) => void
+  /** Increase the KV-cache context window beyond the model default. */
+  chatOpts?: { context_window_size?: number; sliding_window_size?: number }
+}
+
 interface MlcModule {
   CreateMLCEngine: (
     modelId: string,
-    init?: { initProgressCallback?: (p: MlcInitProgress) => void },
+    init?: MlcEngineInit,
   ) => Promise<MlcEngine>
 }
 
 export const DEFAULT_WEBLLM_MODEL = 'gemma-3-4b-it-q4f16_1-MLC'
+
+/**
+ * Conservative token budget for WebLLM requests. MLC small models are
+ * compiled with a 4 096-token hard ceiling that cannot be overridden at
+ * runtime. We reserve ~600 tokens for the assistant response and keep the
+ * rest for system + history. The rough heuristic is 4 chars ≈ 1 token.
+ */
+const WEBLLM_MAX_PROMPT_CHARS = 3500 * 4 // ≈ 3 500 tokens
+
+/**
+ * Trim the `<document …>…</document>` block inside the system message so
+ * the full prompt stays within `WEBLLM_MAX_PROMPT_CHARS`. Other messages
+ * are left untouched; if there is no document block the messages are
+ * returned as-is.
+ */
+function fitToContextWindow(messages: WireMessage[]): WireMessage[] {
+  const totalChars = messages.reduce(
+    (n, m) => n + (typeof m.content === 'string' ? m.content.length : 0),
+    0,
+  )
+  if (totalChars <= WEBLLM_MAX_PROMPT_CHARS) return messages
+
+  const sysIdx = messages.findIndex((m) => m.role === 'system')
+  if (sysIdx === -1 || typeof messages[sysIdx].content !== 'string') return messages
+
+  const sys = messages[sysIdx].content as string
+  const docOpen = sys.indexOf('<document')
+  const docClose = sys.lastIndexOf('</document>')
+  if (docOpen === -1 || docClose === -1) return messages
+
+  // How many characters we need to shed from the document block.
+  const excess = totalChars - WEBLLM_MAX_PROMPT_CHARS
+  const docBlock = sys.slice(docOpen, docClose + '</document>'.length)
+  const allowedDocLen = Math.max(200, docBlock.length - excess)
+  const trimmedDoc =
+    docBlock.slice(0, allowedDocLen) +
+    '\n[… truncated to fit context window …]</document>'
+
+  const newSys =
+    sys.slice(0, docOpen) +
+    trimmedDoc +
+    sys.slice(docClose + '</document>'.length)
+
+  return messages.map((m, i) =>
+    i === sysIdx ? { ...m, content: newSys } : m,
+  )
+}
 
 /** Cache of loaded engines, keyed by model id. */
 const engineCache = new Map<string, Promise<MlcEngine>>()
@@ -110,6 +163,12 @@ async function getEngine(modelId: string): Promise<MlcEngine> {
     const mod = await loadModule()
     return mod.CreateMLCEngine(modelId, {
       initProgressCallback: emitProgress,
+      // Most quantised models support at least 8 k tokens; set this so
+      // the engine doesn't cap at the conservative 4 096 default and
+      // immediately overflow on the first request that includes document
+      // context. The model hard-caps at its own architectural maximum, so
+      // setting this higher than the model supports is harmless.
+      chatOpts: { context_window_size: 8192 },
     })
   })()
   engineCache.set(modelId, p)
@@ -162,7 +221,7 @@ async function* streamWebLlm(
   let stream: AsyncIterable<MlcChatDelta>
   try {
     stream = await engine.chat.completions.create({
-      messages: req.messages,
+      messages: fitToContextWindow(req.messages),
       stream: true,
     })
   } catch (err) {

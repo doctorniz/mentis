@@ -6,6 +6,7 @@ import { useUiStore } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
+import { useBoardStore } from '@/stores/board'
 import { DEFAULT_VAULT_CONFIG, ViewMode } from '@/types/vault'
 import { createBlankPdf } from '@/lib/pdf/page-operations'
 import { createEmptyCanvasJson } from '@/lib/canvas/serializer'
@@ -238,5 +239,19 @@ export function useNewFileActions(onDone: () => void) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultFs, busy, onDone])
 
-  return { createNote, createDrawing, createPdf, createKanban, createSpreadsheet, importFiles, busy }
+  const createThought = useCallback(async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await useBoardStore.getState().addThought(vaultFs)
+      useUiStore.getState().setActiveView(ViewMode.Board)
+      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+      onDone()
+    } finally {
+      setBusy(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vaultFs, busy, onDone])
+
+  return { createNote, createThought, createDrawing, createPdf, createKanban, createSpreadsheet, importFiles, busy }
 }

@@ -58,7 +58,7 @@ export function EditorTabBar() {
                 e.stopPropagation()
                 closeTab(tab.id)
               }}
-              className="hover:bg-bg-hover -mr-0.5 rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+              className="hover:bg-bg-hover -mr-0.5 rounded p-1 opacity-100 transition-opacity md:p-0.5 md:opacity-0 md:group-hover:opacity-100"
               aria-label={`Close ${tab.title}`}
             >
               <X className="size-3" />

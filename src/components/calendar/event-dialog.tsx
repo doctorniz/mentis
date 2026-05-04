@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Loader2, Trash2, X } from 'lucide-react'
+import { Link, Loader2, MapPin, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useCalendarStore } from '@/stores/calendar'
 import { EVENT_COLORS, EVENT_COLOR_DOT } from '@/types/calendar'
 import type { CalendarEvent, CalendarEventColor } from '@/types/calendar'
-import { toDateStr, toDateTimeStr } from '@/lib/calendar'
+import { toDateStr } from '@/lib/calendar'
 import { cn } from '@/utils/cn'
 
 interface EventDialogProps {
@@ -31,27 +31,31 @@ function combineDateAndTime(date: string, time: string): string {
 
 export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDialogProps) {
   const { vaultFs } = useVaultSession()
-  const addEvent = useCalendarStore((s) => s.addEvent)
+  const addEvent    = useCalendarStore((s) => s.addEvent)
   const updateEvent = useCalendarStore((s) => s.updateEvent)
   const removeEvent = useCalendarStore((s) => s.removeEvent)
 
   const today = toDateStr(new Date())
 
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
+  const [title,     setTitle]     = useState('')
+  const [body,      setBody]      = useState('')
+  const [location,  setLocation]  = useState('')
+  const [url,       setUrl]       = useState('')
   const [startDate, setStartDate] = useState(defaultDate ?? today)
-  const [endDate, setEndDate] = useState(defaultDate ?? today)
+  const [endDate,   setEndDate]   = useState(defaultDate ?? today)
   const [startTime, setStartTime] = useState('09:00')
-  const [endTime, setEndTime] = useState('10:00')
-  const [allDay, setAllDay] = useState(true)
-  const [color, setColor] = useState<CalendarEventColor>('violet')
-  const [saving, setSaving] = useState(false)
+  const [endTime,   setEndTime]   = useState('10:00')
+  const [allDay,    setAllDay]    = useState(true)
+  const [color,     setColor]     = useState<CalendarEventColor>('violet')
+  const [saving,    setSaving]    = useState(false)
 
   useEffect(() => {
     if (!open) return
     if (event) {
       setTitle(event.title)
       setBody(event.body)
+      setLocation(event.location ?? '')
+      setUrl(event.url ?? '')
       setAllDay(event.allDay)
       setColor(event.color)
       const sd = event.start.slice(0, 10)
@@ -63,13 +67,27 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
     } else {
       setTitle('')
       setBody('')
-      setAllDay(true)
+      setLocation('')
+      setUrl('')
       setColor('violet')
       const d = defaultDate ?? today
-      setStartDate(d)
-      setEndDate(d)
-      setStartTime('09:00')
-      setEndTime('10:00')
+      const isDatetime = d.includes('T')
+      setStartDate(d.slice(0, 10))
+      setEndDate(d.slice(0, 10))
+      if (isDatetime) {
+        // Time-slot click — pre-fill as 1-hour timed event
+        const startT = d.slice(11, 16)
+        const [h, m] = startT.split(':').map(Number) as [number, number]
+        const endMin = h * 60 + m + 60
+        const endT   = `${String(Math.min(23, Math.floor(endMin / 60))).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`
+        setAllDay(false)
+        setStartTime(startT)
+        setEndTime(endT)
+      } else {
+        setAllDay(true)
+        setStartTime('09:00')
+        setEndTime('10:00')
+      }
     }
   }, [open, event, defaultDate, today])
 
@@ -77,34 +95,31 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
     if (!title.trim()) return
     setSaving(true)
     try {
-      const start = allDay ? startDate : combineDateAndTime(startDate, startTime)
-      const end = allDay ? endDate : combineDateAndTime(endDate, endTime)
+      const start    = allDay ? startDate : combineDateAndTime(startDate, startTime)
+      const end      = allDay ? endDate   : combineDateAndTime(endDate, endTime)
       const finalEnd = end < start ? start : end
 
+      const opts = {
+        title:    title.trim(),
+        start,
+        end:      finalEnd,
+        allDay,
+        color,
+        body,
+        location: location.trim() || undefined,
+        url:      url.trim()      || undefined,
+      }
+
       if (event) {
-        await updateEvent(vaultFs, event.path, {
-          title: title.trim(),
-          start,
-          end: finalEnd,
-          allDay,
-          color,
-          body,
-        })
+        await updateEvent(vaultFs, event.path, opts)
       } else {
-        await addEvent(vaultFs, {
-          title: title.trim(),
-          start,
-          end: finalEnd,
-          allDay,
-          color,
-          body,
-        })
+        await addEvent(vaultFs, opts)
       }
       onOpenChange(false)
     } finally {
       setSaving(false)
     }
-  }, [title, body, startDate, endDate, startTime, endTime, allDay, color, event, vaultFs, addEvent, updateEvent, onOpenChange])
+  }, [title, body, location, url, startDate, endDate, startTime, endTime, allDay, color, event, vaultFs, addEvent, updateEvent, onOpenChange])
 
   const handleDelete = useCallback(async () => {
     if (!event) return
@@ -119,7 +134,7 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
         <Dialog.Content
-          className="bg-bg border-border fixed top-1/2 left-1/2 z-50 flex max-h-[min(90dvh,40rem)] w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border shadow-xl"
+          className="bg-bg border-border fixed top-1/2 left-1/2 z-50 flex max-h-[min(90dvh,44rem)] w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border shadow-xl"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
               e.preventDefault()
@@ -241,6 +256,30 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
                   </div>
                 </>
               )}
+            </div>
+
+            {/* Location */}
+            <div className="relative">
+              <MapPin className="text-fg-muted pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2" />
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Location"
+                className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full rounded-lg border py-2 pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+              />
+            </div>
+
+            {/* URL */}
+            <div className="relative">
+              <Link className="text-fg-muted pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2" />
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="URL (video call, ticket…)"
+                className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full rounded-lg border py-2 pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+              />
             </div>
 
             {/* Notes */}

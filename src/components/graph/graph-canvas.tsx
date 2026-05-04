@@ -9,6 +9,29 @@ interface Props {
   onClickNode?: (nodeId: string) => void
 }
 
+// Lucide icon SVG paths (24×24 viewBox) — same icons as the file tree
+const ICON_SVG: Record<string, string> = {
+  // FileText
+  note: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>`,
+  // FileText (same base — red color differentiates)
+  pdf: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>`,
+  // Layout
+  canvas: `<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>`,
+  // Presentation
+  pptx: `<line x1="22" y1="3" x2="2" y2="3"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m8 21 4-4 4 4"/>`,
+  // FileType2 (document with type indicator)
+  docx: `<path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/><polyline points="14 2 14 8 20 8"/><path d="M2 13v-1h6v1"/><path d="M4 18h2"/><path d="M5 12v6"/>`,
+  // Table2
+  spreadsheet: `<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>`,
+  // FileCode2
+  code: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m10 13-2 2 2 2"/><path d="m14 17 2-2-2-2"/>`,
+}
+
+function makeIconUrl(svgPaths: string, color: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${svgPaths}</svg>`
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
 const MIN_RADIUS = 6
 const MAX_RADIUS = 22
 const LABEL_OFFSET = 4
@@ -36,6 +59,26 @@ const TYPE_COLORS = {
     hover: { dark: '#c084fc', light: '#7c3aed' },
     stroke: { dark: '#d8b4fe', light: '#6d28d9' },
   },
+  pptx: {
+    fill: { dark: 'rgba(251,146,60,0.75)', light: 'rgba(249,115,22,0.55)' },
+    hover: { dark: '#fb923c', light: '#ea580c' },
+    stroke: { dark: '#fdba74', light: '#c2410c' },
+  },
+  docx: {
+    fill: { dark: 'rgba(129,140,248,0.75)', light: 'rgba(99,102,241,0.55)' },
+    hover: { dark: '#818cf8', light: '#6366f1' },
+    stroke: { dark: '#a5b4fc', light: '#4338ca' },
+  },
+  spreadsheet: {
+    fill: { dark: 'rgba(74,222,128,0.75)', light: 'rgba(34,197,94,0.55)' },
+    hover: { dark: '#4ade80', light: '#16a34a' },
+    stroke: { dark: '#86efac', light: '#15803d' },
+  },
+  code: {
+    fill: { dark: 'rgba(56,189,248,0.75)', light: 'rgba(14,165,233,0.55)' },
+    hover: { dark: '#38bdf8', light: '#0284c7' },
+    stroke: { dark: '#7dd3fc', light: '#0369a1' },
+  },
 } as const
 
 function nodeRadius(n: GraphNode, maxLinks: number): number {
@@ -44,29 +87,48 @@ function nodeRadius(n: GraphNode, maxLinks: number): number {
   return MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS)
 }
 
+/** Rounded-rect helper (shared by pdf, docx). */
+function traceRoundedRect(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, cornerRatio = 0.3): void {
+  const corner = s * cornerRatio
+  const x = cx - s; const y = cy - s; const w = s * 2; const h = s * 2
+  ctx.moveTo(x + corner, y)
+  ctx.lineTo(x + w - corner, y)
+  ctx.arcTo(x + w, y, x + w, y + corner, corner)
+  ctx.lineTo(x + w, y + h - corner)
+  ctx.arcTo(x + w, y + h, x + w - corner, y + h, corner)
+  ctx.lineTo(x + corner, y + h)
+  ctx.arcTo(x, y + h, x, y + h - corner, corner)
+  ctx.lineTo(x, y + corner)
+  ctx.arcTo(x, y, x + corner, y, corner)
+  ctx.closePath()
+}
+
 /** Trace a node's shape path (without filling/stroking). */
 function traceNodeShape(ctx: CanvasRenderingContext2D, n: GraphNode, r: number): void {
   ctx.beginPath()
-  if (n.type === 'note') {
+  if (n.type === 'note' || n.type === 'code') {
+    // Circle — plain text / code files
     ctx.arc(n.x, n.y, r, 0, Math.PI * 2)
-  } else if (n.type === 'pdf') {
+  } else if (n.type === 'pdf' || n.type === 'docx') {
+    // Rounded rect — document files
+    traceRoundedRect(ctx, n.x, n.y, r * 1.4)
+  } else if (n.type === 'spreadsheet') {
+    // Sharp rect — tabular files
     const s = r * 1.4
-    const corner = s * 0.3
-    const x = n.x - s
-    const y = n.y - s
-    const w = s * 2
-    const h = s * 2
-    ctx.moveTo(x + corner, y)
-    ctx.lineTo(x + w - corner, y)
-    ctx.arcTo(x + w, y, x + w, y + corner, corner)
-    ctx.lineTo(x + w, y + h - corner)
-    ctx.arcTo(x + w, y + h, x + w - corner, y + h, corner)
-    ctx.lineTo(x + corner, y + h)
-    ctx.arcTo(x, y + h, x, y + h - corner, corner)
-    ctx.lineTo(x, y + corner)
-    ctx.arcTo(x, y, x + corner, y, corner)
+    ctx.rect(n.x - s, n.y - s, s * 2, s * 2)
+  } else if (n.type === 'pptx') {
+    // Pentagon — presentations
+    const d = r * 1.4
+    for (let i = 0; i < 5; i++) {
+      const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2
+      const px = n.x + d * Math.cos(angle)
+      const py = n.y + d * Math.sin(angle)
+      if (i === 0) ctx.moveTo(px, py)
+      else ctx.lineTo(px, py)
+    }
     ctx.closePath()
   } else {
+    // Diamond — canvas drawings
     const d = r * 1.5
     ctx.moveTo(n.x, n.y - d)
     ctx.lineTo(n.x + d, n.y)
@@ -87,7 +149,7 @@ function drawNode(
   isDark: boolean,
   zoom: number,
 ): void {
-  const scheme = TYPE_COLORS[n.type]
+  const scheme = (TYPE_COLORS as unknown as Record<string, typeof TYPE_COLORS['note']>)[n.type] ?? TYPE_COLORS.note
   const theme = isDark ? 'dark' : 'light'
 
   let fill: string
@@ -131,6 +193,20 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef(0)
+
+  // Pre-loaded icon images, keyed by `${type}-${theme}`
+  const iconImgsRef = useRef<Record<string, HTMLImageElement>>({})
+
+  useEffect(() => {
+    const entries = Object.entries(ICON_SVG)
+    for (const [type, paths] of entries) {
+      for (const [theme, color] of [['dark', 'rgba(255,255,255,0.88)'], ['light', 'rgba(15,23,42,0.78)']] as const) {
+        const img = new Image()
+        img.src = makeIconUrl(paths, color)
+        iconImgsRef.current[`${type}-${theme}`] = img
+      }
+    }
+  }, [])
 
   const nodesRef = useRef(nodes)
   const edgesRef = useRef(edges)
@@ -324,6 +400,7 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
       }
 
       // Nodes
+      const iconTheme = isDark ? 'dark' : 'light'
       for (const n of ns) {
         const r = nodeRadius(n, maxLinks)
         const isHover = hoverRef.current === n
@@ -332,6 +409,18 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
         ctx.save()
         drawNode(ctx, n, r, isHover, isSelected, isDimmed, isDark, cam.zoom)
         ctx.restore()
+
+        // Draw Lucide icon centered on node
+        {
+          const iconImg = iconImgsRef.current[`${n.type}-${iconTheme}`]
+          if (iconImg?.complete && iconImg.naturalWidth > 0) {
+            const iconSize = Math.max(8, r * 1.5)
+            ctx.save()
+            ctx.globalAlpha = isDimmed ? 0.15 : 0.82
+            ctx.drawImage(iconImg, n.x - iconSize / 2, n.y - iconSize / 2, iconSize, iconSize)
+            ctx.restore()
+          }
+        }
       }
 
       // Labels

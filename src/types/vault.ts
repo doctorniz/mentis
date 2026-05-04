@@ -18,8 +18,24 @@ export interface VaultConfig {
   templateFolder: string
   /** Default destination folder for new notes/PDFs/drawings ('/' = root) */
   defaultNewFileFolder: string
+  /**
+   * Vault-relative folder where uploaded images/videos are saved when
+   * embedded in notes. Defaults to '_assets' (vault root).
+   */
+  attachmentFolder: string
   /** Page style for newly created blank PDFs */
   pdfPageStyle: 'blank' | 'lined' | 'grid'
+  /**
+   * Show today's date in the sidebar as a quick-open for the daily note.
+   * Defaults to true.
+   */
+  dailyNotesEnabled: boolean
+  /**
+   * Vault-relative folder where daily notes are stored.
+   * Defaults to '_marrow/_dailies' (hidden from the file tree).
+   * Free-form; the folder is created on first use.
+   */
+  dailyNotesFolder: string
   /** Cloud sync settings (Dropbox); self-hosted sync may be added later */
   sync?: VaultSyncConfig
   /**
@@ -57,12 +73,16 @@ export enum ViewMode {
   Search = 'search',
   Graph = 'graph',
   Board = 'board',
+  /** @deprecated folded into ViewMode.Organizer */
   Tasks = 'tasks',
   Bookmarks = 'bookmarks',
   /** Full file browser — shows all folders including hidden system ones */
   Files = 'files',
   New = 'new',
+  /** @deprecated folded into ViewMode.Organizer */
   Calendar = 'calendar',
+  /** Unified organizer: Tasks, Lists, Calendars, Reminders */
+  Organizer = 'organizer',
 }
 
 /** Sub-mode within the unified Vault view (toolbar: Preview / Files) */
@@ -75,8 +95,8 @@ export interface VaultMetadata {
   lastOpened: string
 }
 
+export const DAILY_NOTES_DIR = '_marrow/_dailies'
 export const MARROW_DIR = '_marrow'
-export const INBOX_DIR = '_inbox'
 export const ASSETS_DIR = '_assets'
 export const SIGNATURES_DIR = `${MARROW_DIR}/signatures`
 export const TEMPLATES_DIR = `${MARROW_DIR}/templates`
@@ -101,5 +121,8 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   defaultView: ViewMode.Vault,
   templateFolder: TEMPLATES_DIR,
   defaultNewFileFolder: '/',
+  attachmentFolder: '_assets',
   pdfPageStyle: 'blank',
+  dailyNotesEnabled: true,
+  dailyNotesFolder: '_marrow/_dailies',
 }

@@ -9,6 +9,7 @@ const extensions = getNoteEditorExtensions()
 marked.setOptions({ gfm: true, breaks: true })
 
 const PDF_EMBED_RE = /!\[\[([^\]]+\.pdf)#page=(\d+(?:-\d+)?)\]\]/g
+const VIDEO_EMBED_RE = /!\[\[([^\]]+\.(mp4|webm|ogg|mov|mkv|avi))\]\]/gi
 const WIKI_IN_MD_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
 const MATH_BLOCK_RE = /\$\$([\s\S]+?)\$\$/g
 const MATH_INLINE_RE = /(?<!\$)\$(?!\$)(.+?)\$(?!\$)/g
@@ -62,6 +63,11 @@ function preprocessCustomSyntax(md: string): string {
   out = out.replace(MATH_INLINE_RE, (_, latex) => {
     const l = String(latex).trim()
     return `<span data-type="math-inline" data-latex="${esc(l)}">$${esc(l)}$</span>`
+  })
+
+  out = out.replace(VIDEO_EMBED_RE, (_, file) => {
+    const f = String(file).trim()
+    return `<div data-type="vault-video" data-src="${esc(f)}" data-title="${esc(f)}"></div>`
   })
 
   out = out.replace(PDF_EMBED_RE, (_, file, page) => {
@@ -208,6 +214,19 @@ function createTurndown(): TurndownService {
       const file = el.getAttribute('data-file') ?? ''
       const page = el.getAttribute('data-page') ?? '1'
       return file ? `\n![[${file}#page=${page}]]\n` : _content
+    },
+  })
+
+  td.addRule('vaultVideo', {
+    filter(node) {
+      return (
+        node.nodeName === 'DIV' &&
+        (node as HTMLElement).getAttribute('data-type') === 'vault-video'
+      )
+    },
+    replacement(_content, node) {
+      const src = (node as HTMLElement).getAttribute('data-src') ?? ''
+      return src ? `\n![[${src}]]\n` : _content
     },
   })
 

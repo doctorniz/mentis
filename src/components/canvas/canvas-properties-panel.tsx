@@ -7,6 +7,7 @@ import {
   EyeOff,
   Lock,
   Unlock,
+  PanelRightClose,
   Plus,
   Trash2,
   Copy,
@@ -20,6 +21,7 @@ import { cn } from '@/utils/cn'
 
 interface CanvasPropertiesPanelProps {
   engineRef: React.RefObject<CanvasEngine | null>
+  onCollapse?: () => void
 }
 
 /** Shallow equality for string arrays — used to skip no-op reorders. */
@@ -29,7 +31,7 @@ function arraysEqual(a: string[], b: string[]): boolean {
   return true
 }
 
-export function CanvasPropertiesPanel({ engineRef }: CanvasPropertiesPanelProps) {
+export function CanvasPropertiesPanel({ engineRef, onCollapse }: CanvasPropertiesPanelProps) {
   const activeTool = useCanvasStore((s) => s.activeTool)
   const brushSettings = useCanvasStore((s) => s.brushSettings)
   const eraserSize = useCanvasStore((s) => s.eraserSize)
@@ -320,7 +322,22 @@ export function CanvasPropertiesPanel({ engineRef }: CanvasPropertiesPanelProps)
   }
 
   return (
-    <div className="border-border bg-bg flex w-[260px] shrink-0 flex-col gap-4 overflow-y-auto border-l p-3">
+    <div className="border-border bg-bg flex h-full w-full flex-col overflow-hidden border-l">
+      {/* Panel header with collapse button */}
+      <div className="border-border flex shrink-0 items-center justify-end border-b px-1.5 py-1">
+        {onCollapse && (
+          <button
+            type="button"
+            onClick={onCollapse}
+            title="Collapse panel"
+            aria-label="Collapse properties panel"
+            className="text-fg-muted hover:text-fg hover:bg-bg-hover flex size-7 items-center justify-center rounded-md transition-colors"
+          >
+            <PanelRightClose className="size-4" />
+          </button>
+        )}
+      </div>
+      <div className="flex flex-col gap-4 overflow-y-auto p-3">
       {/* ---- Color ---- */}
       {showColor && (
       <section>
@@ -627,6 +644,7 @@ export function CanvasPropertiesPanel({ engineRef }: CanvasPropertiesPanelProps)
           })()}
         </section>
       )}
+      </div>
     </div>
   )
 }

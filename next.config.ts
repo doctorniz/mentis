@@ -10,19 +10,28 @@ const nextConfig: NextConfig = {
       canvas: canvasStub,
     },
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, webpack }) => {
     config.resolve.alias.canvas = false
-    // lamejs is a UMD library that references `document` at module scope.
-    // Exclude it (and @huggingface/transformers) from the server bundle
-    // so static-export prerendering doesn't crash. Both are only used
-    // at runtime via dynamic import in client components.
-    // Libraries that reference `document` at module scope crash
-    // static-export prerendering. Stub them out on the server —
+    // Libraries that reference `document` or browser globals at module scope
+    // crash static-export prerendering. Stub them out on the server —
     // they're only used at runtime via dynamic import in client components.
     if (isServer) {
       config.resolve.alias['plyr'] = false
-      config.resolve.alias['lamejs'] = false
       config.resolve.alias['@huggingface/transformers'] = false
+      config.resolve.alias['mp3-mediarecorder'] = false
+      config.resolve.alias['slidecanvas'] = false
+    }
+    // pptxgenjs (a slidecanvas dep) has `import 'node:fs'` / `import 'node:https'`
+    // in its ESM bundle for server-side file I/O. Webpack throws
+    // UnhandledSchemeError because the `node:` URI scheme is unknown in browser
+    // builds — and resolve.alias runs too late (after the scheme check).
+    // NormalModuleReplacementPlugin fires before the scheme resolver and rewrites
+    // any `node:*` request to the empty-module stub, which is safe because none
+    // of that Node I/O code is ever reached at browser runtime.
+    if (!isServer) {
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(/^node:/, canvasStub)
+      )
     }
     return config
   },

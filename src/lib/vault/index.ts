@@ -4,7 +4,6 @@ import {
   type VaultConfig,
   DEFAULT_VAULT_CONFIG,
   MARROW_DIR,
-  INBOX_DIR,
   SIGNATURES_DIR,
   TEMPLATES_DIR,
   SNAPSHOTS_DIR,
@@ -16,7 +15,6 @@ export async function createVault(fs: FileSystemAdapter, name: string): Promise<
   const config: VaultConfig = { ...DEFAULT_VAULT_CONFIG, name }
 
   await fs.mkdir(MARROW_DIR)
-  await fs.mkdir(INBOX_DIR)
   await fs.mkdir(SIGNATURES_DIR)
   await fs.mkdir(TEMPLATES_DIR)
   await fs.mkdir(SNAPSHOTS_DIR)

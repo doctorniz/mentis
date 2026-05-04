@@ -1,28 +1,17 @@
 /**
- * Audio recorder — captures microphone input and encodes to MP3 via lamejs.
+ * Audio recorder — captures microphone input and encodes to MP3.
  *
- * Flow:
- *   getUserMedia → MediaStreamSource → ScriptProcessorNode → PCM float32 buffer
- *   on stop → PCM → Int16 → lamejs Mp3Encoder → Uint8Array (.mp3 bytes)
+ * Uses mp3-mediarecorder (WASM LAME encoder running in a Web Worker) for
+ * true MP3 output. The worker JS and vmsg.wasm must be in public/ — the
+ * postinstall script (`scripts/copy-mp3-worker.mjs`) handles this.
  *
- * We use ScriptProcessorNode (deprecated but universally supported) instead of
- * AudioWorklet because lamejs runs on the main thread anyway, and AudioWorklet
- * would require a separate module script + message passing overhead.
+ * We keep our own AudioContext + AnalyserNode for real-time level metering
+ * (the MediaRecorder API doesn't expose audio levels). The Mp3MediaRecorder
+ * is dynamically imported to avoid crashing the static-export prerender.
+ *
+ * Pause/resume is supported — Mp3MediaRecorder implements the full
+ * MediaRecorder interface including state transitions.
  */
-
-// lamejs ships as a UMD bundle with no default export — dynamic import handles this.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let lameModule: any = null
-
-async function getLame() {
-  if (!lameModule) {
-    if (typeof window === 'undefined') throw new Error('lamejs requires a browser environment')
-    // lamejs default export is the module namespace
-    const mod = await import('lamejs')
-    lameModule = mod.default ?? mod
-  }
-  return lameModule
-}
 
 export interface RecorderState {
   status: 'idle' | 'recording' | 'paused' | 'stopped'
@@ -32,12 +21,21 @@ export interface RecorderState {
 }
 
 export interface AudioRecorderOptions {
-  /** Sample rate for recording. Defaults to device native rate. */
-  sampleRate?: number
-  /** MP3 bitrate in kbps. Default 128. */
-  bitrate?: number
   /** Callback fired ~60fps with updated state. */
   onStateChange?: (state: RecorderState) => void
+}
+
+// Lazily resolved Mp3MediaRecorder constructor — avoids importing at module
+// scope which would break prerendering (the library references browser globals).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Mp3MediaRecorderCtor: any = null
+
+async function getMp3MediaRecorder() {
+  if (!Mp3MediaRecorderCtor) {
+    const mod = await import('mp3-mediarecorder')
+    Mp3MediaRecorderCtor = mod.Mp3MediaRecorder ?? mod.default
+  }
+  return Mp3MediaRecorderCtor
 }
 
 export class AudioRecorder {
@@ -45,8 +43,8 @@ export class AudioRecorder {
   private audioCtx: AudioContext | null = null
   private source: MediaStreamAudioSourceNode | null = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private processor: any = null
-  private pcmChunks: Float32Array[] = []
+  private recorder: any = null // Mp3MediaRecorder instance
+  private chunks: Blob[] = []
   private _state: RecorderState = { status: 'idle', elapsedMs: 0, level: 0 }
   private startTime = 0
   private pauseOffset = 0
@@ -54,11 +52,12 @@ export class AudioRecorder {
   private analyser: AnalyserNode | null = null
   private analyserData: Uint8Array<ArrayBuffer> | null = null
   private opts: Required<AudioRecorderOptions>
+  /** Resolve function for the stop() promise — set once, called by onstop. */
+  private stopResolve: ((v: { mp3Bytes: Uint8Array; durationMs: number }) => void) | null = null
+  private stopReject: ((err: Error) => void) | null = null
 
   constructor(opts: AudioRecorderOptions = {}) {
     this.opts = {
-      sampleRate: opts.sampleRate ?? 0, // 0 = use device native
-      bitrate: opts.bitrate ?? 128,
       onStateChange: opts.onStateChange ?? (() => {}),
     }
   }
@@ -79,29 +78,53 @@ export class AudioRecorder {
       },
     })
 
-    const sampleRate = this.opts.sampleRate || this.stream.getAudioTracks()[0]?.getSettings().sampleRate || 44100
-    this.audioCtx = new AudioContext({ sampleRate })
+    // ── Level metering (our own AudioContext) ──────────────────────
+    this.audioCtx = new AudioContext()
     this.source = this.audioCtx.createMediaStreamSource(this.stream)
-
-    // Analyser for level metering
     this.analyser = this.audioCtx.createAnalyser()
     this.analyser.fftSize = 256
     this.analyserData = new Uint8Array(this.analyser.frequencyBinCount) as Uint8Array<ArrayBuffer>
     this.source.connect(this.analyser)
 
-    // ScriptProcessor for PCM capture
-    const bufSize = 4096
-    this.processor = this.audioCtx.createScriptProcessor(bufSize, 1, 1)
-    this.pcmChunks = []
+    // ── MP3 MediaRecorder ─────────────────────────────────────────
+    const Ctor = await getMp3MediaRecorder()
+    const worker = new Worker('/mp3-recorder-worker.js')
+    this.recorder = new Ctor(this.stream, { worker })
 
-    this.processor.onaudioprocess = (e: AudioProcessingEvent) => {
-      if (this._state.status !== 'recording') return
-      const input = e.inputBuffer.getChannelData(0)
-      this.pcmChunks.push(new Float32Array(input))
+    this.chunks = []
+    this.recorder.ondataavailable = (e: BlobEvent) => {
+      if (e.data && e.data.size > 0) this.chunks.push(e.data)
     }
 
-    this.source.connect(this.processor)
-    this.processor.connect(this.audioCtx.destination)
+    this.recorder.onerror = (evt: Event) => {
+      console.error('[AudioRecorder] Mp3MediaRecorder error', evt)
+      if (this.stopReject) {
+        this.stopReject(new Error('MP3 encoding failed'))
+        this.stopResolve = null
+        this.stopReject = null
+      }
+    }
+
+    // Mp3MediaRecorder.start() is sync per MediaRecorder spec, but the
+    // underlying WASM worker may still be loading. Wait for the 'start'
+    // event (or 'error') before we consider the recorder active.
+    await new Promise<void>((resolve, reject) => {
+      const onStart = () => {
+        cleanup()
+        resolve()
+      }
+      const onError = (e: Event) => {
+        cleanup()
+        reject(new Error(`Recorder failed to start: ${(e as ErrorEvent).message ?? 'unknown'}`))
+      }
+      const cleanup = () => {
+        this.recorder?.removeEventListener('start', onStart)
+        this.recorder?.removeEventListener('error', onError)
+      }
+      this.recorder.addEventListener('start', onStart)
+      this.recorder.addEventListener('error', onError)
+      this.recorder.start()
+    })
 
     this.startTime = performance.now()
     this.pauseOffset = 0
@@ -112,6 +135,7 @@ export class AudioRecorder {
   /** Pause recording. */
   pause(): void {
     if (this._state.status !== 'recording') return
+    this.recorder?.pause()
     this.pauseOffset = this._state.elapsedMs
     cancelAnimationFrame(this.rafId)
     this.updateState('paused')
@@ -120,66 +144,76 @@ export class AudioRecorder {
   /** Resume from pause. */
   resume(): void {
     if (this._state.status !== 'paused') return
+    this.recorder?.resume()
     this.startTime = performance.now()
     this.updateState('recording')
     this.tick()
   }
 
-  /** Stop recording and return MP3 bytes. */
+  /** Stop recording and return encoded MP3 bytes. */
   async stop(): Promise<{ mp3Bytes: Uint8Array; durationMs: number }> {
     cancelAnimationFrame(this.rafId)
     const elapsed = this._state.elapsedMs
+    const rec = this.recorder
 
-    // Disconnect audio graph
-    try { this.processor?.disconnect() } catch { /* */ }
-    try { this.source?.disconnect() } catch { /* */ }
-    this.stream?.getTracks().forEach((t) => t.stop())
-
-    const sampleRate = this.audioCtx?.sampleRate ?? 44100
-    await this.audioCtx?.close().catch(() => {})
-
-    this.updateState('stopped')
-
-    // Concatenate PCM chunks
-    const totalSamples = this.pcmChunks.reduce((n, c) => n + c.length, 0)
-    const pcm = new Float32Array(totalSamples)
-    let offset = 0
-    for (const chunk of this.pcmChunks) {
-      pcm.set(chunk, offset)
-      offset += chunk.length
+    if (!rec) {
+      this.cleanup()
+      this.updateState('stopped')
+      throw new Error('No active recording')
     }
-    this.pcmChunks = []
 
-    // Encode to MP3
-    const mp3Bytes = await encodeMp3(pcm, sampleRate, this.opts.bitrate)
+    // If the recorder already transitioned to 'inactive' (e.g. worker error),
+    // return whatever chunks we collected rather than throwing.
+    if (rec.state === 'inactive') {
+      const blob = new Blob(this.chunks, { type: 'audio/mpeg' })
+      const arrayBuffer = await blob.arrayBuffer()
+      const mp3Bytes = new Uint8Array(arrayBuffer)
+      this.cleanup()
+      this.updateState('stopped')
+      return { mp3Bytes, durationMs: elapsed }
+    }
 
-    // Cleanup refs
-    this.stream = null
-    this.audioCtx = null
-    this.source = null
-    this.processor = null
-    this.analyser = null
-    this.analyserData = null
+    return new Promise<{ mp3Bytes: Uint8Array; durationMs: number }>((resolve, reject) => {
+      this.stopResolve = resolve
+      this.stopReject = reject
 
-    return { mp3Bytes, durationMs: elapsed }
+      const onStop = async () => {
+        rec.removeEventListener('stop', onStop)
+        try {
+          const blob = new Blob(this.chunks, { type: 'audio/mpeg' })
+          const arrayBuffer = await blob.arrayBuffer()
+          const mp3Bytes = new Uint8Array(arrayBuffer)
+
+          this.cleanup()
+          this.updateState('stopped')
+          resolve({ mp3Bytes, durationMs: elapsed })
+        } catch (err) {
+          this.cleanup()
+          reject(err instanceof Error ? err : new Error(String(err)))
+        } finally {
+          this.stopResolve = null
+          this.stopReject = null
+        }
+      }
+
+      rec.addEventListener('stop', onStop)
+      rec.stop()
+    })
   }
 
   /** Cancel recording without producing output. */
   cancel(): void {
     cancelAnimationFrame(this.rafId)
-    try { this.processor?.disconnect() } catch { /* */ }
-    try { this.source?.disconnect() } catch { /* */ }
-    this.stream?.getTracks().forEach((t) => t.stop())
-    void this.audioCtx?.close().catch(() => {})
-    this.pcmChunks = []
-    this.stream = null
-    this.audioCtx = null
-    this.source = null
-    this.processor = null
-    this.analyser = null
-    this.analyserData = null
+    try {
+      if (this.recorder && this.recorder.state !== 'inactive') {
+        this.recorder.stop()
+      }
+    } catch { /* ignore */ }
+    this.cleanup()
     this.updateState('idle')
   }
+
+  // ── Internal helpers ──────────────────────────────────────────────
 
   private tick = () => {
     if (this._state.status !== 'recording') return
@@ -207,42 +241,16 @@ export class AudioRecorder {
     this._state = { ...this._state, status }
     this.opts.onStateChange(this._state)
   }
-}
 
-/** Encode float32 PCM to MP3 bytes via lamejs. */
-async function encodeMp3(
-  pcm: Float32Array,
-  sampleRate: number,
-  kbps: number,
-): Promise<Uint8Array> {
-  const lame = await getLame()
-  const encoder = new lame.Mp3Encoder(1, sampleRate, kbps)
-
-  // Convert float32 → int16
-  const samples = new Int16Array(pcm.length)
-  for (let i = 0; i < pcm.length; i++) {
-    const s = Math.max(-1, Math.min(1, pcm[i]))
-    samples[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+  private cleanup(): void {
+    this.stream?.getTracks().forEach((t) => t.stop())
+    void this.audioCtx?.close().catch(() => {})
+    this.chunks = []
+    this.stream = null
+    this.audioCtx = null
+    this.source = null
+    this.recorder = null
+    this.analyser = null
+    this.analyserData = null
   }
-
-  const mp3Parts: Int8Array[] = []
-  const blockSize = 1152
-  for (let i = 0; i < samples.length; i += blockSize) {
-    const chunk = samples.subarray(i, i + blockSize)
-    const encoded = encoder.encodeBuffer(chunk)
-    if (encoded.length > 0) mp3Parts.push(encoded)
-  }
-
-  const flush = encoder.flush()
-  if (flush.length > 0) mp3Parts.push(flush)
-
-  // Concatenate
-  const totalLen = mp3Parts.reduce((n, p) => n + p.length, 0)
-  const result = new Uint8Array(totalLen)
-  let off = 0
-  for (const part of mp3Parts) {
-    result.set(part, off)
-    off += part.length
-  }
-  return result
 }
