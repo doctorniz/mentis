@@ -5,12 +5,17 @@ import { ArrowUpRight, Loader2, Mic, Sparkles, Trash2 } from 'lucide-react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import { marked } from 'marked'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { stripBoardImageMarkdown } from '@/lib/board'
 import { getBoardEditorExtensions, boardMarkdownToJSON, boardJSONToMarkdown } from '@/lib/editor/board-extensions'
 import { assetToBlobUrl } from '@/lib/notes/assets'
 import { AudioPlayer } from '@/components/audio/audio-player'
 import { useBoardStore } from '@/stores/board'
 import type { BoardItem, ThoughtColor } from '@/types/board'
 import { cn } from '@/utils/cn'
+import { useUiStore } from '@/stores/ui'
+import { useEditorStore } from '@/stores/editor'
+import { ViewMode } from '@/types/vault'
+import { toast } from '@/stores/toast'
 
 const COLOR_CLASSES: Record<ThoughtColor, { bg: string; border: string }> = {
   yellow: { bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200/60 dark:border-amber-800/40' },
@@ -75,7 +80,7 @@ function EditContent({
 
   // Strip image references before loading — board extensions have no Image node so generateJSON
   // would silently drop them, permanently deleting the image reference from the file.
-  const { stripped, imageLines } = useMemo(() => stripImages(item.body), [item.body])
+  const { stripped, imageLines } = useMemo(() => stripBoardImageMarkdown(item.body), [item.body])
   const initialContent = useMemo(() => boardMarkdownToJSON(stripped), [stripped])
 
   const editor = useEditor({
@@ -190,14 +195,6 @@ function AudioPreview({ audioPath, duration }: { audioPath: string; duration: nu
   )
 }
 
-function stripImages(body: string): { stripped: string; imageLines: string[] } {
-  const imageLines: string[] = []
-  const stripped = body
-    .replace(/!\[[^\]]*\]\([^)]+\)/g, (match) => { imageLines.push(match); return '' })
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-  return { stripped, imageLines }
-}
 
 function TranscribeButton({ item }: { item: BoardItem }) {
   const { vaultFs } = useVaultSession()
@@ -282,7 +279,16 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
   const handleMoveToVault = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      void moveToVault(vaultFs, item.path)
+      void (async () => {
+        const newPath = await moveToVault(vaultFs, item.path)
+        if (newPath) {
+          useEditorStore.getState().setPendingVaultOpenPath(newPath)
+          useUiStore.getState().setVaultMode('tree')
+          useUiStore.getState().setActiveView(ViewMode.Vault)
+        } else {
+          toast.error('Could not move to vault')
+        }
+      })()
     },
     [vaultFs, item.path, moveToVault],
   )

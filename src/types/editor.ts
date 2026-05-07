@@ -12,6 +12,10 @@ export interface NoteFrontmatter {
    * renames — same pattern as Canvas v5's `assetId`.
    */
   chatAssetId?: string
+  /** Voice clip path (e.g. `_assets/…`) when promoted from the Board. */
+  audioPath?: string
+  audioDuration?: number
+  transcript?: string
   [key: string]: unknown
 }
 

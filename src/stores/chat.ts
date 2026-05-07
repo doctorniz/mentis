@@ -199,8 +199,8 @@ export const useChatStore = create<ChatState>()(
         })
         return
       }
-      // Local providers (webllm, window-ai, ollama) don't require a real key
-      const LOCAL_PROVIDERS = ['webllm', 'window-ai', 'ollama']
+      // Local providers (device, ollama) don't require a real key
+      const LOCAL_PROVIDERS = ['device', 'ollama']
       if (!apiKey && !LOCAL_PROVIDERS.includes(settings.provider!)) {
         set((s) => {
           s.error = 'Add an API key in Settings → AI to start chatting.'
@@ -349,8 +349,6 @@ export const IMPLEMENTED_PROVIDERS: ChatProviderId[] = [
   'openai',
   'anthropic',
   'gemini',
-  'huggingface',
   'ollama',
-  'window-ai',
-  'webllm',
+  'device',
 ]

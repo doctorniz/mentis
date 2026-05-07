@@ -27,6 +27,19 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsInitialTab, setSettingsInitialTab] = useState<
+    'vault' | 'editor' | 'snapshots' | 'sync' | 'ai' | 'calendar'
+  >('vault')
+
+  useEffect(() => {
+    function onOpenAiSettings() {
+      setSettingsInitialTab('ai')
+      setSettingsOpen(true)
+    }
+    window.addEventListener('ink:open-settings-ai', onOpenAiSettings)
+    return () =>
+      window.removeEventListener('ink:open-settings-ai', onOpenAiSettings)
+  }, [])
 
   useEffect(() => {
     function onBeforeUnload(e: BeforeUnloadEvent) {
@@ -60,6 +73,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
       }
       if (e.key === ',') {
         e.preventDefault()
+        setSettingsInitialTab('vault')
         setSettingsOpen((o) => !o)
         return
       }
@@ -91,18 +105,31 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
     <div className="bg-bg flex h-screen w-full overflow-hidden">
       <MainSidebar
         onCloseVault={onCloseVault}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={() => {
+          setSettingsInitialTab('vault')
+          setSettingsOpen(true)
+        }}
       />
       <main className="bg-bg-secondary flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <MobileNavMasthead
           onCloseVault={onCloseVault}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenSettings={() => {
+            setSettingsInitialTab('vault')
+            setSettingsOpen(true)
+          }}
         />
         <VaultSearchBootstrap />
         <ViewRouter />
       </main>
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={(o) => {
+          setSettingsOpen(o)
+          if (!o) setSettingsInitialTab('vault')
+        }}
+        initialTab={settingsInitialTab}
+      />
     </div>
   )
 }

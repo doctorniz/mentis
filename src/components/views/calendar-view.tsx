@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useCalendarStore } from '@/stores/calendar'
 import { useTasksStore } from '@/stores/tasks'
@@ -62,19 +62,8 @@ function formatHeading(viewMode: CalendarViewMode, refDate: Date): string {
       weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
     })
   }
-  // week: show "Jun 1 – 7, 2026" or "Jun 29 – Jul 5, 2026"
-  const sun = new Date(refDate); sun.setDate(refDate.getDate() - refDate.getDay())
-  const sat = addDays(sun, 6)
-  const sameMonth = sun.getMonth() === sat.getMonth()
-  const sameYear  = sun.getFullYear() === sat.getFullYear()
-  const startStr  = sun.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  const endStr    = sat.toLocaleDateString('en-US', {
-    month: sameMonth ? undefined : 'short',
-    day: 'numeric',
-    year: sameYear ? 'numeric' : undefined,
-  })
-  const yearSuffix = `, ${sat.getFullYear()}`
-  return `${startStr} – ${endStr}${yearSuffix}`
+  // week: match month headline — spans are obvious from column headers below
+  return `${MONTH_NAMES[refDate.getMonth()]} ${refDate.getFullYear()}`
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────

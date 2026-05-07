@@ -6,6 +6,8 @@ interface EditorState {
   tabs: EditorTab[]
   activeTabId: string | null
   recentFiles: string[]
+  /** When set, `NotesView` opens this path once (e.g. after Board → Vault). */
+  pendingVaultOpenPath: string | null
 
   openTab: (tab: EditorTab) => void
   closeTab: (tabId: string) => void
@@ -20,6 +22,7 @@ interface EditorState {
   retargetTabPath: (tabId: string, newPath: string, newTitle?: string) => void
   addRecentFile: (path: string) => void
   closeAllTabs: () => void
+  setPendingVaultOpenPath: (path: string | null) => void
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -27,6 +30,7 @@ export const useEditorStore = create<EditorState>()(
     tabs: [],
     activeTabId: null,
     recentFiles: [],
+    pendingVaultOpenPath: null,
 
     openTab: (tab) =>
       set((state) => {
@@ -101,6 +105,11 @@ export const useEditorStore = create<EditorState>()(
       set((state) => {
         state.tabs = []
         state.activeTabId = null
+      }),
+
+    setPendingVaultOpenPath: (path) =>
+      set((state) => {
+        state.pendingVaultOpenPath = path
       }),
   })),
 )

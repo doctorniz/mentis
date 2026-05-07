@@ -26,6 +26,13 @@ import { MARROW_DIR } from '@/types/vault'
 
 export const CHATS_DIR = `${MARROW_DIR}/_chats`
 
+/** Reserved `chatAssetId` for vault-wide threads (see `stores/vault-chat`). */
+export const VAULT_CHAT_ASSET_FOLDER = '_vault'
+
+export function vaultChatUploadsDir(): string {
+  return `${CHATS_DIR}/${VAULT_CHAT_ASSET_FOLDER}/uploads`
+}
+
 /** Vault-relative folder that holds all threads for one document. */
 export function threadFolder(chatAssetId: string): string {
   return `${CHATS_DIR}/${chatAssetId}`
@@ -34,6 +41,24 @@ export function threadFolder(chatAssetId: string): string {
 /** Vault-relative path for one thread file. */
 export function threadPath(chatAssetId: string, threadId: string): string {
   return `${threadFolder(chatAssetId)}/${threadId}.json`
+}
+
+/** Save a user-picked file for vault chat (+ menu); returns vault-relative path. */
+export async function saveVaultChatUpload(
+  vaultFs: FileSystemAdapter,
+  file: File,
+): Promise<string> {
+  await ensureDir(vaultFs, CHATS_DIR)
+  await ensureDir(vaultFs, `${CHATS_DIR}/${VAULT_CHAT_ASSET_FOLDER}`)
+  const dir = vaultChatUploadsDir()
+  await ensureDir(vaultFs, dir)
+  const parts = file.name.split('.')
+  const ext = parts.length > 1 ? parts.pop()! : 'bin'
+  const safe = `${crypto.randomUUID()}.${ext}`
+  const path = `${dir}/${safe}`
+  const buf = new Uint8Array(await file.arrayBuffer()) as Uint8Array<ArrayBuffer>
+  await vaultFs.writeFile(path, buf)
+  return path
 }
 
 async function ensureDir(vaultFs: FileSystemAdapter, path: string): Promise<void> {
@@ -115,6 +140,12 @@ export async function readThread(
       !Array.isArray(parsed.messages)
     ) {
       return null
+    }
+    if (
+      parsed.chatBinding &&
+      (parsed.chatBinding as { provider?: string }).provider === 'huggingface'
+    ) {
+      delete parsed.chatBinding
     }
     return parsed
   } catch {

@@ -33,6 +33,12 @@ import {
   type ModelEntry,
 } from '@/lib/chat/providers/model-catalog'
 import {
+  DEVICE_MODEL_PROGRESS_EVENT,
+  ensureDeviceModelDownloaded,
+  getDeviceModelStatus,
+  type DeviceModelStatus,
+} from '@/lib/chat/device-model-store'
+import {
   DEFAULT_CHAT_SETTINGS,
   type ChatProviderId,
   type ChatSettings,
@@ -470,13 +476,6 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
     baseUrlPlaceholder: 'https://generativelanguage.googleapis.com/v1beta',
   },
   {
-    id: 'huggingface',
-    label: 'Hugging Face',
-    hint: 'OpenAI-compatible router. Point the base URL at your Inference Endpoint to self-host.',
-    keyPlaceholder: 'hf_…',
-    baseUrlPlaceholder: 'https://router.huggingface.co/v1',
-  },
-  {
     id: 'ollama',
     label: 'Ollama',
     hint: 'Run `ollama serve` locally. No API key needed.',
@@ -484,16 +483,9 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
     baseUrlPlaceholder: 'http://localhost:11434',
   },
   {
-    id: 'window-ai',
-    label: 'Chrome built-in (window.ai)',
-    hint: 'On-device Gemini Nano. Enable chrome://flags/#optimization-guide-on-device-model and restart Chrome.',
-    keyPlaceholder: '',
-    baseUrlPlaceholder: '',
-  },
-  {
-    id: 'webllm',
-    label: 'WebLLM (in-browser, WebGPU)',
-    hint: 'Downloads a quantized model into the browser and runs on WebGPU. First load is slow (GB-scale weights); subsequent chats are instant.',
+    id: 'device',
+    label: 'Local',
+    hint: 'Gemma 4 E2B runs in your browser via WebGPU. First download is required.',
     keyPlaceholder: '',
     baseUrlPlaceholder: '',
   },
@@ -517,12 +509,14 @@ function AiTab({
   const [keyStatus, setKeyStatus] = useState<'empty' | 'set' | 'loaded'>('empty')
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
   const [testError, setTestError] = useState<string>('')
-  // `models` is only used for dynamic-discovery providers (ollama, webllm, window-ai).
+  // `models` is only used for dynamic-discovery providers (ollama).
   // Cloud providers use `getCuratedModels` synchronously instead.
   const [models, setModels] = useState<ModelEntry[]>([])
   const [modelsLoading, setModelsLoading] = useState(false)
-  const [webllmLoading, setWebllmLoading] = useState(false)
-  const [webllmLoadError, setWebllmLoadError] = useState<string>('')
+  const [deviceLoading, setDeviceLoading] = useState(false)
+  const [deviceLoadError, setDeviceLoadError] = useState<string>('')
+  const [deviceStatus, setDeviceStatus] = useState<DeviceModelStatus>('missing')
+  const [deviceProgress, setDeviceProgress] = useState(0)
 
   const provider = chat.provider
   const needsKey = provider ? providerNeedsApiKey(provider) : false
@@ -577,13 +571,20 @@ function AiTab({
     setTestStatus('idle')
     setTestError('')
     setModels([])
-    setWebllmLoadError('')
+    setDeviceLoadError('')
+    setDeviceProgress(0)
+    if (provider === 'device') {
+      void getDeviceModelStatus()
+        .then(setDeviceStatus)
+        .catch(() => setDeviceStatus('missing'))
+    }
     setIsCustomMode(false)
   }, [provider])
 
-  // Auto-fetch models for providers that don't need API keys (webllm, window-ai, ollama)
+  // Auto-fetch models for providers that don't need API keys (ollama)
   useEffect(() => {
     if (!provider) return
+    if (provider === 'device') return
     if (needsKey) return
     let cancelled = false
     setModelsLoading(true)
@@ -604,6 +605,19 @@ function AiTab({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider, needsKey])
+
+  useEffect(() => {
+    if (provider !== 'device') return
+    const handler = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ progress?: number }>).detail
+      const progress = detail?.progress ?? 0
+      setDeviceProgress(progress)
+      if (progress >= 1) setDeviceStatus('ready')
+    }
+    window.addEventListener(DEVICE_MODEL_PROGRESS_EVENT, handler as EventListener)
+    return () =>
+      window.removeEventListener(DEVICE_MODEL_PROGRESS_EVENT, handler as EventListener)
+  }, [provider])
 
   const setChat = useCallback(
     <K extends keyof ChatSettings>(key: K, value: ChatSettings[K]) => {
@@ -655,34 +669,20 @@ function AiTab({
     if (!getCuratedModels(provider).length) setModels([])
   }, [provider, vaultId])
 
-  const handleLoadWebLlm = useCallback(async () => {
-    if (!chat.model) return
-    setWebllmLoading(true)
-    setWebllmLoadError('')
+  const handleDownloadDeviceModel = useCallback(async () => {
+    setDeviceLoading(true)
+    setDeviceLoadError('')
     try {
-      // Import webllm and attempt to load the model (this triggers download)
-      const mod = (await import('@mlc-ai/web-llm')) as unknown as {
-        CreateMLCEngine: (
-          modelId: string,
-          init?: { initProgressCallback?: (p: { progress: number; text: string }) => void },
-        ) => Promise<unknown>
-      }
-      await mod.CreateMLCEngine(chat.model, {
-        initProgressCallback: (p) => {
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent('ink:webllm-progress', { detail: p }),
-            )
-          }
-        },
-      })
-      setWebllmLoading(false)
+      await ensureDeviceModelDownloaded()
+      setDeviceStatus('ready')
+      setDeviceProgress(1)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      setWebllmLoadError(msg)
-      setWebllmLoading(false)
+      setDeviceLoadError(msg)
+    } finally {
+      setDeviceLoading(false)
     }
-  }, [chat.model])
+  }, [])
 
   return (
     <div>
@@ -728,72 +728,73 @@ function AiTab({
               )}
 
               {/* Model selection — sits right below provider */}
-              <Row label="Model">
-                <div className="flex w-56 flex-col gap-1.5">
-                  {hasCurated ? (
-                    <>
+              {provider !== 'device' && (
+                <Row label="Model">
+                  <div className="flex w-56 flex-col gap-1.5">
+                    {hasCurated ? (
+                      <>
+                        <select
+                          value={isCustomMode ? '__custom__' : ((chat.model || curatedModels[0]?.id) ?? '')}
+                          onChange={(e) => {
+                            if (e.target.value === '__custom__') {
+                              setIsCustomMode(true)
+                            } else {
+                              setIsCustomMode(false)
+                              setChat('model', e.target.value)
+                            }
+                          }}
+                          className={cn(INPUT_CLS, 'w-full')}
+                        >
+                          {curatedModels.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.label}
+                            </option>
+                          ))}
+                          <option value="__custom__">Other (custom)…</option>
+                        </select>
+                        {isCustomMode && (
+                          <input
+                            value={chat.model}
+                            onChange={(e) => setChat('model', e.target.value)}
+                            placeholder="model id"
+                            className={cn(INPUT_CLS, 'w-full')}
+                            spellCheck={false}
+                            autoFocus
+                          />
+                        )}
+                      </>
+                    ) : modelsLoading ? (
+                      <div className="text-fg-muted flex items-center gap-1.5 text-xs">
+                        <Loader2 className="size-3 animate-spin" />
+                        Loading models…
+                      </div>
+                    ) : models.length > 0 ? (
                       <select
-                        value={isCustomMode ? '__custom__' : ((chat.model || curatedModels[0]?.id) ?? '')}
-                        onChange={(e) => {
-                          if (e.target.value === '__custom__') {
-                            setIsCustomMode(true)
-                          } else {
-                            setIsCustomMode(false)
-                            setChat('model', e.target.value)
-                          }
-                        }}
+                        value={chat.model}
+                        onChange={(e) => setChat('model', e.target.value)}
                         className={cn(INPUT_CLS, 'w-full')}
                       >
-                        {curatedModels.map((m) => (
+                        {!models.some((m) => m.id === chat.model) && chat.model && (
+                          <option value={chat.model}>{chat.model}</option>
+                        )}
+                        {models.map((m) => (
                           <option key={m.id} value={m.id}>
                             {m.label}
                           </option>
                         ))}
-                        <option value="__custom__">Other (custom)…</option>
                       </select>
-                      {isCustomMode && (
-                        <input
-                          value={chat.model}
-                          onChange={(e) => setChat('model', e.target.value)}
-                          placeholder="model id"
-                          className={cn(INPUT_CLS, 'w-full')}
-                          spellCheck={false}
-                          // eslint-disable-next-line jsx-a11y/no-autofocus
-                          autoFocus
-                        />
-                      )}
-                    </>
-                  ) : modelsLoading ? (
-                    <div className="text-fg-muted flex items-center gap-1.5 text-xs">
-                      <Loader2 className="size-3 animate-spin" />
-                      Loading models…
-                    </div>
-                  ) : models.length > 0 ? (
-                    <select
-                      value={chat.model}
-                      onChange={(e) => setChat('model', e.target.value)}
-                      className={cn(INPUT_CLS, 'w-full')}
-                    >
-                      {!models.some((m) => m.id === chat.model) && chat.model && (
-                        <option value={chat.model}>{chat.model}</option>
-                      )}
-                      {models.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      value={chat.model}
-                      onChange={(e) => setChat('model', e.target.value)}
-                      placeholder="model-id"
-                      className={cn(INPUT_CLS, 'w-full')}
-                      spellCheck={false}
-                    />
-                  )}
-                </div>
-              </Row>
+                    ) : (
+                      <input
+                        value={chat.model}
+                        onChange={(e) => setChat('model', e.target.value)}
+                        placeholder="model-id"
+                        className={cn(INPUT_CLS, 'w-full')}
+                        spellCheck={false}
+                      />
+                    )}
+                  </div>
+                </Row>
+              )}
 
               {/* API key — only for providers that need one */}
               {needsKey && (
@@ -846,36 +847,37 @@ function AiTab({
                 </Row>
               )}
 
-              {/* WebLLM-specific: Load model button */}
-              {provider === 'webllm' && chat.model && (
-                <Row label="Load">
+              {provider === 'device' && (
+                <Row label="Model">
                   <div className="flex flex-col gap-1.5">
                     <button
                       type="button"
-                      onClick={() => void handleLoadWebLlm()}
-                      disabled={webllmLoading || !chat.model}
+                      onClick={() => void handleDownloadDeviceModel()}
+                      disabled={deviceLoading}
                       className={cn(
                         'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                         'bg-accent text-accent-fg hover:bg-accent/90',
-                        (webllmLoading || !chat.model) && 'cursor-not-allowed opacity-50',
+                        deviceLoading && 'cursor-not-allowed opacity-50',
                       )}
                     >
-                      {webllmLoading ? (
+                      {deviceLoading ? (
                         <span className="inline-flex items-center gap-1.5">
                           <Loader2 className="size-3 animate-spin" />
-                          Loading…
+                          Downloading…
                         </span>
                       ) : (
-                        'Load'
+                        deviceStatus === 'ready' ? 'Ready' : 'Download'
                       )}
                     </button>
-                    {webllmLoadError && (
+                    {deviceLoadError && (
                       <p className="text-danger text-[10px] leading-snug">
-                        {webllmLoadError}
+                        {deviceLoadError}
                       </p>
                     )}
                     <p className="text-fg-muted text-[10px]">
-                      Downloads model weights (1–3 GB). Cached after first load.
+                      {deviceStatus === 'ready'
+                        ? 'Gemma 4 E2B downloaded and cached.'
+                        : `Gemma 4 E2B download progress: ${Math.round(deviceProgress * 100)}%`}
                     </p>
                   </div>
                 </Row>
@@ -968,16 +970,19 @@ type TabId = (typeof TABS)[number]['id']
 export function SettingsDialog({
   open,
   onOpenChange,
+  initialTab = 'vault',
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
+  /** Tab selected when the dialog opens. */
+  initialTab?: TabId
 }) {
   const { vaultFs, vaultPath } = useVaultSession()
   const config = useVaultStore((s) => s.config)
   const updateConfig = useVaultStore((s) => s.updateConfig)
 
   const [draft, setDraft] = useState<VaultConfig>(config ?? DEFAULT_VAULT_CONFIG)
-  const [activeTab, setActiveTab] = useState<TabId>('vault')
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -998,6 +1003,10 @@ export function SettingsDialog({
       setSaved(false)
     }
   }, [open, config])
+
+  useEffect(() => {
+    if (open) setActiveTab(initialTab)
+  }, [open, initialTab])
 
   // Auto-save 600ms after any draft change
   useEffect(() => {

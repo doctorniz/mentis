@@ -157,6 +157,8 @@ function NotesViewInner() {
   const addRecentFile = useEditorStore((s) => s.addRecentFile)
   const clearNew = useEditorStore((s) => s.clearNew)
   const retargetTabPath = useEditorStore((s) => s.retargetTabPath)
+  const pendingVaultOpenPath = useEditorStore((s) => s.pendingVaultOpenPath)
+  const setPendingVaultOpenPath = useEditorStore((s) => s.setPendingVaultOpenPath)
   const setSelectedPath = useFileTreeStore((s) => s.setSelectedPath)
   const starredPaths = useFileTreeStore((s) => s.starredPaths)
   const setActiveView = useUiStore((s) => s.setActiveView)
@@ -425,6 +427,17 @@ function NotesViewInner() {
     window.addEventListener('ink:vault-changed', handler)
     return () => window.removeEventListener('ink:vault-changed', handler)
   }, [vaultChanged])
+
+  // Open a vault file requested while another view was active (Board → Vault).
+  useEffect(() => {
+    if (!pendingVaultOpenPath) return
+    const p = pendingVaultOpenPath
+    setPendingVaultOpenPath(null)
+    manualTreeToggleRef.current = false
+    setNotesTreeExpanded(true)
+    setLeftPanel('tree')
+    openNotePath(p)
+  }, [pendingVaultOpenPath, setPendingVaultOpenPath, openNotePath])
 
   const treeProps = {
     vaultFs,

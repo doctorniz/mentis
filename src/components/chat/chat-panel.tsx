@@ -108,7 +108,7 @@ export function ChatPanel({
       setKeyChecked(true)
       return
     }
-    // Providers that don't need keys (webllm, window-ai) get a dummy key
+    // Providers that don't need keys (device, ollama) get a dummy key
     if (!providerNeedsApiKey(settings.provider)) {
       setApiKey('__local__')
       setKeyChecked(true)

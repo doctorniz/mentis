@@ -9,8 +9,15 @@ import {
   newMessage,
   newThread,
   writeThread,
+  VAULT_CHAT_ASSET_FOLDER,
 } from '@/lib/chat/chat-io'
+import {
+  readVaultChatLastThreadId,
+  writeVaultChatLastThreadId,
+  clearVaultChatSession,
+} from '@/lib/chat/vault-chat-session'
 import { getProvider, toWire } from '@/lib/chat/providers'
+import { useVaultStore } from '@/stores/vault'
 import type {
   ChatMessage,
   ChatSettings,
@@ -34,7 +41,7 @@ import type {
  */
 
 /** Reserved chatAssetId for vault-wide threads. Documents mint UUIDs; this literal is safe. */
-export const VAULT_CHAT_ASSET_ID = '_vault'
+export const VAULT_CHAT_ASSET_ID = VAULT_CHAT_ASSET_FOLDER
 
 interface SendArgs {
   vaultFs: FileSystemAdapter
@@ -45,6 +52,8 @@ interface SendArgs {
 
 interface InitArgs {
   vaultFs: FileSystemAdapter
+  /** Session-scoped last-active thread (sessionStorage). */
+  vaultPath: string
 }
 
 interface VaultChatState {
@@ -67,6 +76,10 @@ interface VaultChatState {
   }) => Promise<void>
   sendMessage: (args: SendArgs) => Promise<void>
   cancel: () => void
+  toggleFavourite: (args: {
+    vaultFs: FileSystemAdapter
+    threadId: string
+  }) => Promise<void>
 }
 
 const MAX_TITLE_CHARS = 60
@@ -88,7 +101,7 @@ export const useVaultChatStore = create<VaultChatState>()(
     abort: null,
     error: null,
 
-    init: async ({ vaultFs }) => {
+    init: async ({ vaultFs, vaultPath }) => {
       // Cancel anything still streaming from a previous vault session.
       get().abort?.abort()
 
@@ -102,13 +115,31 @@ export const useVaultChatStore = create<VaultChatState>()(
       })
 
       const existing = await listThreadsFull(vaultFs, VAULT_CHAT_ASSET_ID)
+      const remembered = readVaultChatLastThreadId(vaultPath)
 
       if (existing.length > 0) {
+        const replay =
+          remembered != null && existing.some((t) => t.id === remembered)
+
+        if (replay) {
+          set((s) => {
+            s.threads = existing
+            s.activeThreadId = remembered!
+            s.initialized = true
+          })
+          return
+        }
+
+        const draft = newThread({
+          documentAssetId: VAULT_CHAT_ASSET_ID,
+          documentPath: '',
+        })
         set((s) => {
-          s.threads = existing
-          s.activeThreadId = existing[0].id
+          s.threads = [draft, ...existing]
+          s.activeThreadId = draft.id
           s.initialized = true
         })
+        writeVaultChatLastThreadId(vaultPath, draft.id)
         return
       }
 
@@ -123,6 +154,7 @@ export const useVaultChatStore = create<VaultChatState>()(
         s.activeThreadId = draft.id
         s.initialized = true
       })
+      writeVaultChatLastThreadId(vaultPath, draft.id)
     },
 
     reset: () => {
@@ -143,6 +175,10 @@ export const useVaultChatStore = create<VaultChatState>()(
           s.activeThreadId = threadId
         }
       })
+      const path = useVaultStore.getState().activeVaultPath
+      if (path && get().activeThreadId === threadId) {
+        writeVaultChatLastThreadId(path, threadId)
+      }
     },
 
     createThread: async () => {
@@ -155,6 +191,8 @@ export const useVaultChatStore = create<VaultChatState>()(
         s.activeThreadId = draft.id
         s.error = null
       })
+      const path = useVaultStore.getState().activeVaultPath
+      if (path) writeVaultChatLastThreadId(path, draft.id)
       return draft
     },
 
@@ -166,6 +204,11 @@ export const useVaultChatStore = create<VaultChatState>()(
           s.activeThreadId = s.threads[0]?.id ?? null
         }
       })
+      const path = useVaultStore.getState().activeVaultPath
+      if (!path) return
+      const active = get().activeThreadId
+      if (active) writeVaultChatLastThreadId(path, active)
+      else clearVaultChatSession(path)
     },
 
     sendMessage: async ({ vaultFs, settings, apiKey, input }) => {
@@ -182,8 +225,18 @@ export const useVaultChatStore = create<VaultChatState>()(
         })
         return
       }
-      // Local providers (webllm, window-ai, ollama) don't require a real key
-      const LOCAL_PROVIDERS = ['webllm', 'window-ai', 'ollama']
+      if (
+        thread.chatBinding &&
+        (thread.chatBinding.provider !== settings.provider ||
+          thread.chatBinding.model !== settings.model)
+      ) {
+        set((s) => {
+          s.error =
+            'This chat was started with a different provider or model. Switch back in Settings → AI to continue.'
+        })
+        return
+      }
+      const LOCAL_PROVIDERS = ['device', 'ollama']
       if (!apiKey && !LOCAL_PROVIDERS.includes(settings.provider!)) {
         set((s) => {
           s.error = 'Add an API key in Settings → AI to start chatting.'
@@ -212,7 +265,11 @@ export const useVaultChatStore = create<VaultChatState>()(
         s.abort = abort
         const t = s.threads.find((x) => x.id === thread.id)
         if (!t) return
+        const priorUserCount = t.messages.filter((m) => m.role === 'user').length
         t.messages.push(userMsg, assistantMsg)
+        if (priorUserCount === 0) {
+          t.chatBinding = { provider: settings.provider!, model: settings.model }
+        }
         if (t.messages.filter((m) => m.role === 'user').length === 1) {
           t.title = titleFromFirstUserMessage(text)
         }
@@ -313,6 +370,28 @@ export const useVaultChatStore = create<VaultChatState>()(
       const { abort } = get()
       if (abort && !abort.signal.aborted) abort.abort()
     },
+
+    toggleFavourite: async ({ vaultFs, threadId }) => {
+      set((s) => {
+        const t = s.threads.find((x) => x.id === threadId)
+        if (!t) return
+        t.favouritedAt = t.favouritedAt
+          ? undefined
+          : new Date().toISOString()
+        t.modifiedAt = new Date().toISOString()
+      })
+      const t = get().threads.find((x) => x.id === threadId)
+      if (t) {
+        try {
+          await writeThread(vaultFs, t)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          set((s) => {
+            s.error = `Failed to save chat: ${msg}`
+          })
+        }
+      }
+    },
   })),
 )
 
@@ -330,8 +409,6 @@ export const VAULT_IMPLEMENTED_PROVIDERS: ChatProviderId[] = [
   'openai',
   'anthropic',
   'gemini',
-  'huggingface',
   'ollama',
-  'window-ai',
-  'webllm',
+  'device',
 ]

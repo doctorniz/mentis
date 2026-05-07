@@ -37,6 +37,21 @@ export interface ChatMessage {
   error?: string
 }
 
+/** Supported provider ids. */
+export type ChatProviderId =
+  | 'openrouter'
+  | 'anthropic'
+  | 'openai'
+  | 'gemini'
+  | 'ollama'
+  | 'device'
+
+/** Provider + model frozen when a thread gets its first user message. */
+export interface ChatThreadBinding {
+  provider: ChatProviderId
+  model: string
+}
+
 /** A single conversation thread, persisted as one JSON file. */
 export interface ChatThread {
   schemaVersion: typeof CHAT_SCHEMA_VERSION
@@ -54,18 +69,14 @@ export interface ChatThread {
   createdAt: string
   modifiedAt: string
   messages: ChatMessage[]
+  /**
+   * Set when the first user message is sent. Later turns must use the same
+   * provider and model, or the composer stays disabled.
+   */
+  chatBinding?: ChatThreadBinding
+  /** When set, the thread appears under Favourites (sorted by this desc). */
+  favouritedAt?: string
 }
-
-/** Supported provider ids. */
-export type ChatProviderId =
-  | 'openrouter'
-  | 'anthropic'
-  | 'openai'
-  | 'gemini'
-  | 'huggingface'
-  | 'ollama'
-  | 'window-ai'
-  | 'webllm'
 
 /**
  * Per-vault AI settings. API keys do NOT live here — they go in the
@@ -96,9 +107,11 @@ export interface ChatSettings {
   maxContextChars: number
 }
 
+export const DEVICE_CHAT_MODEL = 'gemma-4-e2b'
+
 export const DEFAULT_CHAT_SETTINGS: ChatSettings = {
-  provider: null,
-  model: 'anthropic/claude-sonnet-4',
+  provider: 'device',
+  model: DEVICE_CHAT_MODEL,
   maxContextChars: 40_000,
 }
 

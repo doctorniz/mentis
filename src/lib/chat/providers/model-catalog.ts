@@ -1,15 +1,15 @@
 /**
  * Provider-specific model catalog.
  *
- * Cloud providers (openai, anthropic, gemini, openrouter, huggingface) expose
+ * Cloud providers (openai, anthropic, gemini, openrouter) expose
  * a curated short list via `getCuratedModels` — shown immediately in Settings
  * without needing an API call. A "Custom…" escape hatch lets users type any id.
  *
- * Local/browser providers (ollama, webllm, window-ai) use `fetchModels` to
+ * Local/browser providers (ollama, device) use `fetchModels` to
  * discover what's actually available on the user's machine.
  */
 
-import type { ChatProviderId } from '@/types/chat'
+import { DEVICE_CHAT_MODEL, type ChatProviderId } from '@/types/chat'
 
 export interface ModelEntry {
   id: string
@@ -27,7 +27,7 @@ const CURATED_MODELS: Partial<Record<ChatProviderId, ModelEntry[]>> = {
     { id: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
     { id: 'deepseek/deepseek-chat', label: 'DeepSeek V3' },
     { id: 'anthropic/claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-    { id: 'google/gemini-2.0-flash-lite-001:free', label: 'Gemini 2.0 Flash Lite (free)' },
+    { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   ],
   anthropic: [
     { id: 'claude-opus-4-7', label: 'Claude Opus 4.7' },
@@ -51,30 +51,14 @@ const CURATED_MODELS: Partial<Record<ChatProviderId, ModelEntry[]>> = {
     { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
     { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
   ],
-  huggingface: [
-    { id: 'meta-llama/Meta-Llama-3.1-70B-Instruct', label: 'Llama 3.1 70B' },
-    { id: 'Qwen/Qwen2.5-72B-Instruct', label: 'Qwen 2.5 72B' },
-    { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct', label: 'Llama 3.1 8B' },
-    { id: 'mistralai/Mistral-7B-Instruct-v0.3', label: 'Mistral 7B' },
-    { id: 'microsoft/Phi-3.5-mini-instruct', label: 'Phi-3.5 Mini' },
-    { id: 'google/gemma-2-9b-it', label: 'Gemma 2 9B' },
-  ],
-  webllm: [
-    { id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC', label: 'Llama 3.2 3B' },
-    { id: 'Qwen2.5-3B-Instruct-q4f16_1-MLC', label: 'Qwen 2.5 3B' },
-    { id: 'Phi-3.5-mini-instruct-q4f16_1-MLC', label: 'Phi-3.5 Mini' },
-    { id: 'gemma-2-2b-it-q4f16_1-MLC', label: 'Gemma 2 2B' },
-    { id: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC', label: 'SmolLM2 1.7B' },
-    { id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC', label: 'Qwen 2.5 7B' },
-  ],
-  'window-ai': [
-    { id: 'gemini-nano', label: 'Gemini Nano' },
+  device: [
+    { id: DEVICE_CHAT_MODEL, label: 'Gemma 4 E2B' },
   ],
 }
 
 /**
  * Returns the curated short-list for cloud providers, or `[]` for local
- * providers (ollama, webllm, window-ai) which use dynamic discovery instead.
+ * providers (ollama, device) which use dynamic discovery instead.
  */
 export function getCuratedModels(provider: ChatProviderId): ModelEntry[] {
   return CURATED_MODELS[provider] ?? []
@@ -188,25 +172,6 @@ async function fetchGeminiModels(
 }
 
 /* ------------------------------------------------------------------ */
-/*  Hugging Face                                                       */
-/* ------------------------------------------------------------------ */
-
-async function fetchHuggingFaceModels(
-  _apiKey: string,
-  _baseUrl?: string,
-): Promise<ModelEntry[]> {
-  // HF's router doesn't have a simple list endpoint; use curated list
-  return [
-    { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct', label: 'Llama 3.1 8B Instruct' },
-    { id: 'meta-llama/Meta-Llama-3.1-70B-Instruct', label: 'Llama 3.1 70B Instruct' },
-    { id: 'mistralai/Mistral-7B-Instruct-v0.3', label: 'Mistral 7B Instruct v0.3' },
-    { id: 'microsoft/Phi-3.5-mini-instruct', label: 'Phi-3.5 Mini Instruct' },
-    { id: 'Qwen/Qwen2.5-72B-Instruct', label: 'Qwen 2.5 72B Instruct' },
-    { id: 'google/gemma-2-9b-it', label: 'Gemma 2 9B IT' },
-  ]
-}
-
-/* ------------------------------------------------------------------ */
 /*  Ollama                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -240,44 +205,8 @@ async function fetchOllamaModels(
   }))
 }
 
-/* ------------------------------------------------------------------ */
-/*  window.ai — single fixed model                                    */
-/* ------------------------------------------------------------------ */
-
-function windowAiModels(): ModelEntry[] {
-  return [{ id: 'gemini-nano', label: 'Gemini Nano (on-device)' }]
-}
-
-/* ------------------------------------------------------------------ */
-/*  WebLLM — pull from @mlc-ai/web-llm prebuilt catalog                */
-/* ------------------------------------------------------------------ */
-
-let webLlmModelsCache: ModelEntry[] | null = null
-
-async function fetchWebLlmModels(): Promise<ModelEntry[]> {
-  if (webLlmModelsCache) return webLlmModelsCache
-
-  try {
-    const mod = (await import('@mlc-ai/web-llm')) as unknown as {
-      prebuiltAppConfig?: { model_list?: { model_id: string; model_size?: number }[] }
-    }
-    const list = mod.prebuiltAppConfig?.model_list ?? []
-    webLlmModelsCache = list.map((m) => ({
-      id: m.model_id,
-      label: m.model_id.replace(/-MLC$/, ''),
-    }))
-    return webLlmModelsCache
-  } catch {
-    // Fallback if the package isn't installed or import fails
-    return [
-      { id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC', label: 'Llama 3.2 3B Instruct (q4f16)' },
-      { id: 'Qwen2.5-3B-Instruct-q4f16_1-MLC', label: 'Qwen 2.5 3B Instruct (q4f16)' },
-      { id: 'Phi-3.5-mini-instruct-q4f16_1-MLC', label: 'Phi-3.5 Mini Instruct (q4f16)' },
-      { id: 'gemma-2-2b-it-q4f16_1-MLC', label: 'Gemma 2 2B IT (q4f16)' },
-      { id: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC', label: 'SmolLM2 1.7B Instruct (q4f16)' },
-      { id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC', label: 'Qwen 2.5 7B Instruct (q4f16)' },
-    ]
-  }
+async function fetchDeviceModels(): Promise<ModelEntry[]> {
+  return [{ id: DEVICE_CHAT_MODEL, label: 'Gemma 4 E2B' }]
 }
 
 /* ------------------------------------------------------------------ */
@@ -303,14 +232,10 @@ export async function fetchModels(
       return fetchAnthropicModels(apiKey, baseUrl)
     case 'gemini':
       return fetchGeminiModels(apiKey, baseUrl)
-    case 'huggingface':
-      return fetchHuggingFaceModels(apiKey, baseUrl)
     case 'ollama':
       return fetchOllamaModels(apiKey, baseUrl)
-    case 'window-ai':
-      return windowAiModels()
-    case 'webllm':
-      return fetchWebLlmModels()
+    case 'device':
+      return fetchDeviceModels()
     default:
       return []
   }
@@ -318,10 +243,10 @@ export async function fetchModels(
 
 /** Whether this provider requires an API key to function. */
 export function providerNeedsApiKey(provider: ChatProviderId): boolean {
-  return !['window-ai', 'webllm', 'ollama'].includes(provider)
+  return !['device', 'ollama'].includes(provider)
 }
 
 /** Whether this provider needs the base URL field. */
 export function providerNeedsBaseUrl(provider: ChatProviderId): boolean {
-  return !['window-ai', 'webllm'].includes(provider)
+  return !['device'].includes(provider)
 }

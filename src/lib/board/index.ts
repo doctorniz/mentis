@@ -45,3 +45,64 @@ export function defaultFrontmatter(color: ThoughtColor = 'yellow'): BoardItemFro
   const now = new Date().toISOString()
   return { type: 'thought', created: now, modified: now, color }
 }
+
+/**
+ * Strip `![](...)` from board markdown — used when editing cards and when
+ * deciding if a card is image-only during Move to Vault.
+ */
+export function stripBoardImageMarkdown(body: string): { stripped: string; imageLines: string[] } {
+  const imageLines: string[] = []
+  const stripped = body
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, (match) => {
+      imageLines.push(match)
+      return ''
+    })
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  return { stripped, imageLines }
+}
+
+/** Paths from `![](path)` excluding http(s) and blob URLs. */
+export function extractBoardVaultImagePaths(body: string): string[] {
+  const paths: string[] = []
+  for (const match of body.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)) {
+    const src = match[1]
+    if (
+      src.startsWith('http://') ||
+      src.startsWith('https://') ||
+      src.startsWith('blob:')
+    ) {
+      continue
+    }
+    paths.push(src)
+  }
+  return paths
+}
+
+/**
+ * Image-only cards: headings + blanks only after removing embedded images —
+ * qualifies for exporting a single raster file instead of markdown.
+ */
+export function boardBodyIsImageOnly(body: string): boolean {
+  const { stripped } = stripBoardImageMarkdown(body)
+  const withoutHeadings = stripped.replace(/^#{1,6}\s[^\n]*(?:\n|$)/gm, '').trim()
+  return withoutHeadings.length === 0
+}
+
+function sanitizeStemForFilename(raw: string): string {
+  return raw.replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim()
+}
+
+/** Vault-root filename: prefer sanitized H1 title; else stem of `fallbackFilename`. */
+export function boardExportBasenamePreferTitle(
+  title: string | null,
+  fallbackFilename: string,
+  extWithDot: string,
+): string {
+  const ext = extWithDot.startsWith('.') ? extWithDot : `.${extWithDot}`
+  const fromTitle = title ? sanitizeStemForFilename(title) : ''
+  if (fromTitle) return `${fromTitle}${ext}`
+  const base = fallbackFilename.split('/').pop() ?? 'file'
+  const stem = sanitizeStemForFilename(base.replace(/\.[^.]+$/i, '')) || 'file'
+  return `${stem}${ext}`
+}

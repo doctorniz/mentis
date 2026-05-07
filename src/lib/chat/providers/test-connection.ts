@@ -14,7 +14,7 @@ export interface TestResult {
 }
 
 /* ------------------------------------------------------------------ */
-/*  OpenAI-compatible (OpenAI, OpenRouter, HuggingFace)                */
+/*  OpenAI-compatible (OpenAI, OpenRouter)                               */
 /* ------------------------------------------------------------------ */
 
 async function testOpenAICompat(
@@ -186,50 +186,10 @@ async function testOllama(
 }
 
 /* ------------------------------------------------------------------ */
-/*  window.ai                                                          */
+/*  Local / Gemma 4 E2B via MediaPipe                                   */
 /* ------------------------------------------------------------------ */
 
-async function testWindowAi(): Promise<TestResult> {
-  if (typeof window === 'undefined') {
-    return { ok: false, error: 'Not in a browser environment.' }
-  }
-  const w = window as unknown as {
-    LanguageModel?: { availability?: () => Promise<string>; capabilities?: () => Promise<{ available?: string }> }
-    ai?: { languageModel?: { availability?: () => Promise<string>; capabilities?: () => Promise<{ available?: string }> } }
-  }
-  const lm = w.LanguageModel ?? w.ai?.languageModel
-  if (!lm) {
-    return {
-      ok: false,
-      error:
-        'Chrome built-in AI not detected. Enable at chrome://flags/#optimization-guide-on-device-model and restart.',
-    }
-  }
-  try {
-    if (typeof lm.availability === 'function') {
-      const v = await lm.availability()
-      if (v === 'available' || v === 'readily' || v === 'downloadable')
-        return { ok: true }
-      return { ok: false, error: `Availability status: ${v}. Model may still be downloading.` }
-    }
-    if (typeof lm.capabilities === 'function') {
-      const caps = await lm.capabilities()
-      if (caps.available === 'readily' || caps.available === 'available')
-        return { ok: true }
-      return { ok: false, error: `Availability: ${caps.available}` }
-    }
-    return { ok: true }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    return { ok: false, error: `Prompt API check failed: ${msg}` }
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/*  WebLLM                                                             */
-/* ------------------------------------------------------------------ */
-
-function testWebLlm(): TestResult {
+function testDevice(): TestResult {
   if (typeof navigator === 'undefined') {
     return { ok: false, error: 'Not in a browser environment.' }
   }
@@ -238,7 +198,7 @@ function testWebLlm(): TestResult {
     return {
       ok: false,
       error:
-        'WebGPU not available. Try Chrome, Edge, or a recent Chromium build.',
+        'WebGPU not available. Local mode requires Chrome, Edge, or a recent Chromium build.',
     }
   }
   return { ok: true }
@@ -266,22 +226,14 @@ export async function testConnection(
         baseUrl?.trim() || 'https://openrouter.ai/api/v1',
         'OpenRouter',
       )
-    case 'huggingface':
-      return testOpenAICompat(
-        apiKey,
-        baseUrl?.trim() || 'https://router.huggingface.co/v1',
-        'Hugging Face',
-      )
     case 'anthropic':
       return testAnthropic(apiKey, baseUrl)
     case 'gemini':
       return testGemini(apiKey, baseUrl)
     case 'ollama':
       return testOllama(apiKey, baseUrl)
-    case 'window-ai':
-      return testWindowAi()
-    case 'webllm':
-      return testWebLlm()
+    case 'device':
+      return testDevice()
     default:
       return { ok: false, error: `Unknown provider: ${provider}` }
   }

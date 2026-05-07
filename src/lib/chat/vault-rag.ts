@@ -251,7 +251,7 @@ export async function buildVaultContext(
   const body = hits
     .map(
       (h, i) =>
-        `<source index="${i + 1}" path="${h.path}" title="${h.title}" kind="${fmtKind(h.type)}">\n${h.excerpt}\n</source>`,
+        `--- Source ${i + 1}: ${h.title} (${fmtKind(h.type)}) [${h.path}] ---\n${h.excerpt}`,
     )
     .join('\n\n')
 
@@ -266,9 +266,10 @@ export async function buildVaultContext(
 
 const DEFAULT_VAULT_SYSTEM_PROMPT = [
   'You are an assistant embedded inside the user\'s personal notes app.',
-  'Answer strictly from the <source> blocks provided below.',
+  'Below you will find excerpts from the user\'s vault. Read ALL excerpts carefully and thoroughly before answering.',
+  'Base your answer on the information found in these excerpts.',
   'Cite sources inline by their path in backticks (e.g. `Notes/Plan.md`) so the user can jump to them.',
-  'If the sources do not contain the answer, say so briefly instead of guessing.',
+  'If none of the excerpts contain relevant information, say so briefly.',
   'Keep replies concise and use markdown.',
 ].join(' ')
 
@@ -283,8 +284,8 @@ export function buildVaultSystemMessage(
   }
 
   const note = context.truncated
-    ? ' Only the top-matching excerpts were included; more vault content may exist.'
+    ? '\nNote: only the top-matching excerpts are shown; more vault content may exist.'
     : ''
 
-  return `${base}\n\nThe following excerpts were retrieved from the user's vault.${note}\n\n${context.content}`
+  return `${base}\n\n=== VAULT EXCERPTS (${context.hits.length} results) ===${note}\n\n${context.content}\n\n=== END EXCERPTS ===`
 }

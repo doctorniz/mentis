@@ -11,21 +11,17 @@
  *   - `openai`     — api.openai.com `/v1/chat/completions`
  *   - `anthropic`  — api.anthropic.com `/v1/messages` (named SSE events)
  *   - `gemini`     — Generative Language API `:streamGenerateContent`
- *   - `huggingface`— router.huggingface.co `/v1/chat/completions`
  *   - `ollama`     — localhost OpenAI-compatible endpoint (user-run server)
- *   - `window-ai`  — Chrome built-in Prompt API (on-device Gemini Nano)
- *   - `webllm`     — @mlc-ai/web-llm, WebGPU in-browser inference (Gemma etc.)
+ *   - `device`     — MediaPipe Gemma 4 E2B (WebGPU, on-device)
  */
 
 import type { ChatProviderId } from '@/types/chat'
 import { anthropicProvider } from './anthropic'
 import { geminiProvider } from './gemini'
-import { huggingfaceProvider } from './huggingface'
 import { ollamaProvider } from './ollama'
 import { openaiProvider } from './openai'
 import { openrouterProvider } from './openrouter'
-import { webllmProvider } from './webllm'
-import { windowAiProvider } from './window-ai'
+import { deviceProvider } from './device'
 import type { ChatProvider } from './types'
 
 const PROVIDERS: Partial<Record<ChatProviderId, ChatProvider>> = {
@@ -33,10 +29,8 @@ const PROVIDERS: Partial<Record<ChatProviderId, ChatProvider>> = {
   openai: openaiProvider,
   anthropic: anthropicProvider,
   gemini: geminiProvider,
-  huggingface: huggingfaceProvider,
   ollama: ollamaProvider,
-  'window-ai': windowAiProvider,
-  webllm: webllmProvider,
+  device: deviceProvider,
 }
 
 export function getProvider(id: ChatProviderId): ChatProvider | null {

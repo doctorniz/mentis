@@ -20,7 +20,7 @@ import { markdownToTiptapJSON, tiptapJSONToMarkdown } from '@/lib/editor/markdow
 import { parseNote, resolveWikiLinkPath, serializeNote } from '@/lib/markdown'
 import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
 import { removeSearchDocument } from '@/lib/search/index'
-import { saveAsset } from '@/lib/notes/assets'
+import { saveAsset, assetToBlobUrl } from '@/lib/notes/assets'
 import type { FileEntry } from '@/types/files'
 import { buildExportHtml, printExportHtml } from '@/lib/notes/export-pdf'
 import { downloadTextFile } from '@/lib/browser/download-file'
@@ -31,6 +31,8 @@ import { useFileTreeStore } from '@/stores/file-tree'
 import { useVaultStore } from '@/stores/vault'
 import { toast } from '@/stores/toast'
 import { cn } from '@/utils/cn'
+import { Mic } from 'lucide-react'
+import { AudioPlayer } from '@/components/audio/audio-player'
 import { NoteEditorToolbar } from '@/components/notes/note-editor-toolbar'
 import type { InsertImageFn } from '@/components/notes/note-editor-toolbar'
 import { NoteEditorModeBar } from '@/components/notes/note-editor-mode-bar'
@@ -55,6 +57,60 @@ function parentDir(p: string): string {
 
 function joinPath(parent: string, name: string): string {
   return parent ? `${parent}/${name}` : name
+}
+
+function voiceAttachmentFromFrontmatter(
+  fm: NoteFrontmatter,
+): { path: string; duration: number | null } | null {
+  const ap = fm.audioPath
+  if (typeof ap !== 'string' || !ap.trim()) return null
+  const ad = fm.audioDuration
+  return {
+    path: ap.trim(),
+    duration: typeof ad === 'number' ? ad : null,
+  }
+}
+
+function NoteVoiceAttachment({
+  vaultPath,
+  durationSec,
+}: {
+  vaultPath: string
+  durationSec: number | null
+}) {
+  const { vaultFs } = useVaultSession()
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let url: string | null = null
+    assetToBlobUrl(vaultFs, vaultPath)
+      .then((u) => {
+        url = u
+        setBlobUrl(u)
+      })
+      .catch(() => {
+        /* missing asset */
+      })
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [vaultFs, vaultPath])
+
+  if (!blobUrl) return null
+
+  return (
+    <div
+      className="border-border bg-bg-secondary/60 mb-4 rounded-xl border px-4 py-3"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <div className="text-fg-muted mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider">
+        <Mic className="size-3" aria-hidden />
+        Recording
+      </div>
+      <AudioPlayer src={blobUrl} duration={durationSec ?? undefined} compact />
+    </div>
+  )
 }
 
 /** Strip characters that are illegal in file names on any major OS */
@@ -103,6 +159,7 @@ export const MarkdownNoteEditor = forwardRef<
 
   const [rawText, setRawText] = useState('')
   const [isBootstrapping, setIsBootstrapping] = useState(true)
+  const [voiceAttach, setVoiceAttach] = useState<{ path: string; duration: number | null } | null>(null)
   const [inlineTitle, setInlineTitle] = useState(() => titleFromPath(path))
   const inlineTitleRef = useRef(inlineTitle)
   inlineTitleRef.current = inlineTitle
@@ -353,6 +410,7 @@ export const MarkdownNoteEditor = forwardRef<
         }
         pendingChatAssetIdRef.current = null
         frontmatterRef.current = doc.frontmatter
+        setVoiceAttach(voiceAttachmentFromFrontmatter(doc.frontmatter))
         const title =
           (typeof doc.frontmatter.title === 'string' && doc.frontmatter.title) ||
           path.replace(/\.md$/i, '').split('/').pop() ||
@@ -372,6 +430,7 @@ export const MarkdownNoteEditor = forwardRef<
       } catch (e) {
         console.error(e)
         toast.error('Failed to load note')
+        setVoiceAttach(null)
         if (!useEditorStore.getState().tabs.find((t) => t.id === tabId)?.showRawSource) {
           editor.commands.setContent(markdownToTiptapJSON(''), false)
         } else {
@@ -450,6 +509,7 @@ export const MarkdownNoteEditor = forwardRef<
         await vaultFs.writeTextFile(pathRef.current, latest)
         const doc = parseNote(pathRef.current, latest)
         frontmatterRef.current = doc.frontmatter
+        setVoiceAttach(voiceAttachmentFromFrontmatter(doc.frontmatter))
         const ed = editorRef.current
         if (ed) {
           ed.commands.setContent(markdownToTiptapJSON(doc.content), false)
@@ -654,6 +714,11 @@ export const MarkdownNoteEditor = forwardRef<
             placeholder="Untitled"
           />
         </div>
+        {voiceAttach && (
+          <div className="px-10">
+            <NoteVoiceAttachment vaultPath={voiceAttach.path} durationSec={voiceAttach.duration} />
+          </div>
+        )}
         {showRawSource ? (
           <textarea
             value={rawText}

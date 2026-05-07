@@ -14,6 +14,8 @@ import { ViewMode } from '@/types/vault'
 import { setStoredActiveVaultPath } from '@/lib/vault/session-storage'
 import { clearStoredDirectoryHandle } from '@/lib/fs'
 import { clearSearchIndex } from '@/lib/search/index'
+import { clearVaultChatSession } from '@/lib/chat/vault-chat-session'
+import { useVaultChatStore } from '@/stores/vault-chat'
 import { Toaster } from '@/components/ui/toaster'
 
 function SyncProviderBridge({
@@ -62,6 +64,9 @@ export function AppRoot() {
   }, [])
 
   const handleCloseVault = useCallback(() => {
+    const path = useVaultStore.getState().activeVaultPath
+    if (path) clearVaultChatSession(path)
+    useVaultChatStore.getState().reset()
     setStoredActiveVaultPath(null)
     clearStoredDirectoryHandle().catch(() => {})
     setSession(null)

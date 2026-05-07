@@ -1,10 +1,10 @@
 /**
- * Speech-to-text transcription via distil-whisper-small running in the browser
+ * Speech-to-text transcription via Whisper-tiny.en (ONNX) in the browser
  * through @huggingface/transformers (ONNX runtime).
  *
  * Uses WebGPU where available (Chrome 113+) for GPU-accelerated inference,
- * falling back to WASM. The model (~166MB quantized) is downloaded once and
- * cached by the browser.
+ * falling back to WASM. The model (~40MB quantized) is downloaded once and
+ * cached by the browser (HF hub: Xenova ONNX exports; public, no token).
  *
  * Progress events are emitted via `ink:whisper-progress` CustomEvent so the
  * UI can show a download bar on first use.
@@ -18,7 +18,8 @@ let pipelineInstance: any = null
 let loading = false
 let loadPromise: Promise<void> | null = null
 
-const MODEL_ID = 'onnx-community/distil-whisper-small.en'
+/** Public ONNX checkpoint; `onnx-community/distil-whisper-small.en` returns 401 without HF auth in-browser. */
+const MODEL_ID = 'Xenova/whisper-tiny.en'
 
 /** Prefer WebGPU; fall back to WASM for browsers without it. */
 async function resolveDevice(): Promise<'webgpu' | 'wasm'> {
@@ -147,8 +148,8 @@ function chunksToText(chunks: WhisperChunk[]): string {
 }
 
 /**
- * Transcribe audio bytes to text using distil-whisper-small (WebGPU or WASM).
- * First call downloads the model (~166MB); subsequent calls use the cached pipeline.
+ * Transcribe audio bytes to text using Whisper-tiny.en (WebGPU or WASM).
+ * First call downloads the model (~40MB); subsequent calls use the cached pipeline.
  * Pauses ≥ 1.5 s between chunks produce paragraph breaks.
  */
 export async function transcribeAudio(

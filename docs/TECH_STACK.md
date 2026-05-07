@@ -42,6 +42,13 @@
 |---|---|
 | **MiniSearch** | Lightweight client-side full-text search with fuzzy matching, prefix search, field boosting |
 
+### AI Runtime
+
+| Technology | Purpose |
+|---|---|
+| **@mediapipe/tasks-genai** | Gemma 4 E2B inference in browser (WebGPU) for the `device` chat provider (labeled **Local** in Settings and chat UI) |
+| **OPFS** | Caches the Gemma 4 E2B `.task` model locally after first download |
+
 ### State Management
 
 | Technology | Purpose |

@@ -9,7 +9,24 @@ import {
   serializeBoardItem,
   generateBoardFilename,
   defaultFrontmatter,
+  extractBoardVaultImagePaths,
+  boardBodyIsImageOnly,
+  boardExportBasenamePreferTitle,
 } from '@/lib/board'
+
+async function uniquifyVaultBasename(fs: FileSystemAdapter, basename: string): Promise<string> {
+  if (!(await fs.exists(basename))) return basename
+  const extMatch = /\.[^.]+$/i.exec(basename)
+  const ext = extMatch ? extMatch[0] : ''
+  const stem = ext ? basename.slice(0, -ext.length) : basename
+  let suffix = 1
+  let candidate = `${stem} (${suffix})${ext}`
+  while (await fs.exists(candidate)) {
+    suffix++
+    candidate = `${stem} (${suffix})${ext}`
+  }
+  return candidate
+}
 
 interface BoardState {
   items: BoardItem[]
@@ -143,16 +160,26 @@ export const useBoardStore = create<BoardState>()(
       const existing = state.items.find((i) => i.path === path)
       if (!existing) return
 
-      const fm = defaultFrontmatter(existing.color)
-      fm.created = existing.created
-      const raw = serializeBoardItem(fm, body)
-      await fs.writeTextFile(path, raw)
+      try {
+        const prevRaw = await fs.readTextFile(path)
+        const matter = await import('gray-matter').then((m) => m.default)
+        const parsed = matter(prevRaw)
+        const fm = {
+          ...(parsed.data as Record<string, unknown>),
+          modified: new Date().toISOString(),
+          color: existing.color,
+        }
+        const raw = matter.stringify(body, fm)
+        await fs.writeTextFile(path, raw)
 
-      const updated = parseBoardItem(path, raw)
-      set((s) => {
-        const idx = s.items.findIndex((i) => i.path === path)
-        if (idx !== -1) s.items[idx] = updated
-      })
+        const updated = parseBoardItem(path, raw)
+        set((s) => {
+          const idx = s.items.findIndex((i) => i.path === path)
+          if (idx !== -1) s.items[idx] = updated
+        })
+      } catch (e) {
+        console.error('Failed to update board item:', e)
+      }
     },
 
     updateItemMeta: async (fs, path, meta) => {
@@ -192,19 +219,83 @@ export const useBoardStore = create<BoardState>()(
       const item = state.items.find((i) => i.path === path)
       if (!item) return null
 
-      try {
-        // Read the board .md file
-        const raw = await fs.readTextFile(path)
-        const matter = await import('gray-matter').then((m) => m.default)
-        const { data, content } = matter(raw)
+      const finalize = (destPath: string) => {
+        set((s) => {
+          s.items = s.items.filter((i) => i.path !== path)
+          if (s.activeItemPath === path) s.activeItemPath = null
+        })
+        window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+        return destPath
+      }
 
-        // Determine destination filename
+      try {
+        const raw = await fs.readTextFile(path)
+        const matterLib = await import('gray-matter').then((m) => m.default)
+        const { data, content } = matterLib(raw)
+        const fm = data as Record<string, unknown>
+
+        // Voice note → vault root audio file (not a markdown attachment card)
+        if (item.type === 'audio' || fm.type === 'audio') {
+          const audioRel =
+            typeof item.audioPath === 'string' ? item.audioPath
+            : typeof fm.audioPath === 'string' ? fm.audioPath
+            : null
+          if (
+            !audioRel ||
+            !audioRel.startsWith(`${BOARD_ASSETS_DIR}/`)
+          ) {
+            console.error('Board audio item missing asset path')
+            return null
+          }
+          const bytes = await fs.readFile(audioRel)
+          const assetFile = audioRel.split('/').pop() ?? 'recording.mp3'
+          const extMatch = /\.[^.]+$/i.exec(assetFile)
+          const extWithDot = extMatch ? extMatch[0] : '.mp3'
+          const base = boardExportBasenamePreferTitle(item.title, assetFile, extWithDot)
+          const destPath = await uniquifyVaultBasename(fs, base)
+          await fs.writeFile(destPath, bytes)
+          try { await fs.remove(audioRel) } catch { /* noop */ }
+          try { await fs.remove(path) } catch { /* noop */ }
+          return finalize(destPath)
+        }
+
+        // Image-only card (one board asset, headings/whitespace only) → vault root image file
+        const boardImagePaths = extractBoardVaultImagePaths(content).filter((p) =>
+          p.startsWith(`${BOARD_ASSETS_DIR}/`),
+        )
+        if (
+          boardImagePaths.length === 1 &&
+          boardBodyIsImageOnly(content) &&
+          !fm.audioPath
+        ) {
+          const imgPath = boardImagePaths[0]
+          const bytes = await fs.readFile(imgPath)
+          const assetFile = imgPath.split('/').pop() ?? 'image.png'
+          const extMatch = /\.[^.]+$/i.exec(assetFile)
+          const extWithDot = extMatch ? extMatch[0] : '.png'
+          const base = boardExportBasenamePreferTitle(item.title, assetFile, extWithDot)
+          const destPath = await uniquifyVaultBasename(fs, base)
+          await fs.writeFile(destPath, bytes)
+          try { await fs.remove(imgPath) } catch { /* noop */ }
+          try { await fs.remove(path) } catch { /* noop */ }
+          return finalize(destPath)
+        }
+
+        // Markdown note (incl. thoughts with real text and/or multiple images)
         const srcName = path.split('/').pop() ?? 'thought.md'
         const title = item.title?.replace(/[/\\:*?"<>|]/g, '_').trim()
-        const destName = title ? `${title}.md` : srcName
-        const destPath = destName
+        let destName = title ? `${title}.md` : srcName
+        if (title && destName !== srcName && (await fs.exists(destName))) {
+          destName = srcName
+        }
+        let destPath = destName
+        let suffix = 1
+        while (await fs.exists(destPath)) {
+          const stem = destName.replace(/\.md$/i, '')
+          destPath = `${stem} (${suffix}).md`
+          suffix++
+        }
 
-        // Move associated assets from _board/_assets to _assets
         let updatedContent = content
         const assetRe = /(_marrow\/_board\/_assets\/[^\s)]+)/g
         const assetMatches = [...raw.matchAll(assetRe)]
@@ -222,38 +313,29 @@ export const useBoardStore = create<BoardState>()(
             await fs.writeFile(newAssetPath, assetBytes)
             await fs.remove(oldAssetPath)
           } catch { /* asset may already be moved or missing */ }
-          // Update references in content and frontmatter
           updatedContent = updatedContent.replaceAll(oldAssetPath, newAssetPath)
-          if (data.audioPath === oldAssetPath) data.audioPath = newAssetPath
+          if (fm.audioPath === oldAssetPath) fm.audioPath = newAssetPath
         }
 
-        // Remove board-specific frontmatter, keep useful fields
         const vaultFm: Record<string, unknown> = {
           title: item.title ?? undefined,
-          created: data.created,
+          created: fm.created,
           modified: new Date().toISOString(),
         }
-        if (data.audioPath) vaultFm.audioPath = data.audioPath
-        if (data.audioDuration) vaultFm.audioDuration = data.audioDuration
-        if (data.transcript) vaultFm.transcript = data.transcript
-        if (data.tags) vaultFm.tags = data.tags
+        if (fm.audioPath) {
+          vaultFm.type = 'audio'
+          vaultFm.audioPath = fm.audioPath
+        }
+        if (fm.audioDuration != null) vaultFm.audioDuration = fm.audioDuration
+        if (fm.transcript) vaultFm.transcript = fm.transcript
+        if (fm.tags) vaultFm.tags = fm.tags
 
-        const newRaw = matter.stringify(updatedContent, vaultFm)
+        const newRaw = matterLib.stringify(updatedContent, vaultFm)
         await fs.writeTextFile(destPath, newRaw)
 
-        // Remove original board file
         try { await fs.remove(path) } catch { /* already gone */ }
 
-        // Update store
-        set((s) => {
-          s.items = s.items.filter((i) => i.path !== path)
-          if (s.activeItemPath === path) s.activeItemPath = null
-        })
-
-        // Notify vault tree
-        window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-
-        return destPath
+        return finalize(destPath)
       } catch (e) {
         console.error('Failed to move board item to vault:', e)
         return null
