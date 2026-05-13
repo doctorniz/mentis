@@ -2,7 +2,12 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 
 import type { FileSystemAdapter } from '@/lib/fs'
-import { buildVaultContext, buildVaultSystemMessage } from '@/lib/chat/vault-rag'
+import {
+  buildVaultContext,
+  buildVaultSystemMessage,
+  mergeVaultSourcesSection,
+  type VaultContext,
+} from '@/lib/chat/vault-rag'
 import {
   deleteThread as deleteThreadOnDisk,
   listThreadsFull,
@@ -280,8 +285,9 @@ export const useVaultChatStore = create<VaultChatState>()(
       // (not once per thread) matters: the user's question changes, so the
       // relevant vault excerpts should too.
       let systemMessage: string
+      let ctx: VaultContext
       try {
-        const ctx = await buildVaultContext(vaultFs, text, settings)
+        ctx = await buildVaultContext(vaultFs, text, settings)
         systemMessage = buildVaultSystemMessage(ctx, settings)
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -295,6 +301,18 @@ export const useVaultChatStore = create<VaultChatState>()(
             last.error = `Context build failed: ${msg}`
           }
         })
+        const failedThread = get().threads.find((t) => t.id === thread.id)
+        if (failedThread) {
+          try {
+            await writeThread(vaultFs, failedThread)
+          } catch (persistErr) {
+            const pmsg =
+              persistErr instanceof Error ? persistErr.message : String(persistErr)
+            set((s) => {
+              s.error = `Failed to save chat: ${pmsg}`
+            })
+          }
+        }
         return
       }
 
@@ -345,11 +363,19 @@ export const useVaultChatStore = create<VaultChatState>()(
           if (!sawDelta && !streamError && abort.signal.aborted) {
             last.error = 'Cancelled'
           }
+          if (
+            !streamError &&
+            !last.error &&
+            ctx.hits.length > 0 &&
+            sawDelta
+          ) {
+            last.content = mergeVaultSourcesSection(last.content, ctx.hits)
+            last.vaultRagHitPaths = ctx.hits.map((h) => h.path)
+          }
         }
         if (t) t.modifiedAt = new Date().toISOString()
         s.isStreaming = false
         s.abort = null
-        if (streamError) s.error = streamError
       })
 
       // Persist once per turn — same cadence as the per-doc store.

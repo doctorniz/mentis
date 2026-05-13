@@ -16,6 +16,8 @@ export function isNotesTreeEntry(entry: FileEntry): boolean {
     entry.type === FileType.Markdown ||
     entry.type === FileType.Pdf ||
     entry.type === FileType.Canvas ||
+    entry.type === FileType.Mindmap ||
+    entry.type === FileType.Kanban ||
     entry.type === FileType.Image ||
     entry.type === FileType.Docx ||
     entry.type === FileType.Pptx ||

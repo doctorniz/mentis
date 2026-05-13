@@ -282,6 +282,9 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 #### Templates & New Files
 - [x] **New files default to root**: newly created notes/PDFs/canvases go to vault root unless a different default folder is configured in settings — implemented via `useDefaultFolder()` hook reading `config.defaultNewFileFolder`
 
+#### Mindmap Editor
+- [x] **Mindmap editor (`.mind` files, React Flow)**: interactive node-based mindmap editor powered by `@xyflow/react` v12. `.mind` files are pure JSON (`MindmapFile` v1: `nodes`, `edges`, `viewport`). New mindmaps created via `+New → Mindmap` (teal `GitBranch` icon). Opens inline in Vault view same as canvas/kanban. Title bar with `InlineFileTitle` for inline rename (same pattern as canvas). Node interaction: double-click or Tab/Enter/F2 keyboard shortcuts for inline label editing — no modal/dialog. Tab = add child, Enter = add sibling, Del = delete node+descendants, double-click empty canvas = add disconnected node. Hover "+" handle on each node adds a child. Auto-layout via `lib/mindmap/layout.ts` (simple recursive tree positioning); users can override by dragging. Full undo/redo (50-entry history stack). Auto-save ~3s + blur + unmount flush. File tree icon: `GitBranch` teal. Graph: hexagon shape (teal). Search: indexes all node labels. Mobile: FAB bottom-right for adding nodes; `Controls`/`MiniMap` hidden on mobile; keyboard hints shown on desktop only.
+
 ---
 
 ## Phase 2 — Desktop + Sync (Weeks 13–18)

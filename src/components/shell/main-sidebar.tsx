@@ -10,6 +10,7 @@ import {
   FileStack,
   FileText,
   Files,
+  GitBranch,
   Layout,
   LayoutGrid,
   Loader2,
@@ -139,7 +140,7 @@ export function MainSidebar({
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   const closeNew = () => setNewOpen(false)
-  const { createNote, createThought, createDrawing, createKanban, importFiles, busy: newBusy } =
+  const { createNote, createThought, createDrawing, createKanban, createMindmap, importFiles, busy: newBusy } =
     useNewFileActions(closeNew)
 
   // Ctrl+N global shortcut
@@ -154,6 +155,7 @@ export function MainSidebar({
     { label: 'Thought',   icon: StickyNote, accent: 'text-yellow-500',  action: () => void createThought() },
     { label: 'Canvas',    icon: Layout,     accent: 'text-violet-500',  action: () => void createDrawing() },
     { label: 'Kanban',    icon: Columns3,   accent: 'text-amber-500',   action: () => void createKanban() },
+    { label: 'Mindmap',   icon: GitBranch,  accent: 'text-teal-500',    action: () => void createMindmap() },
     { label: 'Recording', icon: Mic,        accent: 'text-red-500',     action: () => {
       useUiStore.getState().setActiveView(ViewMode.Board)
       setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)

@@ -5,6 +5,8 @@ import { isNotesTreeHidden } from '@/lib/notes/tree-filter'
 import { extractTags, parseNote } from '@/lib/markdown'
 import { loadPdfjs } from '@/lib/pdf/pdfjs-loader'
 import { extractXlsxText } from '@/lib/spreadsheet/xlsx-io'
+import { parseMindmap, extractMindmapText } from '@/lib/mindmap'
+import { parseKanban } from '@/lib/kanban'
 import type { NoteFrontmatter } from '@/types/editor'
 import type { SearchIndexDocument } from '@/types/search'
 import { replaceSearchIndex, upsertSearchDocument } from '@/lib/search/index'
@@ -42,6 +44,8 @@ async function collectIndexableFiles(
       e.type === FileType.Markdown ||
       e.type === FileType.Pdf ||
       e.type === FileType.Canvas ||
+      e.type === FileType.Mindmap ||
+      e.type === FileType.Kanban ||
       e.type === FileType.Pptx ||
       e.type === FileType.Spreadsheet
     ) {
@@ -188,6 +192,45 @@ async function fileTypeToDocument(
     }
   }
 
+  if (entry.type === FileType.Mindmap) {
+    let content = ''
+    try {
+      const raw = await fs.readTextFile(path)
+      content = extractMindmapText(parseMindmap(raw))
+    } catch { /* use empty */ }
+    return {
+      id: path,
+      path,
+      title: titleFromPath(path),
+      fileType: 'mindmap',
+      content,
+      tags: '',
+      tagCsv: '',
+      modifiedAt,
+    }
+  }
+
+  if (entry.type === FileType.Kanban) {
+    let content = ''
+    try {
+      const raw = await fs.readTextFile(path)
+      const { board } = parseKanban(raw)
+      content = board.columns
+        .flatMap((col) => [col.heading, ...col.cards.map((c) => c.title)])
+        .join('\n')
+    } catch { /* use empty */ }
+    return {
+      id: path,
+      path,
+      title: titleFromPath(path),
+      fileType: 'kanban',
+      content,
+      tags: '',
+      tagCsv: '',
+      modifiedAt,
+    }
+  }
+
   if (entry.type === FileType.Pptx) {
     let content = ''
     try {
@@ -239,14 +282,27 @@ export async function rebuildVaultSearchIndex(fs: FileSystemAdapter): Promise<vo
   replaceSearchIndex(docs)
 }
 
-/** Incremental update for one markdown path after save. */
-export async function reindexMarkdownPath(fs: FileSystemAdapter, path: string): Promise<void> {
-  const entry: FileEntry = {
-    name: path.split('/').pop() ?? path,
-    path,
-    type: FileType.Markdown,
-    isDirectory: false,
-  }
+/** Incremental update for one file path after save. Routes by extension. */
+export async function reindexFilePath(fs: FileSystemAdapter, path: string): Promise<void> {
+  const name = path.split('/').pop() ?? path
+  const { getFileType } = await import('@/types/files')
+  const type = getFileType(name)
+  const entry: FileEntry = { name, path, type, isDirectory: false }
   const doc = await fileTypeToDocument(fs, entry)
   if (doc) upsertSearchDocument(doc)
+}
+
+/** @deprecated Use reindexFilePath instead. */
+export async function reindexMarkdownPath(fs: FileSystemAdapter, path: string): Promise<void> {
+  return reindexFilePath(fs, path)
+}
+
+/** Returns true for text-based file types that should be reindexed after rename/save. */
+export function isIndexableTextPath(path: string): boolean {
+  return (
+    path.endsWith('.md') ||
+    path.endsWith('.markdown') ||
+    path.endsWith('.kanban') ||
+    path.endsWith('.mind')
+  )
 }

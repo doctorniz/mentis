@@ -514,7 +514,7 @@ function AiTab({
   const [models, setModels] = useState<ModelEntry[]>([])
   const [modelsLoading, setModelsLoading] = useState(false)
   const [deviceLoading, setDeviceLoading] = useState(false)
-  const [deviceLoadError, setDeviceLoadError] = useState<string>('')
+  const [deviceLoadFailed, setDeviceLoadFailed] = useState(false)
   const [deviceStatus, setDeviceStatus] = useState<DeviceModelStatus>('missing')
   const [deviceProgress, setDeviceProgress] = useState(0)
 
@@ -571,15 +571,15 @@ function AiTab({
     setTestStatus('idle')
     setTestError('')
     setModels([])
-    setDeviceLoadError('')
+    setDeviceLoadFailed(false)
     setDeviceProgress(0)
     if (provider === 'device') {
-      void getDeviceModelStatus()
+      void getDeviceModelStatus(chat.model)
         .then(setDeviceStatus)
         .catch(() => setDeviceStatus('missing'))
     }
     setIsCustomMode(false)
-  }, [provider])
+  }, [provider, chat.model])
 
   // Auto-fetch models for providers that don't need API keys (ollama)
   useEffect(() => {
@@ -608,15 +608,15 @@ function AiTab({
 
   useEffect(() => {
     if (provider !== 'device') return
-    const handler = (evt: Event) => {
+    const onProgress = (evt: Event) => {
       const detail = (evt as CustomEvent<{ progress?: number }>).detail
-      const progress = detail?.progress ?? 0
-      setDeviceProgress(progress)
-      if (progress >= 1) setDeviceStatus('ready')
+      const raw = detail?.progress
+      if (typeof raw !== 'number' || Number.isNaN(raw) || raw < 0 || raw > 1) return
+      setDeviceProgress(raw)
     }
-    window.addEventListener(DEVICE_MODEL_PROGRESS_EVENT, handler as EventListener)
+    window.addEventListener(DEVICE_MODEL_PROGRESS_EVENT, onProgress as EventListener)
     return () =>
-      window.removeEventListener(DEVICE_MODEL_PROGRESS_EVENT, handler as EventListener)
+      window.removeEventListener(DEVICE_MODEL_PROGRESS_EVENT, onProgress as EventListener)
   }, [provider])
 
   const setChat = useCallback(
@@ -671,18 +671,20 @@ function AiTab({
 
   const handleDownloadDeviceModel = useCallback(async () => {
     setDeviceLoading(true)
-    setDeviceLoadError('')
+    setDeviceLoadFailed(false)
     try {
-      await ensureDeviceModelDownloaded()
+      await ensureDeviceModelDownloaded(chat.model)
+      setDeviceLoadFailed(false)
       setDeviceStatus('ready')
       setDeviceProgress(1)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setDeviceLoadError(msg)
+      console.log('Device model download failed', err)
+      setDeviceLoadFailed(true)
+      setDeviceProgress(0)
     } finally {
       setDeviceLoading(false)
     }
-  }, [])
+  }, [chat.model])
 
   return (
     <div>
@@ -848,39 +850,58 @@ function AiTab({
               )}
 
               {provider === 'device' && (
-                <Row label="Model">
-                  <div className="flex flex-col gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => void handleDownloadDeviceModel()}
-                      disabled={deviceLoading}
-                      className={cn(
-                        'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                        'bg-accent text-accent-fg hover:bg-accent/90',
-                        deviceLoading && 'cursor-not-allowed opacity-50',
-                      )}
+                <>
+                  <Row label="Model">
+                    <select
+                      value={chat.model}
+                      onChange={(e) => setChat('model', e.target.value)}
+                      className={cn(INPUT_CLS, 'w-56')}
                     >
-                      {deviceLoading ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <Loader2 className="size-3 animate-spin" />
-                          Downloading…
-                        </span>
-                      ) : (
-                        deviceStatus === 'ready' ? 'Ready' : 'Download'
+                      {curatedModels.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Row>
+                  <Row label="Status">
+                    <div className="flex max-w-xs flex-col items-start gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => void handleDownloadDeviceModel()}
+                        disabled={deviceLoading}
+                        className={cn(
+                          'inline-flex min-w-[9.5rem] shrink-0 justify-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                          deviceLoading && 'cursor-not-allowed opacity-50',
+                          deviceStatus === 'ready' && !deviceLoading
+                            ? 'bg-green-500/15 text-green-600 dark:text-green-400'
+                            : 'bg-accent text-accent-fg hover:bg-accent/90',
+                        )}
+                      >
+                        {deviceLoading ? (
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                            <Loader2 className="size-3 shrink-0 animate-spin" />
+                            {deviceProgress > 0 && deviceProgress < 1
+                              ? `Downloading… ${Math.round(deviceProgress * 100)}%`
+                              : 'Downloading…'}
+                          </span>
+                        ) : deviceStatus === 'ready' ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <Check className="size-3 shrink-0" aria-hidden />
+                            Ready
+                          </span>
+                        ) : (
+                          'Download'
+                        )}
+                      </button>
+                      {deviceLoadFailed && (
+                        <p className="text-danger w-full min-w-0 text-[10px] leading-snug break-words">
+                          Error loading model.
+                        </p>
                       )}
-                    </button>
-                    {deviceLoadError && (
-                      <p className="text-danger text-[10px] leading-snug">
-                        {deviceLoadError}
-                      </p>
-                    )}
-                    <p className="text-fg-muted text-[10px]">
-                      {deviceStatus === 'ready'
-                        ? 'Gemma 4 E2B downloaded and cached.'
-                        : `Gemma 4 E2B download progress: ${Math.round(deviceProgress * 100)}%`}
-                    </p>
-                  </div>
-                </Row>
+                    </div>
+                  </Row>
+                </>
               )}
 
               {/* Test connection button */}
@@ -1037,7 +1058,6 @@ export function SettingsDialog({
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft])
 
   const setField = useCallback(

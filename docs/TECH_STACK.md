@@ -9,6 +9,7 @@
 | **Next.js** | 15.x (App Router) | React framework with SSG/SSR, file-based routing, optimized bundling |
 | **React** | 19.x | UI library |
 | **TypeScript** | 5.x | Type safety across the entire codebase |
+| **Inter** (`next/font/google`) | bundled | Primary UI typography; assistant chat HTML uses `.chat-assistant-prose` for spacing/heading rhythm |
 
 ### Markdown Editing
 
@@ -35,6 +36,7 @@
 | **pdf-lib** | Client-side PDF manipulation — annotation writing, page management, merge, page extract/reorder, form filling, signature stamping |
 | **Fabric.js** | Canvas overlay for annotation editing on PDF pages |
 | **PixiJS** v8 | WebGL-accelerated layer-based drawing canvas (`.canvas` editor) with brush engine and Photoshop-style properties panel |
+| **@xyflow/react** 12.x | Node-based interactive graph UI for the Mindmap editor (`.mind` files) — pan/zoom, draggable nodes, custom node/edge rendering, touch support |
 
 ### Search
 
@@ -46,8 +48,11 @@
 
 | Technology | Purpose |
 |---|---|
-| **@mediapipe/tasks-genai** | Gemma 4 E2B inference in browser (WebGPU) for the `device` chat provider (labeled **Local** in Settings and chat UI) |
+| **@mediapipe/tasks-genai** | Gemma 4 E2B inference in browser (WebGPU) via LiteRT `.task` format |
+| **@huggingface/transformers** | Whisper transcription in browser (Transformers.js). |
 | **OPFS** | Caches the Gemma 4 E2B `.task` model locally after first download |
+
+The `device` chat provider (labeled **Local** in Settings) runs Gemma 4 E2B via MediaPipe/WebGPU only.
 
 ### State Management
 

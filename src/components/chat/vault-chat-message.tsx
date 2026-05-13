@@ -1,20 +1,20 @@
 'use client'
 
-import { AlertTriangle } from 'lucide-react'
-
-import { renderChatMarkdown } from '@/lib/chat/render-markdown'
+import { ChatAssistantHtml } from '@/components/chat/chat-assistant-html'
+import { renderVaultChatMarkdown } from '@/lib/chat/render-markdown'
 import type { ChatMessage as ChatMessageT } from '@/types/chat'
 import { cn } from '@/utils/cn'
 
 interface VaultChatMessageProps {
   message: ChatMessageT
+  onVaultPathOpen?: (path: string) => void
 }
 
 /**
  * Vault-wide chat: user messages in a right-aligned coloured bubble;
  * assistant as plain left-aligned text (no avatar or bubble).
  */
-export function VaultChatMessage({ message }: VaultChatMessageProps) {
+export function VaultChatMessage({ message, onVaultPathOpen }: VaultChatMessageProps) {
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
   const showCursor = isAssistant && message.streaming
@@ -36,26 +36,26 @@ export function VaultChatMessage({ message }: VaultChatMessageProps) {
 
   if (message.error) {
     return (
-      <div className="text-danger flex items-start gap-2 px-3 py-2 font-serif text-[12pt]">
-        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-        <span>{message.error}</span>
+      <div className="text-danger px-3 py-2 font-sans text-[12pt]">
+        <p className="text-fg-secondary mb-1">There appears to be an error.</p>
+        <p className="leading-snug">{message.error}</p>
       </div>
     )
   }
 
   if (isAssistant) {
     return (
-      <div className="text-fg max-w-[min(100%,42rem)] px-3 py-2 font-serif text-[12pt] leading-relaxed">
-        <div
+      <div className="text-fg max-w-[min(100%,42rem)] px-3 py-2 font-sans">
+        <ChatAssistantHtml
           className={cn(
-            'prose prose-sm dark:prose-invert max-w-none',
-            'prose-p:my-2 prose-pre:my-2 prose-pre:bg-bg-muted prose-pre:rounded-md prose-code:before:content-none prose-code:after:content-none',
+            // Typography is driven by `.chat-assistant-prose` (+ Inter from root layout).
+            'max-w-none',
           )}
-          dangerouslySetInnerHTML={{
-            __html:
-              renderChatMarkdown(message.content) +
-              (showCursor ? '<span class="chat-cursor">▌</span>' : ''),
-          }}
+          html={
+            renderVaultChatMarkdown(message.content, message.vaultRagHitPaths) +
+            (showCursor ? '<span class="chat-cursor">▌</span>' : '')
+          }
+          onVaultPathOpen={onVaultPathOpen}
         />
       </div>
     )

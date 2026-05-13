@@ -13,7 +13,11 @@ import { useVaultSession } from '@/contexts/vault-fs-context'
 import { getChatKey, CHAT_KEY_CHANGED_EVENT } from '@/lib/chat/key-store'
 import { providerNeedsApiKey } from '@/lib/chat/providers/model-catalog'
 import { useChatStore, selectActiveThread } from '@/stores/chat'
+import { useEditorStore } from '@/stores/editor'
+import { useFileTreeStore } from '@/stores/file-tree'
+import { useUiStore } from '@/stores/ui'
 import { DEFAULT_CHAT_SETTINGS, type ChatSettings } from '@/types/chat'
+import { ViewMode } from '@/types/vault'
 import { cn } from '@/utils/cn'
 
 import { ChatInput } from './chat-input'
@@ -45,6 +49,24 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const { vaultFs, vaultPath, config } = useVaultSession()
   const settings = useMemo(() => mergeSettings(config.chat), [config.chat])
+
+  const openVaultPath = useCallback(
+    async (path: string) => {
+      useUiStore.getState().setActiveView(ViewMode.Vault)
+      useFileTreeStore.getState().setSelectedPath(path)
+      useEditorStore.getState().addRecentFile(path)
+      const { detectEditorTabType } = await import('@/lib/notes/editor-tab-from-path')
+      const type = await detectEditorTabType(vaultFs, path)
+      useEditorStore.getState().openTab({
+        id: crypto.randomUUID(),
+        path,
+        type,
+        title: path.split('/').pop() ?? path,
+        isDirty: false,
+      })
+    },
+    [vaultFs],
+  )
 
   const threads = useChatStore((s) => s.threads)
   const activeThreadId = useChatStore((s) => s.activeThreadId)
@@ -276,7 +298,11 @@ export function ChatPanel({
           />
         ) : (
           activeThread.messages.map((m) => (
-            <ChatMessage key={m.id} message={m} />
+            <ChatMessage
+              key={m.id}
+              message={m}
+              onVaultPathOpen={openVaultPath}
+            />
           ))
         )}
       </div>

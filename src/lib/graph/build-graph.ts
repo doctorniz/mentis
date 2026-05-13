@@ -2,7 +2,7 @@ import type { FileSystemAdapter } from '@/lib/fs'
 import { extractWikiLinks, resolveWikiLinkPath } from '@/lib/markdown'
 import { getFileType, FileType } from '@/types/files'
 
-export type GraphNodeType = 'note' | 'pdf' | 'canvas' | 'pptx' | 'docx' | 'spreadsheet' | 'code'
+export type GraphNodeType = 'note' | 'pdf' | 'canvas' | 'mindmap' | 'kanban' | 'pptx' | 'docx' | 'spreadsheet' | 'code'
 
 export interface GraphNode {
   id: string
@@ -45,6 +45,8 @@ function typeFromPath(p: string): GraphNodeType {
   switch (getFileType(name)) {
     case FileType.Pdf:         return 'pdf'
     case FileType.Canvas:      return 'canvas'
+    case FileType.Mindmap:     return 'mindmap'
+    case FileType.Kanban:      return 'kanban'
     case FileType.Pptx:        return 'pptx'
     case FileType.Docx:        return 'docx'
     case FileType.Spreadsheet: return 'spreadsheet'

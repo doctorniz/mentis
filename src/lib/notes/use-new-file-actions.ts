@@ -12,7 +12,8 @@ import { createBlankPdf } from '@/lib/pdf/page-operations'
 import { createEmptyCanvasJson } from '@/lib/canvas/serializer'
 import { createEmptyKanban } from '@/lib/kanban'
 import { createBlankXlsx } from '@/lib/spreadsheet/xlsx-io'
-import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
+import { createEmptyMindmap } from '@/lib/mindmap'
+import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 import { allocateUniqueFilePath } from '@/lib/notes/new-note'
 import { toast } from '@/stores/toast'
 
@@ -24,10 +25,12 @@ function usePdfPageStyle() {
   return useVaultStore((s) => s.config?.pdfPageStyle ?? DEFAULT_VAULT_CONFIG.pdfPageStyle)
 }
 
-function fileTypeForPath(path: string): 'pdf' | 'markdown' | 'canvas' | 'spreadsheet' | 'audio' | null {
+function fileTypeForPath(path: string): 'pdf' | 'markdown' | 'canvas' | 'mindmap' | 'kanban' | 'spreadsheet' | 'audio' | null {
   if (path.endsWith('.pdf')) return 'pdf'
   if (path.endsWith('.md') || path.endsWith('.markdown')) return 'markdown'
   if (path.endsWith('.canvas')) return 'canvas'
+  if (path.endsWith('.mind')) return 'mindmap'
+  if (path.endsWith('.kanban')) return 'kanban'
   if (path.endsWith('.xlsx') || path.endsWith('.xls') || path.endsWith('.csv')) return 'spreadsheet'
   if (path.endsWith('.mp3') || path.endsWith('.wav') || path.endsWith('.m4a')) return 'audio'
   return null
@@ -152,7 +155,7 @@ export function useNewFileActions(onDone: () => void) {
         const buf = new Uint8Array(await file.arrayBuffer())
         const dest = dir ? `${dir}/${file.name}` : file.name
         await vaultFs.writeFile(dest, buf)
-        if (dest.endsWith('.md')) await reindexMarkdownPath(vaultFs, dest)
+        if (isIndexableTextPath(dest)) await reindexFilePath(vaultFs, dest)
         lastPath = dest
         count++
       }
@@ -192,10 +195,13 @@ export function useNewFileActions(onDone: () => void) {
     try {
       const stem = `Kanban ${new Date().toISOString().slice(0, 10)}`
       const dir = defaultDir()
-      const rawPath = dir ? `${dir}/${stem}.md` : `${stem}.md`
+      const rawPath = dir ? `${dir}/${stem}.kanban` : `${stem}.kanban`
       const filePath = await allocateUniqueFilePath(vaultFs, rawPath)
-      const title = filePath.replace(/\.md$/i, '').split('/').pop() ?? stem
+      const title = filePath.replace(/\.kanban$/i, '').split('/').pop() ?? stem
       await vaultFs.writeTextFile(filePath, createEmptyKanban())
+      useUiStore.getState().setActiveView(ViewMode.Vault)
+      useUiStore.getState().setVaultMode('tree')
+      useFileTreeStore.getState().setSelectedPath(filePath)
       useEditorStore.getState().openTab({
         id: crypto.randomUUID(),
         path: filePath,
@@ -204,8 +210,7 @@ export function useNewFileActions(onDone: () => void) {
         isDirty: false,
         isNew: true,
       })
-      useUiStore.getState().setActiveView(ViewMode.Vault)
-      useUiStore.getState().setVaultMode('tree')
+      useEditorStore.getState().addRecentFile(filePath)
       window.dispatchEvent(new CustomEvent('ink:vault-changed'))
       onDone()
     } finally {
@@ -259,5 +264,35 @@ export function useNewFileActions(onDone: () => void) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultFs, busy, onDone])
 
-  return { createNote, createThought, createDrawing, createPdf, createKanban, createSpreadsheet, importFiles, busy }
+  const createMindmap = useCallback(async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const stem = `Mindmap ${new Date().toISOString().slice(0, 10)}`
+      const dir = defaultDir()
+      const rawPath = dir ? `${dir}/${stem}.mind` : `${stem}.mind`
+      const path = await allocateUniqueFilePath(vaultFs, rawPath)
+      const title = path.replace(/\.mind$/i, '').split('/').pop() ?? stem
+      await vaultFs.writeTextFile(path, createEmptyMindmap())
+      useUiStore.getState().setActiveView(ViewMode.Vault)
+      useUiStore.getState().setVaultMode('tree')
+      useFileTreeStore.getState().setSelectedPath(path)
+      useEditorStore.getState().openTab({
+        id: crypto.randomUUID(),
+        path,
+        type: 'mindmap',
+        title,
+        isDirty: false,
+        isNew: true,
+      })
+      useEditorStore.getState().addRecentFile(path)
+      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+      onDone()
+    } finally {
+      setBusy(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vaultFs, busy, onDone])
+
+  return { createNote, createThought, createDrawing, createPdf, createKanban, createSpreadsheet, createMindmap, importFiles, busy }
 }

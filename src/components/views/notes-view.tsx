@@ -19,6 +19,7 @@ import { ensureChatAssetIdForPath } from '@/lib/chat/asset-index'
 import { PdfViewer } from '@/components/pdf/pdf-viewer'
 import { CanvasEditor } from '@/components/canvas/canvas-editor'
 import { KanbanEditor } from '@/components/kanban/kanban-editor'
+import { MindmapEditor } from '@/components/mindmap/mindmap-editor'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
@@ -39,7 +40,7 @@ import { createUntitledNote } from '@/lib/notes/new-note'
 import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
 import { toast } from '@/stores/toast'
 import { removeSearchDocument } from '@/lib/search/index'
-import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
+import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 
 function stemFromVaultPath(path: string): string {
   return path.replace(/\.[^/.]+$/i, '').split('/').pop() ?? path
@@ -209,7 +210,7 @@ function NotesViewInner() {
     try {
       await vaultFs.rename(oldPath, newPath)
       removeSearchDocument(oldPath)
-      if (newPath.endsWith('.md')) await reindexMarkdownPath(vaultFs, newPath)
+      if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
       retargetTabPath(tabId, newPath, stemFromVaultPath(newPath))
       setSelectedPath(newPath)
       vaultChanged()
@@ -312,6 +313,15 @@ function NotesViewInner() {
   // whenever the active tab changes so chat is ready without a toggle.
   const markdownEditorRef = useRef<MarkdownNoteEditorHandle | null>(null)
   const [chatAssetIdByPath, setChatAssetIdByPath] = useState<Record<string, string>>({})
+
+  const onMarkdownChatAssetIdFromDisk = useCallback(
+    (notePath: string, chatAssetId: string) => {
+      setChatAssetIdByPath((m) =>
+        m[notePath] === chatAssetId ? m : { ...m, [notePath]: chatAssetId },
+      )
+    },
+    [],
+  )
 
   // Auto-ensure chatAssetId for the active markdown tab.
   useEffect(() => {
@@ -565,6 +575,7 @@ function NotesViewInner() {
                 onOpenNotePath={openNotePath}
                 onPersisted={bumpScan}
                 onRenamed={vaultChanged}
+                onChatAssetIdFromDisk={onMarkdownChatAssetIdFromDisk}
               />
             </EditorRightColumn>
           </div>
@@ -576,6 +587,19 @@ function NotesViewInner() {
               isNew={activeTab.isNew}
               onRenamed={vaultChanged}
               onPersisted={bumpScan}
+            />
+          </div>
+        ) : activeTab?.type === 'mindmap' ? (
+          <div key={activeTab.id} className="min-h-0 flex-1">
+            <MindmapEditor
+              tabId={activeTab.id}
+              path={activeTab.path}
+              isNew={activeTab.isNew}
+              onRenamed={vaultChanged}
+              onPersisted={bumpScan}
+              onRename={(tabId, oldPath, stem, ext) =>
+                void handleRenameVaultFile(tabId, oldPath, stem, ext)
+              }
             />
           </div>
         ) : activeTab?.type === 'pdf' ? (

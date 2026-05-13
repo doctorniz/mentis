@@ -11,7 +11,6 @@ import * as Dialog from '@radix-ui/react-dialog'
 import {
   Copy,
   Download,
-  FileSearch,
   Loader2,
   Menu,
   MessageSquare,
@@ -32,11 +31,11 @@ import { VaultChatMessage } from '@/components/chat/vault-chat-message'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { saveVaultChatUpload } from '@/lib/chat/chat-io'
 import {
-  DEVICE_MODEL_PROGRESS_EVENT,
   ensureDeviceModelDownloaded,
   getDeviceModelStatus,
   type DeviceModelStatus,
 } from '@/lib/chat/device-model-store'
+import { formatUnknownError } from '@/lib/chat/format-chat-error'
 import { getChatKey, CHAT_KEY_CHANGED_EVENT } from '@/lib/chat/key-store'
 import {
   fetchModels,
@@ -421,15 +420,8 @@ export function VaultChatView() {
       setDeviceStatus('ready')
       return
     }
-    void getDeviceModelStatus().then(setDeviceStatus)
-    const h = (evt: Event) => {
-      const p = (evt as CustomEvent<{ progress?: number }>).detail?.progress ?? 0
-      if (p >= 1) setDeviceStatus('ready')
-    }
-    window.addEventListener(DEVICE_MODEL_PROGRESS_EVENT, h as EventListener)
-    return () =>
-      window.removeEventListener(DEVICE_MODEL_PROGRESS_EVENT, h as EventListener)
-  }, [settings.provider])
+    void getDeviceModelStatus(settings.model).then(setDeviceStatus)
+  }, [settings.provider, settings.model])
 
   useEffect(() => {
     if (settings.provider !== 'ollama') {
@@ -540,15 +532,15 @@ export function VaultChatView() {
   const handleLoadDeviceModel = useCallback(async () => {
     setDeviceBusy(true)
     try {
-      await ensureDeviceModelDownloaded()
+      await ensureDeviceModelDownloaded(settings.model)
       setDeviceStatus('ready')
       toast.success('Model ready')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Load failed')
+      toast.error(formatUnknownError(e))
     } finally {
       setDeviceBusy(false)
     }
-  }, [])
+  }, [settings.model])
 
   const openAiSettings = useCallback(() => {
     window.dispatchEvent(new CustomEvent('ink:open-settings-ai'))
@@ -923,43 +915,9 @@ function VaultChatMessageRow({ message }: { message: ChatMessageT }) {
     [vaultFs],
   )
 
-  const citations = useMemo(() => {
-    if (message.role !== 'assistant' || message.streaming) return []
-    const out = new Set<string>()
-    const re = /`([^`\n]{2,200})`/g
-    let m: RegExpExecArray | null
-    while ((m = re.exec(message.content))) {
-      const candidate = m[1].trim()
-      if (
-        (candidate.includes('/') || /\.(md|pdf|canvas)$/i.test(candidate)) &&
-        !candidate.includes(' — ') &&
-        candidate.length < 160
-      ) {
-        out.add(candidate)
-      }
-    }
-    return Array.from(out)
-  }, [message.role, message.streaming, message.content])
-
   return (
     <div>
-      <VaultChatMessage message={message} />
-      {citations.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5 px-3">
-          {citations.map((path) => (
-            <button
-              key={path}
-              type="button"
-              onClick={() => void openPath(path)}
-              title={`Open ${path}`}
-              className="text-accent hover:bg-accent/10 border-border inline-flex max-w-full items-center gap-1 rounded-md border px-1.5 py-0.5 font-serif text-[11px] font-medium"
-            >
-              <FileSearch className="size-3 shrink-0" aria-hidden />
-              <span className="truncate">{path}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <VaultChatMessage message={message} onVaultPathOpen={openPath} />
     </div>
   )
 }

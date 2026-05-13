@@ -1,12 +1,16 @@
 'use client'
 
-import { AlertTriangle, Bot, User } from 'lucide-react'
+import { Bot, User } from 'lucide-react'
+
+import { ChatAssistantHtml } from '@/components/chat/chat-assistant-html'
 import { renderChatMarkdown } from '@/lib/chat/render-markdown'
 import type { ChatMessage as ChatMessageT } from '@/types/chat'
 import { cn } from '@/utils/cn'
 
 interface ChatMessageProps {
   message: ChatMessageT
+  /** Opens vault-relative paths from assistant source links (same tab). */
+  onVaultPathOpen?: (path: string) => void
 }
 
 /**
@@ -15,7 +19,7 @@ interface ChatMessageProps {
  * pastes survive. A streaming cursor is shown at the tail of the
  * in-flight assistant message.
  */
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, onVaultPathOpen }: ChatMessageProps) {
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
   const showCursor = isAssistant && message.streaming
@@ -41,26 +45,24 @@ export function ChatMessage({ message }: ChatMessageProps) {
         </div>
 
         {message.error ? (
-          <div className="text-danger flex items-start gap-2 text-sm">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-            <span>{message.error}</span>
+          <div className="text-danger text-sm">
+            <p className="text-fg-secondary mb-1">There appears to be an error.</p>
+            <p className="leading-snug">{message.error}</p>
           </div>
         ) : isUser ? (
           <div className="text-fg text-sm whitespace-pre-wrap break-words">
             {message.content}
           </div>
         ) : (
-          <div
+          <ChatAssistantHtml
             className={cn(
-              'text-fg prose prose-sm dark:prose-invert max-w-none text-sm',
-              // Match app typography rather than default Tailwind prose.
-              'prose-p:my-2 prose-pre:my-2 prose-pre:bg-bg-muted prose-pre:rounded-md prose-code:before:content-none prose-code:after:content-none',
+              'text-fg max-w-none',
             )}
-            dangerouslySetInnerHTML={{
-              __html:
-                renderChatMarkdown(message.content) +
-                (showCursor ? '<span class="chat-cursor">▌</span>' : ''),
-            }}
+            html={
+              renderChatMarkdown(message.content) +
+              (showCursor ? '<span class="chat-cursor">▌</span>' : '')
+            }
+            onVaultPathOpen={onVaultPathOpen}
           />
         )}
       </div>

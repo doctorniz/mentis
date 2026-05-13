@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Columns3, FileText, Layout, Mic, StickyNote, Upload } from 'lucide-react'
+import { Camera, Columns3, FileText, GitBranch, Layout, Mic, StickyNote, Upload } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useNewFileActions } from '@/lib/notes/use-new-file-actions'
 import { useUiStore } from '@/stores/ui'
@@ -28,7 +28,7 @@ export function NewFilePopover({
     onDismiss?.()
   }
 
-  const { createNote, createThought, createDrawing, createKanban, importFiles, busy } =
+  const { createNote, createThought, createDrawing, createKanban, createMindmap, importFiles, busy } =
     useNewFileActions(close)
 
   useEffect(() => {
@@ -67,6 +67,12 @@ export function NewFilePopover({
       icon: Columns3,
       accent: 'text-amber-500',
       action: () => void createKanban(),
+    },
+    {
+      label: 'Mindmap',
+      icon: GitBranch,
+      accent: 'text-teal-500',
+      action: () => void createMindmap(),
     },
     {
       label: 'Recording',

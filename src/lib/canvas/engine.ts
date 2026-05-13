@@ -142,6 +142,15 @@ export class CanvasEngine {
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
       powerPreference: 'high-performance',
+      // Do NOT auto-start the ticker here. The canvas file may still be
+      // loading (async), and starting the ticker before layers are fully
+      // set up creates a race: the RAF fires on a partially-constructed or
+      // already-destroyed renderer (especially under React Strict Mode's
+      // double-invocation), causing "Cannot read properties of null
+      // (reading 'geometry')" in BatcherPipe.execute via GlBatchAdaptor.
+      // The caller (canvas-editor.tsx) is responsible for calling
+      // `engine.startTicker()` once the canvas is ready to paint.
+      autoStart: false,
     })
 
     // PixiJS v8 canvas element
@@ -202,6 +211,23 @@ export class CanvasEngine {
       }
     })
     this.resizeObserver.observe(container)
+  }
+
+  /**
+   * Start the Pixi ticker so the canvas begins rendering frames.
+   *
+   * Called by the editor component *after* the canvas file has been
+   * fully loaded (or `initDefault()` has been called for a new canvas).
+   * Keeping the ticker off during async file I/O eliminates the race
+   * where `renderer.render()` is called inside `loadLayers` concurrently
+   * with a stale RAF from a previous (destroyed) application instance,
+   * causing "Cannot read properties of null (reading 'geometry')".
+   */
+  startTicker(): void {
+    if (!this._initialized) return
+    try {
+      this.app.ticker.start()
+    } catch { /* ignore */ }
   }
 
   /** Set up a default canvas with one blank layer. */

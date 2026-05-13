@@ -2,6 +2,8 @@ export enum FileType {
   Markdown = 'markdown',
   Pdf = 'pdf',
   Canvas = 'canvas',
+  Mindmap = 'mindmap',
+  Kanban = 'kanban',
   Image = 'image',
   Docx = 'docx',
   Pptx = 'pptx',
@@ -44,6 +46,10 @@ export function getFileType(filename: string): FileType {
       return FileType.Pdf
     case 'canvas':
       return FileType.Canvas
+    case 'mind':
+      return FileType.Mindmap
+    case 'kanban':
+      return FileType.Kanban
     case 'docx':
       return FileType.Docx
     case 'pptx':

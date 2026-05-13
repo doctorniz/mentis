@@ -41,7 +41,7 @@ const MIN_EXCERPT_CHARS = 400
 export interface VaultRagHit {
   path: string
   title: string
-  type: 'markdown' | 'pdf' | 'canvas' | 'spreadsheet' | 'pptx'
+  type: 'markdown' | 'pdf' | 'canvas' | 'mindmap' | 'kanban' | 'spreadsheet' | 'pptx'
   score: number
   excerpt: string
 }
@@ -61,7 +61,7 @@ interface RawHit {
   id: string
   path: string
   title: string
-  type: 'markdown' | 'pdf' | 'canvas' | 'spreadsheet' | 'pptx'
+  type: 'markdown' | 'pdf' | 'canvas' | 'mindmap' | 'kanban' | 'spreadsheet' | 'pptx'
   score: number
   content: string
   queryTerms: string[]
@@ -251,7 +251,7 @@ export async function buildVaultContext(
   const body = hits
     .map(
       (h, i) =>
-        `--- Source ${i + 1}: ${h.title} (${fmtKind(h.type)}) [${h.path}] ---\n${h.excerpt}`,
+        `**Source ${i + 1}** · ${h.title} (${fmtKind(h.type)}) · \`${h.path}\`\n${h.excerpt}`,
     )
     .join('\n\n')
 
@@ -264,20 +264,83 @@ export async function buildVaultContext(
   }
 }
 
-const DEFAULT_VAULT_SYSTEM_PROMPT = [
-  'You are an assistant embedded inside the user\'s personal notes app.',
-  'Below you will find excerpts from the user\'s vault. Read ALL excerpts carefully and thoroughly before answering.',
-  'Base your answer on the information found in these excerpts.',
-  'Cite sources inline by their path in backticks (e.g. `Notes/Plan.md`) so the user can jump to them.',
-  'If none of the excerpts contain relevant information, say so briefly.',
-  'Keep replies concise and use markdown.',
-].join(' ')
+function vaultSystemPromptBase(): string {
+  return [
+    "You are an assistant embedded inside the user's personal notes app.",
+    'Below you will find excerpts from the user\'s vault. Read ALL excerpts carefully and thoroughly before answering.',
+    'Base your answer on the information found in these excerpts.',
+    'Formatting rules (required): Start every section heading with Markdown ## or ### at the beginning of a line (never use only bold for headings). Leave one blank line before each heading and one blank line between paragraphs. Prefer short paragraphs rather than dense walls of text.',
+    'Use **bold** for key terms inside sentences, unordered (-) lists when listing several related points, and avoid blockquotes (no lines starting with >). Between major sections you may insert a Markdown horizontal rule on its own line (`---`). Use at most two per reply.',
+    'Do NOT add a "## Sources" section yourself — it is appended automatically.',
+    'If none of the excerpts contain relevant information, say so briefly.',
+    'Keep replies concise.',
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
+/**
+ * Collect 1-based source indices cited in the body via `<sup>n</sup>` (any attributes).
+ */
+export function parseCitedSuperscriptIndices(bodyMarkdown: string): number[] {
+  const cited = new Set<number>()
+  const re = /<sup(?:\s[^>]*)?>\s*(\d+)\s*<\/sup>/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(bodyMarkdown))) {
+    const n = Number.parseInt(m[1], 10)
+    if (n >= 1 && n <= 999) cited.add(n)
+  }
+  return [...cited].sort((a, b) => a - b)
+}
+
+/** Escape markdown link labels `[text](...)`. */
+function escapeMarkdownLinkText(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/\]/g, '\\]')
+}
+
+function sourceListLabel(hit: VaultRagHit): string {
+  const t = hit.title.trim()
+  if (t) return t
+  const parts = hit.path.replace(/\\/g, '/').split('/').filter(Boolean)
+  return parts[parts.length - 1] ?? hit.path
+}
+
+function escapeHtmlText(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/**
+ * Strip any model-produced Sources block (often malformed).
+ * Append a row of chip links — one per RAG hit — using the vault path as label.
+ */
+export function mergeVaultSourcesSection(
+  assistantMarkdown: string,
+  hits: VaultRagHit[],
+): string {
+  if (hits.length === 0) return assistantMarkdown
+  const base = assistantMarkdown
+    .replace(/\n##\s+Sources\b[\s\S]*$/i, '')
+    .replace(/\n+<div class="chat-sources">[\s\S]*?<\/div>/gi, '')
+    .trimEnd()
+
+  const chips = hits
+    .map((h) => {
+      const enc = encodeURI(h.path).replace(/"/g, '%22')
+      const display = escapeHtmlText(h.path.replace(/\\/g, '/'))
+      return `<a href="${enc}">${display}</a>`
+    })
+    .join('')
+
+  return `${base}\n\n<div class="chat-sources">${chips}</div>\n`
+}
 
 export function buildVaultSystemMessage(
   context: VaultContext,
   settings: ChatSettings,
 ): string {
-  const base = settings.systemPrompt?.trim() || DEFAULT_VAULT_SYSTEM_PROMPT
+  const base =
+    settings.systemPrompt?.trim() ||
+    vaultSystemPromptBase()
 
   if (context.hits.length === 0) {
     return `${base}\n\n(No vault content matched the user's question — tell them you couldn't find anything relevant and ask them to rephrase.)`

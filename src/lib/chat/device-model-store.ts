@@ -1,11 +1,19 @@
 import { DEVICE_CHAT_MODEL } from '@/types/chat'
 
 export const DEVICE_MODEL_ID = DEVICE_CHAT_MODEL
-/** See https://huggingface.co/huggingworld/gemma-4-E2B-it-litert-lm/tree/main — web artifact name is `gemma-4-E2B-it-web.task`. */
+
+/* ------------------------------------------------------------------ */
+/*  Gemma (MediaPipe .task file in OPFS)                               */
+/* ------------------------------------------------------------------ */
+
 export const DEVICE_MODEL_URL =
   'https://huggingface.co/huggingworld/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task'
 const DEVICE_MODEL_DIR = 'ink-marrow-models'
 const DEVICE_MODEL_FILE = 'gemma-4-e2b.task'
+
+/* ------------------------------------------------------------------ */
+/*  Progress events                                                    */
+/* ------------------------------------------------------------------ */
 
 export const DEVICE_MODEL_PROGRESS_EVENT = 'ink:device-model-progress'
 
@@ -19,6 +27,10 @@ function emitProgress(progress: number, text: string): void {
     }),
   )
 }
+
+/* ------------------------------------------------------------------ */
+/*  Gemma OPFS helpers                                                 */
+/* ------------------------------------------------------------------ */
 
 async function getModelFileHandle(create: boolean): Promise<FileSystemFileHandle> {
   if (typeof navigator === 'undefined' || !navigator.storage?.getDirectory) {
@@ -79,12 +91,22 @@ async function downloadModelBytes(): Promise<Uint8Array<ArrayBuffer>> {
   return out as Uint8Array<ArrayBuffer>
 }
 
-export async function getDeviceModelStatus(): Promise<DeviceModelStatus> {
+/* ------------------------------------------------------------------ */
+/*  Public API — model-aware                                           */
+/* ------------------------------------------------------------------ */
+
+export async function getDeviceModelStatus(
+  modelId?: string,
+): Promise<DeviceModelStatus> {
+  void modelId
   const bytes = await readCachedModelBytes()
   return bytes ? 'ready' : 'missing'
 }
 
-export async function ensureDeviceModelDownloaded(): Promise<void> {
+export async function ensureDeviceModelDownloaded(
+  modelId?: string,
+): Promise<void> {
+  void modelId
   const cached = await readCachedModelBytes()
   if (cached) {
     emitProgress(1, 'Model ready')

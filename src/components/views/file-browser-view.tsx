@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -28,7 +28,7 @@ import {
 } from '@/lib/file-browser/collect-files'
 import { toast } from '@/stores/toast'
 import { removeSearchDocument, searchVault } from '@/lib/search/index'
-import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
+import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import type { SearchResult } from '@/types/search'
 import { Button } from '@/components/ui/button'
@@ -378,7 +378,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
     try {
       await vaultFs.rename(item.path, newPath)
       removeSearchDocument(item.path)
-      if (newPath.endsWith('.md')) await reindexMarkdownPath(vaultFs, newPath)
+      if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
       const tab = useEditorStore.getState().tabs.find((t) => t.path === item.path)
       if (tab) useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
       setRefreshKey((n) => n + 1)
@@ -396,7 +396,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
         const buf = new Uint8Array(await file.arrayBuffer())
         const dest = targetFolder ? `${targetFolder}/${file.name}` : file.name
         await vaultFs.writeFile(dest, buf)
-        if (dest.endsWith('.md')) await reindexMarkdownPath(vaultFs, dest)
+        if (isIndexableTextPath(dest)) await reindexFilePath(vaultFs, dest)
         count++
       }
       setRefreshKey((n) => n + 1)
@@ -419,7 +419,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
     try {
       await vaultFs.rename(srcPath, newPath)
       removeSearchDocument(srcPath)
-      if (newPath.endsWith('.md')) await reindexMarkdownPath(vaultFs, newPath)
+      if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
       const tab = useEditorStore.getState().tabs.find((t) => t.path === srcPath)
       if (tab) useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
       setRefreshKey((n) => n + 1)
@@ -500,7 +500,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
           }
         } else {
           removeSearchDocument(p)
-          if (newPath.endsWith('.md')) await reindexMarkdownPath(vaultFs, newPath)
+          if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
           const tab = useEditorStore.getState().tabs.find((t) => t.path === p)
           if (tab) useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
         }
@@ -546,7 +546,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
     try {
       await vaultFs.rename(oldPath, newPath)
       removeSearchDocument(oldPath)
-      if (newPath.endsWith('.md')) await reindexMarkdownPath(vaultFs, newPath)
+      if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
       const tab = useEditorStore.getState().tabs.find((t) => t.path === oldPath)
       if (tab) useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
       setPath(newPath)
@@ -691,7 +691,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search files and content…"
+            placeholder="Search files and contentâ€¦"
             className="text-fg placeholder:text-fg-muted min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
             aria-label="Search files"
             onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery('') }}
@@ -790,7 +790,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
         onConfirm={() => void executeDelete()}
       />
 
-      {/* Search results overlay — shown when query is active */}
+      {/* Search results overlay â€” shown when query is active */}
       {searchDebounced.trim() ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
           {searchResults.length === 0 ? (

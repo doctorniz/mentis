@@ -255,6 +255,18 @@ export const useChatStore = create<ChatState>()(
             last.error = `Context build failed: ${msg}`
           }
         })
+        const failedThread = get().threads.find((t) => t.id === thread.id)
+        if (failedThread) {
+          try {
+            await writeThread(vaultFs, failedThread)
+          } catch (persistErr) {
+            const pmsg =
+              persistErr instanceof Error ? persistErr.message : String(persistErr)
+            set((s) => {
+              s.error = `Failed to save chat: ${pmsg}`
+            })
+          }
+        }
         return
       }
 
@@ -312,7 +324,6 @@ export const useChatStore = create<ChatState>()(
         if (t) t.modifiedAt = new Date().toISOString()
         s.isStreaming = false
         s.abort = null
-        if (streamError) s.error = streamError
       })
 
       // Persist once per turn. Don't block the UI on it — failures here

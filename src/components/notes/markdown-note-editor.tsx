@@ -139,9 +139,23 @@ export const MarkdownNoteEditor = forwardRef<
     onOpenNotePath: (path: string) => void
     onPersisted?: () => void
     onRenamed?: () => void
+    /**
+     * After the note loads from disk, reports the authoritative chat folder id
+     * (frontmatter `chatAssetId`). Unblocks syncing the chat panel when
+     * `ensureChatAssetId` ran early while loading and minted a stale id.
+     */
+    onChatAssetIdFromDisk?: (path: string, chatAssetId: string) => void
   }
 >(function MarkdownNoteEditor(
-  { tabId, path, markdownPaths, onOpenNotePath, onPersisted, onRenamed },
+  {
+    tabId,
+    path,
+    markdownPaths,
+    onOpenNotePath,
+    onPersisted,
+    onRenamed,
+    onChatAssetIdFromDisk,
+  },
   ref,
 ) {
   const { vaultFs } = useVaultSession()
@@ -167,11 +181,13 @@ export const MarkdownNoteEditor = forwardRef<
   const pathRef = useRef(path)
   const onOpenNotePathRef = useRef(onOpenNotePath)
   const onPersistedRef = useRef(onPersisted)
+  const onChatAssetIdFromDiskRef = useRef(onChatAssetIdFromDisk)
   const attachmentFolderRef = useRef(attachmentFolder)
   pathsRef.current = markdownPaths
   pathRef.current = path
   onOpenNotePathRef.current = onOpenNotePath
   onPersistedRef.current = onPersisted
+  onChatAssetIdFromDiskRef.current = onChatAssetIdFromDisk
   attachmentFolderRef.current = attachmentFolder
 
   useEffect(() => {
@@ -410,6 +426,14 @@ export const MarkdownNoteEditor = forwardRef<
         }
         pendingChatAssetIdRef.current = null
         frontmatterRef.current = doc.frontmatter
+        const diskChatId = doc.frontmatter.chatAssetId
+        if (
+          typeof diskChatId === 'string' &&
+          diskChatId.length > 0 &&
+          onChatAssetIdFromDiskRef.current
+        ) {
+          onChatAssetIdFromDiskRef.current(path, diskChatId)
+        }
         setVoiceAttach(voiceAttachmentFromFrontmatter(doc.frontmatter))
         const title =
           (typeof doc.frontmatter.title === 'string' && doc.frontmatter.title) ||

@@ -161,6 +161,15 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         }
         if (signal.cancelled) { engine.destroy(); return }
 
+        // Start the Pixi ticker NOW — after the file is fully loaded.
+        // `app.init()` uses `autoStart: false` so no RAF fires during
+        // the async load. Starting here eliminates the race where
+        // `renderer.render()` calls inside `loadLayers` collide with a
+        // stale ticker from a previous (destroyed) engine instance (most
+        // visible under React Strict Mode's double-invocation), producing
+        // "Cannot read properties of null (reading 'geometry')".
+        engine.startTicker()
+
         // Wire stroke commit callback
         engine.strokeEngine.onStrokeCommitted = () => {
           // Already handled in viewport pointerup

@@ -51,9 +51,7 @@ const CURATED_MODELS: Partial<Record<ChatProviderId, ModelEntry[]>> = {
     { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
     { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
   ],
-  device: [
-    { id: DEVICE_CHAT_MODEL, label: 'Gemma 4 E2B' },
-  ],
+  device: [{ id: DEVICE_CHAT_MODEL, label: 'Gemma 4 E2B' }],
 }
 
 /**

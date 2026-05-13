@@ -8,7 +8,7 @@ import type { KanbanBoard, KanbanCard, KanbanColumnColor } from '@/types/kanban'
 import { useEditorStore } from '@/stores/editor'
 import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { KanbanColumn } from '@/components/kanban/kanban-column'
-import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
+import { reindexFilePath } from '@/lib/search/build-vault-index'
 import { toast } from '@/stores/toast'
 
 const SAVE_DEBOUNCE = 750
@@ -68,7 +68,7 @@ export function KanbanEditor({
     try {
       const raw = serializeKanban(b, frontmatterRef.current)
       await vaultFs.writeTextFile(pathRef.current, raw)
-      await reindexMarkdownPath(vaultFs, pathRef.current)
+      await reindexFilePath(vaultFs, pathRef.current)
       updateTab(tabId, { isDirty: false })
       onPersisted()
     } catch (e) {
@@ -251,7 +251,7 @@ export function KanbanEditor({
 
       try {
         await vaultFs.rename(oldPath, newPath)
-        if (newPath.endsWith('.md')) await reindexMarkdownPath(vaultFs, newPath)
+        await reindexFilePath(vaultFs, newPath)
         retargetTabPath(tabId, newPath, newStem)
         pathRef.current = newPath
         onRenamed()
@@ -281,12 +281,15 @@ export function KanbanEditor({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Title bar */}
-      <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-4 py-2">
+      <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
         <InlineFileTitle
           path={path}
           autoFocus={isNew}
           onRename={handleRenameFile}
         />
+        {path.endsWith('.kanban') && (
+          <span className="text-fg-muted font-mono text-xs">.kanban</span>
+        )}
       </div>
 
       {/* Board */}

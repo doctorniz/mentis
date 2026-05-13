@@ -2,6 +2,7 @@ import {
   DEVICE_MODEL_ID,
   loadDeviceModelBytes,
 } from '@/lib/chat/device-model-store'
+import { nextGemmaStreamDelta } from '@/lib/chat/providers/gemma-stream-delta'
 import type {
   ChatCompletionRequest,
   ChatProvider,
@@ -153,7 +154,8 @@ async function getInference(): Promise<LlmInference> {
       baseOptions: { modelAssetBuffer },
       maxTokens: DEVICE_MAX_TOKENS,
       topK: 64,
-      temperature: 0.9,
+      /** Lower than default-ish 1.0 reduces random spacing / formatting glitches in streamed decode. */
+      temperature: 0.5,
     })
   })()
   try {
@@ -190,7 +192,7 @@ async function* streamDevice(
   let done = false
   let streamError: string | null = null
   let wake: (() => void) | null = null
-  let seen = ''
+  let emittedTotal = ''
   let aborted = false
 
   const onAbort = () => {
@@ -199,23 +201,18 @@ async function* streamDevice(
   }
   req.signal?.addEventListener('abort', onAbort, { once: true })
 
-  /** Partials are usually cumulative; fall back to longest-prefix delta if the stream glitches. */
-  function deltaFromPartial(nextRaw: string): string {
-    const next = nextRaw ?? ''
-    if (next.startsWith(seen)) return next.slice(seen.length)
-    let i = 0
-    const n = Math.min(seen.length, next.length)
-    while (i < n && seen.charCodeAt(i) === next.charCodeAt(i)) i++
-    return next.slice(i)
-  }
-
   void inference
     .generateResponse(prompt, (partial, complete) => {
       if (aborted) return
       const next = partial ?? ''
-      const delta = deltaFromPartial(next)
-      seen = next
-      if (delta.length > 0) queue.push(delta)
+      if (next.length > 0) {
+        const { delta, emittedTotal: nextTotal } = nextGemmaStreamDelta(
+          emittedTotal,
+          next,
+        )
+        emittedTotal = nextTotal
+        if (delta.length > 0) queue.push(delta)
+      }
       if (complete) done = true
       if (wake) wake()
     })
@@ -258,7 +255,7 @@ async function* streamDevice(
 
 export const deviceProvider: ChatProvider = {
   id: 'device',
-  label: 'Local (Gemma 4 E2B)',
+  label: 'Local',
   defaultBaseUrl: '',
   streamChat: streamDevice,
 }

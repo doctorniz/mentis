@@ -79,6 +79,16 @@ const TYPE_COLORS = {
     hover: { dark: '#38bdf8', light: '#0284c7' },
     stroke: { dark: '#7dd3fc', light: '#0369a1' },
   },
+  mindmap: {
+    fill: { dark: 'rgba(45,212,191,0.75)', light: 'rgba(20,184,166,0.55)' },
+    hover: { dark: '#2dd4bf', light: '#0d9488' },
+    stroke: { dark: '#5eead4', light: '#0f766e' },
+  },
+  kanban: {
+    fill: { dark: 'rgba(251,191,36,0.75)', light: 'rgba(245,158,11,0.55)' },
+    hover: { dark: '#fbbf24', light: '#d97706' },
+    stroke: { dark: '#fde68a', light: '#b45309' },
+  },
 } as const
 
 function nodeRadius(n: GraphNode, maxLinks: number): number {
@@ -127,6 +137,20 @@ function traceNodeShape(ctx: CanvasRenderingContext2D, n: GraphNode, r: number):
       else ctx.lineTo(px, py)
     }
     ctx.closePath()
+  } else if (n.type === 'mindmap') {
+    // Hexagon — mindmaps
+    const d = r * 1.3
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2
+      const px = n.x + d * Math.cos(angle)
+      const py = n.y + d * Math.sin(angle)
+      if (i === 0) ctx.moveTo(px, py)
+      else ctx.lineTo(px, py)
+    }
+    ctx.closePath()
+  } else if (n.type === 'kanban') {
+    // Wide rounded rect — kanban boards (landscape orientation)
+    traceRoundedRect(ctx, n.x, n.y, r * 1.2, 0.25)
   } else {
     // Diamond — canvas drawings
     const d = r * 1.5

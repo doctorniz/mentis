@@ -35,6 +35,13 @@ export interface ChatMessage {
   streaming?: boolean
   /** Populated when the provider returns an error mid-stream. */
   error?: string
+  /**
+   * Whole-vault RAG only (tier-1 vault chat): excerpt source paths for this turn,
+   * in excerpt order (Source 1 … N). Rendering uses this to map `` `path` `` → `<sup>n</sup>`
+   * consistent with RAG; the persisted `## Sources` list is built from **cited** `<sup>n</sup>`
+   * only (see `mergeVaultSourcesSection`).
+   */
+  vaultRagHitPaths?: string[]
 }
 
 /** Supported provider ids. */
@@ -108,6 +115,15 @@ export interface ChatSettings {
 }
 
 export const DEVICE_CHAT_MODEL = 'gemma-4-e2b'
+
+/** All model ids that run on-device (no API key). */
+export const DEVICE_MODEL_IDS = [DEVICE_CHAT_MODEL] as const
+
+export type DeviceModelId = (typeof DEVICE_MODEL_IDS)[number]
+
+export function isDeviceModelId(id: string): id is DeviceModelId {
+  return (DEVICE_MODEL_IDS as readonly string[]).includes(id)
+}
 
 export const DEFAULT_CHAT_SETTINGS: ChatSettings = {
   provider: 'device',

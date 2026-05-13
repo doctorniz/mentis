@@ -7,6 +7,7 @@ import { toast } from '@/stores/toast'
 import {
   ChevronRight,
   ChevronDown,
+  Columns3,
   ExternalLink,
   FileCode2,
   FileText,
@@ -14,6 +15,7 @@ import {
   Film,
   Folder,
   FolderPlus,
+  GitBranch,
   Image as ImageIcon,
   GitFork,
   Layout,
@@ -38,7 +40,7 @@ import { isNotesTreeEntry, sortTreeEntries } from '@/lib/notes/tree-filter'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { createUntitledNote } from '@/lib/notes/new-note'
 import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
-import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
+import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useEditorStore } from '@/stores/editor'
 import { removeSearchDocument } from '@/lib/search/index'
@@ -134,7 +136,7 @@ export function NotesFileTree({
         const buf = new Uint8Array(await file.arrayBuffer())
         const dest = targetFolder ? `${targetFolder}/${file.name}` : file.name
         await vaultFs.writeFile(dest, buf)
-        if (dest.endsWith('.md')) await reindexMarkdownPath(vaultFs, dest)
+        if (isIndexableTextPath(dest)) await reindexFilePath(vaultFs, dest)
         count++
       }
       void refresh()
@@ -162,9 +164,7 @@ export function NotesFileTree({
     try {
       await vaultFs.rename(srcPath, newPath)
       removeSearchDocument(srcPath)
-      if (newPath.endsWith('.md')) {
-        await reindexMarkdownPath(vaultFs, newPath)
-      }
+      if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
       const { tabs, retargetTabPath } = useEditorStore.getState()
       const tab = tabs.find((t) => t.path === srcPath)
       if (tab) retargetTabPath(tab.id, newPath, fileTitleFromPath(newPath))
@@ -196,9 +196,7 @@ export function NotesFileTree({
     try {
       await vaultFs.rename(oldPath, newPath)
       removeSearchDocument(oldPath)
-      if (newPath.endsWith('.md')) {
-        await reindexMarkdownPath(vaultFs, newPath)
-      }
+      if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
       const { tabs, retargetTabPath } = useEditorStore.getState()
       const tab = tabs.find((t) => t.path === oldPath)
       if (tab) retargetTabPath(tab.id, newPath, fileTitleFromPath(newPath))
@@ -554,6 +552,8 @@ function TreeNode({
     const displayName = titleFromVaultPath(entry.path)
     const FileIcon =
       entry.type === FileType.Canvas ? Layout
+      : entry.type === FileType.Mindmap ? GitBranch
+      : entry.type === FileType.Kanban ? Columns3
       : entry.type === FileType.Image ? ImageIcon
       : entry.type === FileType.Audio ? Music
       : entry.type === FileType.Video ? Film
@@ -636,6 +636,8 @@ function TreeNode({
                   selected ? 'text-accent/60' : 'text-fg-muted',
                   entry.type === FileType.Pdf && 'text-red-400/70',
                   entry.type === FileType.Canvas && 'text-violet-400/70',
+                  entry.type === FileType.Mindmap && 'text-teal-400/70',
+                  entry.type === FileType.Kanban && 'text-amber-400/70',
                   entry.type === FileType.Image && 'text-emerald-400/70',
                   entry.type === FileType.Audio && 'text-pink-400/70',
                   entry.type === FileType.Video && 'text-cyan-400/70',

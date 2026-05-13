@@ -9,7 +9,7 @@ import {
   SNAPSHOTS_DIR,
   CONFIG_FILE,
 } from '@/types/vault'
-import { DEFAULT_CHAT_SETTINGS, DEVICE_CHAT_MODEL } from '@/types/chat'
+import { DEFAULT_CHAT_SETTINGS, DEVICE_CHAT_MODEL, isDeviceModelId } from '@/types/chat'
 import { uniqueVaultSlug, vaultFolderPath, vaultsRootPath } from '@/lib/vault/paths'
 
 export async function createVault(fs: FileSystemAdapter, name: string): Promise<VaultConfig> {
@@ -88,7 +88,7 @@ export async function loadVaultConfig(fs: FileSystemAdapter): Promise<VaultConfi
       }
     }
 
-    if (merged.chat?.provider === 'device' && merged.chat.model !== DEVICE_CHAT_MODEL) {
+    if (merged.chat?.provider === 'device' && !isDeviceModelId(merged.chat.model)) {
       merged.chat = { ...merged.chat, model: DEVICE_CHAT_MODEL }
     }
 
