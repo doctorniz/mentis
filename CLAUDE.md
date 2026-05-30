@@ -169,7 +169,7 @@ Download progress publishes on `ink:device-model-progress`. Cloud providers need
 
 ### Routing / Views
 
-Next.js App Router, but the app is a single-page shell. Navigation is state-driven via `useUiStore` (`activeView`). `app/page.tsx` renders `<AppRoot>` which switches between views via `ViewRouter`.
+Next.js App Router, but the app is a single-page shell. Navigation is state-driven via `useUiStore` (`activeView`). `app/page.tsx` renders `<AppRoot>` which switches between views via `ViewRouter`. Before a vault is loaded, `AppRoot` renders either the `VaultLanding` (create/open vault) or the `AboutOverlay` (project overview with accordion feature breakdown) — toggled via an "About Mentis" link on the landing page.
 
 Nav order (sidebar): **Chat** (Ctrl+0) → **Vault** (Ctrl+1) → **Board** (Ctrl+2) → **Tasks** (Ctrl+3) → **Bookmarks** (Ctrl+4) → **Calendar** (Ctrl+5) → **Graph** (Ctrl+6) → **Files** (Ctrl+7) → **Search** (Ctrl+8 / Ctrl+F) → New (Ctrl+N).
 

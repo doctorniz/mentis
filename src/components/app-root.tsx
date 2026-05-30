@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { AppShell } from '@/components/shell/app-shell'
 import { ErrorBoundary } from '@/components/shell/error-boundary'
 import { VaultLanding } from '@/components/landing/vault-landing'
+import { AboutOverlay } from '@/components/landing/about-overlay'
 import { VaultFsProvider, type VaultSessionValue } from '@/contexts/vault-fs-context'
 import { SyncProvider } from '@/contexts/sync-context'
 import { useVaultStore } from '@/stores/vault'
@@ -41,6 +42,7 @@ function SyncProviderBridge({
 
 export function AppRoot() {
   const [session, setSession] = useState<VaultSessionValue | null>(null)
+  const [showAbout, setShowAbout] = useState(false)
 
   const handleVaultReady = useCallback((next: VaultSessionValue) => {
     setSession(next)
@@ -81,7 +83,14 @@ export function AppRoot() {
     <>
       <Toaster />
       {!session ? (
-        <VaultLanding onVaultReady={handleVaultReady} />
+        showAbout ? (
+          <AboutOverlay onBack={() => setShowAbout(false)} />
+        ) : (
+          <VaultLanding
+            onVaultReady={handleVaultReady}
+            onShowAbout={() => setShowAbout(true)}
+          />
+        )
       ) : (
         <ErrorBoundary>
           <VaultFsProvider value={session}>

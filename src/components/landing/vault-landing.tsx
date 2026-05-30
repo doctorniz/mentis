@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Brain, FolderOpen, Loader2, PlugZap } from 'lucide-react'
+import { Brain, FolderOpen, Info, Loader2, PlugZap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   getFileSystemAdapter,
@@ -29,13 +29,14 @@ export interface VaultLandingProps {
     vaultPath: string
     config: VaultConfig
   }) => void
+  onShowAbout?: () => void
 }
 
 function fsapiVaultPath(handle: FileSystemDirectoryHandle) {
   return `fsapi:${handle.name}`
 }
 
-export function VaultLanding({ onVaultReady }: VaultLandingProps) {
+export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
   const [name, setName] = useState('My Vault')
   const [vaults, setVaults] = useState<{ path: string; displayName: string }[]>([])
   const [loading, setLoading] = useState(true)
@@ -228,7 +229,17 @@ export function VaultLanding({ onVaultReady }: VaultLandingProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-16">
+    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-16">
+      {onShowAbout && (
+        <button
+          type="button"
+          onClick={onShowAbout}
+          className="text-fg-muted hover:text-fg hover:bg-bg-hover absolute top-4 right-4 rounded-lg p-2 transition-colors"
+          aria-label="About Mentis"
+        >
+          <Info className="size-5" strokeWidth={1.5} />
+        </button>
+      )}
       <div className="w-full max-w-md">
         <div className="mb-10 flex flex-col items-center text-center">
           <div className="bg-accent-light text-accent mb-4 flex size-16 items-center justify-center rounded-2xl">
