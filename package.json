@@ -16,8 +16,7 @@
         "test:ui": "vitest --ui",
         "test:e2e": "playwright test",
         "typecheck": "tsc --noEmit",
-        "postinstall": "node scripts/copy-mp3-worker.mjs",
-        "git:sync": "git add . && git commit -m 'Added features - Canvas rewrite, introducing DOC/DOCX support' && git push"
+        "postinstall": "node scripts/copy-mp3-worker.mjs"
     },
     "dependencies": {
         "@codemirror/autocomplete": "^6.18.0",
