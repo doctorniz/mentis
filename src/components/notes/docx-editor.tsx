@@ -51,6 +51,15 @@ export function DocxEditorView({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null)
+  // React nulls JSX-bound refs during the unmount mutation phase, which runs
+  // before this component's own passive-effect cleanup (flush-save-on-unmount
+  // below) fires — so a plain `ref={editorRef}` would always read null there.
+  // This callback ref ignores the null detach call and keeps the last real
+  // instance so the flush can still call `.save()`.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const setEditorRef = useCallback((instance: any) => {
+    if (instance) editorRef.current = instance
+  }, [])
   const containerRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onPersistedRef = useRef(onPersisted)
@@ -138,7 +147,6 @@ export function DocxEditorView({
 
     return () => observer.disconnect()
     // containerRef is stable; DOCX_PAGE_WIDTH is a module-level const
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ---- Double-tap → dblclick forwarding ----
@@ -187,7 +195,6 @@ export function DocxEditorView({
 
     container.addEventListener('touchend', onTouchEnd)
     return () => container.removeEventListener('touchend', onTouchEnd)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ---- Auto-save logic ----
@@ -341,7 +348,7 @@ export function DocxEditorView({
 
         {!loading && !error && EditorComponent && docBuffer && (
           <EditorComponent
-            ref={editorRef}
+            ref={setEditorRef}
             documentBuffer={docBuffer}
             mode="editing"
             onChange={handleChange}
