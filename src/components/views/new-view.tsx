@@ -110,7 +110,7 @@ function NewMarkdownNote({ templates, templateFolder }: { templates: NoteTemplat
     } finally {
       setIsCreating(false)
     }
-  }, [isCreating, name, folder, templateId, vaultFs, openTab, setActiveView])
+  }, [isCreating, name, folder, templateId, templateFolder, vaultFs, openTab, setActiveView])
 
   return (
     <div className="space-y-4">

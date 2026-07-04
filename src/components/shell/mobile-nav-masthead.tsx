@@ -19,7 +19,6 @@ import {
   Moon,
   Plus,
   LogOut,
-  Search,
   Settings,
   Sparkles,
   StickyNote,

@@ -261,7 +261,6 @@ export function useNewFileActions(onDone: () => void) {
     } finally {
       setBusy(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultFs, busy, onDone])
 
   const createMindmap = useCallback(async () => {

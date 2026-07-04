@@ -250,7 +250,7 @@ export function PdfPagePanel({
                 draggable
                 aria-label={`Page ${i + 1}`}
                 aria-current={i === currentPage ? 'page' : undefined}
-                aria-selected={isSelected}
+                aria-pressed={isSelected}
                 onClick={(e) => handlePageClick(e, i)}
                 onDragStart={(e) => handleDragStart(e, i)}
                 onDragOver={(e) => handleDragOver(e, i)}

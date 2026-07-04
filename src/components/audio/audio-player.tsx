@@ -101,7 +101,6 @@ export function AudioPlayer({ src, duration: hintDuration, compact, className }:
 
   return (
     <div className={cn('flex items-center gap-2', compact ? 'gap-1.5' : 'gap-3', className)}>
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} src={src} preload="metadata" />
 
       {/* Play/Pause */}

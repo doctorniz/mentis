@@ -904,7 +904,7 @@ interface VirtualProps {
 
 function VirtualList({
   files, scrollRef, selected, editingPath, vaultFs,
-  onOpen, onRename, onDuplicate, onMove, onDelete,
+  onOpen, onRename: _onRename, onDuplicate, onMove, onDelete,
   onItemClick, onStartEdit, onCommitEdit, onCancelEdit,
   onDropFile, onDropExternalFiles,
 }: VirtualProps) {
@@ -959,7 +959,7 @@ function VirtualList({
 
 function VirtualGrid({
   files, scrollRef, selected, editingPath, vaultFs,
-  onOpen, onRename, onDuplicate, onMove, onDelete,
+  onOpen, onRename: _onRename, onDuplicate, onMove, onDelete,
   onItemClick, onStartEdit, onCommitEdit, onCancelEdit,
   onDropFile, onDropExternalFiles, onColsChange,
 }: VirtualProps & { onColsChange?: (cols: number) => void }) {

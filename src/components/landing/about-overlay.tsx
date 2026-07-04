@@ -9,7 +9,6 @@ import {
   Calendar,
   ChevronDown,
   FileText,
-  Folder,
   Globe,
   Kanban,
   LayoutGrid,

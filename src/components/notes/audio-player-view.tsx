@@ -149,7 +149,6 @@ export function AudioPlayerView({
 
         {/* Plyr player — wraps a plain <audio> element */}
         <div>
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <audio ref={audioRef} src={blobUrl} preload="metadata" />
         </div>
 

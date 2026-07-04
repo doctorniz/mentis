@@ -156,7 +156,6 @@ function NotesViewInner() {
   const activeTabId = useEditorStore((s) => s.activeTabId)
   const openTab = useEditorStore((s) => s.openTab)
   const addRecentFile = useEditorStore((s) => s.addRecentFile)
-  const clearNew = useEditorStore((s) => s.clearNew)
   const retargetTabPath = useEditorStore((s) => s.retargetTabPath)
   const pendingVaultOpenPath = useEditorStore((s) => s.pendingVaultOpenPath)
   const setPendingVaultOpenPath = useEditorStore((s) => s.setPendingVaultOpenPath)
@@ -336,6 +335,9 @@ function NotesViewInner() {
       }
     }, 50)
     return () => clearTimeout(timer)
+    // activeTab's object identity changes on unrelated tab mutations (e.g. autosave
+    // dirty-flag); depend on path/type only or the debounce resets on every edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab?.path, activeTab?.type])
 
   // Auto-ensure chatAssetId for the active PDF tab.
@@ -349,6 +351,9 @@ function NotesViewInner() {
       .catch(() => {
         // Silently fail — chat will show "not configured" state.
       })
+    // Same rationale as above for activeTab; chatAssetIdByPath is read only as a
+    // guard against re-fetching and is set by this effect itself for this path.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab?.path, activeTab?.type, vaultFs])
 
   const isMobileTree = useMediaQuery(MOBILE_NAV_MEDIA_QUERY)
@@ -356,7 +361,6 @@ function NotesViewInner() {
   const isWideEditorNarrow = useMediaQuery(WIDE_EDITOR_MEDIA_QUERY)
   const isCanvasTreeNarrow = useMediaQuery(CANVAS_TREE_MEDIA_QUERY)
   const isCanvasSidebarNarrow = useMediaQuery(CANVAS_SIDEBAR_MEDIA_QUERY)
-  const isPptxTab = activeTab?.type === 'pptx'
   const isCanvasTab = activeTab?.type === 'canvas'
   const isWideEditorTab = activeTab?.type === 'pptx' || activeTab?.type === 'docx' || activeTab?.type === 'spreadsheet'
 

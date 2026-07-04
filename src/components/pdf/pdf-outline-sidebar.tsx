@@ -89,7 +89,7 @@ function OutlineItem({
   const hasChildren = node.items && node.items.length > 0
 
   return (
-    <div role="treeitem" aria-expanded={hasChildren ? expanded : undefined}>
+    <div role="treeitem" aria-expanded={hasChildren ? expanded : undefined} aria-selected={false}>
       <div
         className="hover:bg-bg-hover text-fg flex w-full items-center gap-1 rounded px-1 py-1 text-left text-xs"
         style={{ paddingLeft: 4 + depth * 12 }}

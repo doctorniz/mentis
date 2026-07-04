@@ -252,6 +252,8 @@ export function PptxCompactViewer({
 
                         if (el.type === 'image') {
                           return (
+                            // Decoded slide image asset (blob/data URL) — not a next/image candidate.
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               key={el.id}
                               src={el.src}

@@ -253,7 +253,9 @@ export function AddBookmarkDialog({
                 </div>
               ) : ogMeta && (
                 <div className="border-border bg-bg-secondary flex gap-3 rounded-lg border p-3">
+                  {/* Cross-origin favicon/OG image from an arbitrary bookmarked site — not a next/image candidate. */}
                   {ogMeta.favicon && (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={ogMeta.favicon} alt="" className="mt-0.5 size-5 shrink-0 rounded-sm" />
                   )}
                   <div className="min-w-0 flex-1">
@@ -261,6 +263,7 @@ export function AddBookmarkDialog({
                     <p className="text-fg-muted/60 truncate text-[11px]">{domainFromUrl(url)}</p>
                   </div>
                   {ogMeta.ogImage && (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={ogMeta.ogImage} alt="" className="h-10 w-16 shrink-0 rounded-md object-cover" />
                   )}
                 </div>

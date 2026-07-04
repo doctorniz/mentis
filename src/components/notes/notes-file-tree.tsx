@@ -794,7 +794,7 @@ function TreeNode({
   )
 
   return (
-    <div role="treeitem" aria-expanded={expanded} aria-level={depth + 1}>
+    <div role="treeitem" aria-expanded={expanded} aria-level={depth + 1} aria-selected={selectedPath === entry.path}>
       <TreeContextMenu
         isFile={false}
         entryName={entry.name}

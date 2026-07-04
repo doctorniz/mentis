@@ -5,7 +5,7 @@ import { cn } from '@/utils/cn'
 import type { CalendarEvent } from '@/types/calendar'
 import type { TaskItem } from '@/types/tasks'
 import { EVENT_COLOR_DOT } from '@/types/calendar'
-import { eventOccursOn, eventStartDate, toDateStr } from '@/lib/calendar'
+import { eventOccursOn, toDateStr } from '@/lib/calendar'
 import { getEffectiveDueDate } from '@/lib/tasks/recurrence'
 
 const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

@@ -58,7 +58,6 @@ export function PdfViewer({ path }: { path: string }) {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null)
   const [pages, setPages] = useState<PDFPageProxy[]>([])
   const [_existingAnns, setExistingAnns] = useState<PdfAnnotation[]>([])
-  const [saving, setSaving] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchMatches, setSearchMatches] = useState<PdfTextSearchMatch[]>([])
@@ -236,7 +235,6 @@ export function PdfViewer({ path }: { path: string }) {
   }, [searchMatches.length])
 
   const handleSave = useCallback(async () => {
-    setSaving(true)
     try {
       const oldBytes = await vaultFs.readFile(path)
       const newBytes = await writeAnnotationsIntoPdf(oldBytes, annotations)
@@ -263,10 +261,8 @@ export function PdfViewer({ path }: { path: string }) {
     } catch (e) {
       console.error('Save failed', e)
       toast.error('Failed to save PDF annotations')
-    } finally {
-      setSaving(false)
     }
-  }, [vaultFs, path, annotations, markSaved, loadPdf])
+  }, [vaultFs, path, annotations, markSaved, loadPdf, syncPush])
 
   /* Snapshot on first edit in this session */
   useEffect(() => {

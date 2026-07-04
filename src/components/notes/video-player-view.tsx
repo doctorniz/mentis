@@ -112,7 +112,6 @@ export function VideoPlayerView({
   return (
     <div className="flex flex-1 items-center justify-center overflow-auto p-4">
       <div className="w-full max-w-4xl">
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <video ref={videoRef} src={blobUrl} className="w-full rounded" />
       </div>
     </div>

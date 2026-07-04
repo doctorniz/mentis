@@ -64,7 +64,6 @@ function VideoNodeView({ node }: NodeViewProps) {
     <NodeViewWrapper>
       <div className="my-2">
         {blobUrl ? (
-          /* eslint-disable-next-line jsx-a11y/media-has-caption */
           <video
             src={blobUrl}
             controls

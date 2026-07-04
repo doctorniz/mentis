@@ -491,7 +491,7 @@ export const MarkdownNoteEditor = forwardRef<
         }
       })()
     }
-  }, [editor, path, vaultFs, tabId, updateTab])
+  }, [editor, path, vaultFs, tabId, updateTab, markDirty])
 
   // Auto-focus and select the title for newly created notes
   const clearNew = useEditorStore((s) => s.clearNew)

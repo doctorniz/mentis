@@ -20,7 +20,6 @@ import {
   SlidersHorizontal,
   Star,
   Trash2,
-  X,
 } from 'lucide-react'
 
 import {

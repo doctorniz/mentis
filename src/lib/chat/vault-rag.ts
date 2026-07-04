@@ -293,18 +293,6 @@ export function parseCitedSuperscriptIndices(bodyMarkdown: string): number[] {
   return [...cited].sort((a, b) => a - b)
 }
 
-/** Escape markdown link labels `[text](...)`. */
-function escapeMarkdownLinkText(s: string): string {
-  return s.replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/\]/g, '\\]')
-}
-
-function sourceListLabel(hit: VaultRagHit): string {
-  const t = hit.title.trim()
-  if (t) return t
-  const parts = hit.path.replace(/\\/g, '/').split('/').filter(Boolean)
-  return parts[parts.length - 1] ?? hit.path
-}
-
 function escapeHtmlText(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }

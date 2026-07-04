@@ -22,6 +22,17 @@ async function loadFolders(vaultFs: FileSystemAdapter, dir: string): Promise<Fol
     .map((e) => ({ name: e.name, path: e.path, children: null, expanded: false }))
 }
 
+function findNode(nodes: FolderNode[], path: string): FolderNode | undefined {
+  for (const n of nodes) {
+    if (n.path === path) return n
+    if (n.children) {
+      const found = findNode(n.children, path)
+      if (found) return found
+    }
+  }
+  return undefined
+}
+
 function FolderRow({
   node,
   depth,
@@ -144,17 +155,6 @@ export function MoveToFolderDialog({
       })
     }
   }, [tree, vaultFs])
-
-  function findNode(nodes: FolderNode[], path: string): FolderNode | undefined {
-    for (const n of nodes) {
-      if (n.path === path) return n
-      if (n.children) {
-        const found = findNode(n.children, path)
-        if (found) return found
-      }
-    }
-    return undefined
-  }
 
   async function handleCreateFolder() {
     const name = newFolderName.trim().replace(/[/\\:*?"<>|]/g, '')

@@ -1,5 +1,5 @@
 import matter from 'gray-matter'
-import type { KanbanBoard, KanbanColumn, KanbanCard, KanbanColumnColor } from '@/types/kanban'
+import type { KanbanBoard, KanbanColumn, KanbanColumnColor } from '@/types/kanban'
 
 const CARD_RE = /^-\s+\[([ xX])\]\s+(.*)$/
 /** `## Title` or `## Title <!--kanban:amber-->` */

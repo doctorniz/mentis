@@ -34,7 +34,6 @@ export function ChatAssistantHtml({
   return (
     <div
       className={cn('chat-assistant-prose', className)}
-      // eslint-disable-next-line react/no-danger -- sanitized in render-markdown
       dangerouslySetInnerHTML={{ __html: html }}
       onClick={onVaultPathOpen ? handleClick : undefined}
     />

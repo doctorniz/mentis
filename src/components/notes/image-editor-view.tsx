@@ -166,7 +166,7 @@ export function ImageEditorView({
     const work = workRef.current
     if (!img?.naturalWidth || !display || !work) return
 
-    const { sx, sy, sw, sh } = getCropSourceRect(img.naturalWidth, img.naturalHeight, opts.crop)
+    const { sw, sh } = getCropSourceRect(img.naturalWidth, img.naturalHeight, opts.crop)
     if (sw < 2 || sh < 2) return
 
     const { w: ow, h: oh } = outputDimensionsAfterRotation(sw, sh, opts.rotation)
@@ -197,7 +197,7 @@ export function ImageEditorView({
     const img = imgEl
     const work = workRef.current
     if (!img?.naturalWidth || !work) return
-    const { sx, sy, sw, sh } = getCropSourceRect(img.naturalWidth, img.naturalHeight, opts.crop)
+    const { sw, sh } = getCropSourceRect(img.naturalWidth, img.naturalHeight, opts.crop)
     if (sw < 2 || sh < 2) {
       toast.error('Crop is too tight')
       return

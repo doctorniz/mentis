@@ -72,19 +72,6 @@ function collectOrderedVaultPaths(markdown: string): string[] {
   return order
 }
 
-/**
- * Everything after the **last** `\n## Sources` heading stays out of vault-path
- * `` `→<sup>` `` replacement so Sources list link labels are not stripped.
- */
-function splitMarkdownShieldLastSourcesSection(md: string): [string, string] {
-  const re = /\n##\s+Sources\b/gi
-  const matches = [...md.matchAll(re)]
-  if (matches.length === 0) return [md, '']
-  const last = matches[matches.length - 1]
-  const idx = last.index ?? 0
-  return [md.slice(0, idx), md.slice(idx)]
-}
-
 /** Collapse runaway blank lines; keep `---` so answers can use subtle section dividers. */
 function normalizeChatMarkdownBlanks(md: string): string {
   return md.replace(/\n{3,}/g, '\n\n')
@@ -100,19 +87,6 @@ function escapeHtml(s: string): string {
 
 function escapeAttr(s: string): string {
   return escapeHtml(s).replace(/'/g, '&#39;')
-}
-
-function replaceVaultBackticksWithSuperscript(
-  md: string,
-  pathToNum: Map<string, number>,
-): string {
-  return md.replace(/`([^`\n]{2,200})`/g, (full, inner: string) => {
-    const p = inner.trim()
-    if (!isVaultPathLike(p)) return full
-    const n = pathToNum.get(p)
-    if (n === undefined) return full
-    return `<sup class="chat-ref">${n}</sup>`
-  })
 }
 
 function hasSourcesBlock(md: string): boolean {
