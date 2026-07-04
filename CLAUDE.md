@@ -142,6 +142,38 @@ Markdown-based Kanban boards. A `.md` file with `type: kanban` in frontmatter re
 
 PowerPoint viewer/editor powered by `slidecanvas` (Fabric.js-based). `.pptx` files in the vault open inline with a full ribbon UI for editing text, shapes, images, and slide management. Lazy-loaded via `import('slidecanvas')` in `components/pptx/pptx-editor.tsx`. Auto-save: `onChange` fires with the `Presentation` state → debounced 3s → `PptxBlobExporter.exportToBlob()` → write bytes back to vault FS. Unmount flushes pending save. Search indexing extracts text from slide XML (`<a:t>` tags) via JSZip without loading the full editor. Graph shows pptx nodes as orange pentagons. File tree icon: `Presentation` (lucide), orange.
 
+### Mindmap
+
+`.mind` files — node-graph outlining powered by `@xyflow/react` (React Flow). Editor: `components/mindmap/mindmap-editor.tsx` + `mindmap-node.tsx`; pure logic in `lib/mindmap/index.ts`. On-disk format is a small JSON (`{version, nodes, edges, viewport}`) — a `MindmapNode` has `id`, `data.label`, `position`, optional `parentId`, and `manualPosition` (skip auto-layout once the user has dragged it). New mindmaps start with a single "Central Idea" root node.
+
+**Auto-layout**: `autoLayoutMindmap` walks the edge graph into a tree (`buildTree`) and assigns `{x, y}` via `assignPositions` (`H_GAP=220`, `V_GAP=80`), skipping any node with `manualPosition: true`. `buildTree`'s recursion tracks the ancestor chain and drops any edge that would revisit one — including a self-loop — so a user-created cycle can't cause infinite recursion / a stack overflow.
+
+**Editing**: double-click a label for inline rename (no modal). Keyboard (node must be selected, not mid-edit): `Tab` add child, `Enter` add sibling, `F2` rename, `Delete`/`Backspace` remove node + all descendants. Hover + the node's handle also adds a child directly into edit mode. Double-click empty canvas adds a disconnected node at that position. Drag node-to-node handles to connect; `wouldCreateCycle` (`lib/mindmap`) rejects a connection that would create a cycle or self-loop with a toast — both here in the editor's `onConnect` and defensively inside the layout algorithm. Undo/redo via an in-memory 50-entry history stack (`useHistory`), `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y`. Auto-save debounced 3s (`useAutoSave`) + `Ctrl+S`.
+
+File tree icon: `GitBranch` (lucide), teal. Graph shows mindmap nodes as teal hexagons. Search indexes node labels (`extractMindmapText`).
+
+### Spreadsheet (XLSX / CSV)
+
+`.xlsx` / `.xls` / `.csv` (also reads `.xlsm` / `.xlsb` / `.ods` / `.tsv`) open in `components/notes/spreadsheet-editor.tsx`, a grid powered by `jspreadsheet-ce` (lazy-loaded alongside `jsuites` and their CSS via dynamic `import()`). SheetJS (`xlsx`) bridges file bytes ↔ an in-memory `SpreadsheetWorkbook` model (`lib/spreadsheet/types.ts`): `{ sheets: [{ name, data: CellData[][], colWidths, merges }], activeSheetIndex }`. `lib/spreadsheet/xlsx-io.ts` handles `readXlsxFile` / `writeSpreadsheetFile` (format-aware via `bookTypeFromPath`, so a `.csv` stays `.csv` on save instead of silently becoming `.xlsx`) and `extractXlsxText` for search indexing (cell values flattened to CSV per sheet, capped at 14k chars).
+
+Multi-sheet UI: sheet tabs with add/delete/switch; switching syncs the currently-mounted grid back into the workbook model first (`syncGridToWorkbook`) so in-progress edits on the sheet you're leaving aren't lost. Auto-save debounced 750ms, same pattern as markdown/DOCX. Download button re-serves the raw on-disk bytes with a format-correct MIME type. New spreadsheets: `createUntitledSpreadsheet` allocates `untitled.xlsx` / `untitled-1.xlsx` etc. at vault root.
+
+File tree icon: `Table2` (lucide), green. Graph shows spreadsheet nodes as sharp rects (tabular files). Search indexes cell text.
+
+### DOCX
+
+`.docx` files open in `components/notes/docx-editor.tsx`, powered by `@eigenpal/docx-js-editor` (ProseMirror-based, lazy-loaded so the bundle is only pulled when a DOCX tab opens). Auto-save follows the same debounced-750ms pattern as markdown. Responsive zoom: the library renders pages at a fixed ~850px width, so a `ResizeObserver` writes a `--docx-zoom` CSS custom property the page scales with (CSS `zoom`, not `transform: scale`, so the container's own scroll area stays correct). Mobile: touch double-tap is manually detected and forwarded as a synthetic `dblclick` so ProseMirror's word-select handler fires (mobile browsers don't fire a native `dblclick` on double-tap).
+
+**Unmount-save ref gotcha**: `editorRef` is populated via a callback ref (`setEditorRef`) that deliberately ignores `null` detach calls, rather than a plain `ref={editorRef}`. React nulls JSX-bound refs during the unmount *mutation* phase, which runs before this component's own `useEffect` cleanup (a *passive* effect) fires — a plain ref would always read `null` inside the unmount flush-save, silently dropping any edit that hadn't yet hit the debounced auto-save. The callback ref retains the last non-null instance so the flush can still reach it.
+
+File tree icon: `FileType2` (lucide), indigo. Graph shows docx nodes as rounded rects (same shape family as PDF).
+
+### Code Files
+
+Plain-text / source files (`.js` `.ts` `.tsx` `.py` `.json` `.yaml` `.css` `.html` `.sql` `.sh` etc. — see `lib/code/language-support.ts` for the full extension map) open in `components/notes/code-file-editor.tsx`, a CodeMirror 6 editor. Language support is lazy-loaded per extension (`languageFromExtension`) so unrelated `@codemirror/lang-*` packages aren't bundled together. Theme (`lib/code/codemirror-theme.ts`) reads the app's CSS custom properties (`--color-*`, `--hl-*`) so syntax highlighting follows the Light/Dark/System toggle automatically, using the same `--hl-*` tokens as Tiptap's markdown code blocks. Auto-save: 3s interval + save-on-blur (`useAutoSave`) + `Ctrl+S`. A file with no matching language extension still opens, just without syntax highlighting.
+
+File tree icon: `FileCode2` (lucide), sky. Graph shows code nodes as circles (same shape as plain notes).
+
 ### Chat
 
 Two BYO-LLM chat surfaces share the same provider stack, thread storage format, and settings:
@@ -184,7 +216,7 @@ MiniSearch index built on vault open, stored in `_marrow/search-index.json`. Inc
 
 ### Graph
 
-Interactive force-directed visualization. `buildNoteGraph` scans all vault files (`.md`, `.pdf`, `.canvas`) for wiki-links and builds node+edge model. Canvas 2D rendering with drag, pan, zoom, click-to-open. Distinct shapes per type: circle (note), rounded square (PDF), diamond (canvas). Filter by folder dropdown.
+Interactive force-directed visualization. `buildNoteGraph` scans all vault files (notes, PDF, canvas, mindmap, kanban, PPTX, DOCX, spreadsheet, code) for wiki-links and builds a node+edge model. Canvas 2D rendering with drag, pan, zoom, click-to-open. Distinct shapes per type (`lib/graph/build-graph.ts` + `components/graph/graph-canvas.tsx`): circle (note, code), rounded rect (PDF, DOCX), sharp rect (spreadsheet), pentagon (PPTX), hexagon (mindmap), wide rounded rect (kanban), diamond (canvas). Filter by folder dropdown.
 
 ### Sync (optional)
 
