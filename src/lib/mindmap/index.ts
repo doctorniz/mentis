@@ -59,14 +59,20 @@ function buildTree(nodes: MindmapNode[], edges: MindmapEdge[]): TreeNode[] {
   const nodeIds = new Set(nodes.map((n) => n.id))
   const roots = nodes.filter((n) => !hasParent.has(n.id)).map((n) => n.id)
 
-  function buildSubtree(id: string): TreeNode {
+  // User-created edges can form a cycle (e.g. connecting a node back to an
+  // ancestor). Track the ancestor chain and drop any child that's already in
+  // it — including the node itself (self-loop) — so layout can't recurse
+  // forever on a cyclic graph.
+  function buildSubtree(id: string, ancestors: Set<string>): TreeNode {
+    const nextAncestors = new Set(ancestors)
+    nextAncestors.add(id)
     const children = (childrenMap.get(id) ?? [])
-      .filter((cid) => nodeIds.has(cid))
-      .map(buildSubtree)
+      .filter((cid) => nodeIds.has(cid) && !nextAncestors.has(cid))
+      .map((cid) => buildSubtree(cid, nextAncestors))
     return { id, children }
   }
 
-  return roots.map(buildSubtree)
+  return roots.map((id) => buildSubtree(id, new Set()))
 }
 
 function subtreeHeight(tree: TreeNode): number {
@@ -114,6 +120,28 @@ export function autoLayoutMindmap(nodes: MindmapNode[], edges: MindmapEdge[]): M
     if (!pos) return n
     return { ...n, position: pos }
   })
+}
+
+/**
+ * Whether connecting `source -> target` would create a cycle, given the
+ * edges that already exist (including a self-loop, source === target).
+ * True when `target` can already reach `source` by following existing edges
+ * forward — closing the loop back to where it started.
+ */
+export function wouldCreateCycle(edges: MindmapEdge[], source: string, target: string): boolean {
+  if (source === target) return true
+  const visited = new Set<string>()
+  const stack = [target]
+  while (stack.length > 0) {
+    const cur = stack.pop()!
+    if (cur === source) return true
+    if (visited.has(cur)) continue
+    visited.add(cur)
+    for (const e of edges) {
+      if (e.source === cur) stack.push(e.target)
+    }
+  }
+  return false
 }
 
 // ─── Node helpers ─────────────────────────────────────────────────────────────

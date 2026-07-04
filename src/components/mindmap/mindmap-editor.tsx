@@ -33,6 +33,7 @@ import {
   addSiblingNode,
   deleteNode,
   autoLayoutMindmap,
+  wouldCreateCycle,
 } from '@/lib/mindmap'
 import type { MindmapFile, MindmapNode as MindmapNodeData, MindmapEdge as MindmapEdgeData } from '@/types/mindmap'
 import { MindmapNodeComponent } from './mindmap-node'
@@ -283,6 +284,10 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
   // ── New connection by dragging ─────────────────────────────────────────────
   const handleConnect = useCallback(
     (connection: Connection) => {
+      if (wouldCreateCycle(libEdgesRef.current, connection.source!, connection.target!)) {
+        toast.error('Cannot connect a node to itself or an ancestor')
+        return
+      }
       const newEdge: MindmapEdgeData = {
         id: crypto.randomUUID(),
         source: connection.source!,
