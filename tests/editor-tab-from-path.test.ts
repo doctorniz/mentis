@@ -9,7 +9,7 @@ describe('editorTabTypeFromVaultPath', () => {
     expect(editorTabTypeFromVaultPath('board.canvas')).toBe('canvas')
     expect(editorTabTypeFromVaultPath('_assets/photo.png')).toBe('image')
     expect(editorTabTypeFromVaultPath('img.JPEG')).toBe('image')
-    expect(editorTabTypeFromVaultPath('data.json')).toBe('markdown')
+    expect(editorTabTypeFromVaultPath('data.json')).toBe('code')
   })
 })
 

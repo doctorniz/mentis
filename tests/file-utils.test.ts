@@ -25,10 +25,14 @@ describe('getFileType', () => {
     expect(getFileType('icon.svg')).toBe(FileType.Image)
   })
 
+  it('identifies code files', () => {
+    expect(getFileType('data.json')).toBe(FileType.Code)
+    expect(getFileType('script.js')).toBe(FileType.Code)
+  })
+
   it('returns Other for unknown extensions', () => {
-    expect(getFileType('data.json')).toBe(FileType.Other)
-    expect(getFileType('script.js')).toBe(FileType.Other)
     expect(getFileType('noext')).toBe(FileType.Other)
+    expect(getFileType('archive.zip')).toBe(FileType.Other)
   })
 
   it('is case insensitive', () => {

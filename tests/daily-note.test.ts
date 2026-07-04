@@ -67,14 +67,14 @@ class InMemoryAdapter implements FileSystemAdapter {
 }
 
 describe('todayDailyNotePath', () => {
-  it('formats today as daily/YYYY-MM-DD.md', () => {
+  it('formats today as _marrow/_dailies/YYYY-MM-DD.md', () => {
     const date = new Date(2026, 2, 31)
-    expect(todayDailyNotePath(date)).toBe('daily/2026-03-31.md')
+    expect(todayDailyNotePath(date)).toBe('_marrow/_dailies/2026-03-31.md')
   })
 
   it('zero-pads single-digit month and day', () => {
     const date = new Date(2026, 0, 5)
-    expect(todayDailyNotePath(date)).toBe('daily/2026-01-05.md')
+    expect(todayDailyNotePath(date)).toBe('_marrow/_dailies/2026-01-05.md')
   })
 })
 
@@ -99,7 +99,7 @@ describe('openOrCreateDailyNote', () => {
   it('creates the note if it does not exist', async () => {
     const date = new Date(2026, 2, 31)
     const path = await openOrCreateDailyNote(fs, date)
-    expect(path).toBe('daily/2026-03-31.md')
+    expect(path).toBe('_marrow/_dailies/2026-03-31.md')
     expect(await fs.exists(path)).toBe(true)
 
     const content = await fs.readTextFile(path)
@@ -110,8 +110,8 @@ describe('openOrCreateDailyNote', () => {
 
   it('returns the existing note path without overwriting', async () => {
     const date = new Date(2026, 2, 31)
-    const path = 'daily/2026-03-31.md'
-    await fs.mkdir('daily')
+    const path = '_marrow/_dailies/2026-03-31.md'
+    await fs.mkdir('_marrow/_dailies')
     await fs.writeTextFile(path, '# My existing content')
 
     const result = await openOrCreateDailyNote(fs, date)
@@ -121,10 +121,10 @@ describe('openOrCreateDailyNote', () => {
     expect(content).toBe('# My existing content')
   })
 
-  it('creates daily/ directory if missing', async () => {
+  it('creates _marrow/_dailies/ directory if missing', async () => {
     const date = new Date(2026, 5, 15)
     await openOrCreateDailyNote(fs, date)
-    expect(await fs.exists('daily')).toBe(true)
+    expect(await fs.exists('_marrow/_dailies')).toBe(true)
   })
 
   it('works for different dates', async () => {
@@ -132,8 +132,8 @@ describe('openOrCreateDailyNote', () => {
     const d2 = new Date(2026, 11, 25)
     const p1 = await openOrCreateDailyNote(fs, d1)
     const p2 = await openOrCreateDailyNote(fs, d2)
-    expect(p1).toBe('daily/2026-01-01.md')
-    expect(p2).toBe('daily/2026-12-25.md')
+    expect(p1).toBe('_marrow/_dailies/2026-01-01.md')
+    expect(p2).toBe('_marrow/_dailies/2026-12-25.md')
     expect(await fs.exists(p1)).toBe(true)
     expect(await fs.exists(p2)).toBe(true)
   })

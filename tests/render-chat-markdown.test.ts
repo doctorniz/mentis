@@ -6,14 +6,15 @@ import {
 } from '@/lib/chat/render-markdown'
 
 describe('preprocessChatMarkdown', () => {
-  it('maps vault backtick paths to superscripts and appends Sources', () => {
+  it('appends a deduped chat-sources chip list for vault backtick paths', () => {
     const md = 'Hello `Notes/A.md` and `Notes/B.md` again `Notes/A.md`.'
     const pre = preprocessChatMarkdown(md)
-    expect(pre).toContain('<sup class="chat-ref">1</sup>')
-    expect(pre).toContain('<sup class="chat-ref">2</sup>')
-    expect(pre).toMatch(/## Sources/)
-    expect(pre).toContain('Notes/A.md')
-    expect(pre).toContain('Notes/B.md')
+    expect(pre).toContain('<div class="chat-sources">')
+    expect(pre).toContain('<a href="Notes/A.md">Notes/A.md</a>')
+    expect(pre).toContain('<a href="Notes/B.md">Notes/B.md</a>')
+    // Deduped — Notes/A.md is repeated in the body but should only produce one chip.
+    const chipCount = pre.match(/<a href="Notes\/A\.md">/g)?.length ?? 0
+    expect(chipCount).toBe(1)
   })
 
   it('does not append Sources when already present', () => {
@@ -24,10 +25,10 @@ describe('preprocessChatMarkdown', () => {
     expect(count).toBe(1)
   })
 
-  it('removes standalone thematic break lines', () => {
+  it('keeps standalone thematic break lines untouched', () => {
     const md = 'A\n\n---\n\nB'
     const pre = preprocessChatMarkdown(md)
-    expect(pre).not.toMatch(/^\s*---\s*$/m)
+    expect(pre).toMatch(/^\s*---\s*$/m)
     expect(pre).toContain('A')
     expect(pre).toContain('B')
   })

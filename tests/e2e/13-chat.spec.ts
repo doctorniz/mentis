@@ -50,7 +50,7 @@ test.describe('13 — AI Chat', () => {
       if (await openaiOption.isVisible()) {
         await openaiOption.click()
       } else {
-        await providerSelect.selectOption({ label: /openai/i })
+        await providerSelect.selectOption({ label: 'OpenAI' })
       }
       await page.waitForTimeout(500)
 
