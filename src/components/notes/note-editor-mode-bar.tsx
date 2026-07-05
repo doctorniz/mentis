@@ -1,7 +1,7 @@
 'use client'
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { ChevronDown, FileCode, FileDown, FileText, PenLine, Printer } from 'lucide-react'
+import { ChevronDown, FileCode, FileDown, FileText, PenLine, Printer, Search } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { formatWordCount } from '@/lib/notes/word-count'
 
@@ -9,6 +9,7 @@ export function NoteEditorModeBar({
   raw,
   onVisual,
   onRaw,
+  onFind,
   onExportMarkdown,
   onPrint,
   busy,
@@ -17,6 +18,8 @@ export function NoteEditorModeBar({
   raw: boolean
   onVisual: () => void
   onRaw: () => void
+  /** Opens the in-note find bar (visual mode; source mode uses CodeMirror's panel). */
+  onFind?: () => void
   onExportMarkdown?: () => void
   /** Opens browser print dialog with print-styled HTML (save as PDF from the dialog). */
   onPrint?: () => void
@@ -72,6 +75,19 @@ export function NoteEditorModeBar({
       )}
 
       <span className="flex-1" />
+
+      {onFind && (
+        <button
+          type="button"
+          disabled={busy}
+          title="Find (Ctrl+F)"
+          aria-label="Find in note"
+          onClick={onFind}
+          className="text-fg-muted hover:text-fg hover:bg-bg-hover inline-flex size-8 items-center justify-center rounded-md transition-colors disabled:opacity-50"
+        >
+          <Search className="size-4" aria-hidden />
+        </button>
+      )}
 
       {exportOpen && (
         <DropdownMenu.Root modal={false}>

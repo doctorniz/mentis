@@ -55,6 +55,10 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      // An editor surface already claimed this key (e.g. in-note find on
+      // Ctrl+F) — don't hijack it for a global action too.
+      if (e.defaultPrevented) return
+
       const mod = e.metaKey || e.ctrlKey
 
       if (mod && e.shiftKey && e.key === '?') {

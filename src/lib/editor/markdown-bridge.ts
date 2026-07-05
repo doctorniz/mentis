@@ -257,6 +257,23 @@ function createTurndown(): TurndownService {
     },
   })
 
+  // Images: preserve a user-set display width as the Obsidian-style pipe
+  // suffix (`![alt|400](src)`) so it survives the markdown round-trip and
+  // stays readable in other tools.
+  td.addRule('image', {
+    filter: 'img',
+    replacement(_content, node) {
+      const el = node as HTMLElement
+      const src = el.getAttribute('src') ?? ''
+      if (!src) return ''
+      const alt = el.getAttribute('alt') ?? ''
+      const width = el.getAttribute('width')
+      const title = el.getAttribute('title')
+      const altOut = width ? `${alt}|${width}` : alt
+      return `![${altOut}](${src}${title ? ` "${title}"` : ''})`
+    },
+  })
+
   td.addRule('mathInline', {
     filter(node) {
       return (

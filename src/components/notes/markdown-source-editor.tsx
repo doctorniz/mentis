@@ -29,10 +29,16 @@ export function MarkdownSourceEditor({
   initialValue,
   onChange,
   className,
+  initialScrollFraction,
+  scrollElementRef,
 }: {
   initialValue: string
   onChange: (value: string) => void
   className?: string
+  /** 0–1 scroll position to restore after mount (from the visual editor's scroll state). */
+  initialScrollFraction?: number
+  /** Receives the scrolling element so the parent can capture scroll state on mode switch. */
+  scrollElementRef?: React.MutableRefObject<HTMLDivElement | null>
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const onChangeRef = useRef(onChange)
@@ -69,6 +75,15 @@ export function MarkdownSourceEditor({
 
     view.focus()
 
+    // Restore the visual editor's scroll position proportionally once the
+    // document has been measured (rAF: CodeMirror needs a layout pass).
+    if (initialScrollFraction != null && initialScrollFraction > 0) {
+      const el = containerRef.current
+      requestAnimationFrame(() => {
+        el.scrollTop = initialScrollFraction * Math.max(0, el.scrollHeight - el.clientHeight)
+      })
+    }
+
     return () => {
       view.destroy()
     }
@@ -79,7 +94,10 @@ export function MarkdownSourceEditor({
 
   return (
     <div
-      ref={containerRef}
+      ref={(el) => {
+        containerRef.current = el
+        if (scrollElementRef) scrollElementRef.current = el
+      }}
       role="textbox"
       aria-label="Raw markdown source"
       aria-multiline="true"

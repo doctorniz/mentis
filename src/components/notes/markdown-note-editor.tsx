@@ -38,6 +38,7 @@ import type { InsertImageFn } from '@/components/notes/note-editor-toolbar'
 import { NoteEditorModeBar } from '@/components/notes/note-editor-mode-bar'
 import { MarkdownSourceEditor } from '@/components/notes/markdown-source-editor'
 import { TableControlsMenu } from '@/components/notes/table-controls-menu'
+import { FindReplaceBar } from '@/components/notes/find-replace-bar'
 import { countWords } from '@/lib/notes/word-count'
 import { useSyncPush } from '@/contexts/sync-context'
 
@@ -157,9 +158,24 @@ export const MarkdownNoteEditor = forwardRef<
      * `ensureChatAssetId` ran early while loading and minted a stale id.
      */
     onChatAssetIdFromDisk?: (path: string, chatAssetId: string) => void
+    /**
+     * Reports the live Tiptap editor once it exists (and null on unmount)
+     * so siblings outside this component — the outline panel — can read
+     * the document without a save round-trip.
+     */
+    onEditorReady?: (editor: Editor | null) => void
   }
 >(function MarkdownNoteEditor(
-  { tabId, path, markdownPaths, onOpenNotePath, onPersisted, onRenamed, onChatAssetIdFromDisk },
+  {
+    tabId,
+    path,
+    markdownPaths,
+    onOpenNotePath,
+    onPersisted,
+    onRenamed,
+    onChatAssetIdFromDisk,
+    onEditorReady,
+  },
   ref,
 ) {
   const { vaultFs } = useVaultSession()
@@ -177,6 +193,9 @@ export const MarkdownNoteEditor = forwardRef<
 
   const [rawText, setRawText] = useState('')
   const [wordCount, setWordCount] = useState(0)
+  const [findOpen, setFindOpen] = useState(false)
+  const [findInitialTerm, setFindInitialTerm] = useState('')
+  const [findFocusPulse, setFindFocusPulse] = useState(0)
   const [isBootstrapping, setIsBootstrapping] = useState(true)
   const [voiceAttach, setVoiceAttach] = useState<{ path: string; duration: number | null } | null>(
     null,
@@ -229,6 +248,12 @@ export const MarkdownNoteEditor = forwardRef<
   const tabIdRef = useRef(tabId)
   const showRawRef = useRef(showRawSource)
   const rawTextRef = useRef('')
+  /** Scroll container of the visual editor (the overflow-y-auto column). */
+  const visualScrollRef = useRef<HTMLDivElement | null>(null)
+  /** Scroll container inside MarkdownSourceEditor (CodeMirror host). */
+  const sourceScrollRef = useRef<HTMLDivElement | null>(null)
+  /** 0–1 scroll fraction carried across a visual→source mode switch. */
+  const modeSwitchScrollFractionRef = useRef<number | null>(null)
   // Only surface one "failed to save" toast per outage — repeated auto-save
   // attempts while the user keeps typing would otherwise re-toast every
   // 750ms. Cleared as soon as a save succeeds.
@@ -413,8 +438,15 @@ export const MarkdownNoteEditor = forwardRef<
     },
   })
 
+  const onEditorReadyRef = useRef(onEditorReady)
+  onEditorReadyRef.current = onEditorReady
+
   useEffect(() => {
     editorRef.current = editor
+    if (editor) {
+      onEditorReadyRef.current?.(editor)
+      return () => onEditorReadyRef.current?.(null)
+    }
   }, [editor])
 
   // Imperative handle for the chat panel: mint `chatAssetId` on demand
@@ -597,13 +629,57 @@ export const MarkdownNoteEditor = forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBootstrapping, isNew])
 
+  /** Open (or refocus) the find bar, seeding it from the current selection. */
+  function openFind() {
+    const ed = editorRef.current
+    if (!ed || showRawRef.current) return
+    const { from, to } = ed.state.selection
+    const sel = from !== to ? ed.state.doc.textBetween(from, to, ' ') : ''
+    if (sel.length > 0 && sel.length <= 200 && !sel.includes('\n')) {
+      setFindInitialTerm(sel)
+    }
+    setFindOpen(true)
+    setFindFocusPulse((n) => n + 1)
+  }
+
+  function closeFind() {
+    setFindOpen(false)
+    setFindInitialTerm('')
+  }
+
+  function handleEditorAreaKeyDown(e: React.KeyboardEvent) {
+    if (e.defaultPrevented) return
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F') && !showRawSource) {
+      e.preventDefault()
+      openFind()
+      return
+    }
+    if (e.key === 'Escape' && findOpen) {
+      e.preventDefault()
+      editorRef.current?.commands.clearFind()
+      closeFind()
+    }
+  }
+
+  /** 0–1 how far down `el` is scrolled. */
+  function scrollFractionOf(el: HTMLElement | null): number {
+    if (!el) return 0
+    const range = el.scrollHeight - el.clientHeight
+    return range > 0 ? el.scrollTop / range : 0
+  }
+
   function handleShowRaw() {
     const ed = editorRef.current
     if (!ed || loadingRef.current) return
+    if (findOpen) {
+      ed.commands.clearFind()
+      closeFind()
+    }
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current)
       saveTimerRef.current = null
     }
+    modeSwitchScrollFractionRef.current = scrollFractionOf(visualScrollRef.current)
     const body = tiptapJSONToMarkdown(ed.getJSON())
     setRawText(serializeNote(frontmatterRef.current, body))
     updateTab(tabId, { showRawSource: true })
@@ -615,6 +691,9 @@ export const MarkdownNoteEditor = forwardRef<
       clearTimeout(saveTimerRef.current)
       saveTimerRef.current = null
     }
+    // Capture before the async work — the source editor unmounts when
+    // the mode flips.
+    const scrollFraction = scrollFractionOf(sourceScrollRef.current)
     void (async () => {
       try {
         const latest = rawTextRef.current
@@ -634,6 +713,18 @@ export const MarkdownNoteEditor = forwardRef<
         updateTab(tabId, { showRawSource: false, title, isDirty: false })
         onPersistedRef.current?.()
         void reindexMarkdownPath(vaultFs, pathRef.current)
+        // Restore proportional scroll once the visual editor has rendered
+        // (double rAF: mode flip → EditorContent mounts → layout pass).
+        if (scrollFraction > 0) {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              const el = visualScrollRef.current
+              if (el) {
+                el.scrollTop = scrollFraction * Math.max(0, el.scrollHeight - el.clientHeight)
+              }
+            })
+          })
+        }
       } catch (e) {
         console.error(e)
         toast.error('Failed to switch to visual mode')
@@ -773,11 +864,15 @@ export const MarkdownNoteEditor = forwardRef<
   }
 
   return (
-    <div className="bg-bg flex h-full min-h-0 min-w-0 flex-1 flex-col">
+    <div
+      className="bg-bg flex h-full min-h-0 min-w-0 flex-1 flex-col"
+      onKeyDown={handleEditorAreaKeyDown}
+    >
       <NoteEditorModeBar
         raw={showRawSource}
         busy={isBootstrapping}
         wordCount={wordCount}
+        onFind={showRawSource ? undefined : openFind}
         onExportMarkdown={() => handleExportMarkdown()}
         onPrint={() => void handlePrint()}
         onVisual={() => {
@@ -800,47 +895,66 @@ export const MarkdownNoteEditor = forwardRef<
         />
       )}
       {!showRawSource && <TableControlsMenu editor={editor} />}
-      <div className={cn('min-h-0 flex-1', showRawSource ? 'flex flex-col' : 'overflow-y-auto')}>
-        <div className="px-10 pt-6">
-          <input
-            ref={titleInputRef}
-            type="text"
-            value={inlineTitle}
-            onChange={(e) => {
-              // Strip illegal filename characters as the user types
-              const cleaned = e.target.value.replace(/[/\\:*?"<>|]/g, '')
-              setInlineTitle(cleaned)
-            }}
-            onBlur={() => void commitTitleRename()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                ;(e.target as HTMLInputElement).blur()
-              }
-              if (e.key === 'Escape') {
-                setInlineTitle(titleFromPath(pathRef.current))
-                ;(e.target as HTMLInputElement).blur()
-              }
-            }}
-            aria-label="Note title"
-            className="text-fg placeholder:text-fg-muted w-full border-none bg-transparent text-[2rem] leading-tight font-bold tracking-tight outline-none"
-            placeholder="Untitled"
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {findOpen && !showRawSource && (
+          <FindReplaceBar
+            editor={editor}
+            initialTerm={findInitialTerm}
+            focusPulse={findFocusPulse}
+            onClose={closeFind}
+            className="absolute top-2 right-6 z-20"
           />
-        </div>
-        {voiceAttach && (
-          <div className="px-10">
-            <NoteVoiceAttachment vaultPath={voiceAttach.path} durationSec={voiceAttach.duration} />
+        )}
+        <div
+          ref={visualScrollRef}
+          className={cn('min-h-0 flex-1', showRawSource ? 'flex flex-col' : 'overflow-y-auto')}
+        >
+          <div className="px-10 pt-6">
+            <input
+              ref={titleInputRef}
+              type="text"
+              value={inlineTitle}
+              onChange={(e) => {
+                // Strip illegal filename characters as the user types
+                const cleaned = e.target.value.replace(/[/\\:*?"<>|]/g, '')
+                setInlineTitle(cleaned)
+              }}
+              onBlur={() => void commitTitleRename()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  ;(e.target as HTMLInputElement).blur()
+                }
+                if (e.key === 'Escape') {
+                  setInlineTitle(titleFromPath(pathRef.current))
+                  ;(e.target as HTMLInputElement).blur()
+                }
+              }}
+              aria-label="Note title"
+              className="text-fg placeholder:text-fg-muted w-full border-none bg-transparent text-[2rem] leading-tight font-bold tracking-tight outline-none"
+              placeholder="Untitled"
+            />
           </div>
-        )}
-        {showRawSource ? (
-          <MarkdownSourceEditor
-            initialValue={rawText}
-            onChange={handleRawChange}
-            className="px-10 pt-2 pb-6"
-          />
-        ) : (
-          <EditorContent editor={editor} />
-        )}
+          {voiceAttach && (
+            <div className="px-10">
+              <NoteVoiceAttachment
+                vaultPath={voiceAttach.path}
+                durationSec={voiceAttach.duration}
+              />
+            </div>
+          )}
+          {showRawSource ? (
+            <MarkdownSourceEditor
+              initialValue={rawText}
+              onChange={handleRawChange}
+              className="px-10 pt-2 pb-6"
+              initialScrollFraction={modeSwitchScrollFractionRef.current ?? undefined}
+              scrollElementRef={sourceScrollRef}
+            />
+          ) : (
+            <EditorContent editor={editor} />
+          )}
+        </div>
       </div>
     </div>
   )

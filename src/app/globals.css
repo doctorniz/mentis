@@ -240,6 +240,17 @@
   padding: 0.05em 0.15em;
 }
 
+/* Find-in-note match decorations (find-replace.ts plugin) */
+.ProseMirror.tiptap-editor .find-match {
+  background-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  border-radius: 0.15em;
+}
+
+.ProseMirror.tiptap-editor .find-match-active {
+  background-color: color-mix(in srgb, var(--color-warning) 60%, transparent);
+  outline: 1px solid var(--color-warning);
+}
+
 .ProseMirror.tiptap-editor ul,
 .ProseMirror.tiptap-editor ol {
   margin: 0.4em 0;

@@ -122,6 +122,20 @@ describe('markdownToTiptapJSON', () => {
     expect(img!.attrs?.alt).toBe('photo')
   })
 
+  it('parses Obsidian pipe-width ![alt|400](src) into the width attr', () => {
+    const doc = markdownToTiptapJSON('![photo|400](_assets/pic.png)')
+    const img = doc.content?.find((n) => n.type === 'image')
+    expect(img!.attrs?.alt).toBe('photo')
+    expect(img!.attrs?.width).toBe(400)
+  })
+
+  it('keeps a non-numeric pipe suffix as part of the alt text', () => {
+    const doc = markdownToTiptapJSON('![cats|dogs](_assets/pic.png)')
+    const img = doc.content?.find((n) => n.type === 'image')
+    expect(img!.attrs?.alt).toBe('cats|dogs')
+    expect(img!.attrs?.width).toBeNull()
+  })
+
   it('converts ![[file.pdf#page=3]] to pdfEmbed node', () => {
     const doc = markdownToTiptapJSON('![[notes/paper.pdf#page=3]]')
     const embed = doc.content?.find((n) => n.type === 'pdfEmbed')
@@ -287,6 +301,20 @@ describe('tiptapJSONToMarkdown', () => {
     const doc = markdownToTiptapJSON('![photo](_assets/pic.png)')
     const md = tiptapJSONToMarkdown(doc)
     expect(md).toContain('![photo](_assets/pic.png)')
+  })
+
+  it('round-trips image width as the pipe suffix', () => {
+    const doc = markdownToTiptapJSON('![photo|400](_assets/pic.png)')
+    const md = tiptapJSONToMarkdown(doc)
+    expect(md).toContain('![photo|400](_assets/pic.png)')
+  })
+
+  it('serializes a width set in the editor even with empty alt', () => {
+    const md = tiptapJSONToMarkdown({
+      type: 'doc',
+      content: [{ type: 'image', attrs: { src: '_assets/pic.png', width: 250 } }],
+    })
+    expect(md).toContain('![|250](_assets/pic.png)')
   })
 
   it('converts pdfEmbed node back to ![[file.pdf#page=N]]', () => {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { Editor as TiptapEditor } from '@tiptap/core'
 import { FileText, Folder, GitFork, Search } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
@@ -15,6 +16,7 @@ import {
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { EditorRightColumn } from '@/components/notes/editor-right-column'
 import { BacklinksSection } from '@/components/notes/backlinks-section'
+import { OutlineSection } from '@/components/notes/outline-section'
 import { ensureChatAssetIdForPath } from '@/lib/chat/asset-index'
 import { PdfViewer } from '@/components/pdf/pdf-viewer'
 import { CanvasEditor } from '@/components/canvas/canvas-editor'
@@ -275,6 +277,29 @@ function NotesViewInner() {
       /* ignore */
     }
   }, [backlinksCollapsed])
+
+  // Collapsible headings outline — same persistence pattern as backlinks.
+  const OUTLINE_COLLAPSED_KEY = 'ink-marrow:outline-collapsed'
+  const [outlineCollapsed, setOutlineCollapsed] = useState(true)
+  useLayoutEffect(() => {
+    try {
+      const raw = localStorage.getItem(OUTLINE_COLLAPSED_KEY)
+      if (raw === '0') setOutlineCollapsed(false)
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [])
+  useEffect(() => {
+    try {
+      localStorage.setItem(OUTLINE_COLLAPSED_KEY, outlineCollapsed ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [outlineCollapsed])
+
+  // Live editor of the active markdown tab, reported by MarkdownNoteEditor
+  // so the outline panel can read headings without a save round-trip.
+  const [activeMarkdownEditor, setActiveMarkdownEditor] = useState<TiptapEditor | null>(null)
 
   // Chat collapsed state — collapsed = just a header bar at the bottom.
   const CHAT_COLLAPSED_KEY = 'ink-marrow:chat-collapsed'
@@ -581,16 +606,28 @@ function NotesViewInner() {
                 ) : null
               }
               trailing={
-                <BacklinksSection
-                  vaultFs={vaultFs}
-                  markdownPaths={markdownPaths}
-                  activeNotePath={activeTab.path}
-                  scanPulse={scanPulse}
-                  onOpenNote={openNotePath}
-                  collapsed={backlinksCollapsed}
-                  onCollapsedChange={setBacklinksCollapsed}
-                  maxExpandedHeightClass={!chatCollapsed ? 'max-h-[40%]' : 'flex-1'}
-                />
+                <>
+                  <OutlineSection
+                    editor={activeMarkdownEditor}
+                    collapsed={outlineCollapsed}
+                    onCollapsedChange={setOutlineCollapsed}
+                    maxExpandedHeightClass={
+                      chatCollapsed && backlinksCollapsed ? 'flex-1' : 'max-h-[35%]'
+                    }
+                  />
+                  <BacklinksSection
+                    vaultFs={vaultFs}
+                    markdownPaths={markdownPaths}
+                    activeNotePath={activeTab.path}
+                    scanPulse={scanPulse}
+                    onOpenNote={openNotePath}
+                    collapsed={backlinksCollapsed}
+                    onCollapsedChange={setBacklinksCollapsed}
+                    maxExpandedHeightClass={
+                      chatCollapsed && outlineCollapsed ? 'flex-1' : 'max-h-[40%]'
+                    }
+                  />
+                </>
               }
             >
               <MarkdownNoteEditor
@@ -603,6 +640,7 @@ function NotesViewInner() {
                 onPersisted={bumpScan}
                 onRenamed={vaultChanged}
                 onChatAssetIdFromDisk={onMarkdownChatAssetIdFromDisk}
+                onEditorReady={setActiveMarkdownEditor}
               />
             </EditorRightColumn>
           </div>

@@ -21,6 +21,7 @@ import { VaultVideo } from '@/lib/editor/vault-video-node'
 import { VaultVideoExtension } from '@/lib/editor/vault-video-extension'
 import { PdfEmbedNode } from '@/lib/editor/pdf-embed-node'
 import { PdfEmbedExtension } from '@/lib/editor/pdf-embed-extension'
+import { FindReplace } from '@/lib/editor/find-replace'
 import { createInkWikiLinkSuggestion } from '@/lib/editor/wiki-link-suggestion'
 
 const lowlight = createLowlight(common)
@@ -63,6 +64,9 @@ export function getNoteEditorExtensions(
     Placeholder.configure({ placeholder }),
     inkSlashCommands,
   ]
+  if (options?.liveEditor) {
+    ex.push(FindReplace)
+  }
   if (wiki) {
     ex.push(createInkWikiLinkSuggestion(wiki))
   }
