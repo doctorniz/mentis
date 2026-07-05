@@ -1,4 +1,5 @@
 import type { Editor, Range } from '@tiptap/core'
+import { getSlashDialogHandlers } from '@/lib/editor/slash-dialog-bridge'
 
 export interface SlashItem {
   title: string
@@ -86,6 +87,52 @@ export const slashItems: SlashItem[] = [
     keywords: ['hr', '---', 'line'],
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).setHorizontalRule().run()
+    },
+  },
+  {
+    title: 'Image',
+    description: 'Upload or pick from vault',
+    keywords: ['image', 'picture', 'photo', 'upload'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+      getSlashDialogHandlers()?.openImageDialog()
+    },
+  },
+  {
+    title: 'Video',
+    description: 'Upload or pick from vault',
+    keywords: ['video', 'movie', 'clip', 'upload'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+      getSlashDialogHandlers()?.openVideoDialog()
+    },
+  },
+  {
+    title: 'Wiki link',
+    description: 'Link to another note  [[…]]',
+    keywords: ['wiki', 'link', 'note', '[[', 'backlink'],
+    command: ({ editor, range }) => {
+      // Insert the trigger characters — the wiki-link Suggestion plugin
+      // scans document text for `[[` and opens the same autocomplete a
+      // user gets by typing it directly.
+      editor.chain().focus().deleteRange(range).insertContent('[[').run()
+    },
+  },
+  {
+    title: 'Template',
+    description: 'Insert a saved template',
+    keywords: ['template', 'snippet', 'boilerplate'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+      getSlashDialogHandlers()?.openTemplateDialog()
+    },
+  },
+  {
+    title: 'Highlight',
+    description: 'Highlighted text  ==like this==',
+    keywords: ['highlight', 'mark', '==', 'mark text'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).toggleHighlight().run()
     },
   },
   {

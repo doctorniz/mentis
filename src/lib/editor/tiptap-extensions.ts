@@ -4,6 +4,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import Underline from '@tiptap/extension-underline'
+import Highlight from '@tiptap/extension-highlight'
 import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
@@ -36,13 +37,16 @@ export function getNoteEditorExtensions(
 ): Extensions {
   const ex: Extensions = [
     StarterKit.configure({
-      heading: { levels: [1, 2, 3] },
+      // Schema accepts the full range so H4-H6 from externally-created
+      // files round-trip intact, even though the UI only exposes H1-H3.
+      heading: { levels: [1, 2, 3, 4, 5, 6] },
       bulletList: { keepMarks: true, keepAttributes: false },
       orderedList: { keepMarks: true, keepAttributes: false },
       codeBlock: false,
     }),
     CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
     Underline,
+    Highlight,
     Link.configure({ openOnClick: false, autolink: true }),
     TaskList,
     TaskItem.configure({ nested: true }),

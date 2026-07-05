@@ -3,6 +3,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { ChevronDown, FileCode, FileDown, FileText, PenLine, Printer } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { formatWordCount } from '@/lib/notes/word-count'
 
 export function NoteEditorModeBar({
   raw,
@@ -11,6 +12,7 @@ export function NoteEditorModeBar({
   onExportMarkdown,
   onPrint,
   busy,
+  wordCount,
 }: {
   raw: boolean
   onVisual: () => void
@@ -20,6 +22,8 @@ export function NoteEditorModeBar({
   onPrint?: () => void
   /** Disable switching while file is loading into the editor. */
   busy?: boolean
+  /** Body word count, shown with an estimated reading time. */
+  wordCount?: number
 }) {
   const exportOpen = Boolean(onExportMarkdown || onPrint)
   return (
@@ -39,9 +43,7 @@ export function NoteEditorModeBar({
           onClick={onVisual}
           className={cn(
             'inline-flex size-8 items-center justify-center rounded-md transition-all disabled:opacity-50',
-            !raw
-              ? 'bg-bg text-accent shadow-sm'
-              : 'text-fg-secondary hover:text-fg',
+            !raw ? 'bg-bg text-accent shadow-sm' : 'text-fg-secondary hover:text-fg',
           )}
         >
           <PenLine className="size-4" aria-hidden />
@@ -56,62 +58,65 @@ export function NoteEditorModeBar({
           onClick={onRaw}
           className={cn(
             'inline-flex size-8 items-center justify-center rounded-md transition-all disabled:opacity-50',
-            raw
-              ? 'bg-bg text-accent shadow-sm'
-              : 'text-fg-secondary hover:text-fg',
+            raw ? 'bg-bg text-accent shadow-sm' : 'text-fg-secondary hover:text-fg',
           )}
         >
           <FileCode className="size-4" aria-hidden />
         </button>
       </div>
 
+      {typeof wordCount === 'number' && (
+        <span className="text-fg-muted px-1 text-xs tabular-nums" aria-live="polite">
+          {formatWordCount(wordCount)}
+        </span>
+      )}
+
+      <span className="flex-1" />
+
       {exportOpen && (
-        <>
-          <span className="flex-1" />
-          <DropdownMenu.Root modal={false}>
-            <DropdownMenu.Trigger asChild>
-              <button
-                type="button"
-                disabled={busy}
-                title="Export or print"
-                aria-label="Export or print"
-                aria-haspopup="menu"
-                className="text-fg-muted hover:text-fg hover:bg-bg-hover inline-flex size-8 items-center justify-center gap-0.5 rounded-md transition-colors disabled:opacity-50"
-              >
-                <FileDown className="size-4" aria-hidden />
-                <ChevronDown className="size-3 opacity-70" aria-hidden />
-              </button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content
-                sideOffset={6}
-                align="end"
-                className="border-border-strong bg-bg z-50 min-w-[140px] rounded-lg border p-1 shadow-lg"
-              >
-                {onExportMarkdown && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    disabled={busy}
-                    onSelect={() => onExportMarkdown()}
-                  >
-                    <FileText className="size-4 shrink-0 opacity-80" aria-hidden />
-                    Markdown
-                  </DropdownMenu.Item>
-                )}
-                {onPrint && (
-                  <DropdownMenu.Item
-                    className={dropdownItemClass}
-                    disabled={busy}
-                    onSelect={() => onPrint()}
-                  >
-                    <Printer className="size-4 shrink-0 opacity-80" aria-hidden />
-                    Print
-                  </DropdownMenu.Item>
-                )}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
-        </>
+        <DropdownMenu.Root modal={false}>
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              disabled={busy}
+              title="Export or print"
+              aria-label="Export or print"
+              aria-haspopup="menu"
+              className="text-fg-muted hover:text-fg hover:bg-bg-hover inline-flex size-8 items-center justify-center gap-0.5 rounded-md transition-colors disabled:opacity-50"
+            >
+              <FileDown className="size-4" aria-hidden />
+              <ChevronDown className="size-3 opacity-70" aria-hidden />
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              sideOffset={6}
+              align="end"
+              className="border-border-strong bg-bg z-50 min-w-[140px] rounded-lg border p-1 shadow-lg"
+            >
+              {onExportMarkdown && (
+                <DropdownMenu.Item
+                  className={dropdownItemClass}
+                  disabled={busy}
+                  onSelect={() => onExportMarkdown()}
+                >
+                  <FileText className="size-4 shrink-0 opacity-80" aria-hidden />
+                  Markdown
+                </DropdownMenu.Item>
+              )}
+              {onPrint && (
+                <DropdownMenu.Item
+                  className={dropdownItemClass}
+                  disabled={busy}
+                  onSelect={() => onPrint()}
+                >
+                  <Printer className="size-4 shrink-0 opacity-80" aria-hidden />
+                  Print
+                </DropdownMenu.Item>
+              )}
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       )}
     </div>
   )

@@ -44,10 +44,7 @@ const MIME: Record<string, string> = {
   bmp: 'image/bmp',
 }
 
-async function inlineVaultImages(
-  html: string,
-  fs: FileSystemAdapter,
-): Promise<string> {
+async function inlineVaultImages(html: string, fs: FileSystemAdapter): Promise<string> {
   const imgRe = /<img([^>]*)\ssrc="([^"]+)"([^>]*)>/g
   const matches = [...html.matchAll(imgRe)]
   let result = html
@@ -109,6 +106,7 @@ const PRINT_CSS = `
   h1 { font-size: 1.8em; font-weight: 700; margin: 0.6em 0 0.3em; }
   h2 { font-size: 1.4em; font-weight: 600; margin: 0.5em 0 0.25em; }
   h3 { font-size: 1.2em; font-weight: 600; margin: 0.4em 0 0.2em; }
+  h4, h5, h6 { font-size: 1em; font-weight: 600; margin: 0.35em 0 0.15em; }
   p  { margin: 0.4em 0; }
 
   strong, b { font-weight: 700; }

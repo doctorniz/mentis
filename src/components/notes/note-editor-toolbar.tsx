@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Editor } from '@tiptap/core'
 import {
@@ -10,12 +10,15 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Highlighter,
   ImageIcon,
   Italic,
+  LayoutTemplate,
   Link2,
   List,
   ListChecks,
   ListOrdered,
+  Loader2,
   Minus,
   Quote,
   Strikethrough,
@@ -26,6 +29,13 @@ import { cn } from '@/utils/cn'
 import type { FileSystemAdapter } from '@/lib/fs'
 import { InsertMediaDialog } from '@/components/notes/insert-media-dialog'
 import { InsertLinkDialog } from '@/components/notes/insert-link-dialog'
+import { setSlashDialogHandlers } from '@/lib/editor/slash-dialog-bridge'
+import { listTemplates, readTemplate, type NoteTemplate } from '@/lib/notes/template-store'
+import { markdownToTiptapJSON } from '@/lib/editor/markdown-bridge'
+import { parseNote } from '@/lib/markdown'
+import { useVaultStore } from '@/stores/vault'
+import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
+import { toast } from '@/stores/toast'
 
 /* ------------------------------------------------------------------ */
 /* Primitives                                                           */
@@ -53,9 +63,7 @@ function ToolbarBtn({
       onClick={onClick}
       className={cn(
         'flex size-8 items-center justify-center rounded-md transition-colors disabled:opacity-40',
-        active
-          ? 'bg-accent/10 text-accent'
-          : 'text-fg-secondary hover:bg-bg-hover hover:text-fg',
+        active ? 'bg-accent/10 text-accent' : 'text-fg-secondary hover:bg-bg-hover hover:text-fg',
       )}
     >
       {children}
@@ -76,14 +84,11 @@ function TablePicker({ onPick }: { onPick: (rows: number, cols: number) => void 
   const MAX = 6
 
   return (
-    <div className="border-border bg-bg shadow-lg absolute top-full left-0 z-50 mt-1 rounded-lg border p-2">
+    <div className="border-border bg-bg absolute top-full left-0 z-50 mt-1 rounded-lg border p-2 shadow-lg">
       <p className="text-fg-muted mb-2 text-center text-xs">
         {hover ? `${hover[0]} × ${hover[1]}` : 'Insert table'}
       </p>
-      <div
-        className="grid gap-0.5"
-        style={{ gridTemplateColumns: `repeat(${MAX}, 1.375rem)` }}
-      >
+      <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${MAX}, 1.375rem)` }}>
         {Array.from({ length: MAX * MAX }, (_, i) => {
           const r = Math.floor(i / MAX) + 1
           const c = (i % MAX) + 1
@@ -116,7 +121,7 @@ function TablePicker({ onPick }: { onPick: (rows: number, cols: number) => void 
 
 function MathPicker({ onPick }: { onPick: (type: 'mathInline' | 'mathBlock') => void }) {
   return (
-    <div className="border-border bg-bg shadow-lg absolute top-full left-0 z-50 mt-1 flex min-w-max flex-col rounded-lg border p-1">
+    <div className="border-border bg-bg absolute top-full left-0 z-50 mt-1 flex min-w-max flex-col rounded-lg border p-1 shadow-lg">
       <button
         type="button"
         onClick={() => onPick('mathInline')}
@@ -133,6 +138,43 @@ function MathPicker({ onPick }: { onPick: (type: 'mathInline' | 'mathBlock') => 
         <span className="font-mono text-xs opacity-60">$$…$$</span>
         <span>Math block</span>
       </button>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Template insert popover                                              */
+/* ------------------------------------------------------------------ */
+
+function TemplatePicker({
+  templates,
+  loading,
+  onPick,
+}: {
+  templates: NoteTemplate[]
+  loading: boolean
+  onPick: (filename: string) => void
+}) {
+  return (
+    <div className="border-border bg-bg absolute top-full left-0 z-50 mt-1 flex max-h-64 w-56 flex-col overflow-y-auto rounded-lg border p-1 shadow-lg">
+      {loading ? (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="text-fg-muted size-4 animate-spin" />
+        </div>
+      ) : templates.length === 0 ? (
+        <p className="text-fg-muted px-3 py-2 text-xs">No templates yet</p>
+      ) : (
+        templates.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => onPick(t.filename)}
+            className="hover:bg-bg-hover text-fg truncate rounded-md px-3 py-1.5 text-left text-sm"
+          >
+            {t.name}
+          </button>
+        ))
+      )}
     </div>
   )
 }
@@ -165,21 +207,72 @@ export function NoteEditorToolbar({
   const [mathPicker, setMathPicker] = useState(false)
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [canvasDialogOpen, setCanvasDialogOpen] = useState(false)
+  const [templatePicker, setTemplatePicker] = useState(false)
+  const [templates, setTemplates] = useState<NoteTemplate[]>([])
+  const [templatesLoading, setTemplatesLoading] = useState(false)
+  const templateFolder = useVaultStore(
+    (s) => s.config?.templateFolder ?? DEFAULT_VAULT_CONFIG.templateFolder,
+  )
+
+  // Bridge for the slash menu — it's a pure `{editor, range}` command list
+  // with no route to this component's dialog state, so it calls these
+  // open-handlers instead. See slash-dialog-bridge.ts for why this is safe.
+  useEffect(() => {
+    setSlashDialogHandlers({
+      openImageDialog: () => setImageDialogOpen(true),
+      openVideoDialog: () => setVideoDialogOpen(true),
+      openTemplateDialog: () => setTemplatePicker(true),
+    })
+    return () => setSlashDialogHandlers(null)
+  }, [])
+
+  useEffect(() => {
+    if (!templatePicker || !vaultFs) return
+    let cancelled = false
+    setTemplatesLoading(true)
+    void listTemplates(vaultFs, templateFolder).then((list) => {
+      if (!cancelled) {
+        setTemplates(list)
+        setTemplatesLoading(false)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [templatePicker, vaultFs, templateFolder])
 
   if (!editor) return null
 
+  async function insertTemplate(filename: string) {
+    setTemplatePicker(false)
+    if (!vaultFs || !editor) return
+    try {
+      const raw = await readTemplate(vaultFs, filename, templateFolder)
+      const { content: body } = parseNote(filename, raw)
+      const json = markdownToTiptapJSON(body)
+      editor
+        .chain()
+        .focus()
+        .insertContent(json.content ?? [])
+        .run()
+    } catch (e) {
+      console.error('Failed to insert template', e)
+      toast.error('Failed to insert template')
+    }
+  }
+
   function insertMath(type: 'mathInline' | 'mathBlock') {
     setMathPicker(false)
-    editor!.chain().focus().insertContent({ type, attrs: { latex: '' } }).run()
+    editor!
+      .chain()
+      .focus()
+      .insertContent({ type, attrs: { latex: '' } })
+      .run()
   }
 
   function insertTable(rows: number, cols: number) {
     setTablePicker(false)
-    editor!
-      .chain()
-      .focus()
-      .insertTable({ rows, cols, withHeaderRow: true })
-      .run()
+    editor!.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()
   }
 
   function insertWikiLink(path: string) {
@@ -232,6 +325,13 @@ export function NoteEditorToolbar({
           onClick={() => editor.chain().focus().toggleCode().run()}
         >
           <Code className="size-4" />
+        </ToolbarBtn>
+        <ToolbarBtn
+          title="Highlight (Ctrl+Shift+H)"
+          active={editor.isActive('highlight')}
+          onClick={() => editor.chain().focus().toggleHighlight().run()}
+        >
+          <Highlighter className="size-4" />
         </ToolbarBtn>
 
         <Separator />
@@ -324,7 +424,10 @@ export function NoteEditorToolbar({
           <ToolbarBtn
             title="Insert table"
             active={tablePicker}
-            onClick={() => { setTablePicker((v) => !v); setMathPicker(false) }}
+            onClick={() => {
+              setTablePicker((v) => !v)
+              setMathPicker(false)
+            }}
           >
             <Table2 className="size-4" />
           </ToolbarBtn>
@@ -341,7 +444,10 @@ export function NoteEditorToolbar({
           <ToolbarBtn
             title="Insert math"
             active={mathPicker || editor.isActive('mathInline') || editor.isActive('mathBlock')}
-            onClick={() => { setMathPicker((v) => !v); setTablePicker(false) }}
+            onClick={() => {
+              setMathPicker((v) => !v)
+              setTablePicker(false)
+            }}
           >
             <Sigma className="size-4" />
           </ToolbarBtn>
@@ -353,24 +459,40 @@ export function NoteEditorToolbar({
           )}
         </div>
 
+        {/* Template */}
+        <div className="relative">
+          <ToolbarBtn
+            title="Insert template"
+            active={templatePicker}
+            onClick={() => setTemplatePicker((v) => !v)}
+            disabled={!vaultFs}
+          >
+            <LayoutTemplate className="size-4" />
+          </ToolbarBtn>
+          {templatePicker && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setTemplatePicker(false)} />
+              <TemplatePicker
+                templates={templates}
+                loading={templatesLoading}
+                onPick={(filename) => void insertTemplate(filename)}
+              />
+            </>
+          )}
+        </div>
+
         <Separator />
 
         {/* ── Links ── */}
 
         {/* Link to any vault file */}
-        <ToolbarBtn
-          title="Link to file"
-          onClick={() => setLinkDialogOpen(true)}
-        >
+        <ToolbarBtn title="Link to file" onClick={() => setLinkDialogOpen(true)}>
           <Link2 className="size-4" />
         </ToolbarBtn>
 
         {/* Canvas-specific quick link */}
         {allPaths.some((p) => p.endsWith('.canvas')) && (
-          <ToolbarBtn
-            title="Link to canvas"
-            onClick={() => setCanvasDialogOpen(true)}
-          >
+          <ToolbarBtn title="Link to canvas" onClick={() => setCanvasDialogOpen(true)}>
             {/* Reuse the presentation icon for canvas */}
             <svg
               viewBox="0 0 16 16"

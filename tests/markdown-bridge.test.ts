@@ -152,6 +152,72 @@ describe('markdownToTiptapJSON', () => {
     expect(mathBlock).toBeDefined()
     expect(mathBlock!.attrs?.latex).toContain('\\int_0^1')
   })
+
+  it('does not treat plain dollar amounts as math', () => {
+    const doc = markdownToTiptapJSON('I paid $5 and $10 more.')
+    const para = doc.content?.[0]
+    const math = para?.content?.find((n) => n.type === 'mathInline')
+    expect(math).toBeUndefined()
+  })
+
+  it('does not treat $ around whitespace as math', () => {
+    const doc = markdownToTiptapJSON('Totals: $ 5 $ and $10, $20 lined up.')
+    const para = doc.content?.[0]
+    const math = para?.content?.find((n) => n.type === 'mathInline')
+    expect(math).toBeUndefined()
+  })
+
+  it('converts ==highlight== to a highlight mark', () => {
+    const doc = markdownToTiptapJSON('This is ==important== text.')
+    const para = doc.content?.[0]
+    const marked = para?.content?.find((n) => n.marks?.some((m) => m.type === 'highlight'))
+    expect(marked).toBeDefined()
+    expect(marked?.text).toBe('important')
+  })
+
+  it('does not rewrite $, [[ ]], or ![[ ]] inside a fenced code block', () => {
+    const md = '```\nconst path = "$HOME"\n// see [[not a link]] and ![[skip.pdf#page=1]]\n```'
+    const doc = markdownToTiptapJSON(md)
+    const cb = doc.content?.find((n) => n.type === 'codeBlock')
+    expect(cb).toBeDefined()
+    const text = cb!.content?.map((n) => n.text).join('\n') ?? ''
+    expect(text).toContain('$HOME')
+    expect(text).toContain('[[not a link]]')
+    expect(text).toContain('![[skip.pdf#page=1]]')
+    expect(doc.content?.some((n) => n.type === 'wikiLink')).toBe(false)
+    expect(doc.content?.some((n) => n.type === 'pdfEmbed')).toBe(false)
+  })
+
+  it('does not rewrite $ or [[ ]] inside an inline code span', () => {
+    const doc = markdownToTiptapJSON('Run `echo $PATH` then open [[real link]].')
+    const para = doc.content?.[0]
+    const code = para?.content?.find((n) => n.marks?.some((m) => m.type === 'code'))
+    expect(code?.text).toBe('echo $PATH')
+    const wikiNode = para?.content?.find((n) => n.type === 'wikiLink')
+    expect(wikiNode).toBeDefined()
+    expect(wikiNode!.attrs?.target).toBe('real link')
+  })
+
+  it('accepts H4-H6 headings', () => {
+    for (const level of [4, 5, 6]) {
+      const doc = markdownToTiptapJSON(`${'#'.repeat(level)} Heading ${level}`)
+      const heading = doc.content?.find((n) => n.type === 'heading')
+      expect(heading).toBeDefined()
+      expect(heading!.attrs?.level).toBe(level)
+    }
+  })
+
+  it('nests indented task-list children under their parent', () => {
+    const md = '- [ ] Parent\n  - [ ] Child\n  - [x] Child done\n- [ ] Sibling'
+    const doc = markdownToTiptapJSON(md)
+    const tl = doc.content?.find((n) => n.type === 'taskList')
+    expect(tl).toBeDefined()
+    expect(tl!.content).toHaveLength(2)
+    const parent = tl!.content![0]!
+    const nested = parent.content?.find((n) => n.type === 'taskList')
+    expect(nested).toBeDefined()
+    expect(nested!.content).toHaveLength(2)
+  })
 })
 
 describe('tiptapJSONToMarkdown', () => {
@@ -186,6 +252,16 @@ describe('tiptapJSONToMarkdown', () => {
     const doc = markdownToTiptapJSON('[[target|alias text]]')
     const md = tiptapJSONToMarkdown(doc)
     expect(md).toContain('[[target|alias text]]')
+  })
+
+  it('converts a link back without an injected title attribute', () => {
+    // Regression guard: Link's HTMLAttributes are shared between the live
+    // editor render and the save-direction generateHTML() call, so any
+    // static title/attrs configured for editor UX (e.g. a click-to-open
+    // hint) leak into every saved link as `(url "title")`.
+    const doc = markdownToTiptapJSON('[click](https://example.com)')
+    const md = tiptapJSONToMarkdown(doc)
+    expect(md).toBe('[click](https://example.com)')
   })
 
   it('converts inline math back to $...$ syntax', () => {
@@ -234,6 +310,26 @@ describe('tiptapJSONToMarkdown', () => {
     expect(out).toContain('Alice')
     expect(out).toContain('---')
   })
+
+  it('converts H4-H6 back to matching #### / ##### / ###### markdown', () => {
+    for (const level of [4, 5, 6]) {
+      const doc = markdownToTiptapJSON(`${'#'.repeat(level)} Heading ${level}`)
+      const md = tiptapJSONToMarkdown(doc)
+      expect(md).toContain(`${'#'.repeat(level)} Heading ${level}`)
+    }
+  })
+
+  it('converts a nested task list back to indented markdown', () => {
+    const doc = markdownToTiptapJSON('- [ ] Parent\n  - [ ] Child')
+    const md = tiptapJSONToMarkdown(doc)
+    expect(md).toMatch(/^- \[ \] Parent\n {2}- \[ \] Child$/m)
+  })
+
+  it('converts a highlight mark back to ==text==', () => {
+    const doc = markdownToTiptapJSON('This is ==important== text.')
+    const md = tiptapJSONToMarkdown(doc)
+    expect(md).toContain('==important==')
+  })
 })
 
 describe('round-trip: markdown → JSON → markdown', () => {
@@ -253,6 +349,26 @@ describe('round-trip: markdown → JSON → markdown', () => {
     { name: 'image', md: '![alt text](_assets/photo.png)' },
     { name: 'pdf embed', md: '![[paper.pdf#page=3]]' },
     { name: 'pdf embed range', md: '![[doc.pdf#page=1-3]]' },
+    { name: 'h4 heading', md: '#### Section' },
+    { name: 'h5 heading', md: '##### Subsection' },
+    { name: 'h6 heading', md: '###### Detail' },
+    {
+      name: 'nested task list',
+      md: '- [ ] Parent\n  - [ ] Child\n  - [x] Child done\n- [ ] Sibling',
+    },
+    {
+      name: 'code block with $ and [[ ]] literals',
+      md: '```\nconst path = "$HOME"\n// [[not a link]] and ![[skip.pdf#page=1]]\n```',
+    },
+    { name: 'inline code with $ literal', md: 'Run `echo $PATH` please.' },
+    { name: 'plain dollar amounts', md: 'I paid $5 and $10 more.' },
+    { name: 'strikethrough', md: '~~gone~~' },
+    { name: 'highlight', md: 'This is ==important== text.' },
+    { name: 'mixed bold and italic', md: '**bold *and italic* text**' },
+    { name: 'multi-row table', md: '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |' },
+    { name: 'ordered list with 3+ items', md: '1. first\n2. second\n3. third' },
+    { name: 'nested bullet list', md: '- one\n  - nested one\n  - nested two\n- two' },
+    { name: 'multi-paragraph blockquote', md: '> Line one\n>\n> Line two' },
   ]
 
   for (const { name, md } of cases) {

@@ -195,9 +195,25 @@
   color: var(--color-fg);
 }
 
+/* H4-H6 aren't offered in the UI (no toolbar/slash entry) but the schema
+   accepts them so headings from externally-authored files round-trip
+   instead of being silently rewritten on first save. */
+.ProseMirror.tiptap-editor h4,
+.ProseMirror.tiptap-editor h5,
+.ProseMirror.tiptap-editor h6 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.7em 0 0.25em;
+  line-height: 1.35;
+  color: var(--color-fg);
+}
+
 .ProseMirror.tiptap-editor h1:first-child,
 .ProseMirror.tiptap-editor h2:first-child,
-.ProseMirror.tiptap-editor h3:first-child {
+.ProseMirror.tiptap-editor h3:first-child,
+.ProseMirror.tiptap-editor h4:first-child,
+.ProseMirror.tiptap-editor h5:first-child,
+.ProseMirror.tiptap-editor h6:first-child {
   margin-top: 0;
 }
 
@@ -215,6 +231,13 @@
 .ProseMirror.tiptap-editor del {
   text-decoration: line-through;
   color: var(--color-fg-tertiary);
+}
+
+.ProseMirror.tiptap-editor mark {
+  background-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
+  color: var(--color-fg);
+  border-radius: 0.2em;
+  padding: 0.05em 0.15em;
 }
 
 .ProseMirror.tiptap-editor ul,
@@ -331,6 +354,7 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
+  cursor: pointer;
 }
 
 .ProseMirror.tiptap-editor span.wiki-link {
@@ -350,42 +374,70 @@
 }
 
 .ProseMirror .hljs-keyword,
-.ProseMirror .hljs-selector-tag { color: var(--hl-keyword); }
+.ProseMirror .hljs-selector-tag {
+  color: var(--hl-keyword);
+}
 
 .ProseMirror .hljs-string,
-.ProseMirror .hljs-regexp { color: var(--hl-string); }
+.ProseMirror .hljs-regexp {
+  color: var(--hl-string);
+}
 
 .ProseMirror .hljs-comment,
-.ProseMirror .hljs-doctag { color: var(--hl-comment); font-style: italic; }
+.ProseMirror .hljs-doctag {
+  color: var(--hl-comment);
+  font-style: italic;
+}
 
 .ProseMirror .hljs-title,
 .ProseMirror .hljs-title\.function_,
-.ProseMirror .hljs-section { color: var(--hl-function); font-weight: 600; }
+.ProseMirror .hljs-section {
+  color: var(--hl-function);
+  font-weight: 600;
+}
 
 .ProseMirror .hljs-number,
-.ProseMirror .hljs-literal { color: var(--hl-number); }
+.ProseMirror .hljs-literal {
+  color: var(--hl-number);
+}
 
 .ProseMirror .hljs-tag,
-.ProseMirror .hljs-name { color: var(--hl-tag); }
+.ProseMirror .hljs-name {
+  color: var(--hl-tag);
+}
 
 .ProseMirror .hljs-attr,
-.ProseMirror .hljs-attribute { color: var(--hl-attr); }
+.ProseMirror .hljs-attribute {
+  color: var(--hl-attr);
+}
 
 .ProseMirror .hljs-built_in,
 .ProseMirror .hljs-type,
-.ProseMirror .hljs-class { color: var(--hl-builtin); }
+.ProseMirror .hljs-class {
+  color: var(--hl-builtin);
+}
 
 .ProseMirror .hljs-operator,
-.ProseMirror .hljs-deletion { color: var(--hl-operator); }
+.ProseMirror .hljs-deletion {
+  color: var(--hl-operator);
+}
 
-.ProseMirror .hljs-punctuation { color: var(--hl-punctuation); }
+.ProseMirror .hljs-punctuation {
+  color: var(--hl-punctuation);
+}
 
 .ProseMirror .hljs-variable,
-.ProseMirror .hljs-template-variable { color: var(--hl-attr); }
+.ProseMirror .hljs-template-variable {
+  color: var(--hl-attr);
+}
 
-.ProseMirror .hljs-addition { color: var(--hl-tag); }
+.ProseMirror .hljs-addition {
+  color: var(--hl-tag);
+}
 
-.ProseMirror .hljs-meta { color: var(--hl-comment); }
+.ProseMirror .hljs-meta {
+  color: var(--hl-comment);
+}
 
 /* Math (KaTeX) styles */
 .ProseMirror.tiptap-editor .math-inline {
@@ -472,17 +524,30 @@
   padding-left: 1.25rem;
 }
 
-.board-card-prose ul { list-style-type: disc; }
-.board-card-prose ol { list-style-type: decimal; }
-.board-card-prose li { display: list-item; margin: 0.1em 0; }
+.board-card-prose ul {
+  list-style-type: disc;
+}
+.board-card-prose ol {
+  list-style-type: decimal;
+}
+.board-card-prose li {
+  display: list-item;
+  margin: 0.1em 0;
+}
 
 .board-card-prose strong,
-.board-card-prose b { font-weight: 650; }
+.board-card-prose b {
+  font-weight: 650;
+}
 
 .board-card-prose em,
-.board-card-prose i { font-style: italic; }
+.board-card-prose i {
+  font-style: italic;
+}
 
-.board-card-prose u { text-decoration: underline; }
+.board-card-prose u {
+  text-decoration: underline;
+}
 
 .board-card-prose a {
   color: var(--color-accent);
@@ -517,16 +582,32 @@
   line-height: 1.3;
 }
 
-.ProseMirror.board-editor p { margin: 0.25em 0; }
+.ProseMirror.board-editor p {
+  margin: 0.25em 0;
+}
 .ProseMirror.board-editor ul,
-.ProseMirror.board-editor ol { margin: 0.25em 0; padding-left: 1.25rem; }
-.ProseMirror.board-editor ul { list-style-type: disc; }
-.ProseMirror.board-editor ol { list-style-type: decimal; }
-.ProseMirror.board-editor li { display: list-item; margin: 0.1em 0; }
+.ProseMirror.board-editor ol {
+  margin: 0.25em 0;
+  padding-left: 1.25rem;
+}
+.ProseMirror.board-editor ul {
+  list-style-type: disc;
+}
+.ProseMirror.board-editor ol {
+  list-style-type: decimal;
+}
+.ProseMirror.board-editor li {
+  display: list-item;
+  margin: 0.1em 0;
+}
 .ProseMirror.board-editor strong,
-.ProseMirror.board-editor b { font-weight: 650; }
+.ProseMirror.board-editor b {
+  font-weight: 650;
+}
 .ProseMirror.board-editor em,
-.ProseMirror.board-editor i { font-style: italic; }
+.ProseMirror.board-editor i {
+  font-style: italic;
+}
 
 /* ---- DOCX editor (@eigenpal/docx-js-editor) ---- */
 .docx-editor-container {
@@ -736,7 +817,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
 }
 
 .chat-assistant-prose .chat-sources a.chat-vault-source:hover {

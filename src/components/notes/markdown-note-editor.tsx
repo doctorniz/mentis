@@ -36,7 +36,19 @@ import { AudioPlayer } from '@/components/audio/audio-player'
 import { NoteEditorToolbar } from '@/components/notes/note-editor-toolbar'
 import type { InsertImageFn } from '@/components/notes/note-editor-toolbar'
 import { NoteEditorModeBar } from '@/components/notes/note-editor-mode-bar'
+import { MarkdownSourceEditor } from '@/components/notes/markdown-source-editor'
+import { TableControlsMenu } from '@/components/notes/table-controls-menu'
+import { countWords } from '@/lib/notes/word-count'
 import { useSyncPush } from '@/contexts/sync-context'
+
+/**
+ * Tracks the in-flight unmount-save flush per vault path so the next mount
+ * of the same path can await it before reading the file from disk — the
+ * same race the canvas editor guards against with `pendingCanvasSaves`.
+ * Without this, closing a tab and immediately reopening the same note can
+ * read stale bytes and overwrite the edit that was still being written.
+ */
+const pendingMarkdownSaves = new Map<string, Promise<void>>()
 
 /** Flatten a FileEntry tree into vault-relative paths (files only, no dirs) */
 function flattenFilePaths(entry: FileEntry | null, depth = 0): string[] {
@@ -104,7 +116,7 @@ function NoteVoiceAttachment({
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <div className="text-fg-muted mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider">
+      <div className="text-fg-muted mb-2 flex items-center gap-1.5 text-[10px] font-medium tracking-wider uppercase">
         <Mic className="size-3" aria-hidden />
         Recording
       </div>
@@ -116,8 +128,8 @@ function NoteVoiceAttachment({
 /** Strip characters that are illegal in file names on any major OS */
 function sanitizeTitle(raw: string): string {
   return raw
-    .replace(/[/\\:*?"<>|]/g, '')   // illegal on Windows / POSIX
-    .replace(/\s+/g, ' ')            // collapse runs of whitespace
+    .replace(/[/\\:*?"<>|]/g, '') // illegal on Windows / POSIX
+    .replace(/\s+/g, ' ') // collapse runs of whitespace
     .trim()
 }
 
@@ -147,15 +159,7 @@ export const MarkdownNoteEditor = forwardRef<
     onChatAssetIdFromDisk?: (path: string, chatAssetId: string) => void
   }
 >(function MarkdownNoteEditor(
-  {
-    tabId,
-    path,
-    markdownPaths,
-    onOpenNotePath,
-    onPersisted,
-    onRenamed,
-    onChatAssetIdFromDisk,
-  },
+  { tabId, path, markdownPaths, onOpenNotePath, onPersisted, onRenamed, onChatAssetIdFromDisk },
   ref,
 ) {
   const { vaultFs } = useVaultSession()
@@ -172,8 +176,11 @@ export const MarkdownNoteEditor = forwardRef<
   const titleInputRef = useRef<HTMLInputElement>(null)
 
   const [rawText, setRawText] = useState('')
+  const [wordCount, setWordCount] = useState(0)
   const [isBootstrapping, setIsBootstrapping] = useState(true)
-  const [voiceAttach, setVoiceAttach] = useState<{ path: string; duration: number | null } | null>(null)
+  const [voiceAttach, setVoiceAttach] = useState<{ path: string; duration: number | null } | null>(
+    null,
+  )
   const [inlineTitle, setInlineTitle] = useState(() => titleFromPath(path))
   const inlineTitleRef = useRef(inlineTitle)
   inlineTitleRef.current = inlineTitle
@@ -222,6 +229,10 @@ export const MarkdownNoteEditor = forwardRef<
   const tabIdRef = useRef(tabId)
   const showRawRef = useRef(showRawSource)
   const rawTextRef = useRef('')
+  // Only surface one "failed to save" toast per outage — repeated auto-save
+  // attempts while the user keeps typing would otherwise re-toast every
+  // 750ms. Cleared as soon as a save succeeds.
+  const saveFailureToastShownRef = useRef(false)
 
   pathRef.current = path
   tabIdRef.current = tabId
@@ -248,9 +259,14 @@ export const MarkdownNoteEditor = forwardRef<
           syncPush(pathRef.current)
           markDirty(tabIdRef.current, false)
           onPersistedRef.current?.()
+          void reindexMarkdownPath(vaultFs, pathRef.current)
+          saveFailureToastShownRef.current = false
         } catch (e) {
           console.error('Save failed', e)
-          toast.error('Failed to save note')
+          if (!saveFailureToastShownRef.current) {
+            saveFailureToastShownRef.current = true
+            toast.error('Failed to save note')
+          }
         }
       })()
     }, 750)
@@ -262,10 +278,14 @@ export const MarkdownNoteEditor = forwardRef<
       try {
         const data = new Uint8Array(await file.arrayBuffer())
         const assetPath = await saveAsset(vaultFs, file.name, data, attachmentFolderRef.current)
-        editorInstance.chain().focus().insertContent({
-          type: 'image',
-          attrs: { src: assetPath, alt: file.name },
-        }).run()
+        editorInstance
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'image',
+            attrs: { src: assetPath, alt: file.name },
+          })
+          .run()
       } catch (e) {
         console.error('Failed to save image asset', e)
         toast.error('Failed to embed image')
@@ -279,10 +299,13 @@ export const MarkdownNoteEditor = forwardRef<
       const ed = editorRef.current
       if (!ed) return
       // If the path was just uploaded it's already on disk; just insert the node.
-      ed.chain().focus().insertContent({
-        type: 'image',
-        attrs: { src: vaultPath, alt: fileName },
-      }).run()
+      ed.chain()
+        .focus()
+        .insertContent({
+          type: 'image',
+          attrs: { src: vaultPath, alt: fileName },
+        })
+        .run()
       markDirty(tabIdRef.current, true)
       scheduleSaveRef.current()
     },
@@ -295,10 +318,13 @@ export const MarkdownNoteEditor = forwardRef<
       const ed = editorRef.current
       if (!ed) return
       const title = vaultPath.split('/').pop() ?? vaultPath
-      ed.chain().focus().insertContent({
-        type: 'vaultVideo',
-        attrs: { src: vaultPath, title },
-      }).run()
+      ed.chain()
+        .focus()
+        .insertContent({
+          type: 'vaultVideo',
+          attrs: { src: vaultPath, title },
+        })
+        .run()
       markDirty(tabIdRef.current, true)
       scheduleSaveRef.current()
     },
@@ -350,11 +376,37 @@ export const MarkdownNoteEditor = forwardRef<
             }
             return true
           }
+
+          // Regular `<a>` links: Link is configured with openOnClick:false
+          // so the mark stays inert on a plain click (needed to place the
+          // cursor / select text like any other inline content). Ctrl/Cmd
+          // or middle click opens it, matching Notion/Obsidian convention.
+          const link = (event.target as HTMLElement).closest('a[href]')
+          if (link && event.button === 0 && (event.ctrlKey || event.metaKey)) {
+            const href = link.getAttribute('href')
+            if (href) {
+              event.preventDefault()
+              window.open(href, '_blank', 'noopener,noreferrer')
+            }
+            return true
+          }
           return false
+        },
+        auxclick(_view, event) {
+          if (event.button !== 1) return false
+          const link = (event.target as HTMLElement).closest('a[href]')
+          if (!link) return false
+          const href = link.getAttribute('href')
+          if (href) {
+            event.preventDefault()
+            window.open(href, '_blank', 'noopener,noreferrer')
+          }
+          return true
         },
       },
     },
-    onUpdate: () => {
+    onUpdate: ({ editor: ed }) => {
+      setWordCount(countWords(ed.getText()))
       if (loadingRef.current || showRawRef.current) return
       markDirty(tabIdRef.current, true)
       scheduleSaveRef.current()
@@ -411,15 +463,25 @@ export const MarkdownNoteEditor = forwardRef<
     setIsBootstrapping(true)
     void (async () => {
       try {
+        // If a previous mount of this same path is still flushing its
+        // unmount save, wait for it — otherwise this load can read stale
+        // bytes and clobber the edit that write was still persisting.
+        const prior = pendingMarkdownSaves.get(path)
+        if (prior) {
+          try {
+            await prior
+          } catch {
+            /* best-effort */
+          }
+          if (cancelled) return
+        }
+
         const fileRaw = await vaultFs.readTextFile(path)
         if (cancelled) return
         const doc = parseNote(path, fileRaw)
         // If chat minted an id while we were loading, merge it in now
         // and schedule a save so the id lands on disk.
-        if (
-          pendingChatAssetIdRef.current &&
-          !doc.frontmatter.chatAssetId
-        ) {
+        if (pendingChatAssetIdRef.current && !doc.frontmatter.chatAssetId) {
           doc.frontmatter.chatAssetId = pendingChatAssetIdRef.current
           markDirty(tabIdRef.current, true)
           scheduleSaveRef.current()
@@ -445,9 +507,11 @@ export const MarkdownNoteEditor = forwardRef<
 
         if (inRawMode) {
           setRawText(fileRaw)
+          setWordCount(countWords(doc.content))
         } else {
           const json = markdownToTiptapJSON(doc.content)
           editor.commands.setContent(json, false)
+          setWordCount(countWords(editor.getText()))
         }
         setInlineTitle(title)
         updateTab(tabId, { title, isDirty: false })
@@ -455,6 +519,7 @@ export const MarkdownNoteEditor = forwardRef<
         console.error(e)
         toast.error('Failed to load note')
         setVoiceAttach(null)
+        setWordCount(0)
         if (!useEditorStore.getState().tabs.find((t) => t.id === tabId)?.showRawSource) {
           editor.commands.setContent(markdownToTiptapJSON(''), false)
         } else {
@@ -475,23 +540,46 @@ export const MarkdownNoteEditor = forwardRef<
         saveTimerRef.current = null
       }
       if (pathRef.current !== path) return
+
+      // Snapshot everything the flush needs now — refs may be reused or
+      // reset by the time this async work actually runs.
       const ed = editorRef.current
-      void (async () => {
+      const wasRaw = showRawRef.current
+      const rawSnapshot = rawTextRef.current
+      const fm = frontmatterRef.current
+      const wasLoading = loadingRef.current
+
+      const run = async () => {
         try {
-          if (showRawRef.current) {
-            await vaultFs.writeTextFile(path, rawTextRef.current)
-          } else if (ed && !loadingRef.current) {
+          if (wasRaw) {
+            await vaultFs.writeTextFile(path, rawSnapshot)
+          } else if (ed && !wasLoading) {
             const body = tiptapJSONToMarkdown(ed.getJSON())
-            const raw = serializeNote(frontmatterRef.current, body)
+            const raw = serializeNote(fm, body)
             await vaultFs.writeTextFile(path, raw)
+          } else {
+            return
           }
+          syncPush(path)
+          void reindexMarkdownPath(vaultFs, path)
         } catch (e) {
           console.error('Save on close failed', e)
           toast.error('Could not save note before closing')
         }
-      })()
+      }
+
+      // Publish the flush promise so the next mount of this same path
+      // (e.g. tab closed and immediately reopened) awaits it before
+      // reading the file from disk instead of racing it.
+      const promise = run()
+      pendingMarkdownSaves.set(path, promise)
+      void promise.finally(() => {
+        if (pendingMarkdownSaves.get(path) === promise) {
+          pendingMarkdownSaves.delete(path)
+        }
+      })
     }
-  }, [editor, path, vaultFs, tabId, updateTab, markDirty])
+  }, [editor, path, vaultFs, tabId, updateTab, markDirty, syncPush])
 
   // Auto-focus and select the title for newly created notes
   const clearNew = useEditorStore((s) => s.clearNew)
@@ -506,7 +594,7 @@ export const MarkdownNoteEditor = forwardRef<
       })
       clearNew(tabId)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBootstrapping, isNew])
 
   function handleShowRaw() {
@@ -537,6 +625,7 @@ export const MarkdownNoteEditor = forwardRef<
         const ed = editorRef.current
         if (ed) {
           ed.commands.setContent(markdownToTiptapJSON(doc.content), false)
+          setWordCount(countWords(ed.getText()))
         }
         const title =
           (typeof doc.frontmatter.title === 'string' && doc.frontmatter.title) ||
@@ -554,6 +643,7 @@ export const MarkdownNoteEditor = forwardRef<
 
   function handleRawChange(next: string) {
     setRawText(next)
+    setWordCount(countWords(parseNote(pathRef.current, next).content))
     markDirty(tabId, true)
     scheduleSaveRef.current()
   }
@@ -575,10 +665,7 @@ export const MarkdownNoteEditor = forwardRef<
     const newPath = joinPath(parent, fileName)
     if (vaultPathsPointToSameFile(newPath, pathRef.current)) return
 
-    if (
-      (await vaultFs.exists(newPath)) &&
-      !vaultPathsPointToSameFile(newPath, pathRef.current)
-    ) {
+    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, pathRef.current)) {
       toast.error('A note with that name already exists')
       setInlineTitle(currentTitle)
       return
@@ -690,6 +777,7 @@ export const MarkdownNoteEditor = forwardRef<
       <NoteEditorModeBar
         raw={showRawSource}
         busy={isBootstrapping}
+        wordCount={wordCount}
         onExportMarkdown={() => handleExportMarkdown()}
         onPrint={() => void handlePrint()}
         onVisual={() => {
@@ -711,6 +799,7 @@ export const MarkdownNoteEditor = forwardRef<
           onInsertVideo={handleInsertVideo}
         />
       )}
+      {!showRawSource && <TableControlsMenu editor={editor} />}
       <div className={cn('min-h-0 flex-1', showRawSource ? 'flex flex-col' : 'overflow-y-auto')}>
         <div className="px-10 pt-6">
           <input
@@ -734,7 +823,7 @@ export const MarkdownNoteEditor = forwardRef<
               }
             }}
             aria-label="Note title"
-            className="text-fg placeholder:text-fg-muted w-full border-none bg-transparent text-[2rem] font-bold leading-tight tracking-tight outline-none"
+            className="text-fg placeholder:text-fg-muted w-full border-none bg-transparent text-[2rem] leading-tight font-bold tracking-tight outline-none"
             placeholder="Untitled"
           />
         </div>
@@ -744,15 +833,10 @@ export const MarkdownNoteEditor = forwardRef<
           </div>
         )}
         {showRawSource ? (
-          <textarea
-            value={rawText}
-            onChange={(e) => handleRawChange(e.target.value)}
-            className={cn(
-              'font-mono text-fg placeholder:text-fg-muted box-border min-h-0 w-full flex-1 resize-none px-10 pb-6 pt-2 text-sm leading-relaxed',
-              'focus:outline-none',
-            )}
-            spellCheck={false}
-            aria-label="Raw markdown source"
+          <MarkdownSourceEditor
+            initialValue={rawText}
+            onChange={handleRawChange}
+            className="px-10 pt-2 pb-6"
           />
         ) : (
           <EditorContent editor={editor} />
