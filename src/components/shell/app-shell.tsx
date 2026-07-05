@@ -37,8 +37,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
       setSettingsOpen(true)
     }
     window.addEventListener('ink:open-settings-ai', onOpenAiSettings)
-    return () =>
-      window.removeEventListener('ink:open-settings-ai', onOpenAiSettings)
+    return () => window.removeEventListener('ink:open-settings-ai', onOpenAiSettings)
   }, [])
 
   useEffect(() => {

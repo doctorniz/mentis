@@ -19,12 +19,7 @@
  * keys per surface (markdown vs. pdf) so each remembers its own width.
  */
 
-import {
-  type ReactNode,
-  useCallback,
-  useLayoutEffect,
-  useRef,
-} from 'react'
+import { type ReactNode, useCallback, useLayoutEffect, useRef } from 'react'
 import { MessageSquare, Link2, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { ResizableSplit } from '@/components/ui/resizable-split'
 
@@ -81,11 +76,7 @@ export function EditorRightColumn({
       if (width > 0 && width < autoCollapseBelow && !columnCollapsed) {
         userToggledRef.current = false
         onColumnCollapsedChange?.(true)
-      } else if (
-        width >= autoCollapseBelow &&
-        columnCollapsed &&
-        !userToggledRef.current
-      ) {
+      } else if (width >= autoCollapseBelow && columnCollapsed && !userToggledRef.current) {
         onColumnCollapsedChange?.(false)
       }
     })

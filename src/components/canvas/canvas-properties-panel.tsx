@@ -52,9 +52,10 @@ export function CanvasPropertiesPanel({ engineRef, onCollapse }: CanvasPropertie
   //    the cursor is in the top half ('above') or bottom half ('below')
   //    of that row. Drives the blue rule rendered between rows.
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null)
-  const [dropIndicator, setDropIndicator] = useState<
-    { id: string; position: 'above' | 'below' } | null
-  >(null)
+  const [dropIndicator, setDropIndicator] = useState<{
+    id: string
+    position: 'above' | 'below'
+  } | null>(null)
 
   const isEraser = activeTool === 'eraser'
   const currentSize = isEraser ? eraserSize : brushSettings.size
@@ -72,7 +73,8 @@ export function CanvasPropertiesPanel({ engineRef, onCollapse }: CanvasPropertie
   const showColor = activeTool === 'brush' || activeTool === 'fill'
   // Show a read-only color swatch for tools that don't need the full picker,
   // so the active color is always visible in the panel.
-  const showColorReadOnly = activeTool === 'eyedropper' || activeTool === 'eraser' || activeTool === 'pan'
+  const showColorReadOnly =
+    activeTool === 'eyedropper' || activeTool === 'eraser' || activeTool === 'pan'
   const showSize = activeTool === 'brush' || activeTool === 'eraser'
   const showOpacity = activeTool === 'brush' || activeTool === 'fill'
   // Hardness only makes sense for the normal brush. The eraser uses
@@ -122,9 +124,7 @@ export function CanvasPropertiesPanel({ engineRef, onCollapse }: CanvasPropertie
 
     void (async () => {
       try {
-        const index = engine.layerManager
-          .getAllLayers()
-          .findIndex((l) => l.id === id)
+        const index = engine.layerManager.getAllLayers().findIndex((l) => l.id === id)
         if (index === -1) return
 
         const wasActive = engine.layerManager.activeLayerId === id
@@ -341,331 +341,341 @@ export function CanvasPropertiesPanel({ engineRef, onCollapse }: CanvasPropertie
         )}
       </div>
       <div className="flex flex-col gap-4 overflow-y-auto p-3">
-      {/* ---- Active Color (read-only for eyedropper / eraser / pan) ---- */}
-      {showColorReadOnly && (
-        <section>
-          <h3 className="text-fg-secondary mb-2 text-xs font-semibold uppercase tracking-wider">
-            {activeTool === 'eyedropper' ? 'Sampled Color' : 'Color'}
-          </h3>
-          <div className="flex items-center gap-2.5">
-            <div
-              className="border-border size-8 shrink-0 rounded border shadow-sm"
-              style={{ backgroundColor: brushSettings.color }}
-            />
-            <span className="text-fg font-mono text-xs">{brushSettings.color.toUpperCase()}</span>
-          </div>
-          {activeTool === 'eyedropper' && (
-            <p className="text-fg-muted mt-1.5 text-xs">Click canvas to sample</p>
-          )}
-        </section>
-      )}
+        {/* ---- Active Color (read-only for eyedropper / eraser / pan) ---- */}
+        {showColorReadOnly && (
+          <section>
+            <h3 className="text-fg-secondary mb-2 text-xs font-semibold tracking-wider uppercase">
+              {activeTool === 'eyedropper' ? 'Sampled Color' : 'Color'}
+            </h3>
+            <div className="flex items-center gap-2.5">
+              <div
+                className="border-border size-8 shrink-0 rounded border shadow-sm"
+                style={{ backgroundColor: brushSettings.color }}
+              />
+              <span className="text-fg font-mono text-xs">{brushSettings.color.toUpperCase()}</span>
+            </div>
+            {activeTool === 'eyedropper' && (
+              <p className="text-fg-muted mt-1.5 text-xs">Click canvas to sample</p>
+            )}
+          </section>
+        )}
 
-      {/* ---- Color ---- */}
-      {showColor && (
-      <section>
-        <h3 className="text-fg-secondary mb-2 text-xs font-semibold uppercase tracking-wider">
-          Color
-        </h3>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={brushSettings.color}
-            onChange={(e) => handleColorChange(e.target.value)}
-            onBlur={(e) => handleColorCommit(e.target.value)}
-            className="size-8 cursor-pointer rounded border-none"
-          />
-          <input
-            type="text"
-            value={brushSettings.color}
-            onChange={(e) => {
-              if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
-                handleColorCommit(e.target.value)
+        {/* ---- Color ---- */}
+        {showColor && (
+          <section>
+            <h3 className="text-fg-secondary mb-2 text-xs font-semibold tracking-wider uppercase">
+              Color
+            </h3>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={brushSettings.color}
+                onChange={(e) => handleColorChange(e.target.value)}
+                onBlur={(e) => handleColorCommit(e.target.value)}
+                className="size-8 cursor-pointer rounded border-none"
+              />
+              <input
+                type="text"
+                value={brushSettings.color}
+                onChange={(e) => {
+                  if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
+                    handleColorCommit(e.target.value)
+                  }
+                }}
+                className="border-border bg-bg-secondary text-fg w-20 rounded border px-2 py-1 font-mono text-xs"
+              />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {COLOR_SWATCHES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => handleColorCommit(c)}
+                  className={cn(
+                    'size-5 rounded-sm border transition-transform hover:scale-110',
+                    brushSettings.color === c
+                      ? 'border-accent ring-accent ring-1'
+                      : 'border-border',
+                  )}
+                  style={{ backgroundColor: c }}
+                  title={c}
+                />
+              ))}
+            </div>
+            {recentColors.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {recentColors.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => handleColorCommit(c)}
+                    className="border-border size-4 rounded-sm border transition-transform hover:scale-110"
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ---- Brush Size ---- */}
+        {showSize && (
+          <section>
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-fg-secondary text-xs font-semibold tracking-wider uppercase">
+                {isEraser ? 'Eraser Size' : 'Brush Size'}
+              </h3>
+              <span className="text-fg-muted text-xs">{currentSize}px</span>
+            </div>
+            <Slider.Root
+              min={1}
+              max={200}
+              step={1}
+              value={[currentSize]}
+              onValueChange={([v]) => {
+                if (isEraser) setEraserSize(v)
+                else setBrushSettings({ size: v })
+              }}
+              className="relative flex h-5 w-full items-center"
+            >
+              <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
+                <Slider.Range className="bg-accent absolute h-full rounded-full" />
+              </Slider.Track>
+              <Slider.Thumb className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none" />
+            </Slider.Root>
+          </section>
+        )}
+
+        {/* ---- Opacity ---- */}
+        {showOpacity && (
+          <section>
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-fg-secondary text-xs font-semibold tracking-wider uppercase">
+                Opacity
+              </h3>
+              <span className="text-fg-muted text-xs">
+                {Math.round(brushSettings.opacity * 100)}%
+              </span>
+            </div>
+            <Slider.Root
+              min={0}
+              max={100}
+              step={1}
+              value={[Math.round(brushSettings.opacity * 100)]}
+              onValueChange={([v]) => setBrushSettings({ opacity: v / 100 })}
+              className="relative flex h-5 w-full items-center"
+            >
+              <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
+                <Slider.Range className="bg-accent absolute h-full rounded-full" />
+              </Slider.Track>
+              <Slider.Thumb className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none" />
+            </Slider.Root>
+          </section>
+        )}
+
+        {/* ---- Hardness ---- */}
+        {showHardness && (
+          <section>
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-fg-secondary text-xs font-semibold tracking-wider uppercase">
+                Hardness
+              </h3>
+              <span className="text-fg-muted text-xs">
+                {Math.round(brushSettings.hardness * 100)}%
+              </span>
+            </div>
+            <Slider.Root
+              min={0}
+              max={100}
+              step={1}
+              value={[Math.round(brushSettings.hardness * 100)]}
+              onValueChange={([v]) => setBrushSettings({ hardness: v / 100 })}
+              className="relative flex h-5 w-full items-center"
+            >
+              <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
+                <Slider.Range className="bg-accent absolute h-full rounded-full" />
+              </Slider.Track>
+              <Slider.Thumb className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none" />
+            </Slider.Root>
+          </section>
+        )}
+
+        {/* ---- Layers ---- */}
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-fg-secondary text-xs font-semibold tracking-wider uppercase">
+              Layers
+            </h3>
+            <button
+              type="button"
+              onClick={handleAddLayer}
+              title="Add layer"
+              className="text-fg-secondary hover:text-fg rounded p-0.5"
+            >
+              <Plus className="size-3.5" />
+            </button>
+          </div>
+          <div
+            className="flex flex-col gap-0.5"
+            onDragLeave={(e) => {
+              // Only clear the indicator when the drag actually leaves the
+              // *list* — child-to-child dragover transitions fire dragleave
+              // on the old child first, but the relatedTarget is still
+              // inside the list container so we keep the indicator.
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                setDropIndicator(null)
               }
             }}
-            className="border-border bg-bg-secondary text-fg w-20 rounded border px-2 py-1 font-mono text-xs"
-          />
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1">
-          {COLOR_SWATCHES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => handleColorCommit(c)}
-              className={cn(
-                'size-5 rounded-sm border transition-transform hover:scale-110',
-                brushSettings.color === c ? 'border-accent ring-accent ring-1' : 'border-border',
-              )}
-              style={{ backgroundColor: c }}
-              title={c}
-            />
-          ))}
-        </div>
-        {recentColors.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {recentColors.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => handleColorCommit(c)}
-                className="border-border size-4 rounded-sm border transition-transform hover:scale-110"
-                style={{ backgroundColor: c }}
-                title={c}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-      )}
-
-      {/* ---- Brush Size ---- */}
-      {showSize && (
-      <section>
-        <div className="mb-1 flex items-center justify-between">
-          <h3 className="text-fg-secondary text-xs font-semibold uppercase tracking-wider">
-            {isEraser ? 'Eraser Size' : 'Brush Size'}
-          </h3>
-          <span className="text-fg-muted text-xs">{currentSize}px</span>
-        </div>
-        <Slider.Root
-          min={1}
-          max={200}
-          step={1}
-          value={[currentSize]}
-          onValueChange={([v]) => {
-            if (isEraser) setEraserSize(v)
-            else setBrushSettings({ size: v })
-          }}
-          className="relative flex h-5 w-full items-center"
-        >
-          <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
-            <Slider.Range className="bg-accent absolute h-full rounded-full" />
-          </Slider.Track>
-          <Slider.Thumb className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none" />
-        </Slider.Root>
-      </section>
-      )}
-
-      {/* ---- Opacity ---- */}
-      {showOpacity && (
-        <section>
-          <div className="mb-1 flex items-center justify-between">
-            <h3 className="text-fg-secondary text-xs font-semibold uppercase tracking-wider">
-              Opacity
-            </h3>
-            <span className="text-fg-muted text-xs">
-              {Math.round(brushSettings.opacity * 100)}%
-            </span>
-          </div>
-          <Slider.Root
-            min={0}
-            max={100}
-            step={1}
-            value={[Math.round(brushSettings.opacity * 100)]}
-            onValueChange={([v]) => setBrushSettings({ opacity: v / 100 })}
-            className="relative flex h-5 w-full items-center"
           >
-            <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
-              <Slider.Range className="bg-accent absolute h-full rounded-full" />
-            </Slider.Track>
-            <Slider.Thumb className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none" />
-          </Slider.Root>
-        </section>
-      )}
-
-      {/* ---- Hardness ---- */}
-      {showHardness && (
-        <section>
-          <div className="mb-1 flex items-center justify-between">
-            <h3 className="text-fg-secondary text-xs font-semibold uppercase tracking-wider">
-              Hardness
-            </h3>
-            <span className="text-fg-muted text-xs">
-              {Math.round(brushSettings.hardness * 100)}%
-            </span>
-          </div>
-          <Slider.Root
-            min={0}
-            max={100}
-            step={1}
-            value={[Math.round(brushSettings.hardness * 100)]}
-            onValueChange={([v]) => setBrushSettings({ hardness: v / 100 })}
-            className="relative flex h-5 w-full items-center"
-          >
-            <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
-              <Slider.Range className="bg-accent absolute h-full rounded-full" />
-            </Slider.Track>
-            <Slider.Thumb className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none" />
-          </Slider.Root>
-        </section>
-      )}
-
-      {/* ---- Layers ---- */}
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-fg-secondary text-xs font-semibold uppercase tracking-wider">
-            Layers
-          </h3>
-          <button
-            type="button"
-            onClick={handleAddLayer}
-            title="Add layer"
-            className="text-fg-secondary hover:text-fg rounded p-0.5"
-          >
-            <Plus className="size-3.5" />
-          </button>
-        </div>
-        <div
-          className="flex flex-col gap-0.5"
-          onDragLeave={(e) => {
-            // Only clear the indicator when the drag actually leaves the
-            // *list* — child-to-child dragover transitions fire dragleave
-            // on the old child first, but the relatedTarget is still
-            // inside the list container so we keep the indicator.
-            if (
-              !e.currentTarget.contains(e.relatedTarget as Node | null)
-            ) {
-              setDropIndicator(null)
-            }
-          }}
-        >
-          {[...layers].reverse().map((layer) => {
-            const isDragging = draggedLayerId === layer.id
-            const indicatorAbove
-              = dropIndicator?.id === layer.id && dropIndicator.position === 'above'
-            const indicatorBelow
-              = dropIndicator?.id === layer.id && dropIndicator.position === 'below'
-            return (
-              <div key={layer.id} className="relative">
-                {/* Drop indicator rules — thin coloured bar between rows.
+            {[...layers].reverse().map((layer) => {
+              const isDragging = draggedLayerId === layer.id
+              const indicatorAbove =
+                dropIndicator?.id === layer.id && dropIndicator.position === 'above'
+              const indicatorBelow =
+                dropIndicator?.id === layer.id && dropIndicator.position === 'below'
+              return (
+                <div key={layer.id} className="relative">
+                  {/* Drop indicator rules — thin coloured bar between rows.
                     Positioned with negative offsets so they sit in the
                     1.5px gap without reflowing the row itself. */}
-                {indicatorAbove && (
-                  <div className="bg-accent pointer-events-none absolute inset-x-0 -top-0.5 h-0.5 rounded-full" />
-                )}
-                {indicatorBelow && (
-                  <div className="bg-accent pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 rounded-full" />
-                )}
-                <div
-                  draggable
-                  onDragStart={(e) => handleLayerDragStart(e, layer.id)}
-                  onDragOver={(e) => handleLayerDragOver(e, layer.id)}
-                  onDrop={(e) => handleLayerDrop(e, layer.id)}
-                  onDragEnd={handleLayerDragEnd}
-                  onClick={() => handleSelectLayer(layer.id)}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-md px-1 py-1.5 text-xs cursor-pointer transition-colors',
-                    activeLayerId === layer.id
-                      ? 'bg-accent/10 text-accent'
-                      : 'text-fg-secondary hover:bg-bg-hover',
-                    isDragging && 'opacity-40',
+                  {indicatorAbove && (
+                    <div className="bg-accent pointer-events-none absolute inset-x-0 -top-0.5 h-0.5 rounded-full" />
                   )}
-                >
-                  <GripVertical
-                    className="text-fg-muted size-3 shrink-0 cursor-grab active:cursor-grabbing"
-                  />
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); handleToggleVisibility(layer.id) }}
-                    className="shrink-0 p-0.5"
-                    title={layer.visible ? 'Hide layer' : 'Show layer'}
-                  >
-                    {layer.visible ? (
-                      <Eye className="size-3" />
-                    ) : (
-                      <EyeOff className="size-3 opacity-40" />
+                  {indicatorBelow && (
+                    <div className="bg-accent pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 rounded-full" />
+                  )}
+                  <div
+                    draggable
+                    onDragStart={(e) => handleLayerDragStart(e, layer.id)}
+                    onDragOver={(e) => handleLayerDragOver(e, layer.id)}
+                    onDrop={(e) => handleLayerDrop(e, layer.id)}
+                    onDragEnd={handleLayerDragEnd}
+                    onClick={() => handleSelectLayer(layer.id)}
+                    className={cn(
+                      'flex cursor-pointer items-center gap-1.5 rounded-md px-1 py-1.5 text-xs transition-colors',
+                      activeLayerId === layer.id
+                        ? 'bg-accent/10 text-accent'
+                        : 'text-fg-secondary hover:bg-bg-hover',
+                      isDragging && 'opacity-40',
                     )}
-                  </button>
-                  <span className="min-w-0 flex-1 truncate">{layer.name}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); handleToggleLock(layer.id) }}
-                    className="shrink-0 p-0.5 opacity-50 hover:opacity-100"
-                    title={layer.locked ? 'Unlock layer' : 'Lock layer'}
                   >
-                    {layer.locked ? <Lock className="size-3" /> : <Unlock className="size-3" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); handleDuplicateLayer(layer.id) }}
-                    className="shrink-0 p-0.5 opacity-50 hover:opacity-100"
-                    title="Duplicate layer"
-                  >
-                    <Copy className="size-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); handleRemoveLayer(layer.id) }}
-                    className="shrink-0 p-0.5 opacity-50 hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-20 disabled:hover:opacity-20"
-                    title="Delete layer"
-                    disabled={layers.length <= 1}
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* ---- Active Layer Settings ---- */}
-      {activeLayerId && (
-        <section>
-          <h3 className="text-fg-secondary mb-2 text-xs font-semibold uppercase tracking-wider">
-            Layer Settings
-          </h3>
-          {(() => {
-            const layer = layers.find((l) => l.id === activeLayerId)
-            if (!layer) return null
-            return (
-              <div className="space-y-3">
-                <div>
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-fg-secondary text-xs">Opacity</span>
-                    <span className="text-fg-muted text-xs">
-                      {Math.round(layer.opacity * 100)}%
-                    </span>
+                    <GripVertical className="text-fg-muted size-3 shrink-0 cursor-grab active:cursor-grabbing" />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleToggleVisibility(layer.id)
+                      }}
+                      className="shrink-0 p-0.5"
+                      title={layer.visible ? 'Hide layer' : 'Show layer'}
+                    >
+                      {layer.visible ? (
+                        <Eye className="size-3" />
+                      ) : (
+                        <EyeOff className="size-3 opacity-40" />
+                      )}
+                    </button>
+                    <span className="min-w-0 flex-1 truncate">{layer.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleToggleLock(layer.id)
+                      }}
+                      className="shrink-0 p-0.5 opacity-50 hover:opacity-100"
+                      title={layer.locked ? 'Unlock layer' : 'Lock layer'}
+                    >
+                      {layer.locked ? <Lock className="size-3" /> : <Unlock className="size-3" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDuplicateLayer(layer.id)
+                      }}
+                      className="shrink-0 p-0.5 opacity-50 hover:opacity-100"
+                      title="Duplicate layer"
+                    >
+                      <Copy className="size-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveLayer(layer.id)
+                      }}
+                      className="shrink-0 p-0.5 opacity-50 hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-20 disabled:hover:opacity-20"
+                      title="Delete layer"
+                      disabled={layers.length <= 1}
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
                   </div>
-                  <Slider.Root
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={[Math.round(layer.opacity * 100)]}
-                    onValueChange={([v]) => handleOpacityChange(layer.id, v / 100)}
-                    className="relative flex h-5 w-full items-center"
-                  >
-                    <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
-                      <Slider.Range className="bg-accent absolute h-full rounded-full" />
-                    </Slider.Track>
-                    <Slider.Thumb className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none" />
-                  </Slider.Root>
                 </div>
-                <div>
-                  <span className="text-fg-secondary text-xs">Blend Mode</span>
-                  <select
-                    value={layer.blendMode}
-                    onChange={(e) => handleBlendModeChange(layer.id, e.target.value)}
-                    className="border-border bg-bg-secondary text-fg mt-1 w-full rounded border px-2 py-1 text-xs"
-                  >
-                    {STANDARD_BLEND_MODES.map((mode) => (
-                      <option key={mode} value={mode}>
-                        {mode.charAt(0).toUpperCase() + mode.slice(1).replace(/-/g, ' ')}
-                      </option>
-                    ))}
-                    <optgroup label="HSL (may fall back to Normal)">
-                      {HSL_BLEND_MODES.map((mode) => (
+              )
+            })}
+          </div>
+        </section>
+
+        {/* ---- Active Layer Settings ---- */}
+        {activeLayerId && (
+          <section>
+            <h3 className="text-fg-secondary mb-2 text-xs font-semibold tracking-wider uppercase">
+              Layer Settings
+            </h3>
+            {(() => {
+              const layer = layers.find((l) => l.id === activeLayerId)
+              if (!layer) return null
+              return (
+                <div className="space-y-3">
+                  <div>
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-fg-secondary text-xs">Opacity</span>
+                      <span className="text-fg-muted text-xs">
+                        {Math.round(layer.opacity * 100)}%
+                      </span>
+                    </div>
+                    <Slider.Root
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[Math.round(layer.opacity * 100)]}
+                      onValueChange={([v]) => handleOpacityChange(layer.id, v / 100)}
+                      className="relative flex h-5 w-full items-center"
+                    >
+                      <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
+                        <Slider.Range className="bg-accent absolute h-full rounded-full" />
+                      </Slider.Track>
+                      <Slider.Thumb className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none" />
+                    </Slider.Root>
+                  </div>
+                  <div>
+                    <span className="text-fg-secondary text-xs">Blend Mode</span>
+                    <select
+                      value={layer.blendMode}
+                      onChange={(e) => handleBlendModeChange(layer.id, e.target.value)}
+                      className="border-border bg-bg-secondary text-fg mt-1 w-full rounded border px-2 py-1 text-xs"
+                    >
+                      {STANDARD_BLEND_MODES.map((mode) => (
                         <option key={mode} value={mode}>
                           {mode.charAt(0).toUpperCase() + mode.slice(1).replace(/-/g, ' ')}
                         </option>
                       ))}
-                    </optgroup>
-                  </select>
+                      <optgroup label="HSL (may fall back to Normal)">
+                        {HSL_BLEND_MODES.map((mode) => (
+                          <option key={mode} value={mode}>
+                            {mode.charAt(0).toUpperCase() + mode.slice(1).replace(/-/g, ' ')}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
                 </div>
-              </div>
-            )
-          })()}
-        </section>
-      )}
+              )
+            })()}
+          </section>
+        )}
       </div>
     </div>
   )

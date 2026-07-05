@@ -102,9 +102,10 @@ function migrateV2ToV3(obj: Record<string, unknown>): CanvasFile {
   const viewport = sanitizeViewport(obj.viewport as Partial<ViewportState> | undefined)
   const rawLayers = Array.isArray(obj.layers) ? obj.layers : []
 
-  const layers: CanvasLayerData[] = rawLayers.length > 0
-    ? rawLayers.map((l: Record<string, unknown>, i: number) => sanitizeLayer(l, i))
-    : [defaultLayer()]
+  const layers: CanvasLayerData[] =
+    rawLayers.length > 0
+      ? rawLayers.map((l: Record<string, unknown>, i: number) => sanitizeLayer(l, i))
+      : [defaultLayer()]
 
   return {
     version: CANVAS_VERSION,
@@ -134,9 +135,10 @@ function sanitizeModernCanvas(obj: Record<string, unknown>): CanvasFile {
   const viewport = sanitizeViewport(obj.viewport as Partial<ViewportState> | undefined)
   const rawLayers = Array.isArray(obj.layers) ? obj.layers : []
 
-  const layers: CanvasLayerData[] = rawLayers.length > 0
-    ? rawLayers.map((l: Record<string, unknown>, i: number) => sanitizeLayer(l, i))
-    : [defaultLayer()]
+  const layers: CanvasLayerData[] =
+    rawLayers.length > 0
+      ? rawLayers.map((l: Record<string, unknown>, i: number) => sanitizeLayer(l, i))
+      : [defaultLayer()]
 
   const file: CanvasFile = {
     version: CANVAS_VERSION,
@@ -145,7 +147,10 @@ function sanitizeModernCanvas(obj: Record<string, unknown>): CanvasFile {
     background: typeof obj.background === 'string' ? obj.background : DEFAULT_BACKGROUND,
     viewport,
     layers,
-    activeLayerId: typeof obj.activeLayerId === 'string' ? obj.activeLayerId : layers[layers.length - 1]?.id ?? '',
+    activeLayerId:
+      typeof obj.activeLayerId === 'string'
+        ? obj.activeLayerId
+        : (layers[layers.length - 1]?.id ?? ''),
   }
   if (isValidAssetId(obj.assetId)) file.assetId = obj.assetId
   return file
@@ -166,10 +171,7 @@ function isValidAssetId(v: unknown): v is string {
   )
 }
 
-function sanitizeLayer(
-  l: Record<string, unknown>,
-  i: number,
-): CanvasLayerData {
+function sanitizeLayer(l: Record<string, unknown>, i: number): CanvasLayerData {
   return {
     id: (typeof l.id === 'string' ? l.id : null) ?? crypto.randomUUID(),
     name: (typeof l.name === 'string' ? l.name : null) ?? `Layer ${i + 1}`,

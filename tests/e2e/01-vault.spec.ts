@@ -1,7 +1,9 @@
 import { test, expect, navigateTo, waitForView } from './fixtures'
 
 test.describe('1.1 — Vault Creation & Opening', () => {
-  test('1.1.1 Create a new vault via OPFS — verify config.json created', async ({ vaultPage: page }) => {
+  test('1.1.1 Create a new vault via OPFS — verify config.json created', async ({
+    vaultPage: page,
+  }) => {
     // The fixture already creates a vault via OPFS.
     // Verify the app shell loaded (sidebar/nav visible means vault opened successfully).
     await expect(page.locator('aside, nav')).toBeVisible({ timeout: 15_000 })
@@ -10,7 +12,9 @@ test.describe('1.1 — Vault Creation & Opening', () => {
     await expect(page.locator('text=E2E Test Vault')).toBeVisible({ timeout: 10_000 })
   })
 
-  test('1.1.2 Open an existing OPFS vault — verify files/settings preserved', async ({ vaultPage: page }) => {
+  test('1.1.2 Open an existing OPFS vault — verify files/settings preserved', async ({
+    vaultPage: page,
+  }) => {
     // Create a note so there's something to verify on re-open
     await page.keyboard.press('Control+n')
     await page.waitForTimeout(500)
@@ -115,7 +119,9 @@ test.describe('1.2 — File CRUD Operations', () => {
       await page.waitForTimeout(300)
 
       // Fill in new name
-      const renameInput = page.locator('input[aria-label="New note name"], input[type="text"]').last()
+      const renameInput = page
+        .locator('input[aria-label="New note name"], input[type="text"]')
+        .last()
       await renameInput.clear()
       await renameInput.fill('Renamed Note')
 
@@ -134,7 +140,9 @@ test.describe('1.2 — File CRUD Operations', () => {
     }
   })
 
-  test('1.2.5 Rename with case-only change — no false "already exists" error', async ({ vaultPage: page }) => {
+  test('1.2.5 Rename with case-only change — no false "already exists" error', async ({
+    vaultPage: page,
+  }) => {
     await page.keyboard.press('Control+1')
     await page.waitForTimeout(800)
 
@@ -162,7 +170,9 @@ test.describe('1.2 — File CRUD Operations', () => {
       await renameOption.click()
       await page.waitForTimeout(300)
 
-      const renameInput = page.locator('input[aria-label="New note name"], input[type="text"]').last()
+      const renameInput = page
+        .locator('input[aria-label="New note name"], input[type="text"]')
+        .last()
       await renameInput.clear()
       await renameInput.fill('Lowercase Note') // case-only change
 
@@ -219,13 +229,15 @@ test.describe('1.2 — File CRUD Operations', () => {
       await page.waitForTimeout(1000)
 
       // File should no longer appear in tree
-      await expect(
-        page.locator('aside').getByText('Note To Delete')
-      ).not.toBeVisible({ timeout: 5000 })
+      await expect(page.locator('aside').getByText('Note To Delete')).not.toBeVisible({
+        timeout: 5000,
+      })
     }
   })
 
-  test('1.2.11 Attempt to create file with / in name — rejected gracefully', async ({ vaultPage: page }) => {
+  test('1.2.11 Attempt to create file with / in name — rejected gracefully', async ({
+    vaultPage: page,
+  }) => {
     await page.keyboard.press('Control+1')
     await page.waitForTimeout(800)
 
@@ -278,12 +290,14 @@ test.describe('1.3 — Auto-Save Behavior', () => {
     await page.waitForTimeout(1000)
 
     // The note should appear in the tree (title derived from content)
-    await expect(
-      page.locator('aside').getByText('Auto-save content test')
-    ).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('aside').getByText('Auto-save content test')).toBeVisible({
+      timeout: 10_000,
+    })
   })
 
-  test('1.3.3 Edit note — switch views — verify immediate save on blur', async ({ vaultPage: page }) => {
+  test('1.3.3 Edit note — switch views — verify immediate save on blur', async ({
+    vaultPage: page,
+  }) => {
     await page.keyboard.press('Control+1')
     await page.waitForTimeout(800)
 
@@ -308,9 +322,7 @@ test.describe('1.3 — Auto-Save Behavior', () => {
     await page.waitForTimeout(1500)
 
     // The note should exist in the tree (saved despite no debounce wait)
-    await expect(
-      page.locator('aside').getByText('Blur save test')
-    ).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('aside').getByText('Blur save test')).toBeVisible({ timeout: 10_000 })
   })
 })
 
@@ -325,7 +337,9 @@ test.describe('1.5 — Vault Structure Integrity', () => {
     await expect(marrowInTree).not.toBeVisible({ timeout: 3000 })
   })
 
-  test('1.5.8 Open Files view (Ctrl+7) — verify hidden folders visible', async ({ vaultPage: page }) => {
+  test('1.5.8 Open Files view (Ctrl+7) — verify hidden folders visible', async ({
+    vaultPage: page,
+  }) => {
     // Navigate to Files view (shows hidden folders)
     await page.keyboard.press('Control+7')
     await page.waitForTimeout(1500)

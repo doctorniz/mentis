@@ -4,9 +4,7 @@ import type { BookmarkFrontmatter, BookmarkItem } from '@/types/bookmarks'
 export const BOOKMARKS_DIR = '_marrow/_bookmarks'
 
 export function categoryFromPath(path: string): string | null {
-  const rel = path.startsWith(BOOKMARKS_DIR + '/')
-    ? path.slice(BOOKMARKS_DIR.length + 1)
-    : path
+  const rel = path.startsWith(BOOKMARKS_DIR + '/') ? path.slice(BOOKMARKS_DIR.length + 1) : path
   const parts = rel.split('/')
   return parts.length > 1 ? parts[0] : null
 }

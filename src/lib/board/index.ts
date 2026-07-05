@@ -27,10 +27,7 @@ export function parseBoardItem(path: string, raw: string): BoardItem {
   }
 }
 
-export function serializeBoardItem(
-  fm: BoardItemFrontmatter,
-  content: string,
-): string {
+export function serializeBoardItem(fm: BoardItemFrontmatter, content: string): string {
   const updated = { ...fm, modified: new Date().toISOString() }
   return matter.stringify(content, updated)
 }
@@ -67,11 +64,7 @@ export function extractBoardVaultImagePaths(body: string): string[] {
   const paths: string[] = []
   for (const match of body.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)) {
     const src = match[1]
-    if (
-      src.startsWith('http://') ||
-      src.startsWith('https://') ||
-      src.startsWith('blob:')
-    ) {
+    if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('blob:')) {
       continue
     }
     paths.push(src)
@@ -90,7 +83,10 @@ export function boardBodyIsImageOnly(body: string): boolean {
 }
 
 function sanitizeStemForFilename(raw: string): string {
-  return raw.replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim()
+  return raw
+    .replace(/[/\\:*?"<>|]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /** Vault-root filename: prefer sanitized H1 title; else stem of `fallbackFilename`. */

@@ -31,10 +31,7 @@ import {
 } from 'lucide-react'
 import type { FileSystemAdapter } from '@/lib/fs'
 import { FileType } from '@/types/files'
-import {
-  detectEditorTabType,
-  titleFromVaultPath,
-} from '@/lib/notes/editor-tab-from-path'
+import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
 import type { FileEntry } from '@/types/files'
 import { isNotesTreeEntry, sortTreeEntries } from '@/lib/notes/tree-filter'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
@@ -185,7 +182,9 @@ export function NotesFileTree({
     if (!sanitized) return
     // Preserve the original file extension
     const ext = oldPath.includes('.') ? oldPath.slice(oldPath.lastIndexOf('.')) : '.md'
-    const fileName = sanitized.toLowerCase().endsWith(ext.toLowerCase()) ? sanitized : `${sanitized}${ext}`
+    const fileName = sanitized.toLowerCase().endsWith(ext.toLowerCase())
+      ? sanitized
+      : `${sanitized}${ext}`
     const parent = oldPath.lastIndexOf('/') === -1 ? '' : oldPath.slice(0, oldPath.lastIndexOf('/'))
     const newPath = parent ? `${parent}/${fileName}` : fileName
     if (vaultPathsPointToSameFile(newPath, oldPath)) return
@@ -262,8 +261,7 @@ export function NotesFileTree({
               Delete {deleteIsFolder ? 'folder' : 'note'}?
             </h2>
             <p className="text-fg-secondary mt-2 text-sm">
-              Are you sure you want to delete{' '}
-              <strong>{deletePath.split('/').pop()}</strong>
+              Are you sure you want to delete <strong>{deletePath.split('/').pop()}</strong>
               {deleteIsFolder ? ' and all its contents' : ''}? This cannot be undone.
             </p>
             <div className="mt-4 flex justify-end gap-2">
@@ -276,7 +274,7 @@ export function NotesFileTree({
               </button>
               <button
                 type="button"
-                className="bg-danger text-accent-fg hover:opacity-90 rounded-md px-3 py-1.5 text-sm font-medium"
+                className="bg-danger text-accent-fg rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90"
                 onClick={() => void handleDelete()}
               >
                 Delete
@@ -305,159 +303,156 @@ export function NotesFileTree({
           void refresh()
         }}
       />
-    <div
-      className={cn(
-        'border-border bg-bg relative flex h-full w-[min(100%,240px)] shrink-0 flex-col border-r',
-        rootClassName,
-      )}
-      onDragEnter={(e) => {
-        if (e.dataTransfer.types.includes('Files')) {
-          dragEnterCount.current++
-          setExternalDragOver(true)
-        }
-      }}
-      onDragLeave={(e) => {
-        if (e.currentTarget.contains(e.relatedTarget as Node)) return
-        dragEnterCount.current = Math.max(0, dragEnterCount.current - 1)
-        if (dragEnterCount.current === 0) setExternalDragOver(false)
-      }}
-      onDragOver={(e) => {
-        if (e.dataTransfer.types.includes(DND_TYPE) || e.dataTransfer.types.includes('Files')) {
+      <div
+        className={cn(
+          'border-border bg-bg relative flex h-full w-[min(100%,240px)] shrink-0 flex-col border-r',
+          rootClassName,
+        )}
+        onDragEnter={(e) => {
+          if (e.dataTransfer.types.includes('Files')) {
+            dragEnterCount.current++
+            setExternalDragOver(true)
+          }
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node)) return
+          dragEnterCount.current = Math.max(0, dragEnterCount.current - 1)
+          if (dragEnterCount.current === 0) setExternalDragOver(false)
+        }}
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes(DND_TYPE) || e.dataTransfer.types.includes('Files')) {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'move'
+          }
+        }}
+        onDrop={(e) => {
+          dragEnterCount.current = 0
+          setExternalDragOver(false)
+          if (e.dataTransfer.files.length > 0 && !e.dataTransfer.types.includes(DND_TYPE)) {
+            e.preventDefault()
+            void handleExternalImport(e.dataTransfer.files, '')
+            return
+          }
+          const src = e.dataTransfer.getData(DND_TYPE)
+          if (!src) return
           e.preventDefault()
-          e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'move'
-        }
-      }}
-      onDrop={(e) => {
-        dragEnterCount.current = 0
-        setExternalDragOver(false)
-        if (e.dataTransfer.files.length > 0 && !e.dataTransfer.types.includes(DND_TYPE)) {
-          e.preventDefault()
-          void handleExternalImport(e.dataTransfer.files, '')
-          return
-        }
-        const src = e.dataTransfer.getData(DND_TYPE)
-        if (!src) return
-        e.preventDefault()
-        void handleMoveFile(src, '')
-      }}
-    >
-      <div className="border-border flex items-center justify-between gap-2 border-b px-3 py-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1">
-          {onRequestCollapse && (
+          void handleMoveFile(src, '')
+        }}
+      >
+        <div className="border-border flex items-center justify-between gap-2 border-b px-3 py-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            {onRequestCollapse && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
+                onClick={onRequestCollapse}
+                aria-label="Collapse vault tree"
+                title="Collapse vault tree"
+              >
+                <PanelLeftClose className="size-3.5" />
+              </Button>
+            )}
+            <span className="text-fg truncate text-xs font-semibold tracking-wide uppercase">
+              Vault
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-0.5">
+            {onSearchOpen && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
+                onClick={onSearchOpen}
+                aria-label="Search vault"
+                title="Search (Ctrl+F)"
+              >
+                <Search className="size-3.5" />
+              </Button>
+            )}
+            {onGraphOpen && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
+                onClick={onGraphOpen}
+                aria-label="Open graph"
+                title="Graph"
+              >
+                <GitFork className="size-3.5" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
               className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
-              onClick={onRequestCollapse}
-              aria-label="Collapse vault tree"
-              title="Collapse vault tree"
+              onClick={() => setNewFolderParent('')}
+              aria-label="New folder"
+              title="New folder"
             >
-              <PanelLeftClose className="size-3.5" />
+              <FolderPlus className="size-3.5" />
             </Button>
-          )}
-          <span className="text-fg truncate text-xs font-semibold tracking-wide uppercase">
-            Vault
-          </span>
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          {onSearchOpen && (
             <Button
               variant="ghost"
               size="sm"
               className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
-              onClick={onSearchOpen}
-              aria-label="Search vault"
-              title="Search (Ctrl+F)"
+              onClick={() => void handleNewNote()}
+              aria-label="New note"
             >
-              <Search className="size-3.5" />
+              <Plus className="size-3.5" />
             </Button>
-          )}
-          {onGraphOpen && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
-              onClick={onGraphOpen}
-              aria-label="Open graph"
-              title="Graph"
-            >
-              <GitFork className="size-3.5" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
-            onClick={() => setNewFolderParent('')}
-            aria-label="New folder"
-            title="New folder"
-          >
-            <FolderPlus className="size-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
-            onClick={() => void handleNewNote()}
-            aria-label="New note"
-          >
-            <Plus className="size-3.5" />
-          </Button>
+          </div>
         </div>
-      </div>
-      {externalDragOver && (
-        <div className="border-accent bg-accent/10 pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed">
-          <span className="text-accent text-xs font-semibold">Drop to import</span>
-        </div>
-      )}
-      <div className="min-h-0 flex-1 overflow-y-auto py-1.5">
-        {starredPaths.length > 0 && (
-          <div className="mb-2">
-            <div className="text-fg-muted px-3 pb-1 pt-1.5 text-[10px] font-semibold tracking-widest uppercase">
-              Starred
+        {externalDragOver && (
+          <div className="border-accent bg-accent/10 pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed">
+            <span className="text-accent text-xs font-semibold">Drop to import</span>
+          </div>
+        )}
+        <div className="min-h-0 flex-1 overflow-y-auto py-1.5">
+          {starredPaths.length > 0 && (
+            <div className="mb-2">
+              <div className="text-fg-muted px-3 pt-1.5 pb-1 text-[10px] font-semibold tracking-widest uppercase">
+                Starred
+              </div>
+              {starredPaths.map((p) => (
+                <SidebarPathRow
+                  key={`star-${p}`}
+                  path={p}
+                  selected={selectedPath === p}
+                  onOpen={handleOpenFile}
+                />
+              ))}
             </div>
-            {starredPaths.map((p) => (
-              <SidebarPathRow
-                key={`star-${p}`}
-                path={p}
-                selected={selectedPath === p}
-                onOpen={handleOpenFile}
-              />
-            ))}
-          </div>
-        )}
-        {rootEntries.length === 0 && starredPaths.length === 0 ? (
-          <p className="text-fg-muted px-3 py-4 text-center text-xs">No files yet.</p>
-        ) : (
-          <div
-            role="tree"
-            aria-label="Vault file tree"
-          >
-            {rootEntries.map((entry) => (
-              <TreeNode
-                key={entry.path}
-                entry={entry}
-                depth={0}
-                vaultFs={vaultFs}
-                refreshToken={refreshToken}
-                selectedPath={selectedPath}
-                inlineEditPath={inlineEditPath}
-                onOpenFile={handleOpenFile}
-                onStartInlineEdit={setInlineEditPath}
-                onCommitInlineEdit={handleInlineRename}
-                onCancelInlineEdit={() => setInlineEditPath(null)}
-                onRenameNote={setRenamePath}
-                onDeleteItem={requestDelete}
-                onRenameFolder={setRenameFolderPath}
-                onNewSubfolder={setNewFolderParent}
-                onMoveFile={handleMoveFile}
-                onExternalImport={handleExternalImport}
-              />
-            ))}
-          </div>
-        )}
+          )}
+          {rootEntries.length === 0 && starredPaths.length === 0 ? (
+            <p className="text-fg-muted px-3 py-4 text-center text-xs">No files yet.</p>
+          ) : (
+            <div role="tree" aria-label="Vault file tree">
+              {rootEntries.map((entry) => (
+                <TreeNode
+                  key={entry.path}
+                  entry={entry}
+                  depth={0}
+                  vaultFs={vaultFs}
+                  refreshToken={refreshToken}
+                  selectedPath={selectedPath}
+                  inlineEditPath={inlineEditPath}
+                  onOpenFile={handleOpenFile}
+                  onStartInlineEdit={setInlineEditPath}
+                  onCommitInlineEdit={handleInlineRename}
+                  onCancelInlineEdit={() => setInlineEditPath(null)}
+                  onRenameNote={setRenamePath}
+                  onDeleteItem={requestDelete}
+                  onRenameFolder={setRenameFolderPath}
+                  onNewSubfolder={setNewFolderParent}
+                  onMoveFile={handleMoveFile}
+                  onExternalImport={handleExternalImport}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </>
   )
 }
@@ -477,12 +472,13 @@ function SidebarPathRow({
       onClick={() => onOpen(path)}
       className={cn(
         'mx-1 flex w-[calc(100%-0.5rem)] items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] transition-colors',
-        selected
-          ? 'bg-accent/10 text-accent font-medium'
-          : 'text-fg hover:bg-bg-hover',
+        selected ? 'bg-accent/10 text-accent font-medium' : 'text-fg hover:bg-bg-hover',
       )}
     >
-      <FileText className={cn('size-3.5 shrink-0', selected ? 'text-accent/60' : 'text-fg-muted')} aria-hidden />
+      <FileText
+        className={cn('size-3.5 shrink-0', selected ? 'text-accent/60' : 'text-fg-muted')}
+        aria-hidden
+      />
       <span className="min-w-0 truncate">{fileTitleFromPath(path)}</span>
     </button>
   )
@@ -551,17 +547,27 @@ function TreeNode({
     const selected = selectedPath === entry.path
     const displayName = titleFromVaultPath(entry.path)
     const FileIcon =
-      entry.type === FileType.Canvas ? Layout
-      : entry.type === FileType.Mindmap ? GitBranch
-      : entry.type === FileType.Kanban ? Columns3
-      : entry.type === FileType.Image ? ImageIcon
-      : entry.type === FileType.Audio ? Music
-      : entry.type === FileType.Video ? Film
-      : entry.type === FileType.Docx ? FileType2
-      : entry.type === FileType.Pptx ? Presentation
-      : entry.type === FileType.Spreadsheet ? Table2
-      : entry.type === FileType.Code ? FileCode2
-      : FileText
+      entry.type === FileType.Canvas
+        ? Layout
+        : entry.type === FileType.Mindmap
+          ? GitBranch
+          : entry.type === FileType.Kanban
+            ? Columns3
+            : entry.type === FileType.Image
+              ? ImageIcon
+              : entry.type === FileType.Audio
+                ? Music
+                : entry.type === FileType.Video
+                  ? Film
+                  : entry.type === FileType.Docx
+                    ? FileType2
+                    : entry.type === FileType.Pptx
+                      ? Presentation
+                      : entry.type === FileType.Spreadsheet
+                        ? Table2
+                        : entry.type === FileType.Code
+                          ? FileCode2
+                          : FileText
 
     function commitInline() {
       const val = inlineInputRef.current?.value
@@ -589,9 +595,7 @@ function TreeNode({
         }}
         className={cn(
           'group mx-1 flex w-[calc(100%-0.5rem)] items-center gap-0.5 rounded-md py-1 pr-1 text-[13px] transition-colors',
-          selected
-            ? 'bg-accent/10 text-accent'
-            : 'text-fg hover:bg-bg-hover',
+          selected ? 'bg-accent/10 text-accent' : 'text-fg hover:bg-bg-hover',
         )}
         style={{ paddingLeft: 6 + depth * 14 }}
       >
@@ -609,8 +613,14 @@ function TreeNode({
               }}
               onBlur={commitInline}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); commitInline() }
-                if (e.key === 'Escape') { e.preventDefault(); onCancelInlineEdit() }
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  commitInline()
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  onCancelInlineEdit()
+                }
                 e.stopPropagation()
               }}
               className="text-fg bg-bg border-accent min-w-0 flex-1 rounded border px-1 py-0 text-[13px] outline-none"
@@ -677,7 +687,7 @@ function TreeNode({
             </button>
             <button
               type="button"
-              className="text-fg-muted hover:text-red-500 shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+              className="text-fg-muted shrink-0 rounded p-1 opacity-100 transition-opacity hover:text-red-500 md:opacity-0 md:group-hover:opacity-100"
               aria-label={`Delete ${entry.name}`}
               onClick={(e) => {
                 e.stopPropagation()
@@ -710,9 +720,7 @@ function TreeNode({
     <div
       className={cn(
         'group mx-1 flex w-[calc(100%-0.5rem)] items-center gap-0.5 rounded-md py-1 pr-1 text-[13px] transition-colors',
-        dragOver
-          ? 'bg-accent/15 ring-accent/40 ring-1'
-          : 'hover:bg-bg-hover',
+        dragOver ? 'bg-accent/15 ring-accent/40 ring-1' : 'hover:bg-bg-hover',
       )}
       style={{ paddingLeft: 2 + depth * 14 }}
       onDragOver={(e) => {
@@ -780,7 +788,7 @@ function TreeNode({
       </button>
       <button
         type="button"
-        className="text-fg-muted hover:text-red-500 shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+        className="text-fg-muted shrink-0 rounded p-1 opacity-100 transition-opacity hover:text-red-500 md:opacity-0 md:group-hover:opacity-100"
         aria-label={`Delete ${entry.name}`}
         title="Delete folder"
         onClick={(e) => {
@@ -794,7 +802,12 @@ function TreeNode({
   )
 
   return (
-    <div role="treeitem" aria-expanded={expanded} aria-level={depth + 1} aria-selected={selectedPath === entry.path}>
+    <div
+      role="treeitem"
+      aria-expanded={expanded}
+      aria-level={depth + 1}
+      aria-selected={selectedPath === entry.path}
+    >
       <TreeContextMenu
         isFile={false}
         entryName={entry.name}
@@ -830,10 +843,7 @@ function TreeNode({
         </div>
       )}
       {expanded && children && children.length === 0 && (
-        <p
-          className="text-fg-muted py-1 text-xs"
-          style={{ paddingLeft: 28 + depth * 14 }}
-        >
+        <p className="text-fg-muted py-1 text-xs" style={{ paddingLeft: 28 + depth * 14 }}>
           Empty folder
         </p>
       )}
@@ -966,16 +976,20 @@ function RenameFolderDialog({
       for (const tab of tabs) {
         if (tab.path.startsWith(currentPath + '/')) {
           const updated = newPath + tab.path.slice(currentPath.length)
-          retargetTabPath(tab.id, updated, updated.replace(/\.md$/i, '').split('/').pop() ?? updated)
+          retargetTabPath(
+            tab.id,
+            updated,
+            updated.replace(/\.md$/i, '').split('/').pop() ?? updated,
+          )
         }
       }
       for (const f of oldFiles) removeSearchDocument(f)
 
       const sel = useFileTreeStore.getState().selectedPath
       if (sel?.startsWith(currentPath + '/') || sel === currentPath) {
-        useFileTreeStore.getState().setSelectedPath(
-          sel === currentPath ? newPath : newPath + sel.slice(currentPath.length),
-        )
+        useFileTreeStore
+          .getState()
+          .setSelectedPath(sel === currentPath ? newPath : newPath + sel.slice(currentPath.length))
       }
 
       onRenamed?.()

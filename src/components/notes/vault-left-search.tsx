@@ -121,8 +121,7 @@ export function VaultLeftSearch({ onClose, rootClassName }: VaultLeftSearchProps
         ) : (
           results.map((r) => {
             const Icon = TYPE_ICONS[r.type] ?? FileText
-            const folder =
-              r.path.includes('/') ? r.path.slice(0, r.path.lastIndexOf('/')) : ''
+            const folder = r.path.includes('/') ? r.path.slice(0, r.path.lastIndexOf('/')) : ''
             return (
               <button
                 key={r.id}

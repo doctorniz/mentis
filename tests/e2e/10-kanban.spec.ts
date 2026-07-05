@@ -1,4 +1,11 @@
-import { test, expect, navigateTo, waitForView, createMarkdownNote, waitForAutoSave } from './fixtures'
+import {
+  test,
+  expect,
+  navigateTo,
+  waitForView,
+  createMarkdownNote,
+  waitForAutoSave,
+} from './fixtures'
 
 const KANBAN_MD = `---
 type: kanban
@@ -47,12 +54,16 @@ async function openFileInVault(page: import('@playwright/test').Page, filename: 
 
 test.describe('10 — Kanban Board', () => {
   test.describe('10.1 Board Rendering & Interaction', () => {
-    test('10.1.1 .md with type: kanban frontmatter renders as board', async ({ vaultPage: page }) => {
+    test('10.1.1 .md with type: kanban frontmatter renders as board', async ({
+      vaultPage: page,
+    }) => {
       await createKanbanFile(page)
       await openFileInVault(page, 'board.md')
 
       // Should render as a kanban board, not as raw markdown
-      const kanbanBoard = page.locator('[data-testid="kanban-board"], .kanban-board, [class*="kanban"]')
+      const kanbanBoard = page.locator(
+        '[data-testid="kanban-board"], .kanban-board, [class*="kanban"]',
+      )
       await expect(kanbanBoard).toBeVisible({ timeout: 10_000 })
     })
 

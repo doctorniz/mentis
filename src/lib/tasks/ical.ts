@@ -4,10 +4,10 @@ import type { TaskPriority } from '@/types/tasks'
 const PRIORITY_MAP: Record<TaskPriority, number> = { 1: 1, 2: 3, 3: 5, 4: 9 }
 
 const STATUS_MAP: Record<string, string> = {
-  'todo': 'NEEDS-ACTION',
+  todo: 'NEEDS-ACTION',
   'in-progress': 'IN-PROCESS',
-  'done': 'COMPLETED',
-  'cancelled': 'CANCELLED',
+  done: 'COMPLETED',
+  cancelled: 'CANCELLED',
 }
 
 function foldLine(line: string): string {

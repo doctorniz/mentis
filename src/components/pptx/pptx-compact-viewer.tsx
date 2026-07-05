@@ -64,11 +64,7 @@ interface Presentation {
   layout?: { width: number; height: number }
 }
 
-export function PptxCompactViewer({
-  path,
-}: {
-  path: string
-}) {
+export function PptxCompactViewer({ path }: { path: string }) {
   const { vaultFs } = useVaultSession()
   const [presentation, setPresentation] = useState<Presentation | null>(null)
   const [loading, setLoading] = useState(true)
@@ -85,10 +81,7 @@ export function PptxCompactViewer({
       setError(null)
 
       try {
-        const [bytes, mod] = await Promise.all([
-          vaultFs.readFile(path),
-          import('slidecanvas'),
-        ])
+        const [bytes, mod] = await Promise.all([vaultFs.readFile(path), import('slidecanvas')])
         if (cancelled) return
 
         const buffer = bytes.buffer.slice(
@@ -112,16 +105,14 @@ export function PptxCompactViewer({
     }
 
     void load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [path, vaultFs])
 
   // Derive pixel dimensions from the EMU layout (or fall back to 1280×720).
-  const slideW = presentation?.layout?.width
-    ? presentation.layout.width / EMU_PER_PX
-    : DEFAULT_W
-  const slideH = presentation?.layout?.height
-    ? presentation.layout.height / EMU_PER_PX
-    : DEFAULT_H
+  const slideW = presentation?.layout?.width ? presentation.layout.width / EMU_PER_PX : DEFAULT_W
+  const slideH = presentation?.layout?.height ? presentation.layout.height / EMU_PER_PX : DEFAULT_H
 
   // ---- Track container width for scaling ----
   useEffect(() => {
@@ -167,7 +158,10 @@ export function PptxCompactViewer({
       {/* Top bar — slide count + download */}
       <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
         <span className="text-fg font-mono text-xs font-medium">
-          {path.split('/').pop()?.replace(/\.pptx$/i, '')}
+          {path
+            .split('/')
+            .pop()
+            ?.replace(/\.pptx$/i, '')}
         </span>
         <span className="text-fg-muted font-mono text-xs">.pptx</span>
         <span className="text-fg-muted ml-auto text-xs">
@@ -187,8 +181,8 @@ export function PptxCompactViewer({
       </div>
 
       {/* Alpha disclaimer */}
-      <div className="bg-amber-50 dark:bg-amber-950/40 border-border shrink-0 border-b px-3 py-1">
-        <p className="text-amber-700 dark:text-amber-400 text-center text-xs">
+      <div className="border-border shrink-0 border-b bg-amber-50 px-3 py-1 dark:bg-amber-950/40">
+        <p className="text-center text-xs text-amber-700 dark:text-amber-400">
           Compact presentation viewer is in alpha — some slides may not render correctly.
         </p>
       </div>
@@ -234,10 +228,11 @@ export function PptxCompactViewer({
                     }}
                   >
                     {[...slide.elements]
-                      .filter((el) =>
-                        (el.type === 'text' && el.content?.trim()) ||
-                        (el.type === 'image' && el.src) ||
-                        (el.type === 'shape'),
+                      .filter(
+                        (el) =>
+                          (el.type === 'text' && el.content?.trim()) ||
+                          (el.type === 'image' && el.src) ||
+                          el.type === 'shape',
                       )
                       .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
                       .map((el) => {
@@ -291,15 +286,19 @@ export function PptxCompactViewer({
                               ...base,
                               fontSize: el.fontSize ? Math.max(10, el.fontSize * 0.75) : 14,
                               color: el.color || 'inherit',
-                              fontWeight: el.isBold ? 'bold' : (el.fontWeight || 'normal'),
+                              fontWeight: el.isBold ? 'bold' : el.fontWeight || 'normal',
                               fontStyle: el.isItalic ? 'italic' : undefined,
-                              textDecoration: [
-                                el.isUnderline && 'underline',
-                                el.isStrikethrough && 'line-through',
-                              ].filter(Boolean).join(' ') || undefined,
+                              textDecoration:
+                                [
+                                  el.isUnderline && 'underline',
+                                  el.isStrikethrough && 'line-through',
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ') || undefined,
                               backgroundColor: el.highlightColor || undefined,
                               fontFamily: el.fontFamily || 'sans-serif',
-                              textAlign: (el.textAlign as React.CSSProperties['textAlign']) || 'left',
+                              textAlign:
+                                (el.textAlign as React.CSSProperties['textAlign']) || 'left',
                               lineHeight: 1.3,
                             }}
                           >

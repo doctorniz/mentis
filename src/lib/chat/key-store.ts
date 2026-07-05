@@ -65,10 +65,7 @@ export async function setChatKey(
   })
 }
 
-export async function clearChatKey(
-  provider: ChatProviderId,
-  vaultId: string,
-): Promise<void> {
+export async function clearChatKey(provider: ChatProviderId, vaultId: string): Promise<void> {
   const db = await openDb()
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite')
@@ -80,10 +77,7 @@ export async function clearChatKey(
 }
 
 /** Fast "is this provider configured?" check for gating the chat UI. */
-export async function hasChatKey(
-  provider: ChatProviderId,
-  vaultId: string,
-): Promise<boolean> {
+export async function hasChatKey(provider: ChatProviderId, vaultId: string): Promise<boolean> {
   const rec = await getChatKey(provider, vaultId)
   return !!rec?.apiKey
 }

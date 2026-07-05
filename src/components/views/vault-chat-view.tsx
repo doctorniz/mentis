@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import {
   Copy,
@@ -56,10 +50,7 @@ import {
   VAULT_CHAT_SIDEBAR,
 } from '@/lib/chat/vault-chat-session'
 import { saveVaultConfig } from '@/lib/vault'
-import {
-  useVaultChatStore,
-  selectActiveVaultThread,
-} from '@/stores/vault-chat'
+import { useVaultChatStore, selectActiveVaultThread } from '@/stores/vault-chat'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
@@ -86,8 +77,7 @@ function threadMatchesSettings(
 ): boolean {
   if (!thread?.chatBinding || !settings.provider) return true
   return (
-    thread.chatBinding.provider === settings.provider &&
-    thread.chatBinding.model === settings.model
+    thread.chatBinding.provider === settings.provider && thread.chatBinding.model === settings.model
   )
 }
 
@@ -116,10 +106,7 @@ function ChatThreadsSidebarBody({
 }) {
   const q = searchQuery.trim().toLowerCase()
   const pool = useMemo(
-    () =>
-      q
-        ? threadsAll.filter((t) => t.title.toLowerCase().includes(q))
-        : threadsAll,
+    () => (q ? threadsAll.filter((t) => t.title.toLowerCase().includes(q)) : threadsAll),
     [threadsAll, q],
   )
 
@@ -147,9 +134,7 @@ function ChatThreadsSidebarBody({
       <div
         className={cn(
           'group mx-1 flex items-center gap-1 rounded-md px-2 py-1 transition-colors',
-          active
-            ? 'bg-accent/10 text-accent font-medium'
-            : 'text-fg hover:bg-bg-hover',
+          active ? 'bg-accent/10 text-accent font-medium' : 'text-fg hover:bg-bg-hover',
         )}
       >
         <button
@@ -167,7 +152,7 @@ function ChatThreadsSidebarBody({
             'flex size-6 shrink-0 items-center justify-center rounded-md transition-colors',
             starred
               ? 'text-amber-500'
-              : 'text-fg-muted opacity-0 hover:text-amber-600 group-hover:opacity-100',
+              : 'text-fg-muted opacity-0 group-hover:opacity-100 hover:text-amber-600',
           )}
           title={starred ? 'Unfavourite' : 'Favourite'}
           aria-label={starred ? 'Unfavourite' : 'Favourite'}
@@ -246,7 +231,7 @@ function ChatThreadsSidebarBody({
 
       {/* Thread lists */}
       <div className="min-h-0 flex-1 overflow-y-auto py-1.5">
-        <div className="text-fg-muted px-3 pb-1 pt-1.5 text-[10px] font-semibold tracking-widest uppercase">
+        <div className="text-fg-muted px-3 pt-1.5 pb-1 text-[10px] font-semibold tracking-widest uppercase">
           Favourites
         </div>
         {favourites.length === 0 ? (
@@ -258,7 +243,7 @@ function ChatThreadsSidebarBody({
             ))}
           </div>
         )}
-        <div className="text-fg-muted px-3 pb-1 pt-1.5 text-[10px] font-semibold tracking-widest uppercase">
+        <div className="text-fg-muted px-3 pt-1.5 pb-1 text-[10px] font-semibold tracking-widest uppercase">
           Recent
         </div>
         {recent.length === 0 ? (
@@ -308,9 +293,7 @@ export function VaultChatView() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [deviceStatus, setDeviceStatus] = useState<DeviceModelStatus>('missing')
   const [deviceBusy, setDeviceBusy] = useState(false)
-  const [ollamaModels, setOllamaModels] = useState<{ id: string; label: string }[]>(
-    [],
-  )
+  const [ollamaModels, setOllamaModels] = useState<{ id: string; label: string }[]>([])
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<VaultChatComposerHandle>(null)
@@ -443,8 +426,7 @@ export function VaultChatView() {
   const providerMissing = !settings.provider
   const keyMissing =
     keyChecked && !apiKey && !!settings.provider && providerNeedsApiKey(settings.provider)
-  const deviceNeedsModel =
-    settings.provider === 'device' && deviceStatus === 'missing'
+  const deviceNeedsModel = settings.provider === 'device' && deviceStatus === 'missing'
   const bindingMismatch = !threadMatchesSettings(activeThread, settings)
 
   const composerDisabled =
@@ -461,9 +443,7 @@ export function VaultChatView() {
   const headerHasPair = Boolean(headerProviderId && headerModelId)
   const headerProviderLabel = chatProviderLabel(headerProviderId)
   const headerModelLabel =
-    headerProviderId && headerModelId
-      ? chatModelDisplayLabel(headerProviderId, headerModelId)
-      : '—'
+    headerProviderId && headerModelId ? chatModelDisplayLabel(headerProviderId, headerModelId) : '—'
 
   const modelOptions = useMemo(() => {
     if (!settings.provider) return []
@@ -476,11 +456,7 @@ export function VaultChatView() {
           : settings.model
             ? [{ id: settings.model, label: settings.model }]
             : []
-    if (
-      settings.model &&
-      opts.length > 0 &&
-      !opts.some((m) => m.id === settings.model)
-    ) {
+    if (settings.model && opts.length > 0 && !opts.some((m) => m.id === settings.model)) {
       opts = [...opts, { id: settings.model, label: settings.model }]
     }
     return opts
@@ -547,11 +523,7 @@ export function VaultChatView() {
 
   const exportMarkdown = useCallback(() => {
     if (!activeThread) return
-    const md = threadToMarkdown(
-      activeThread,
-      headerProviderLabel,
-      headerModelLabel,
-    )
+    const md = threadToMarkdown(activeThread, headerProviderLabel, headerModelLabel)
     const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -564,11 +536,7 @@ export function VaultChatView() {
 
   const copyTranscript = useCallback(async () => {
     if (!activeThread) return
-    const text = threadToMarkdown(
-      activeThread,
-      headerProviderLabel,
-      headerModelLabel,
-    )
+    const text = threadToMarkdown(activeThread, headerProviderLabel, headerModelLabel)
     try {
       await navigator.clipboard.writeText(text)
       toast.success('Copied')
@@ -579,11 +547,7 @@ export function VaultChatView() {
 
   const saveTranscriptToVault = useCallback(async () => {
     if (!activeThread) return
-    const md = threadToMarkdown(
-      activeThread,
-      headerProviderLabel,
-      headerModelLabel,
-    )
+    const md = threadToMarkdown(activeThread, headerProviderLabel, headerModelLabel)
     const name = `${sanitizeExportBasename(activeThread.title)}.md`
     const path = name.startsWith('/') ? name.slice(1) : name
     try {
@@ -613,22 +577,15 @@ export function VaultChatView() {
     if (providerMissing) return 'Choose a provider in Settings → AI'
     if (keyMissing) return 'Add an API key in Settings → AI'
     if (deviceNeedsModel) return 'Load the local model first'
-    if (bindingMismatch)
-      return 'Match provider and model in Settings to continue this chat'
+    if (bindingMismatch) return 'Match provider and model in Settings to continue this chat'
     return 'Ask your vault anything'
   }, [providerMissing, keyMissing, deviceNeedsModel, bindingMismatch])
 
   const hasMessages = Boolean(activeThread && activeThread.messages.length > 0)
-  const showModelSelector =
-    !hasMessages &&
-    Boolean(settings.provider && modelOptions.length > 0)
+  const showModelSelector = !hasMessages && Boolean(settings.provider && modelOptions.length > 0)
 
   return (
-    <div
-      className={cn(
-        'bg-bg flex h-full min-h-0 w-full',
-      )}
-    >
+    <div className={cn('bg-bg flex h-full min-h-0 w-full')}>
       {/* Collapsed strip — matches vault tree collapsed strip */}
       {sidebarCollapsed && (
         <div className="border-border bg-bg hidden h-full w-10 shrink-0 flex-col items-center border-r pt-2 md:flex">
@@ -688,178 +645,173 @@ export function VaultChatView() {
       )}
 
       <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <header className="border-border shrink-0 border-b px-3 py-2 md:px-4">
-            <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2">
-              <div className="flex min-w-0 items-center gap-2 md:hidden">
-                <button
-                  type="button"
-                  onClick={() => setMobileSidebarOpen(true)}
-                  className="text-fg-secondary hover:bg-bg-hover flex size-9 items-center justify-center rounded-lg"
-                  aria-label="Open chat list"
-                >
-                  <Menu className="size-5" />
-                </button>
-              </div>
+        <header className="border-border shrink-0 border-b px-3 py-2 md:px-4">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex min-w-0 items-center gap-2 md:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(true)}
+                className="text-fg-secondary hover:bg-bg-hover flex size-9 items-center justify-center rounded-lg"
+                aria-label="Open chat list"
+              >
+                <Menu className="size-5" />
+              </button>
+            </div>
 
-              <div className="text-fg flex min-w-0 flex-wrap items-center gap-2 text-sm">
-                {headerHasPair ? (
-                  <>
-                    <span className="text-fg-secondary shrink-0 font-normal">
-                      {headerProviderLabel}
-                    </span>
-                    <span className="text-fg-muted" aria-hidden>
-                      ·
-                    </span>
-                    <span className="max-w-[200px] truncate font-semibold sm:max-w-xs md:max-w-md">
-                      {headerModelLabel}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-fg-muted">—</span>
-                )}
-              </div>
+            <div className="text-fg flex min-w-0 flex-wrap items-center gap-2 text-sm">
+              {headerHasPair ? (
+                <>
+                  <span className="text-fg-secondary shrink-0 font-normal">
+                    {headerProviderLabel}
+                  </span>
+                  <span className="text-fg-muted" aria-hidden>
+                    ·
+                  </span>
+                  <span className="max-w-[200px] truncate font-semibold sm:max-w-xs md:max-w-md">
+                    {headerModelLabel}
+                  </span>
+                </>
+              ) : (
+                <span className="text-fg-muted">—</span>
+              )}
+            </div>
 
-              <div className="ml-auto flex flex-wrap items-center gap-1">
-                {keyMissing && (
-                  <button
-                    type="button"
-                    onClick={openAiSettings}
-                    className="text-accent hover:bg-accent/10 rounded-md px-2 py-1 text-sm"
-                  >
-                    API key
-                  </button>
-                )}
+            <div className="ml-auto flex flex-wrap items-center gap-1">
+              {keyMissing && (
                 <button
                   type="button"
                   onClick={openAiSettings}
-                  className="text-fg-secondary hover:bg-bg-hover flex items-center gap-1 rounded-md px-2 py-1 text-sm"
-                  title="AI settings"
+                  className="text-accent hover:bg-accent/10 rounded-md px-2 py-1 text-sm"
                 >
-                  <SlidersHorizontal className="size-3.5" />
-                  AI
+                  API key
                 </button>
-                {hasMessages && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => void copyTranscript()}
-                      className="text-fg-secondary hover:bg-bg-hover flex size-8 items-center justify-center rounded-md"
-                      title="Copy"
-                    >
-                      <Copy className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportMarkdown}
-                      className="text-fg-secondary hover:bg-bg-hover flex size-8 items-center justify-center rounded-md"
-                      title="Download"
-                    >
-                      <Download className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void saveTranscriptToVault()}
-                      className="text-fg-secondary hover:bg-bg-hover rounded-md px-2 py-1 text-xs"
-                      title="Save as note in vault"
-                    >
-                      Save
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </header>
-          <p className="text-fg-muted border-border border-b px-3 py-1.5 text-xs leading-snug md:px-4">
-            Answers are grounded in your vault via local search. Artificial
-            intelligence can make mistakes—verify important information.
-          </p>
-
-          {deviceNeedsModel && (
-            <div className="border-border flex shrink-0 justify-center border-b px-4 py-5">
+              )}
               <button
                 type="button"
-                disabled={deviceBusy}
-                onClick={() => void handleLoadDeviceModel()}
-                className="bg-accent text-accent-fg hover:bg-accent-hover shadow-sm flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+                onClick={openAiSettings}
+                className="text-fg-secondary hover:bg-bg-hover flex items-center gap-1 rounded-md px-2 py-1 text-sm"
+                title="AI settings"
               >
-                {deviceBusy ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : null}
-                Load model
+                <SlidersHorizontal className="size-3.5" />
+                AI
               </button>
+              {hasMessages && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void copyTranscript()}
+                    className="text-fg-secondary hover:bg-bg-hover flex size-8 items-center justify-center rounded-md"
+                    title="Copy"
+                  >
+                    <Copy className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportMarkdown}
+                    className="text-fg-secondary hover:bg-bg-hover flex size-8 items-center justify-center rounded-md"
+                    title="Download"
+                  >
+                    <Download className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void saveTranscriptToVault()}
+                    className="text-fg-secondary hover:bg-bg-hover rounded-md px-2 py-1 text-xs"
+                    title="Save as note in vault"
+                  >
+                    Save
+                  </button>
+                </>
+              )}
             </div>
-          )}
+          </div>
+        </header>
+        <p className="text-fg-muted border-border border-b px-3 py-1.5 text-xs leading-snug md:px-4">
+          Answers are grounded in your vault via local search. Artificial intelligence can make
+          mistakes—verify important information.
+        </p>
 
-          {!hasMessages ? (
-            <>
-              {error && (
-                <div className="text-danger border-border shrink-0 border-b px-4 py-2 text-xs">
-                  {error}
-                </div>
-              )}
-              <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-4 py-8">
-                <h1 className="text-fg text-center font-serif text-3xl font-normal tracking-tight">
-                  {vaultChatGreeting()}
-                </h1>
-                <p className="text-fg-muted max-w-md text-center font-serif text-[12pt]">
-                  Search-backed answers from your notes, PDFs, and canvases.
-                </p>
-                <VaultChatComposer
-                  ref={composerRef}
-                  layout="center"
-                  disabled={composerDisabled}
-                  isStreaming={isStreaming}
-                  placeholder={composerPlaceholder}
-                  onSend={handleSend}
-                  onCancel={cancel}
-                  onAttachFiles={handleAttachFiles}
-                  modelSelect={
-                    showModelSelector
-                      ? {
-                          value: settings.model,
-                          options: modelOptions,
-                          onChange: (id) => {
-                            void patchChatSettings({ model: id })
-                          },
-                        }
-                      : undefined
-                  }
-                />
+        {deviceNeedsModel && (
+          <div className="border-border flex shrink-0 justify-center border-b px-4 py-5">
+            <button
+              type="button"
+              disabled={deviceBusy}
+              onClick={() => void handleLoadDeviceModel()}
+              className="bg-accent text-accent-fg hover:bg-accent-hover flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium shadow-sm transition-colors disabled:opacity-50"
+            >
+              {deviceBusy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+              Load model
+            </button>
+          </div>
+        )}
+
+        {!hasMessages ? (
+          <>
+            {error && (
+              <div className="text-danger border-border shrink-0 border-b px-4 py-2 text-xs">
+                {error}
               </div>
-            </>
-          ) : (
-            <>
-              <div
-                ref={scrollRef}
-                className="vault-chat-messages min-h-0 flex-1 overflow-y-auto"
-              >
-                <div className="mx-auto max-w-3xl py-2">
-                  {activeThread!.messages.map((m) => (
-                    <VaultChatMessageRow key={m.id} message={m} />
-                  ))}
-                </div>
-              </div>
-
-              {error && (
-                <div className="text-danger border-border border-t px-4 py-2 font-serif text-xs">
-                  {error}
-                </div>
-              )}
-
+            )}
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-4 py-8">
+              <h1 className="text-fg text-center font-serif text-3xl font-normal tracking-tight">
+                {vaultChatGreeting()}
+              </h1>
+              <p className="text-fg-muted max-w-md text-center font-serif text-[12pt]">
+                Search-backed answers from your notes, PDFs, and canvases.
+              </p>
               <VaultChatComposer
                 ref={composerRef}
-                layout="footer"
+                layout="center"
                 disabled={composerDisabled}
                 isStreaming={isStreaming}
                 placeholder={composerPlaceholder}
                 onSend={handleSend}
                 onCancel={cancel}
                 onAttachFiles={handleAttachFiles}
-                modelSelect={undefined}
+                modelSelect={
+                  showModelSelector
+                    ? {
+                        value: settings.model,
+                        options: modelOptions,
+                        onChange: (id) => {
+                          void patchChatSettings({ model: id })
+                        },
+                      }
+                    : undefined
+                }
               />
-            </>
-          )}
-        </section>
+            </div>
+          </>
+        ) : (
+          <>
+            <div ref={scrollRef} className="vault-chat-messages min-h-0 flex-1 overflow-y-auto">
+              <div className="mx-auto max-w-3xl py-2">
+                {activeThread!.messages.map((m) => (
+                  <VaultChatMessageRow key={m.id} message={m} />
+                ))}
+              </div>
+            </div>
+
+            {error && (
+              <div className="text-danger border-border border-t px-4 py-2 font-serif text-xs">
+                {error}
+              </div>
+            )}
+
+            <VaultChatComposer
+              ref={composerRef}
+              layout="footer"
+              disabled={composerDisabled}
+              isStreaming={isStreaming}
+              placeholder={composerPlaceholder}
+              onSend={handleSend}
+              onCancel={cancel}
+              onAttachFiles={handleAttachFiles}
+              modelSelect={undefined}
+            />
+          </>
+        )}
+      </section>
 
       <Dialog.Root open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
         <Dialog.Portal>

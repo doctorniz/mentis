@@ -32,5 +32,8 @@ export async function removeSignatureFromVault(
   id: string,
 ): Promise<void> {
   const sigs = await loadSignatures(vaultFs)
-  await saveSignatures(vaultFs, sigs.filter((s) => s.id !== id))
+  await saveSignatures(
+    vaultFs,
+    sigs.filter((s) => s.id !== id),
+  )
 }

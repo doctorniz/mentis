@@ -1,6 +1,6 @@
 # Mentis
 
-*An app by Marrow Group.*
+_An app by Marrow Group._
 
 Local-first markdown notes, PDF editor, and unlimited canvas.
 
@@ -52,17 +52,17 @@ src/
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 15 (App Router, static export) |
-| UI | React 19, Tailwind CSS 4, Radix UI, Lucide icons |
-| Editor | Tiptap (ProseMirror) + marked + turndown + gray-matter |
-| PDF | PDF.js (render), pdf-lib (write), Fabric.js (annotations) |
-| Canvas | Fabric.js (infinite surface) |
-| Search | MiniSearch |
-| State | Zustand + Immer |
+| Layer       | Technology                                                              |
+| ----------- | ----------------------------------------------------------------------- |
+| Framework   | Next.js 15 (App Router, static export)                                  |
+| UI          | React 19, Tailwind CSS 4, Radix UI, Lucide icons                        |
+| Editor      | Tiptap (ProseMirror) + marked + turndown + gray-matter                  |
+| PDF         | PDF.js (render), pdf-lib (write), Fabric.js (annotations)               |
+| Canvas      | Fabric.js (infinite surface)                                            |
+| Search      | MiniSearch                                                              |
+| State       | Zustand + Immer                                                         |
 | File System | OPFS (all browsers); File System Access API on Chromium (“open folder”) |
-| Offline | Service Worker (stale-while-revalidate), PWA manifest |
+| Offline     | Service Worker (stale-while-revalidate), PWA manifest                   |
 
 ## Getting Started
 
@@ -107,20 +107,19 @@ The app builds as a static export (SPA) suitable for deployment to any static ho
 
 Detailed documentation lives in the `docs/` folder:
 
-| Document | Description |
-|---|---|
-| [PRD](docs/PRD.md) | Product requirements and feature breakdown |
-| [Architecture](docs/ARCHITECTURE.md) | System architecture, data flows, module design |
-| [Tech Stack](docs/TECH_STACK.md) | Technology choices and rationale |
-| [Development Phases](docs/DEVELOPMENT_PHASES.md) | Week-by-week delivery plan |
-| [Conventions](docs/CONVENTIONS.md) | Code style, naming, project structure |
-| [Cursor / AI](docs/CURSOR.md) | Cursor rules and AI workflow for this repo |
-| [PDF Workflow](docs/PDF_WORKFLOW.md) | Detailed PDF editing UX specification |
-| [Risks](docs/RISKS.md) | Risk register with mitigations |
-| [Deployment](docs/DEPLOYMENT.md) | Static export, COOP/COEP headers on hosting |
-| [Cloud sync](docs/CLOUD_SYNC.md) | Dropbox env var, OAuth, redirect URI |
-| [License](LICENSE) | Business Source License 1.1 (full text); summaries in Architecture §10, PRD §6, Conventions |
-
+| Document                                         | Description                                                                                 |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| [PRD](docs/PRD.md)                               | Product requirements and feature breakdown                                                  |
+| [Architecture](docs/ARCHITECTURE.md)             | System architecture, data flows, module design                                              |
+| [Tech Stack](docs/TECH_STACK.md)                 | Technology choices and rationale                                                            |
+| [Development Phases](docs/DEVELOPMENT_PHASES.md) | Week-by-week delivery plan                                                                  |
+| [Conventions](docs/CONVENTIONS.md)               | Code style, naming, project structure                                                       |
+| [Cursor / AI](docs/CURSOR.md)                    | Cursor rules and AI workflow for this repo                                                  |
+| [PDF Workflow](docs/PDF_WORKFLOW.md)             | Detailed PDF editing UX specification                                                       |
+| [Risks](docs/RISKS.md)                           | Risk register with mitigations                                                              |
+| [Deployment](docs/DEPLOYMENT.md)                 | Static export, COOP/COEP headers on hosting                                                 |
+| [Cloud sync](docs/CLOUD_SYNC.md)                 | Dropbox env var, OAuth, redirect URI                                                        |
+| [License](LICENSE)                               | Business Source License 1.1 (full text); summaries in Architecture §10, PRD §6, Conventions |
 
 ## Development Phases
 

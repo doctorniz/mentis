@@ -12,10 +12,10 @@ PDF export reuses the same `html2pdf.js` pipeline from the DOCX plan.
 
 ## Dependencies
 
-| Package | Purpose | Size |
-|---|---|---|
-| `xlsx` (SheetJS CE) | Parse XLSX → structured JSON with formatting metadata | ~300KB |
-| `html2pdf.js` | Converts rendered grid → PDF (canvas-based, not print) | ~300KB (shared with DOCX) |
+| Package             | Purpose                                                | Size                      |
+| ------------------- | ------------------------------------------------------ | ------------------------- |
+| `xlsx` (SheetJS CE) | Parse XLSX → structured JSON with formatting metadata  | ~300KB                    |
+| `html2pdf.js`       | Converts rendered grid → PDF (canvas-based, not print) | ~300KB (shared with DOCX) |
 
 Both are lazy-imported only when an XLSX tab opens. `@tanstack/react-virtual` is already installed.
 
@@ -47,11 +47,11 @@ Wraps SheetJS to produce a render-ready data structure:
 interface ParsedCell {
   value: string | number | boolean | null
   type: 'string' | 'number' | 'boolean' | 'date' | 'empty'
-  format?: string           // number format string (e.g. "#,##0.00")
-  formatted?: string        // pre-formatted display string
+  format?: string // number format string (e.g. "#,##0.00")
+  formatted?: string // pre-formatted display string
   style?: CellStyle
-  merge?: { cols: number; rows: number }  // only on top-left cell of a merge
-  merged?: boolean          // true for non-origin cells swallowed by a merge
+  merge?: { cols: number; rows: number } // only on top-left cell of a merge
+  merged?: boolean // true for non-origin cells swallowed by a merge
 }
 
 interface CellStyle {
@@ -60,8 +60,8 @@ interface CellStyle {
   underline?: boolean
   strike?: boolean
   fontSize?: number
-  fontColor?: string        // hex
-  bgColor?: string          // hex
+  fontColor?: string // hex
+  bgColor?: string // hex
   hAlign?: 'left' | 'center' | 'right'
   vAlign?: 'top' | 'middle' | 'bottom'
   borderTop?: BorderStyle
@@ -74,8 +74,8 @@ interface CellStyle {
 interface ParsedSheet {
   name: string
   rows: ParsedCell[][]
-  colWidths: number[]       // in pixels
-  rowHeights: number[]      // in pixels
+  colWidths: number[] // in pixels
+  rowHeights: number[] // in pixels
   merges: Array<{ r1: number; c1: number; r2: number; c2: number }>
   frozenRows?: number
   frozenCols?: number
@@ -88,6 +88,7 @@ interface ParsedWorkbook {
 ```
 
 **Parsing flow:**
+
 1. Read XLSX with `XLSX.read(uint8Array, { type: 'array', cellStyles: true, cellDates: true })`
 2. For each sheet, iterate the cell range and extract values, types, and styles
 3. Map SheetJS style objects to the simplified `CellStyle` above
@@ -108,6 +109,7 @@ SpreadsheetViewer({ tabId, path, onRenamed })
 ```
 
 **Loading flow:**
+
 1. Read file as `Uint8Array` via `vaultFs.readFile(path)`
 2. Dynamically import the parse utility
 3. Parse into `ParsedWorkbook`
@@ -115,6 +117,7 @@ SpreadsheetViewer({ tabId, path, onRenamed })
 5. Drop the loading spinner
 
 **Grid renderer** — a custom virtualized grid using `@tanstack/react-virtual`:
+
 - Two virtualizers: one for rows, one for columns
 - Render only visible cells in a `position: absolute` layout inside a scrollable container
 - Each cell is a `<div>` positioned absolutely, styled from `CellStyle`
@@ -122,22 +125,26 @@ SpreadsheetViewer({ tabId, path, onRenamed })
 - Merged cells span their area via width/height calculation (skip rendering swallowed cells)
 
 **Column/row headers:**
+
 - Column headers (A, B, C, … AA, AB, …) in a sticky top row with `bg-bg-secondary`
 - Row numbers (1, 2, 3, …) in a sticky left column
 - Both scroll-locked to their respective axis
 
 **Sheet tabs:**
+
 - Bottom tab bar showing all sheet names
 - Active sheet highlighted with `bg-accent/10 text-accent`
 - Click to switch sheets
 
 **Toolbar (top bar):**
+
 - `InlineFileTitle` for rename + extension badge (`.xlsx`, `.csv`)
 - Zoom controls: `−` / percentage / `+` (scale the grid via CSS transform or by adjusting cell sizes)
 - "Export PDF" button
 - Cell count / row count indicator (subtle, right-aligned)
 
 **Cell selection (optional, for v1):**
+
 - Click a cell to highlight it with an accent border
 - Show cell value / formula in a read-only formula bar below the toolbar
 - This is polish — can be deferred
@@ -167,6 +174,7 @@ export async function exportSpreadsheetAsPdf(
 - Return `Uint8Array` for vault write
 
 **In the viewer**, the Export PDF button:
+
 1. Shows "Exporting…" state
 2. Temporarily un-virtualizes the grid (render all rows) for the PDF capture, or re-render to an offscreen container with all rows
 3. Calls the export utility
@@ -206,19 +214,19 @@ No changes needed — same as DOCX. `editorTabTypeFromVaultPath` returns `'sprea
 
 ## File summary
 
-| File | Action |
-|---|---|
-| `src/types/files.ts` | Add `Spreadsheet` to enum + `getFileType` |
-| `src/types/editor.ts` | Add `'spreadsheet'` to type union |
-| `src/lib/notes/editor-tab-from-path.ts` | Add Spreadsheet case |
-| `src/lib/notes/tree-filter.ts` | Add Spreadsheet to filter |
-| `src/components/notes/notes-file-tree.tsx` | Add icon |
-| `src/lib/spreadsheet/parse-workbook.ts` | **New** — SheetJS parsing wrapper |
-| `src/components/notes/spreadsheet-viewer.tsx` | **New** — grid viewer component |
-| `src/lib/spreadsheet/export-pdf.ts` | **New** — PDF export utility |
-| `src/components/views/notes-view.tsx` | Add routing branch |
-| `src/app/globals.css` | Add grid styles |
-| `package.json` | Add `xlsx` (SheetJS CE) |
+| File                                          | Action                                    |
+| --------------------------------------------- | ----------------------------------------- |
+| `src/types/files.ts`                          | Add `Spreadsheet` to enum + `getFileType` |
+| `src/types/editor.ts`                         | Add `'spreadsheet'` to type union         |
+| `src/lib/notes/editor-tab-from-path.ts`       | Add Spreadsheet case                      |
+| `src/lib/notes/tree-filter.ts`                | Add Spreadsheet to filter                 |
+| `src/components/notes/notes-file-tree.tsx`    | Add icon                                  |
+| `src/lib/spreadsheet/parse-workbook.ts`       | **New** — SheetJS parsing wrapper         |
+| `src/components/notes/spreadsheet-viewer.tsx` | **New** — grid viewer component           |
+| `src/lib/spreadsheet/export-pdf.ts`           | **New** — PDF export utility              |
+| `src/components/views/notes-view.tsx`         | Add routing branch                        |
+| `src/app/globals.css`                         | Add grid styles                           |
+| `package.json`                                | Add `xlsx` (SheetJS CE)                   |
 
 ## Out of scope (v1)
 

@@ -11,13 +11,13 @@ Some dependencies (for example PDF.js worker paths) benefit from **cross-origin 
 
 **Examples** (adjust to your host):
 
-| Platform | Where to configure |
-|----------|-------------------|
-| **Vercel** | `vercel.json` — `headers` on `"/(.*)"` |
-| **Netlify** | `public/_headers` (copied to `out/_headers` on build) |
-| **Cloudflare Pages** | `_headers` same as Netlify |
-| **S3 + CloudFront** | Lambda@Edge or CloudFront Function |
-| **nginx** | `add_header Cross-Origin-Opener-Policy same-origin always;` and `add_header Cross-Origin-Embedder-Policy require-corp always;` |
+| Platform             | Where to configure                                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Vercel**           | `vercel.json` — `headers` on `"/(.*)"`                                                                                         |
+| **Netlify**          | `public/_headers` (copied to `out/_headers` on build)                                                                          |
+| **Cloudflare Pages** | `_headers` same as Netlify                                                                                                     |
+| **S3 + CloudFront**  | Lambda@Edge or CloudFront Function                                                                                             |
+| **nginx**            | `add_header Cross-Origin-Opener-Policy same-origin always;` and `add_header Cross-Origin-Embedder-Policy require-corp always;` |
 
 `COEP: require-corp` means cross-origin assets (images, scripts, iframes) must be served with CORS or `Cross-Origin-Resource-Policy` as appropriate — verify third-party embeds after enabling.
 

@@ -159,8 +159,7 @@ export function SpreadsheetEditor({
                   const sRow = parseInt(start.replace(/[^0-9]/g, ''), 10)
                   const eCol = end.replace(/[0-9]/g, '')
                   const eRow = parseInt(end.replace(/[^0-9]/g, ''), 10)
-                  const colSpan =
-                    eCol.charCodeAt(0) - sCol.charCodeAt(0) + 1 // Simplified single-letter
+                  const colSpan = eCol.charCodeAt(0) - sCol.charCodeAt(0) + 1 // Simplified single-letter
                   const rowSpan = eRow - sRow + 1
                   return [start, [colSpan, rowSpan]]
                 }),
@@ -278,8 +277,7 @@ export function SpreadsheetEditor({
     if (!wb) return
     syncGridToWorkbook()
     const name = `Sheet${wb.sheets.length + 1}`
-    const emptyRow = (): CellData[] =>
-      Array.from({ length: MIN_COLS }, () => ({ value: '' }))
+    const emptyRow = (): CellData[] => Array.from({ length: MIN_COLS }, () => ({ value: '' }))
     wb.sheets.push({
       name,
       data: Array.from({ length: MIN_ROWS }, emptyRow),
@@ -326,7 +324,9 @@ export function SpreadsheetEditor({
         tsv: 'text/tab-separated-values',
         ods: 'application/vnd.oasis.opendocument.spreadsheet',
       }
-      const blob = new Blob([bytes as BlobPart], { type: mimeMap[ext] ?? 'application/octet-stream' })
+      const blob = new Blob([bytes as BlobPart], {
+        type: mimeMap[ext] ?? 'application/octet-stream',
+      })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -364,7 +364,10 @@ export function SpreadsheetEditor({
         retargetTabPath(
           tabId,
           newPath,
-          newPath.replace(/\.[^/.]+$/i, '').split('/').pop() ?? newPath,
+          newPath
+            .replace(/\.[^/.]+$/i, '')
+            .split('/')
+            .pop() ?? newPath,
         )
         pathRef.current = newPath
         onRenamed?.()
@@ -464,10 +467,7 @@ export function SpreadsheetEditor({
         )}
 
         {!loading && !error && (
-          <div
-            ref={containerRef}
-            className="spreadsheet-container h-full w-full"
-          />
+          <div ref={containerRef} className="spreadsheet-container h-full w-full" />
         )}
       </div>
     </div>

@@ -15,11 +15,15 @@ export function setKanbanCardDragData(e: React.DragEvent, cardId: string, column
   e.dataTransfer.effectAllowed = 'move'
 }
 
-export function readKanbanCardDragData(e: React.DragEvent): { cardId: string; fromColumn: string } | null {
+export function readKanbanCardDragData(
+  e: React.DragEvent,
+): { cardId: string; fromColumn: string } | null {
   let raw = ''
   try {
     raw = e.dataTransfer.getData(DRAG_MIME)
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   if (!raw) {
     const plain = e.dataTransfer.getData('text/plain')
     if (plain.startsWith(CARD_PREFIX)) raw = plain.slice(CARD_PREFIX.length)
@@ -28,7 +32,9 @@ export function readKanbanCardDragData(e: React.DragEvent): { cardId: string; fr
   try {
     const parsed = JSON.parse(raw) as { cardId: string; fromColumn: string }
     if (parsed.cardId && parsed.fromColumn) return parsed
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return null
 }
 
@@ -87,9 +93,7 @@ export function KanbanCardItem({
         onClick={() => onToggle(card.id)}
         className={cn(
           'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border-2 transition-colors',
-          card.checked
-            ? 'border-accent bg-accent'
-            : 'border-border-strong hover:border-accent',
+          card.checked ? 'border-accent bg-accent' : 'border-border-strong hover:border-accent',
         )}
       >
         {card.checked && <Check className="text-accent-fg size-2.5" strokeWidth={3} />}
@@ -103,8 +107,14 @@ export function KanbanCardItem({
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commitRename}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); commitRename() }
-              if (e.key === 'Escape') { setDraft(card.title); setEditing(false) }
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                commitRename()
+              }
+              if (e.key === 'Escape') {
+                setDraft(card.title)
+                setEditing(false)
+              }
             }}
             autoFocus
             className="text-fg w-full bg-transparent text-sm outline-none"
@@ -112,10 +122,13 @@ export function KanbanCardItem({
         ) : (
           <span
             className={cn(
-              'block cursor-text text-sm whitespace-pre-wrap break-words',
+              'block cursor-text text-sm break-words whitespace-pre-wrap',
               card.checked ? 'text-fg-muted line-through' : 'text-fg',
             )}
-            onClick={() => { setDraft(card.title); setEditing(true) }}
+            onClick={() => {
+              setDraft(card.title)
+              setEditing(true)
+            }}
           >
             {card.title || 'Untitled'}
           </span>

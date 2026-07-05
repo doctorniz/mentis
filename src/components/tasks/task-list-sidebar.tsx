@@ -52,11 +52,9 @@ export function TaskListSidebar({ onNavigate }: { onNavigate?: () => void }) {
     if (i.list && listCounts[i.list] !== undefined) listCounts[i.list]++
   }
 
-  const isSmartActive = (filter: TaskFilter) =>
-    activeFilter === filter && activeList === null
+  const isSmartActive = (filter: TaskFilter) => activeFilter === filter && activeList === null
 
-  const isListActive = (name: string) =>
-    activeList === name && activeFilter === 'all'
+  const isListActive = (name: string) => activeList === name && activeFilter === 'all'
 
   const handleSmartClick = useCallback(
     (filter: TaskFilter) => {
@@ -135,10 +133,7 @@ export function TaskListSidebar({ onNavigate }: { onNavigate?: () => void }) {
             )}
           >
             <Icon
-              className={cn(
-                'size-4 shrink-0',
-                isSmartActive(filter) ? 'text-accent' : iconClass,
-              )}
+              className={cn('size-4 shrink-0', isSmartActive(filter) ? 'text-accent' : iconClass)}
             />
             <span className="flex-1 truncate">{label}</span>
             {count > 0 && (
@@ -156,10 +151,10 @@ export function TaskListSidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       {/* Lists section */}
-      <div className="mx-3 mt-2 border-t border-border/60" />
+      <div className="border-border/60 mx-3 mt-2 border-t" />
 
-      <div className="px-3 pb-1 pt-3">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-fg-muted/60">
+      <div className="px-3 pt-3 pb-1">
+        <span className="text-fg-muted/60 text-[10px] font-semibold tracking-widest uppercase">
           My Lists
         </span>
       </div>
@@ -229,7 +224,7 @@ export function TaskListSidebar({ onNavigate }: { onNavigate?: () => void }) {
             }}
             autoFocus
             placeholder="List name"
-            className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 mx-1 rounded-lg border px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+            className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 mx-1 rounded-lg border px-2.5 py-1.5 text-sm outline-none focus:ring-1"
           />
         ) : (
           <button

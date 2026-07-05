@@ -3,10 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import {
-  clearDropboxOAuthSession,
-  readDropboxOAuthSession,
-} from '@/lib/sync/oauth-session'
+import { clearDropboxOAuthSession, readDropboxOAuthSession } from '@/lib/sync/oauth-session'
 
 function DropboxCallbackInner() {
   const router = useRouter()
@@ -30,7 +27,9 @@ function DropboxCallbackInner() {
         return
       }
       if (!code) {
-        setMessage('Missing authorization code. Close this tab and use Settings → Sync → Connect again.')
+        setMessage(
+          'Missing authorization code. Close this tab and use Settings → Sync → Connect again.',
+        )
         return
       }
 
@@ -69,10 +68,7 @@ function DropboxCallbackInner() {
     <div className="bg-bg text-fg flex min-h-screen flex-col items-center justify-center gap-4 p-6">
       <p className="text-center text-sm">{message}</p>
       {!message.startsWith('Completing') && (
-        <Link
-          href="/"
-          className="text-accent text-sm font-medium underline underline-offset-2"
-        >
+        <Link href="/" className="text-accent text-sm font-medium underline underline-offset-2">
           Back to Mentis
         </Link>
       )}

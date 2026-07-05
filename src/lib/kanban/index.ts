@@ -5,17 +5,12 @@ const CARD_RE = /^-\s+\[([ xX])\]\s+(.*)$/
 /** `## Title` or `## Title <!--kanban:amber-->` */
 const H2_COLOR_RE = /^##\s+(.+?)\s*(?:<!--\s*kanban:([\w-]+)\s*-->)?\s*$/
 
-const VALID_COLORS = new Set<string>([
-  'slate',
-  'amber',
-  'sky',
-  'emerald',
-  'violet',
-  'rose',
-  'zinc',
-])
+const VALID_COLORS = new Set<string>(['slate', 'amber', 'sky', 'emerald', 'violet', 'rose', 'zinc'])
 
-export function parseKanban(raw: string): { board: KanbanBoard; frontmatter: Record<string, unknown> } {
+export function parseKanban(raw: string): {
+  board: KanbanBoard
+  frontmatter: Record<string, unknown>
+} {
   const { data, content } = matter(raw)
 
   const columns: KanbanColumn[] = []
@@ -55,19 +50,14 @@ export function parseKanban(raw: string): { board: KanbanBoard; frontmatter: Rec
   return { board: { columns }, frontmatter: data }
 }
 
-export function serializeKanban(
-  board: KanbanBoard,
-  frontmatter: Record<string, unknown>,
-): string {
+export function serializeKanban(board: KanbanBoard, frontmatter: Record<string, unknown>): string {
   const fm = { ...frontmatter, type: 'kanban', modified: new Date().toISOString() }
   const body = board.columns
     .map((col) => {
       const colorSuffix =
         col.color && VALID_COLORS.has(col.color) ? ` <!--kanban:${col.color}-->` : ''
       const heading = `## ${col.heading}${colorSuffix}`
-      const cards = col.cards
-        .map((c) => `- [${c.checked ? 'x' : ' '}] ${c.title}`)
-        .join('\n')
+      const cards = col.cards.map((c) => `- [${c.checked ? 'x' : ' '}] ${c.title}`).join('\n')
       return cards ? `${heading}\n\n${cards}` : heading
     })
     .join('\n\n')

@@ -147,10 +147,7 @@ export interface LayerSnapshot {
  * New kinds (add-layer, etc.) should follow the same pattern rather than
  * overloading `stroke`, so each undo path stays narrow and type-checked.
  */
-export type UndoEntry =
-  | StrokeUndoEntry
-  | RemoveLayerUndoEntry
-  | ReorderLayersUndoEntry
+export type UndoEntry = StrokeUndoEntry | RemoveLayerUndoEntry | ReorderLayersUndoEntry
 
 export interface StrokeUndoEntry {
   kind: 'stroke'

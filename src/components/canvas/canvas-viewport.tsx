@@ -63,15 +63,12 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
       }
 
       if (tool === 'brush' || tool === 'eraser') {
-        const canvasPoint = engine.viewportController.screenToCanvas(
-          e.clientX,
-          e.clientY,
-          rect,
-        )
+        const canvasPoint = engine.viewportController.screenToCanvas(e.clientX, e.clientY, rect)
         const state = useCanvasStore.getState()
-        const settings = tool === 'eraser'
-          ? { ...state.brushSettings, size: state.eraserSize }
-          : state.brushSettings
+        const settings =
+          tool === 'eraser'
+            ? { ...state.brushSettings, size: state.eraserSize }
+            : state.brushSettings
 
         // Auto-expand the canvas if this stroke starts beyond the current bounds.
         engine.expandToFit(canvasPoint.x, canvasPoint.y)
@@ -93,7 +90,7 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
             // that halves the brush size vs the configured value. Treat mouse
             // as full pressure so size-setting = actual painted size. Stylus
             // and touch keep their real reported pressure for expression.
-            pressure: e.pointerType === 'mouse' ? 1.0 : (e.pressure || 0.5),
+            pressure: e.pointerType === 'mouse' ? 1.0 : e.pressure || 0.5,
             tiltX: e.tiltX,
             tiltY: e.tiltY,
             timestamp: e.timeStamp,
@@ -105,16 +102,9 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
       }
 
       if (tool === 'fill') {
-        const canvasPoint = engine.viewportController.screenToCanvas(
-          e.clientX,
-          e.clientY,
-          rect,
-        )
+        const canvasPoint = engine.viewportController.screenToCanvas(e.clientX, e.clientY, rect)
         const state = useCanvasStore.getState()
-        const [r, g, b, a] = hexToRgba(
-          state.brushSettings.color,
-          state.brushSettings.opacity,
-        )
+        const [r, g, b, a] = hexToRgba(state.brushSettings.color, state.brushSettings.opacity)
         const layerId = engine.layerManager.activeLayerId
         if (!layerId) return
 
@@ -128,7 +118,10 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
               layerId,
               canvasPoint.x,
               canvasPoint.y,
-              r, g, b, a,
+              r,
+              g,
+              b,
+              a,
             )
             if (!ok) return
             engine.render()
@@ -153,11 +146,7 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
         // Sample the composited pixel under the cursor, convert to
         // #rrggbb, push into brush settings + recent-colours list.
         // No undo entry — the eyedropper is non-destructive.
-        const canvasPoint = engine.viewportController.screenToCanvas(
-          e.clientX,
-          e.clientY,
-          rect,
-        )
+        const canvasPoint = engine.viewportController.screenToCanvas(e.clientX, e.clientY, rect)
         const sample = engine.layerManager.sampleCompositedPixel(
           canvasPoint.x,
           canvasPoint.y,
@@ -190,16 +179,13 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
 
       if (engine.strokeEngine.isDrawing) {
         const rect = e.currentTarget.getBoundingClientRect()
-        const canvasPoint = engine.viewportController.screenToCanvas(
-          e.clientX,
-          e.clientY,
-          rect,
-        )
+        const canvasPoint = engine.viewportController.screenToCanvas(e.clientX, e.clientY, rect)
         const state = useCanvasStore.getState()
         const tool = state.activeTool
-        const settings = tool === 'eraser'
-          ? { ...state.brushSettings, size: state.eraserSize }
-          : state.brushSettings
+        const settings =
+          tool === 'eraser'
+            ? { ...state.brushSettings, size: state.eraserSize }
+            : state.brushSettings
 
         // Auto-expand mid-stroke if the pointer crosses the canvas boundary.
         // expandCanvas preserves scratchpad content so the stroke is seamless.
@@ -209,7 +195,7 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
           {
             x: canvasPoint.x,
             y: canvasPoint.y,
-            pressure: e.pointerType === 'mouse' ? 1.0 : (e.pressure || 0.5),
+            pressure: e.pointerType === 'mouse' ? 1.0 : e.pressure || 0.5,
             tiltX: e.tiltX,
             tiltY: e.tiltY,
             timestamp: e.timeStamp,
@@ -327,31 +313,35 @@ function svgCursor(svg: string, hotspotX: number, hotspotY: number, fallback: st
 // Lucide PaintBucket paths — hotspot at the paint-drop centre (20, 19)
 const FILL_CURSOR = svgCursor(
   `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">` +
-  `<g stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">` +
-  `<path d="m19 11-8-8-8.5 8.5a5.5 5.5 0 0 0 11 0Z"/>` +
-  `<path d="m20 12 2-2"/><line x1="19" x2="21" y1="11" y2="9"/>` +
-  `<path d="M22 17v1a2 2 0 0 1-4 0v-1a2 2 0 0 1 4 0Z"/>` +
-  `</g>` +
-  `<g stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">` +
-  `<path d="m19 11-8-8-8.5 8.5a5.5 5.5 0 0 0 11 0Z"/>` +
-  `<path d="m20 12 2-2"/><line x1="19" x2="21" y1="11" y2="9"/>` +
-  `<path d="M22 17v1a2 2 0 0 1-4 0v-1a2 2 0 0 1 4 0Z"/>` +
-  `</g></svg>`,
-  20, 19, 'cell',
+    `<g stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">` +
+    `<path d="m19 11-8-8-8.5 8.5a5.5 5.5 0 0 0 11 0Z"/>` +
+    `<path d="m20 12 2-2"/><line x1="19" x2="21" y1="11" y2="9"/>` +
+    `<path d="M22 17v1a2 2 0 0 1-4 0v-1a2 2 0 0 1 4 0Z"/>` +
+    `</g>` +
+    `<g stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">` +
+    `<path d="m19 11-8-8-8.5 8.5a5.5 5.5 0 0 0 11 0Z"/>` +
+    `<path d="m20 12 2-2"/><line x1="19" x2="21" y1="11" y2="9"/>` +
+    `<path d="M22 17v1a2 2 0 0 1-4 0v-1a2 2 0 0 1 4 0Z"/>` +
+    `</g></svg>`,
+  20,
+  19,
+  'cell',
 )
 
 // Lucide Pipette paths — hotspot at the pipette tip (2, 22)
 const EYEDROPPER_CURSOR = svgCursor(
   `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">` +
-  `<g stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">` +
-  `<path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/>` +
-  `<path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/>` +
-  `</g>` +
-  `<g stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">` +
-  `<path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/>` +
-  `<path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/>` +
-  `</g></svg>`,
-  2, 22, 'crosshair',
+    `<g stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">` +
+    `<path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/>` +
+    `<path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/>` +
+    `</g>` +
+    `<g stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">` +
+    `<path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/>` +
+    `<path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/>` +
+    `</g></svg>`,
+  2,
+  22,
+  'crosshair',
 )
 
 // Brush/eraser cursor size bounds (CSS cursor max is 128 × 128 in most browsers)

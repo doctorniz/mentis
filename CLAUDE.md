@@ -22,7 +22,7 @@ To run a single test file: `pnpm test tests/search.test.ts`
 
 ## Architecture
 
-**Mentis by Marrow** is a local-first, offline-capable PWA for note-taking and PDF management. Every note is a file the user owns — markdown (`.md`), PDF, or canvas (`.canvas` JSON). There is no database; the vault directory *is* the data store. Licensed under **BSL 1.1** (see root `LICENSE`).
+**Mentis by Marrow** is a local-first, offline-capable PWA for note-taking and PDF management. Every note is a file the user owns — markdown (`.md`), PDF, or canvas (`.canvas` JSON). There is no database; the vault directory _is_ the data store. Licensed under **BSL 1.1** (see root `LICENSE`).
 
 ### Layer Overview
 
@@ -77,8 +77,11 @@ Zustand + Immer throughout. Pattern:
 const useMyStore = create<MyState>()(
   immer((set, get) => ({
     value: null,
-    setValue: (v) => set((state) => { state.value = v })
-  }))
+    setValue: (v) =>
+      set((state) => {
+        state.value = v
+      }),
+  })),
 )
 ```
 
@@ -164,7 +167,7 @@ File tree icon: `Table2` (lucide), green. Graph shows spreadsheet nodes as sharp
 
 `.docx` files open in `components/notes/docx-editor.tsx`, powered by `@eigenpal/docx-js-editor` (ProseMirror-based, lazy-loaded so the bundle is only pulled when a DOCX tab opens). Auto-save follows the same debounced-750ms pattern as markdown. Responsive zoom: the library renders pages at a fixed ~850px width, so a `ResizeObserver` writes a `--docx-zoom` CSS custom property the page scales with (CSS `zoom`, not `transform: scale`, so the container's own scroll area stays correct). Mobile: touch double-tap is manually detected and forwarded as a synthetic `dblclick` so ProseMirror's word-select handler fires (mobile browsers don't fire a native `dblclick` on double-tap).
 
-**Unmount-save ref gotcha**: `editorRef` is populated via a callback ref (`setEditorRef`) that deliberately ignores `null` detach calls, rather than a plain `ref={editorRef}`. React nulls JSX-bound refs during the unmount *mutation* phase, which runs before this component's own `useEffect` cleanup (a *passive* effect) fires — a plain ref would always read `null` inside the unmount flush-save, silently dropping any edit that hadn't yet hit the debounced auto-save. The callback ref retains the last non-null instance so the flush can still reach it.
+**Unmount-save ref gotcha**: `editorRef` is populated via a callback ref (`setEditorRef`) that deliberately ignores `null` detach calls, rather than a plain `ref={editorRef}`. React nulls JSX-bound refs during the unmount _mutation_ phase, which runs before this component's own `useEffect` cleanup (a _passive_ effect) fires — a plain ref would always read `null` inside the unmount flush-save, silently dropping any edit that hadn't yet hit the debounced auto-save. The callback ref retains the last non-null instance so the flush can still reach it.
 
 File tree icon: `FileType2` (lucide), indigo. Graph shows docx nodes as rounded rects (same shape family as PDF).
 
@@ -178,7 +181,7 @@ File tree icon: `FileCode2` (lucide), sky. Graph shows code nodes as circles (sa
 
 Two BYO-LLM chat surfaces share the same provider stack, thread storage format, and settings:
 
-1. **Per-document chat (tier 0)** — a collapsible panel embedded in the editor column for markdown notes and PDFs. Answers are grounded in the *open* file only. Toggled with the ✨ button at the top-right of the editor.
+1. **Per-document chat (tier 0)** — a collapsible panel embedded in the editor column for markdown notes and PDFs. Answers are grounded in the _open_ file only. Toggled with the ✨ button at the top-right of the editor.
 2. **Whole-vault chat (tier 1, `ViewMode.VaultChat`)** — a full-viewport surface reachable from the top of the left nav (Ctrl+0). Answers are grounded in a RAG pass over the whole vault (see RAG below). **Navigation:** opening Chat after a vault open / **Close vault** / new browser session starts a **new draft** thread; within the same tab session, returning to Chat restores the **last active thread** (`sessionStorage`, cleared when the vault is closed in-app). Sidebar width is user-resizable per vault (sessionStorage); sidebar is **collapsible** to a narrow icon strip (collapsed state also in sessionStorage); styling mirrors the vault file tree (sans-serif, `text-[13px]`, same color tokens). **Continuing** conversations do not show a model picker in the composer—only **new** (empty) chats do; **Load model** (Local / Gemma) is a centered CTA below the disclaimer when the `.task` file is missing from OPFS.
 
 **Per-document layout** — chat shares a single resizable right-side column with the backlinks section (markdown only). `EditorRightColumn` wraps both surfaces and renders the chat above a collapsible `BacklinksSection`; collapsing backlinks lets chat rise to fill the column. PDFs use the same column without backlinks. Width is persisted per surface (`ink-marrow:right-panel-width:md`, `...:pdf`) so markdown and PDF remember distinct widths.
@@ -194,6 +197,7 @@ Two BYO-LLM chat surfaces share the same provider stack, thread storage format, 
 Download progress publishes on `ink:device-model-progress`. Cloud providers need a key; the two local providers (ollama, device) do not. API keys live in IndexedDB (`mentis-llm-keys`, keyed `llm:<provider>:<vaultId>`) via `src/lib/chat/key-store.ts`. Provider/model/baseUrl/systemPrompt/maxContextChars live in `VaultConfig.chat` (so they sync via Dropbox); keys never do.
 
 **Context**
+
 - Per-document: `src/lib/chat/context-builder.ts` reads the open file (MD body or PDF extracted text via `extractPdfText`) and caps to `settings.maxContextChars` (default 40 000 chars) with an explanatory truncation footer.
 - Vault-wide (RAG v1): `src/lib/chat/vault-rag.ts` runs the user's prompt through the existing MiniSearch index (`src/lib/search/index.ts`), takes the top-K hits (default 6), and pulls an excerpt around the first matched term for each. Falls back to re-extracting from disk when the indexed content is empty. Default system prompt requires `##`/`###` headings, blank-line paragraph spacing, and `<sup>n</sup>` whenever the model uses Source n (`n` in excerpt order). After each successful streamed reply `mergeVaultSourcesSection` replaces any model `## Sources` with a canonical list **`only for cited n`**: rows are `n. [document title](encodeURI(path))` (title from the search hit; basename fallback); omitted if nothing was cited in the reply body. Persisted assistant messages carry `vaultRagHitPaths` so `renderVaultChatMarkdown` can map vault-path `` `backticks` `` to `<sup>n</sup>` in the **body only** (`splitMarkdownShieldLastSourcesSection` leaves the Sources block untouched so titles are not eaten). Plain preprocess still applies to legacy threads without `vaultRagHitPaths`. `rewriteVaultAnchors` turns vault `href`s into in-app `data-ink-path` links (same tab); real `http(s)` URLs keep `target="_blank"` from sanitization. Embeddings-based RAG is deferred to tier 2 — see `docs/LAUNCH_DEFERRALS.md`.
 
@@ -235,6 +239,7 @@ Audio files (MP3/WAV/M4A/AAC/FLAC/WMA) open as `EditorTab` type `audio`. `AudioP
 **Imports:** Always use `@/` alias, never relative paths crossing directory boundaries. External → internal → types ordering.
 
 **Naming:**
+
 - Components: `PascalCase.tsx`
 - Hooks: `use-kebab-case.ts`
 - Lib/stores/types: `kebab-case.ts`
@@ -264,7 +269,7 @@ Key suites: `search.test.ts`, `markdown.test.ts`, `markdown-bridge.test.ts`, `pd
 ## Key Gotchas
 
 - **`Uint8Array<ArrayBufferLike>` vs `Uint8Array<ArrayBuffer>`:** Strict TS (`lib: ["dom"]`) distinguishes these. `new Uint8Array(n)` returns `Uint8Array<ArrayBufferLike>` but DOM APIs like `AnalyserNode.getByteTimeDomainData()` and `Blob` constructor expect `Uint8Array<ArrayBuffer>`. Fix with `as Uint8Array<ArrayBuffer>` cast at the allocation site, or type the field explicitly. This also applies to `FileSystemAdapter.readFile()` return values passed to `Blob` — see `assetToBlobUrl` in `assets.ts` for the existing pattern (`data as BlobPart`).
-- **Rename + auto-save race:** After a file rename, the auto-save cleanup closes over the *old* path. Skip flush if `pathRef.current !== path` to avoid recreating the old file. Canvas unmount saves to `pathRef.current` (live path), not the closure `path`.
+- **Rename + auto-save race:** After a file rename, the auto-save cleanup closes over the _old_ path. Skip flush if `pathRef.current !== path` to avoid recreating the old file. Canvas unmount saves to `pathRef.current` (live path), not the closure `path`.
 - **COOP/COEP headers** are required for `SharedArrayBuffer` (PDF.js). They must be set at the hosting layer, not in `next.config.ts` (static export doesn't run Next.js middleware). See `docs/DEPLOYMENT.md`.
 - **PDF.js loading:** Use the loader in `src/lib/pdf/pdfjs-loader.ts` — do not import PDF.js directly, as it requires careful worker setup.
 - **Static export:** `pnpm build` uses `output: 'export'`. No server-side rendering, no API routes (except auth pages which are handled client-side).
@@ -291,6 +296,7 @@ Key suites: `search.test.ts`, `markdown.test.ts`, `markdown-bridge.test.ts`, `pd
 ## Detailed Docs Reference
 
 For deeper context, see `docs/`:
+
 - `ARCHITECTURE.md` — full module descriptions, data flows, dependency graph, security
 - `TECH_STACK.md` — all libraries with version and purpose, key library decisions
 - `CONVENTIONS.md` — full project structure, naming, component/store patterns, styling, testing, git workflow

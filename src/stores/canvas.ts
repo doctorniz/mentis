@@ -120,10 +120,10 @@ export const useCanvasStore = create<CanvasState>()(
 
     pushRecentColor: (color) =>
       set((s) => {
-        s.recentColors = [
-          color,
-          ...s.recentColors.filter((c) => c !== color),
-        ].slice(0, MAX_RECENT_COLORS)
+        s.recentColors = [color, ...s.recentColors.filter((c) => c !== color)].slice(
+          0,
+          MAX_RECENT_COLORS,
+        )
       }),
 
     reset: () =>

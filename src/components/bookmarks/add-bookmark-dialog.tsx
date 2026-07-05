@@ -103,14 +103,19 @@ export function AddBookmarkDialog({
       setOgMeta(meta)
       setTitle((prev) => prev || meta.title)
       setDescription((prev) => prev || meta.description)
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setFetching(false)
     setTimeout(() => titleRef.current?.focus(), 0)
   }, [url])
 
   const handleUrlKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') { e.preventDefault(); void handleNext() }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        void handleNext()
+      }
     },
     [handleNext],
   )
@@ -131,9 +136,7 @@ export function AddBookmarkDialog({
       .map((t) => t.trim().replace(/^#/, '').toLowerCase())
       .filter(Boolean)
 
-    const resolvedCategory = isNewCategory
-      ? newCategoryName.trim() || null
-      : category || null
+    const resolvedCategory = isNewCategory ? newCategoryName.trim() || null : category || null
 
     if (isEdit && editItem) {
       const fields: Partial<BookmarkFrontmatter> = {
@@ -159,9 +162,21 @@ export function AddBookmarkDialog({
     setSaving(false)
     onOpenChange(false)
   }, [
-    url, title, description, tags, category, newCategoryName, isNewCategory,
-    isEdit, editItem, ogMeta, vaultFs,
-    addBookmark, updateBookmark, moveToCategory, onOpenChange,
+    url,
+    title,
+    description,
+    tags,
+    category,
+    newCategoryName,
+    isNewCategory,
+    isEdit,
+    editItem,
+    ogMeta,
+    vaultFs,
+    addBookmark,
+    updateBookmark,
+    moveToCategory,
+    onOpenChange,
   ])
 
   const handleFormKeyDown = useCallback(
@@ -183,12 +198,19 @@ export function AddBookmarkDialog({
         {step === 'url' && !isEdit && (
           <Dialog.Content
             className="bg-bg border-border fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border p-5 shadow-xl"
-            onOpenAutoFocus={(e) => { e.preventDefault(); setTimeout(() => urlRef.current?.focus(), 0) }}
+            onOpenAutoFocus={(e) => {
+              e.preventDefault()
+              setTimeout(() => urlRef.current?.focus(), 0)
+            }}
           >
             <div className="mb-4 flex items-center justify-between">
               <Dialog.Title className="text-fg text-sm font-semibold">Add Bookmark</Dialog.Title>
               <Dialog.Close asChild>
-                <button type="button" className="text-fg-muted hover:text-fg rounded-md p-1" aria-label="Close">
+                <button
+                  type="button"
+                  className="text-fg-muted hover:text-fg rounded-md p-1"
+                  aria-label="Close"
+                >
                   <X className="size-4" />
                 </button>
               </Dialog.Close>
@@ -201,15 +223,11 @@ export function AddBookmarkDialog({
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={handleUrlKeyDown}
               placeholder="Paste a URL"
-              className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+              className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
             />
 
             <div className="mt-4 flex justify-end">
-              <Button
-                size="sm"
-                onClick={() => void handleNext()}
-                disabled={!url.trim()}
-              >
+              <Button size="sm" onClick={() => void handleNext()} disabled={!url.trim()}>
                 Next
               </Button>
             </div>
@@ -220,7 +238,10 @@ export function AddBookmarkDialog({
         {(step === 'details' || isEdit) && (
           <Dialog.Content
             className="bg-bg border-border fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border p-5 shadow-xl"
-            onOpenAutoFocus={(e) => { e.preventDefault(); setTimeout(() => titleRef.current?.focus(), 0) }}
+            onOpenAutoFocus={(e) => {
+              e.preventDefault()
+              setTimeout(() => titleRef.current?.focus(), 0)
+            }}
             onKeyDown={handleFormKeyDown}
           >
             <div className="mb-4 flex items-center gap-2">
@@ -238,7 +259,11 @@ export function AddBookmarkDialog({
                 {isEdit ? 'Edit Bookmark' : 'Add Bookmark'}
               </Dialog.Title>
               <Dialog.Close asChild>
-                <button type="button" className="text-fg-muted hover:text-fg rounded-md p-1" aria-label="Close">
+                <button
+                  type="button"
+                  className="text-fg-muted hover:text-fg rounded-md p-1"
+                  aria-label="Close"
+                >
                   <X className="size-4" />
                 </button>
               </Dialog.Close>
@@ -251,22 +276,32 @@ export function AddBookmarkDialog({
                   <Loader2 className="text-fg-muted size-4 animate-spin" />
                   <span className="text-fg-muted text-xs">Fetching page info…</span>
                 </div>
-              ) : ogMeta && (
-                <div className="border-border bg-bg-secondary flex gap-3 rounded-lg border p-3">
-                  {/* Cross-origin favicon/OG image from an arbitrary bookmarked site — not a next/image candidate. */}
-                  {ogMeta.favicon && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={ogMeta.favicon} alt="" className="mt-0.5 size-5 shrink-0 rounded-sm" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-fg truncate text-xs font-semibold">{ogMeta.title}</p>
-                    <p className="text-fg-muted/60 truncate text-[11px]">{domainFromUrl(url)}</p>
+              ) : (
+                ogMeta && (
+                  <div className="border-border bg-bg-secondary flex gap-3 rounded-lg border p-3">
+                    {/* Cross-origin favicon/OG image from an arbitrary bookmarked site — not a next/image candidate. */}
+                    {ogMeta.favicon && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={ogMeta.favicon}
+                        alt=""
+                        className="mt-0.5 size-5 shrink-0 rounded-sm"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-fg truncate text-xs font-semibold">{ogMeta.title}</p>
+                      <p className="text-fg-muted/60 truncate text-[11px]">{domainFromUrl(url)}</p>
+                    </div>
+                    {ogMeta.ogImage && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={ogMeta.ogImage}
+                        alt=""
+                        className="h-10 w-16 shrink-0 rounded-md object-cover"
+                      />
+                    )}
                   </div>
-                  {ogMeta.ogImage && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={ogMeta.ogImage} alt="" className="h-10 w-16 shrink-0 rounded-md object-cover" />
-                  )}
-                </div>
+                )
               )}
 
               {/* Title */}
@@ -278,19 +313,21 @@ export function AddBookmarkDialog({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder={ogMeta?.title || 'Title'}
-                  className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                  className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
                 />
               </div>
 
               {/* Description */}
               <div>
-                <label className="text-fg-secondary mb-1 block text-xs font-medium">Description</label>
+                <label className="text-fg-secondary mb-1 block text-xs font-medium">
+                  Description
+                </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={ogMeta?.description || 'Optional note or description'}
                   rows={2}
-                  className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                  className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
                 />
               </div>
 
@@ -302,7 +339,7 @@ export function AddBookmarkDialog({
                   value={tags}
                   onChange={(e) => setTags(e.target.value)}
                   placeholder="tech, reading, design"
-                  className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                  className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
                 />
               </div>
 
@@ -312,11 +349,13 @@ export function AddBookmarkDialog({
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="border-border bg-bg-secondary text-fg w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                  className="border-border bg-bg-secondary text-fg focus:ring-accent/40 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
                 >
                   <option value="">None</option>
                   {categories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                   <option value={NEW_CATEGORY_VALUE}>+ New category…</option>
                 </select>
@@ -327,7 +366,7 @@ export function AddBookmarkDialog({
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     placeholder="Category name"
-                    className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 mt-2 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                    className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 mt-2 w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
                   />
                 )}
               </div>
@@ -335,7 +374,9 @@ export function AddBookmarkDialog({
 
             <div className="mt-5 flex justify-end gap-2">
               <Dialog.Close asChild>
-                <Button variant="ghost" size="sm">Cancel</Button>
+                <Button variant="ghost" size="sm">
+                  Cancel
+                </Button>
               </Dialog.Close>
               <Button
                 size="sm"

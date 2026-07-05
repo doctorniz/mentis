@@ -41,7 +41,10 @@ export function PdfCommentDialog({
                 {pageLabel}
               </Dialog.Description>
             </div>
-            <Dialog.Close className="text-fg-muted hover:text-fg shrink-0 rounded-md p-1" aria-label="Close">
+            <Dialog.Close
+              className="text-fg-muted hover:text-fg shrink-0 rounded-md p-1"
+              aria-label="Close"
+            >
               <X className="size-4" />
             </Dialog.Close>
           </div>

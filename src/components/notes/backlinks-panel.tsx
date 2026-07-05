@@ -109,9 +109,7 @@ export function BacklinksPanel({
           onClick={() => onExpandedChange(true)}
           className="text-fg-muted hover:text-fg hover:bg-bg-hover flex w-full flex-col items-center gap-1 rounded-md px-1 py-2 transition-colors"
           aria-label={
-            backlinks.length > 0
-              ? `Show backlinks (${backlinks.length})`
-              : 'Show backlinks'
+            backlinks.length > 0 ? `Show backlinks (${backlinks.length})` : 'Show backlinks'
           }
           title="Backlinks"
         >

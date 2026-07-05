@@ -113,14 +113,16 @@ export function CalendarGrid({
                   }}
                   className={cn(
                     'border-border flex min-h-0 cursor-pointer flex-col gap-0.5 overflow-hidden border-r p-1.5 transition-colors last:border-r-0',
-                    isCurrentMonth ? 'bg-bg hover:bg-bg-hover' : 'bg-bg-secondary/40 hover:bg-bg-secondary/70',
+                    isCurrentMonth
+                      ? 'bg-bg hover:bg-bg-hover'
+                      : 'bg-bg-secondary/40 hover:bg-bg-secondary/70',
                   )}
                 >
                   {/* Date number row — with optional daily note dot */}
                   <div className="mb-0.5 flex items-center gap-1 self-start">
                     <div
                       className={cn(
-                        'flex size-6 items-center justify-center rounded-full text-xs font-medium leading-none',
+                        'flex size-6 items-center justify-center rounded-full text-xs leading-none font-medium',
                         isToday
                           ? 'bg-accent text-accent-fg'
                           : isCurrentMonth
@@ -156,17 +158,22 @@ export function CalendarGrid({
                             onEventClick(ev)
                           }}
                           className={cn(
-                            'w-full truncate rounded px-1.5 py-0.5 text-left text-[10px] font-medium leading-snug transition-opacity hover:opacity-80',
+                            'w-full truncate rounded px-1.5 py-0.5 text-left text-[10px] leading-snug font-medium transition-opacity hover:opacity-80',
                             'bg-violet-500/20 text-violet-700 dark:text-violet-300',
                           )}
                           style={{
                             backgroundColor:
-                              ev.color === 'violet' ? undefined
-                              : ev.color === 'sky' ? 'rgb(14 165 233 / 0.2)'
-                              : ev.color === 'emerald' ? 'rgb(16 185 129 / 0.2)'
-                              : ev.color === 'amber' ? 'rgb(245 158 11 / 0.2)'
-                              : ev.color === 'rose' ? 'rgb(244 63 94 / 0.2)'
-                              : 'rgb(100 116 139 / 0.2)',
+                              ev.color === 'violet'
+                                ? undefined
+                                : ev.color === 'sky'
+                                  ? 'rgb(14 165 233 / 0.2)'
+                                  : ev.color === 'emerald'
+                                    ? 'rgb(16 185 129 / 0.2)'
+                                    : ev.color === 'amber'
+                                      ? 'rgb(245 158 11 / 0.2)'
+                                      : ev.color === 'rose'
+                                        ? 'rgb(244 63 94 / 0.2)'
+                                        : 'rgb(100 116 139 / 0.2)',
                             color: undefined,
                           }}
                         >
@@ -178,7 +185,7 @@ export function CalendarGrid({
                       {dayTasks.slice(0, Math.max(0, 3 - dayEvents.length)).map((t) => (
                         <div
                           key={t.path}
-                          className="bg-bg-tertiary text-fg-muted w-full truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-snug"
+                          className="bg-bg-tertiary text-fg-muted w-full truncate rounded px-1.5 py-0.5 text-[10px] leading-snug font-medium"
                         >
                           ✓ {t.title || 'Untitled'}
                         </div>

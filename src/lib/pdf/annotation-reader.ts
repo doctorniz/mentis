@@ -10,7 +10,12 @@ import { PdfAnnotationType } from '@/types/pdf'
 
 function toRect(r: number[]): PdfRect {
   const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] = r
-  return { x: Math.min(x1, x2), y: Math.min(y1, y2), width: Math.abs(x2 - x1), height: Math.abs(y2 - y1) }
+  return {
+    x: Math.min(x1, x2),
+    y: Math.min(y1, y2),
+    width: Math.abs(x2 - x1),
+    height: Math.abs(y2 - y1),
+  }
 }
 
 function readStickyNoteContents(ann: {
@@ -60,7 +65,7 @@ export async function readPageAnnotations(
     }
 
     if (ann.subtype === 'Ink') {
-      const paths = (ann.inkLists as number[][] ?? []).map((list: number[]) => {
+      const paths = ((ann.inkLists as number[][]) ?? []).map((list: number[]) => {
         const points: { x: number; y: number }[] = []
         for (let i = 0; i < list.length; i += 2) {
           points.push({ x: list[i]!, y: list[i + 1]! })

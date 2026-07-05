@@ -12,7 +12,12 @@ import type { SearchIndexDocument } from '@/types/search'
 import { replaceSearchIndex, upsertSearchDocument } from '@/lib/search/index'
 
 function titleFromPath(path: string): string {
-  return path.replace(/\.[^/.]+$/, '').split('/').pop() ?? path
+  return (
+    path
+      .replace(/\.[^/.]+$/, '')
+      .split('/')
+      .pop() ?? path
+  )
 }
 
 function normalizeDocTags(fm: NoteFrontmatter, content: string): string[] {
@@ -84,9 +89,7 @@ async function extractPptxText(data: Uint8Array): Promise<string> {
       const xml = await zip.files[fileName].async('text')
       // Extract all <a:t>...</a:t> text runs
       const textRuns = xml.match(/<a:t[^>]*>([\s\S]*?)<\/a:t>/g) ?? []
-      const slideText = textRuns
-        .map((tag) => tag.replace(/<[^>]+>/g, ''))
-        .join(' ')
+      const slideText = textRuns.map((tag) => tag.replace(/<[^>]+>/g, '')).join(' ')
       if (slideText.trim()) {
         chunks.push(slideText.trim())
         len += slideText.length
@@ -135,7 +138,8 @@ async function fileTypeToDocument(
       const title =
         (typeof doc.frontmatter.title === 'string' && doc.frontmatter.title) || titleFromPath(path)
       const tags = normalizeDocTags(doc.frontmatter, doc.content)
-      const content = doc.content.length > CONTENT_CAP ? doc.content.slice(0, CONTENT_CAP) : doc.content
+      const content =
+        doc.content.length > CONTENT_CAP ? doc.content.slice(0, CONTENT_CAP) : doc.content
       const tagCsv = tags.join(',')
       const tagLine = tags.join(' ')
       return {
@@ -166,7 +170,9 @@ async function fileTypeToDocument(
       const meta = await doc.getMetadata().catch(() => null)
       const infoTitle = (meta?.info as Record<string, unknown> | undefined)?.Title
       if (typeof infoTitle === 'string' && infoTitle.trim()) title = infoTitle.trim()
-    } catch { /* use defaults */ }
+    } catch {
+      /* use defaults */
+    }
     return {
       id: path,
       path,
@@ -197,7 +203,9 @@ async function fileTypeToDocument(
     try {
       const raw = await fs.readTextFile(path)
       content = extractMindmapText(parseMindmap(raw))
-    } catch { /* use empty */ }
+    } catch {
+      /* use empty */
+    }
     return {
       id: path,
       path,
@@ -218,7 +226,9 @@ async function fileTypeToDocument(
       content = board.columns
         .flatMap((col) => [col.heading, ...col.cards.map((c) => c.title)])
         .join('\n')
-    } catch { /* use empty */ }
+    } catch {
+      /* use empty */
+    }
     return {
       id: path,
       path,
@@ -236,7 +246,9 @@ async function fileTypeToDocument(
     try {
       const data = await fs.readFile(path)
       content = await extractPptxText(data)
-    } catch { /* use empty */ }
+    } catch {
+      /* use empty */
+    }
     return {
       id: path,
       path,
@@ -254,7 +266,9 @@ async function fileTypeToDocument(
     try {
       const data = await fs.readFile(path)
       content = extractXlsxText(data)
-    } catch { /* use empty */ }
+    } catch {
+      /* use empty */
+    }
     return {
       id: path,
       path,

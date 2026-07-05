@@ -1,10 +1,4 @@
-import {
-  Container,
-  Sprite,
-  Texture,
-  type Application,
-  type RenderTexture,
-} from 'pixi.js'
+import { Container, Sprite, Texture, type Application, type RenderTexture } from 'pixi.js'
 import type { BrushSettings } from '@/types/canvas'
 import type { InterpolatedStamp } from '@/lib/canvas/math'
 
@@ -234,12 +228,7 @@ export class BrushSystem {
     target: RenderTexture,
     isEraser = false,
   ): void {
-    this.renderStamps(
-      [{ x, y, pressure }],
-      settings,
-      target,
-      isEraser,
-    )
+    this.renderStamps([{ x, y, pressure }], settings, target, isEraser)
   }
 
   destroy(): void {

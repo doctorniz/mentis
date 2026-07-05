@@ -56,16 +56,8 @@ export function fabricPathCommandsToPdfPoints(
       for (let i = 1; i <= steps; i++) {
         const t = i / steps
         const mt = 1 - t
-        const x =
-          mt * mt * mt * curX +
-          3 * mt * mt * t * x1 +
-          3 * mt * t * t * x2 +
-          t * t * t * x3
-        const y =
-          mt * mt * mt * curY +
-          3 * mt * mt * t * y1 +
-          3 * mt * t * t * y2 +
-          t * t * t * y3
+        const x = mt * mt * mt * curX + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x3
+        const y = mt * mt * mt * curY + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y3
         push(x, y)
       }
       curX = x3

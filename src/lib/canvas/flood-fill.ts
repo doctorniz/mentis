@@ -51,10 +51,7 @@ export function floodFill(
   if (tR === fillR && tG === fillG && tB === fillB && tA === fillA) return false
 
   const matches = (i: number): boolean =>
-    pixels[i] === tR
-    && pixels[i + 1] === tG
-    && pixels[i + 2] === tB
-    && pixels[i + 3] === tA
+    pixels[i] === tR && pixels[i + 1] === tG && pixels[i + 2] === tB && pixels[i + 3] === tA
 
   const paint = (i: number): void => {
     pixels[i] = fillR

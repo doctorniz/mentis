@@ -65,20 +65,14 @@ export function SyncProvider({
         const provider = new DropboxProvider({
           clientId,
           vaultId,
-          remoteRoot:
-            syncConfig.remotePath || `/Apps/Mentis/${vaultLabel.replace(/\/+$/, '')}`,
+          remoteRoot: syncConfig.remotePath || `/Apps/Mentis/${vaultLabel.replace(/\/+$/, '')}`,
         })
 
         const authenticated = await provider.isAuthenticated()
         if (!authenticated || cancelled) return
 
         const { SyncManager } = await import('@/lib/sync/sync-manager')
-        const mgr = new SyncManager(
-          provider,
-          vaultFs,
-          vaultId,
-          syncConfig.pollIntervalMs,
-        )
+        const mgr = new SyncManager(provider, vaultFs, vaultId, syncConfig.pollIntervalMs)
 
         mgr.onStatusChange((s, msg) => {
           if (!cancelled) {
@@ -113,7 +107,14 @@ export function SyncProvider({
       setCanManualSync(false)
       prevStatusRef.current = 'idle'
     }
-  }, [syncConfig?.provider, syncConfig?.remotePath, syncConfig?.pollIntervalMs, vaultFs, vaultId, vaultLabel])
+  }, [
+    syncConfig?.provider,
+    syncConfig?.remotePath,
+    syncConfig?.pollIntervalMs,
+    vaultFs,
+    vaultId,
+    vaultLabel,
+  ])
 
   const pushFile = useCallback((path: string) => {
     managerRef.current?.pushFile(path).catch(() => {

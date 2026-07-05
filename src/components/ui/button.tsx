@@ -15,16 +15,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled}
         className={cn(
           'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors',
-          'focus-visible:ring-accent focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:outline-none',
+          'focus-visible:ring-accent focus-visible:ring-offset-bg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
           'disabled:pointer-events-none disabled:opacity-50',
-          variant === 'primary' &&
-            'bg-accent text-accent-fg hover:bg-accent-hover shadow-sm',
+          variant === 'primary' && 'bg-accent text-accent-fg hover:bg-accent-hover shadow-sm',
           variant === 'secondary' &&
-            'border-border-strong hover:bg-bg-hover border bg-bg shadow-sm',
+            'border-border-strong hover:bg-bg-hover bg-bg border shadow-sm',
           variant === 'ghost' && 'hover:bg-bg-hover text-fg',
           variant === 'danger' && 'bg-danger text-accent-fg hover:opacity-90',
-          variant === 'outline' &&
-            'border-border-strong text-fg hover:bg-bg-hover border',
+          variant === 'outline' && 'border-border-strong text-fg hover:bg-bg-hover border',
           size === 'sm' && 'h-8 px-3 text-sm',
           size === 'md' && 'h-10 px-4 text-sm',
           size === 'lg' && 'h-11 px-6 text-base',

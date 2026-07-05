@@ -70,10 +70,7 @@ export function PptxEditorView({
       setError(null)
 
       try {
-        const [bytes, mod] = await Promise.all([
-          vaultFs.readFile(path),
-          import('slidecanvas'),
-        ])
+        const [bytes, mod] = await Promise.all([vaultFs.readFile(path), import('slidecanvas')])
         if (cancelled) return
 
         fileBytesRef.current = bytes.buffer.slice(
@@ -97,13 +94,17 @@ export function PptxEditorView({
     }
 
     void load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabId])
 
   // Reset store on unmount
   useEffect(() => {
-    return () => { reset() }
+    return () => {
+      reset()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabId])
 
@@ -133,13 +134,16 @@ export function PptxEditorView({
     }, SAVE_DEBOUNCE_MS)
   }, [flushSave])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleChange = useCallback((presentation: any) => {
-    presentationRef.current = presentation
-    updateTab(tabId, { isDirty: true })
-    markDirty()
-    scheduleSave()
-  }, [tabId, updateTab, markDirty, scheduleSave])
+  const handleChange = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (presentation: any) => {
+      presentationRef.current = presentation
+      updateTab(tabId, { isDirty: true })
+      markDirty()
+      scheduleSave()
+    },
+    [tabId, updateTab, markDirty, scheduleSave],
+  )
 
   // ---- Flush save on unmount ----
   useEffect(() => {
@@ -184,7 +188,14 @@ export function PptxEditorView({
           await flushSave()
         }
         await vaultFs.rename(oldPath, newPath)
-        retargetTabPath(tabId, newPath, newPath.replace(/\.[^/.]+$/i, '').split('/').pop() ?? newPath)
+        retargetTabPath(
+          tabId,
+          newPath,
+          newPath
+            .replace(/\.[^/.]+$/i, '')
+            .split('/')
+            .pop() ?? newPath,
+        )
         pathRef.current = newPath
         onRenamed?.()
         window.dispatchEvent(new CustomEvent('ink:vault-changed'))

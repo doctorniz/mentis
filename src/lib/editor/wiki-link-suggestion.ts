@@ -11,11 +11,7 @@ export const inkWikiLinkPluginKey = new PluginKey('inkWikiLink')
 
 export type { WikiLinkPick } from '@/lib/editor/wiki-link-types'
 
-function filterWikiCandidates(
-  paths: string[],
-  query: string,
-  selfPath?: string,
-): WikiLinkPick[] {
+function filterWikiCandidates(paths: string[], query: string, selfPath?: string): WikiLinkPick[] {
   const q = query.trim().toLowerCase()
   return paths
     .filter((p) => p !== selfPath)
@@ -87,8 +83,7 @@ export function createInkWikiLinkSuggestion(options: {
               })
               .run()
           },
-          items: ({ query }) =>
-            filterWikiCandidates(getPaths(), query, currentPath() ?? undefined),
+          items: ({ query }) => filterWikiCandidates(getPaths(), query, currentPath() ?? undefined),
           render: () => {
             let renderer: ReactRenderer | null = null
             return {

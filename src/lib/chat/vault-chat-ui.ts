@@ -15,10 +15,7 @@ export function chatProviderLabel(id: ChatProviderId | null | undefined): string
   return PROVIDER_LABELS[id] ?? id
 }
 
-export function chatModelDisplayLabel(
-  provider: ChatProviderId,
-  model: string,
-): string {
+export function chatModelDisplayLabel(provider: ChatProviderId, model: string): string {
   const hit = getCuratedModels(provider).find((m) => m.id === model)
   return hit?.label ?? model
 }

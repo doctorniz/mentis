@@ -57,7 +57,10 @@ describe('createBlankPdf', () => {
 
   it('creates custom-size PDF', async () => {
     const bytes = await createBlankPdf({
-      size: 'custom', style: 'blank', customWidth: 400, customHeight: 600,
+      size: 'custom',
+      style: 'blank',
+      customWidth: 400,
+      customHeight: 600,
     })
     const doc = await PDFDocument.load(bytes)
     const { width, height } = doc.getPage(0).getSize()

@@ -35,7 +35,7 @@ export function EditorTabBar() {
             }}
             className={cn(
               'group relative flex max-w-[200px] shrink-0 cursor-pointer items-center gap-1.5 px-3.5 py-2 text-left text-xs font-medium transition-colors',
-              'focus-visible:ring-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none',
+              'focus-visible:ring-accent focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset',
               active
                 ? 'bg-bg text-fg'
                 : 'text-fg-muted hover:text-fg-secondary hover:bg-bg-tertiary',

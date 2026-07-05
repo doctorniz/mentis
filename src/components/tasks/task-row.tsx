@@ -77,7 +77,7 @@ export function TaskRow({
     <>
       <div
         className={cn(
-          'group flex items-center gap-2.5 border-b border-border/40 py-2.5 transition-colors last:border-b-0',
+          'group border-border/40 flex items-center gap-2.5 border-b py-2.5 transition-colors last:border-b-0',
           isDone ? 'opacity-40' : 'hover:bg-bg-hover/50',
           'cursor-pointer',
         )}
@@ -99,7 +99,7 @@ export function TaskRow({
               e.stopPropagation()
               setCollapsed((c) => !c)
             }}
-            className="text-fg-muted hover:text-fg -mx-0.5 shrink-0 rounded p-0.5 touch-manipulation"
+            className="text-fg-muted hover:text-fg -mx-0.5 shrink-0 touch-manipulation rounded p-0.5"
           >
             {collapsed ? (
               <ChevronRight className="size-3.5" />
@@ -116,10 +116,8 @@ export function TaskRow({
           type="button"
           onClick={handleToggle}
           className={cn(
-            'flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors touch-manipulation',
-            isDone
-              ? 'border-fg-muted/40 bg-fg-muted/20'
-              : cn(priorityRing, 'hover:bg-accent/10'),
+            'flex size-5 shrink-0 touch-manipulation items-center justify-center rounded-full border-2 transition-colors',
+            isDone ? 'border-fg-muted/40 bg-fg-muted/20' : cn(priorityRing, 'hover:bg-accent/10'),
           )}
           aria-label={isDone ? 'Mark incomplete' : 'Mark complete'}
         >
@@ -147,7 +145,7 @@ export function TaskRow({
 
           {/* Tags — hide on very small screens */}
           {item.tags.length > 0 && !isDone && (
-            <div className="hidden gap-1 xs:flex">
+            <div className="xs:flex hidden gap-1">
               {item.tags.slice(0, 2).map((tag) => (
                 <span
                   key={tag}
@@ -177,15 +175,12 @@ export function TaskRow({
 
           {/* Hover actions */}
           <div
-            className={cn(
-              'flex gap-0.5 transition-opacity',
-              hovered ? 'opacity-100' : 'opacity-0',
-            )}
+            className={cn('flex gap-0.5 transition-opacity', hovered ? 'opacity-100' : 'opacity-0')}
           >
             <button
               type="button"
               onClick={handleEdit}
-              className="text-fg-muted/60 hover:text-fg rounded-md p-1 transition-colors touch-manipulation"
+              className="text-fg-muted/60 hover:text-fg touch-manipulation rounded-md p-1 transition-colors"
               aria-label="Edit task"
             >
               <Pencil className="size-3.5" />
@@ -193,7 +188,7 @@ export function TaskRow({
             <button
               type="button"
               onClick={handleDelete}
-              className="text-fg-muted/60 hover:text-destructive rounded-md p-1 transition-colors touch-manipulation"
+              className="text-fg-muted/60 hover:text-destructive touch-manipulation rounded-md p-1 transition-colors"
               aria-label="Delete task"
             >
               <Trash2 className="size-3.5" />

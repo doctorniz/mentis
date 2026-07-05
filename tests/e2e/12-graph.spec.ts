@@ -1,4 +1,11 @@
-import { test, expect, navigateTo, waitForView, createMarkdownNote, waitForAutoSave } from './fixtures'
+import {
+  test,
+  expect,
+  navigateTo,
+  waitForView,
+  createMarkdownNote,
+  waitForAutoSave,
+} from './fixtures'
 
 async function createNoteViaOPFS(
   page: import('@playwright/test').Page,
@@ -70,7 +77,9 @@ test.describe('12 — Graph Visualization', () => {
       expect(box!.height).toBeGreaterThan(100)
     })
 
-    test.fixme('12.1.2 Distinct shapes: circle (note), rounded square (PDF), diamond (canvas)', async ({ vaultPage: page }) => {
+    test.fixme('12.1.2 Distinct shapes: circle (note), rounded square (PDF), diamond (canvas)', async ({
+      vaultPage: page,
+    }) => {
       // Visual assertion on canvas content — cannot reliably verify shapes programmatically
       await seedGraphNotes(page)
       await navigateTo(page, 'graph')
@@ -156,7 +165,9 @@ test.describe('12 — Graph Visualization', () => {
       }
     })
 
-    test('12.2.2 Broken link — no edge created for nonexistent target', async ({ vaultPage: page }) => {
+    test('12.2.2 Broken link — no edge created for nonexistent target', async ({
+      vaultPage: page,
+    }) => {
       await seedGraphNotes(page)
       await navigateTo(page, 'graph')
       await page.waitForTimeout(2000)

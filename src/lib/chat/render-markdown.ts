@@ -20,8 +20,7 @@ import { marked } from 'marked'
 marked.setOptions({ gfm: true, breaks: true })
 
 const DANGEROUS_TAGS = /<(script|iframe|object|embed|link|meta|style)[^>]*>[\s\S]*?<\/\1>/gi
-const DANGEROUS_SELF_CLOSING =
-  /<(script|iframe|object|embed|link|meta|style)[^>]*\/?>/gi
+const DANGEROUS_SELF_CLOSING = /<(script|iframe|object|embed|link|meta|style)[^>]*\/?>/gi
 const EVENT_ATTR = /\s(on[a-z]+)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi
 const UNSAFE_HREF =
   /\s(href|src|action|xlink:href)\s*=\s*("javascript:[^"]*"|'javascript:[^']*'|"data:(?!image\/)[^"]*"|'data:(?!image\/)[^']*'|"vbscript:[^"]*"|'vbscript:[^']*')/gi
@@ -163,11 +162,7 @@ function isExternalOrSpecialHref(href: string): boolean {
   const lower = h.toLowerCase()
   if (lower.startsWith('http://') || lower.startsWith('https://')) return true
   if (lower.startsWith('mailto:')) return true
-  if (
-    lower.startsWith('javascript:') ||
-    lower.startsWith('data:') ||
-    lower.startsWith('vbscript:')
-  )
+  if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:'))
     return true
   if (h.startsWith('#')) return true
   if (h.startsWith('//')) return true
@@ -211,29 +206,20 @@ export function renderChatMarkdown(markdown: string): string {
   } catch {
     // Fallback: plain-text with HTML-escaping and paragraph breaks, so a
     // malformed markdown chunk never blocks the whole response.
-    const escaped = markdown
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
+    const escaped = markdown.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     return `<p>${escaped.replace(/\n/g, '<br/>')}</p>`
   }
 }
 
 /** Whole-vault chat: cite ↔ source order matches RAG hits; canonical Sources use encodeURI. */
-export function renderVaultChatMarkdown(
-  markdown: string,
-  vaultRagHitPaths?: string[],
-): string {
+export function renderVaultChatMarkdown(markdown: string, vaultRagHitPaths?: string[]): string {
   if (!markdown) return ''
   try {
     const pre = preprocessVaultChatMarkdown(markdown, vaultRagHitPaths)
     const html = String(marked.parse(pre, { async: false }))
     return rewriteVaultAnchors(scrub(html))
   } catch {
-    const escaped = markdown
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
+    const escaped = markdown.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     return `<p>${escaped.replace(/\n/g, '<br/>')}</p>`
   }
 }

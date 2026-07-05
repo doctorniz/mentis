@@ -22,12 +22,20 @@ class InMemoryAdapter implements FileSystemAdapter {
   async writeTextFile(path: string, content: string): Promise<void> {
     this.files.set(path, new TextEncoder().encode(content))
   }
-  async exists(path: string): Promise<boolean> { return this.files.has(path) }
+  async exists(path: string): Promise<boolean> {
+    return this.files.has(path)
+  }
   async stat(path: string): Promise<FileStats> {
-    return { size: this.files.get(path)?.length ?? 0, createdAt: new Date(), modifiedAt: new Date() }
+    return {
+      size: this.files.get(path)?.length ?? 0,
+      createdAt: new Date(),
+      modifiedAt: new Date(),
+    }
   }
   async mkdir(): Promise<void> {}
-  async readdir(): Promise<FileEntry[]> { return [] }
+  async readdir(): Promise<FileEntry[]> {
+    return []
+  }
   async rename(): Promise<void> {}
   async copy(): Promise<void> {}
   async remove(): Promise<void> {}

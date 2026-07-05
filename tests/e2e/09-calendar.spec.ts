@@ -15,9 +15,7 @@ test.describe('9 — Calendar', () => {
   // ─── 9.1 Event CRUD ────────────────────────────────────────────────────────
 
   test.describe('9.1 Event CRUD', () => {
-    test('9.1.1 click day cell — create event dialog', async ({
-      vaultPage: page,
-    }) => {
+    test('9.1.1 click day cell — create event dialog', async ({ vaultPage: page }) => {
       // Click on a day cell in the grid (today's date number)
       const today = new Date()
       const dayNumber = today.getDate().toString()
@@ -37,9 +35,7 @@ test.describe('9 — Calendar', () => {
       await dialog.getByText('Cancel').click()
     })
 
-    test('9.1.2 save event — verify appears on calendar', async ({
-      vaultPage: page,
-    }) => {
+    test('9.1.2 save event — verify appears on calendar', async ({ vaultPage: page }) => {
       // Use the "New event" button in the toolbar
       const newEventBtn = page.locator('button', { hasText: 'New event' })
       await newEventBtn.click()
@@ -60,9 +56,7 @@ test.describe('9 — Calendar', () => {
       await expect(page.getByText('Team Meeting')).toBeVisible({ timeout: 5_000 })
     })
 
-    test('9.1.3 edit event — change title and color', async ({
-      vaultPage: page,
-    }) => {
+    test('9.1.3 edit event — change title and color', async ({ vaultPage: page }) => {
       // Create an event first
       const newEventBtn = page.locator('button', { hasText: 'New event' })
       await newEventBtn.click()
@@ -170,9 +164,7 @@ test.describe('9 — Calendar', () => {
       await dialog.getByText('Cancel').click()
     })
 
-    test('9.1.6 event colors — all six swatches present', async ({
-      vaultPage: page,
-    }) => {
+    test('9.1.6 event colors — all six swatches present', async ({ vaultPage: page }) => {
       const newEventBtn = page.locator('button', { hasText: 'New event' })
       await newEventBtn.click()
       await page.waitForTimeout(500)
@@ -202,9 +194,7 @@ test.describe('9 — Calendar', () => {
   // ─── 9.2 Month View & Navigation ───────────────────────────────────────────
 
   test.describe('9.2 Month View & Navigation', () => {
-    test('9.2.1 navigate months — prev/next arrows', async ({
-      vaultPage: page,
-    }) => {
+    test('9.2.1 navigate months — prev/next arrows', async ({ vaultPage: page }) => {
       // Get current heading
       const heading = page.locator('h1').first()
       const currentText = await heading.textContent()
@@ -233,9 +223,7 @@ test.describe('9 — Calendar', () => {
       expect(furtherBackText).not.toBe(currentText)
     })
 
-    test('9.2.2 events render as chips on correct day cells', async ({
-      vaultPage: page,
-    }) => {
+    test('9.2.2 events render as chips on correct day cells', async ({ vaultPage: page }) => {
       // Create an event on today
       const newEventBtn = page.locator('button', { hasText: 'New event' })
       await newEventBtn.click()
@@ -261,9 +249,9 @@ test.describe('9 — Calendar', () => {
       const dayNumber = today.getDate().toString()
 
       // The today circle has bg-accent class
-      const todayCircle = page.locator(
-        `.bg-accent:not(button):not([role="switch"])`,
-      ).filter({ hasText: new RegExp(`^${dayNumber}$`) })
+      const todayCircle = page
+        .locator(`.bg-accent:not(button):not([role="switch"])`)
+        .filter({ hasText: new RegExp(`^${dayNumber}$`) })
 
       await expect(todayCircle.first()).toBeVisible({ timeout: 5_000 })
     })

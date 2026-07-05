@@ -1,14 +1,6 @@
 'use client'
 
-import {
-  Paintbrush,
-  Eraser,
-  Hand,
-  Pipette,
-  PaintBucket,
-  Undo2,
-  Redo,
-} from 'lucide-react'
+import { Paintbrush, Eraser, Hand, Pipette, PaintBucket, Undo2, Redo } from 'lucide-react'
 import { useCanvasStore } from '@/stores/canvas'
 import type { CanvasTool } from '@/types/canvas'
 import type { CanvasEngine } from '@/lib/canvas/engine'

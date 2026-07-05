@@ -15,9 +15,9 @@ import { cn } from '@/utils/cn'
 export type OrganizerTab = 'tasks' | 'lists' | 'calendars' | 'reminders'
 
 const TABS: { id: OrganizerTab; label: string; icon: typeof CheckSquare }[] = [
-  { id: 'tasks',     label: 'Tasks',     icon: CheckSquare },
-  { id: 'lists',     label: 'Lists',     icon: List },
-  { id: 'calendars', label: 'Calendar',  icon: CalendarDays },
+  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
+  { id: 'lists', label: 'Lists', icon: List },
+  { id: 'calendars', label: 'Calendar', icon: CalendarDays },
   { id: 'reminders', label: 'Reminders', icon: Bell },
 ]
 
@@ -32,15 +32,18 @@ function ListsPanel({ onOpenList }: { onOpenList: (list: string) => void }) {
   const createList = useTasksStore((s) => s.createList)
   const [newListName, setNewListName] = useState('')
 
-  useEffect(() => { void loadTasks(vaultFs) }, [vaultFs, loadTasks])
+  useEffect(() => {
+    void loadTasks(vaultFs)
+  }, [vaultFs, loadTasks])
 
-  const listStats = useMemo(() =>
-    lists.map((list) => {
-      const pool = items.filter((i) => i.list === list)
-      const active = pool.filter((i) => i.status !== 'done' && i.status !== 'cancelled').length
-      const done   = pool.filter((i) => i.status === 'done').length
-      return { list, active, done }
-    }),
+  const listStats = useMemo(
+    () =>
+      lists.map((list) => {
+        const pool = items.filter((i) => i.list === list)
+        const active = pool.filter((i) => i.status !== 'done' && i.status !== 'cancelled').length
+        const done = pool.filter((i) => i.status === 'done').length
+        return { list, active, done }
+      }),
     [lists, items],
   )
 
@@ -93,7 +96,10 @@ function ListsPanel({ onOpenList }: { onOpenList: (list: string) => void }) {
             value={newListName}
             onChange={(e) => setNewListName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); void handleAddList() }
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                void handleAddList()
+              }
             }}
             placeholder="New list…"
             className="text-fg placeholder:text-fg-muted/40 min-w-0 flex-1 bg-transparent text-sm outline-none"
@@ -114,7 +120,9 @@ function RemindersPanel() {
   const [editTask, setEditTask] = useState<TaskItem | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  useEffect(() => { void loadTasks(vaultFs) }, [vaultFs, loadTasks])
+  useEffect(() => {
+    void loadTasks(vaultFs)
+  }, [vaultFs, loadTasks])
 
   const withDue = useMemo(() => {
     const pool = items
@@ -149,18 +157,17 @@ function RemindersPanel() {
               <TaskRow
                 key={task.path}
                 item={task}
-                onEdit={(t) => { setEditTask(t); setDialogOpen(true) }}
+                onEdit={(t) => {
+                  setEditTask(t)
+                  setDialogOpen(true)
+                }}
               />
             ))}
           </div>
         )}
       </div>
 
-      <TaskDetailDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        task={editTask}
-      />
+      <TaskDetailDialog open={dialogOpen} onOpenChange={setDialogOpen} task={editTask} />
     </div>
   )
 }
@@ -176,12 +183,16 @@ export function OrganizerView({ initialTab }: { initialTab?: OrganizerTab }) {
     return (saved as OrganizerTab | null) ?? 'tasks'
   })
 
-  const setActiveList   = useTasksStore((s) => s.setActiveList)
+  const setActiveList = useTasksStore((s) => s.setActiveList)
   const setActiveFilter = useTasksStore((s) => s.setActiveFilter)
 
   const switchTab = (tab: OrganizerTab) => {
     setActiveTab(tab)
-    try { localStorage.setItem(LS_KEY, tab) } catch { /* noop */ }
+    try {
+      localStorage.setItem(LS_KEY, tab)
+    } catch {
+      /* noop */
+    }
   }
 
   const handleOpenList = (list: string) => {
@@ -213,8 +224,8 @@ export function OrganizerView({ initialTab }: { initialTab?: OrganizerTab }) {
 
       {/* Tab content */}
       <div className="min-h-0 flex-1">
-        {activeTab === 'tasks'     && <TasksView />}
-        {activeTab === 'lists'     && <ListsPanel onOpenList={handleOpenList} />}
+        {activeTab === 'tasks' && <TasksView />}
+        {activeTab === 'lists' && <ListsPanel onOpenList={handleOpenList} />}
         {activeTab === 'calendars' && <CalendarView />}
         {activeTab === 'reminders' && <RemindersPanel />}
       </div>

@@ -59,8 +59,12 @@ export function readXlsxFile(bytes: Uint8Array): SpreadsheetWorkbook {
         const cell = ws[addr] as XLSX.CellObject | undefined
         if (cell) {
           row.push({
-            value: cell.v instanceof Date ? cell.v.toISOString()
-              : cell.v != null ? (cell.v as string | number | boolean) : '',
+            value:
+              cell.v instanceof Date
+                ? cell.v.toISOString()
+                : cell.v != null
+                  ? (cell.v as string | number | boolean)
+                  : '',
             formula: cell.f ? `=${cell.f}` : undefined,
             ref: addr,
           })
@@ -100,14 +104,21 @@ export function readXlsxFile(bytes: Uint8Array): SpreadsheetWorkbook {
 export function bookTypeFromPath(path: string): XLSX.BookType {
   const ext = path.split('.').pop()?.toLowerCase()
   switch (ext) {
-    case 'csv': return 'csv'
-    case 'xls': return 'biff8'
-    case 'xlsm': return 'xlsm'
-    case 'xlsb': return 'xlsb'
-    case 'ods': return 'ods'
+    case 'csv':
+      return 'csv'
+    case 'xls':
+      return 'biff8'
+    case 'xlsm':
+      return 'xlsm'
+    case 'xlsb':
+      return 'xlsb'
+    case 'ods':
+      return 'ods'
     case 'tsv':
-    case 'txt': return 'txt'
-    default: return 'xlsx'
+    case 'txt':
+      return 'txt'
+    default:
+      return 'xlsx'
   }
 }
 
@@ -140,9 +151,10 @@ export function writeSpreadsheetFile(
 
         if (cell.formula) {
           // Strip leading '=' for SheetJS
-          const f = typeof cell.formula === 'string' && cell.formula.startsWith('=')
-            ? cell.formula.slice(1)
-            : cell.formula
+          const f =
+            typeof cell.formula === 'string' && cell.formula.startsWith('=')
+              ? cell.formula.slice(1)
+              : cell.formula
           ws[addr] = { t: 's', f, v: cell.value ?? '' } as XLSX.CellObject
         } else if (typeof cell.value === 'number') {
           ws[addr] = { t: 'n', v: cell.value } as XLSX.CellObject

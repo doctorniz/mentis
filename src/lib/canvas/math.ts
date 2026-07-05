@@ -31,13 +31,7 @@ export function lerp(a: number, b: number, t: number): number {
  * Evaluate a point on a Catmull-Rom spline defined by four control points.
  * `t` ranges from 0 (at p1) to 1 (at p2).
  */
-export function catmullRomPoint(
-  p0: Point,
-  p1: Point,
-  p2: Point,
-  p3: Point,
-  t: number,
-): Point {
+export function catmullRomPoint(p0: Point, p1: Point, p2: Point, p3: Point, t: number): Point {
   const t2 = t * t
   const t3 = t2 * t
   return {
@@ -82,10 +76,7 @@ export interface InterpolatedStamp {
  *
  * Returns an array of stamps (position + interpolated pressure).
  */
-export function interpolateStroke(
-  points: StrokePoint[],
-  spacingPx: number,
-): InterpolatedStamp[] {
+export function interpolateStroke(points: StrokePoint[], spacingPx: number): InterpolatedStamp[] {
   if (points.length === 0) return []
   if (points.length === 1) {
     return [{ x: points[0].x, y: points[0].y, pressure: points[0].pressure }]

@@ -34,7 +34,13 @@ import { PptxEditorView } from '@/components/pptx/pptx-editor'
 import { PptxCompactViewer } from '@/components/pptx/pptx-compact-viewer'
 import { VideoPlayerView } from '@/components/notes/video-player-view'
 import { AudioPlayerView } from '@/components/notes/audio-player-view'
-import { MOBILE_NAV_MEDIA_QUERY, PPTX_COMPACT_MEDIA_QUERY, WIDE_EDITOR_MEDIA_QUERY, CANVAS_TREE_MEDIA_QUERY, CANVAS_SIDEBAR_MEDIA_QUERY } from '@/lib/browser/breakpoints'
+import {
+  MOBILE_NAV_MEDIA_QUERY,
+  PPTX_COMPACT_MEDIA_QUERY,
+  WIDE_EDITOR_MEDIA_QUERY,
+  CANVAS_TREE_MEDIA_QUERY,
+  CANVAS_SIDEBAR_MEDIA_QUERY,
+} from '@/lib/browser/breakpoints'
 import { useMediaQuery } from '@/lib/browser/use-media-query'
 import { createUntitledNote } from '@/lib/notes/new-note'
 import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
@@ -43,7 +49,12 @@ import { removeSearchDocument } from '@/lib/search/index'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 
 function stemFromVaultPath(path: string): string {
-  return path.replace(/\.[^/.]+$/i, '').split('/').pop() ?? path
+  return (
+    path
+      .replace(/\.[^/.]+$/i, '')
+      .split('/')
+      .pop() ?? path
+  )
 }
 
 function starredStorageKey(vaultPath: string) {
@@ -165,10 +176,7 @@ function NotesViewInner() {
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
 
-  const starredList = useMemo(
-    () => starredPaths,
-    [starredPaths],
-  )
+  const starredList = useMemo(() => starredPaths, [starredPaths])
 
   useLayoutEffect(() => {
     try {
@@ -313,14 +321,11 @@ function NotesViewInner() {
   const markdownEditorRef = useRef<MarkdownNoteEditorHandle | null>(null)
   const [chatAssetIdByPath, setChatAssetIdByPath] = useState<Record<string, string>>({})
 
-  const onMarkdownChatAssetIdFromDisk = useCallback(
-    (notePath: string, chatAssetId: string) => {
-      setChatAssetIdByPath((m) =>
-        m[notePath] === chatAssetId ? m : { ...m, [notePath]: chatAssetId },
-      )
-    },
-    [],
-  )
+  const onMarkdownChatAssetIdFromDisk = useCallback((notePath: string, chatAssetId: string) => {
+    setChatAssetIdByPath((m) =>
+      m[notePath] === chatAssetId ? m : { ...m, [notePath]: chatAssetId },
+    )
+  }, [])
 
   // Auto-ensure chatAssetId for the active markdown tab.
   useEffect(() => {
@@ -329,9 +334,7 @@ function NotesViewInner() {
     const timer = setTimeout(() => {
       const id = markdownEditorRef.current?.ensureChatAssetId()
       if (id) {
-        setChatAssetIdByPath((m) =>
-          m[activeTab.path] === id ? m : { ...m, [activeTab.path]: id },
-        )
+        setChatAssetIdByPath((m) => (m[activeTab.path] === id ? m : { ...m, [activeTab.path]: id }))
       }
     }, 50)
     return () => clearTimeout(timer)
@@ -362,7 +365,8 @@ function NotesViewInner() {
   const isCanvasTreeNarrow = useMediaQuery(CANVAS_TREE_MEDIA_QUERY)
   const isCanvasSidebarNarrow = useMediaQuery(CANVAS_SIDEBAR_MEDIA_QUERY)
   const isCanvasTab = activeTab?.type === 'canvas'
-  const isWideEditorTab = activeTab?.type === 'pptx' || activeTab?.type === 'docx' || activeTab?.type === 'spreadsheet'
+  const isWideEditorTab =
+    activeTab?.type === 'pptx' || activeTab?.type === 'docx' || activeTab?.type === 'spreadsheet'
 
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const isSidebarOpen = useUiStore((s) => s.isSidebarOpen)
@@ -460,9 +464,16 @@ function NotesViewInner() {
     onNoteCreated: () => {
       vaultChanged()
     },
-    onRequestCollapse: () => { manualTreeToggleRef.current = true; setNotesTreeExpanded(false) },
+    onRequestCollapse: () => {
+      manualTreeToggleRef.current = true
+      setNotesTreeExpanded(false)
+    },
     onSearchOpen: () => setLeftPanel('search'),
-    onGraphOpen: () => { manualTreeToggleRef.current = true; setNotesTreeExpanded(false); setActiveView(ViewMode.Graph) },
+    onGraphOpen: () => {
+      manualTreeToggleRef.current = true
+      setNotesTreeExpanded(false)
+      setActiveView(ViewMode.Graph)
+    },
   }
 
   return (
@@ -474,7 +485,11 @@ function NotesViewInner() {
             variant="ghost"
             size="sm"
             className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
-            onClick={() => { manualTreeToggleRef.current = true; setNotesTreeExpanded(true); setLeftPanel('tree') }}
+            onClick={() => {
+              manualTreeToggleRef.current = true
+              setNotesTreeExpanded(true)
+              setLeftPanel('tree')
+            }}
             aria-label="Open vault tree"
             title="Vault"
           >
@@ -485,7 +500,11 @@ function NotesViewInner() {
             variant="ghost"
             size="sm"
             className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
-            onClick={() => { manualTreeToggleRef.current = true; setNotesTreeExpanded(true); setLeftPanel('search') }}
+            onClick={() => {
+              manualTreeToggleRef.current = true
+              setNotesTreeExpanded(true)
+              setLeftPanel('search')
+            }}
             aria-label="Search vault"
             title="Search (Ctrl+F)"
           >
@@ -505,11 +524,13 @@ function NotesViewInner() {
         </div>
       )}
 
-      {notesTreeExpanded && !isMobileTree && (
-        leftPanel === 'search'
-          ? <VaultLeftSearch onClose={() => setLeftPanel('tree')} />
-          : <NotesFileTree {...treeProps} />
-      )}
+      {notesTreeExpanded &&
+        !isMobileTree &&
+        (leftPanel === 'search' ? (
+          <VaultLeftSearch onClose={() => setLeftPanel('tree')} />
+        ) : (
+          <NotesFileTree {...treeProps} />
+        ))}
 
       {isMobileTree && notesTreeExpanded && (
         <>
@@ -517,19 +538,23 @@ function NotesViewInner() {
             type="button"
             className="absolute inset-0 z-[15] bg-black/20"
             aria-label="Close vault tree"
-            onClick={() => { manualTreeToggleRef.current = true; setNotesTreeExpanded(false) }}
+            onClick={() => {
+              manualTreeToggleRef.current = true
+              setNotesTreeExpanded(false)
+            }}
           />
           <div className="border-border bg-bg absolute top-0 left-0 z-20 flex h-full w-[min(100%,280px)] max-w-[min(100vw-2rem,280px)] flex-col border-r shadow-lg">
-            {leftPanel === 'search'
-              ? <VaultLeftSearch
-                  onClose={() => setLeftPanel('tree')}
-                  rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
-                />
-              : <NotesFileTree
-                  {...treeProps}
-                  rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
-                />
-            }
+            {leftPanel === 'search' ? (
+              <VaultLeftSearch
+                onClose={() => setLeftPanel('tree')}
+                rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
+              />
+            ) : (
+              <NotesFileTree
+                {...treeProps}
+                rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
+              />
+            )}
           </div>
         </>
       )}
@@ -564,9 +589,7 @@ function NotesViewInner() {
                   onOpenNote={openNotePath}
                   collapsed={backlinksCollapsed}
                   onCollapsedChange={setBacklinksCollapsed}
-                  maxExpandedHeightClass={
-                    !chatCollapsed ? 'max-h-[40%]' : 'flex-1'
-                  }
+                  maxExpandedHeightClass={!chatCollapsed ? 'max-h-[40%]' : 'flex-1'}
                 />
               }
             >
@@ -686,10 +709,7 @@ function NotesViewInner() {
           />
         ) : activeTab?.type === 'pptx' ? (
           isPptxCompact ? (
-            <PptxCompactViewer
-              key={`${activeTab.id}-compact`}
-              path={activeTab.path}
-            />
+            <PptxCompactViewer key={`${activeTab.id}-compact`} path={activeTab.path} />
           ) : (
             <PptxEditorView
               key={activeTab.id}

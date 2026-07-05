@@ -72,7 +72,9 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
   })
 
   // Keep ref in sync for use inside ResizeObserver callback
-  useEffect(() => { panelCollapsedRef.current = panelCollapsed }, [panelCollapsed])
+  useEffect(() => {
+    panelCollapsedRef.current = panelCollapsed
+  }, [panelCollapsed])
 
   // Persist width
   useEffect(() => {
@@ -88,7 +90,11 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
       if (w > 0 && w < CANVAS_PANEL_AUTO_COLLAPSE_BELOW && !panelCollapsedRef.current) {
         panelAutoCollapsedRef.current = true
         setPanelCollapsed(true)
-      } else if (w >= CANVAS_PANEL_AUTO_COLLAPSE_BELOW && panelCollapsedRef.current && panelAutoCollapsedRef.current) {
+      } else if (
+        w >= CANVAS_PANEL_AUTO_COLLAPSE_BELOW &&
+        panelCollapsedRef.current &&
+        panelAutoCollapsedRef.current
+      ) {
         panelAutoCollapsedRef.current = false
         setPanelCollapsed(false)
       }
@@ -101,7 +107,10 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
   function clampPanelWidth(px: number): number {
     const el = layoutRef.current
     if (!el) return Math.max(CANVAS_PANEL_MIN_WIDTH, px)
-    const max = Math.max(CANVAS_PANEL_MIN_WIDTH, Math.floor(el.clientWidth * CANVAS_PANEL_MAX_RATIO))
+    const max = Math.max(
+      CANVAS_PANEL_MIN_WIDTH,
+      Math.floor(el.clientWidth * CANVAS_PANEL_MAX_RATIO),
+    )
     return Math.min(Math.max(CANVAS_PANEL_MIN_WIDTH, px), max)
   }
 
@@ -122,7 +131,11 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
   function onDragPointerUp(e: React.PointerEvent<HTMLDivElement>) {
     if (!dragRef.current) return
     dragRef.current = false
-    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      /* ignore */
+    }
   }
 
   /* ---- Init + Load + Cleanup ---- */
@@ -140,13 +153,23 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         // the user's most recent changes with load-time state.
         const prior = pendingCanvasSaves.get(path)
         if (prior) {
-          try { await prior } catch { /* best-effort */ }
-          if (signal.cancelled) { engine.destroy(); return }
+          try {
+            await prior
+          } catch {
+            /* best-effort */
+          }
+          if (signal.cancelled) {
+            engine.destroy()
+            return
+          }
         }
 
         if (!containerRef.current) return
         await engine.init(containerRef.current)
-        if (signal.cancelled) { engine.destroy(); return }
+        if (signal.cancelled) {
+          engine.destroy()
+          return
+        }
 
         // Load file. v5 reads metadata JSON plus PNGs from
         // `_marrow/_drawings/<assetId>/<layerId>.png`. v4 falls back to
@@ -155,11 +178,17 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         // older formats are rewritten as v5 on the next save.
         try {
           await readCanvasFile(engine, vaultFs, path)
-          if (signal.cancelled) { engine.destroy(); return }
+          if (signal.cancelled) {
+            engine.destroy()
+            return
+          }
         } catch {
           engine.initDefault()
         }
-        if (signal.cancelled) { engine.destroy(); return }
+        if (signal.cancelled) {
+          engine.destroy()
+          return
+        }
 
         // Start the Pixi ticker NOW — after the file is fully loaded.
         // `app.init()` uses `autoStart: false` so no RAF fires during
@@ -197,17 +226,18 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
       // Stopping the ticker here closes that window.  `flushSave` uses
       // `renderer.extract.base64()` directly — it does not need the ticker.
       if (engine.initialized) {
-        try { engine.app.ticker.stop() } catch { /* ignore */ }
+        try {
+          engine.app.ticker.stop()
+        } catch {
+          /* ignore */
+        }
       }
 
       // Capture everything we need into locals NOW — the store is about
       // to be reset and engineRef.current will be nulled. These locals
       // are what the async run() below will close over.
       const savePath = pathRef.current
-      const shouldFlush = !!(
-        engine.initialized &&
-        useCanvasStore.getState().hasUnsavedChanges
-      )
+      const shouldFlush = !!(engine.initialized && useCanvasStore.getState().hasUnsavedChanges)
 
       // Sequence save → destroy so extract.base64 finishes touching the
       // live renderer before app.destroy() tears it down. Previously
@@ -277,7 +307,11 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
       const mod = e.metaKey || e.ctrlKey
       const target = e.target as HTMLElement | null
       // Don't capture if user is typing in an input
-      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT') {
+      if (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT'
+      ) {
         return
       }
 
@@ -340,7 +374,7 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
       }
 
       // Ctrl+Shift+Z or Ctrl+Y: redo
-      if (mod && (e.shiftKey && e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) {
+      if (mod && ((e.shiftKey && e.key.toLowerCase() === 'z') || e.key.toLowerCase() === 'y')) {
         e.preventDefault()
         const engine = engineRef.current
         if (!engine?.initialized) return
@@ -370,57 +404,63 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
       </div>
 
       <div ref={layoutRef} className="relative flex min-h-0 flex-1">
-      {!loading && <CanvasToolStrip engineRef={engineRef} />}
-      <CanvasViewport engineRef={engineRef} containerRef={containerRef} />
+        {!loading && <CanvasToolStrip engineRef={engineRef} />}
+        <CanvasViewport engineRef={engineRef} containerRef={containerRef} />
 
-      {!loading && (
-        <>
-          {/* Drag handle — only visible when panel is open */}
-          {!panelCollapsed && (
-            <div
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize properties panel"
-              onPointerDown={onDragPointerDown}
-              onPointerMove={onDragPointerMove}
-              onPointerUp={onDragPointerUp}
-              onPointerCancel={onDragPointerUp}
-              className="group relative z-10 w-1 shrink-0 cursor-col-resize select-none bg-border transition-colors hover:bg-accent/60"
-            >
-              <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
-            </div>
-          )}
-
-          {panelCollapsed ? (
-            /* Collapsed rail */
-            <div className="border-border bg-bg flex h-full w-10 shrink-0 flex-col items-center border-l pt-2">
-              <button
-                type="button"
-                onClick={() => { panelAutoCollapsedRef.current = false; setPanelCollapsed(false) }}
-                title="Expand properties"
-                aria-label="Expand properties panel"
-                className="text-fg-muted hover:text-fg hover:bg-bg-hover flex size-8 items-center justify-center rounded-md transition-colors"
+        {!loading && (
+          <>
+            {/* Drag handle — only visible when panel is open */}
+            {!panelCollapsed && (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize properties panel"
+                onPointerDown={onDragPointerDown}
+                onPointerMove={onDragPointerMove}
+                onPointerUp={onDragPointerUp}
+                onPointerCancel={onDragPointerUp}
+                className="group bg-border hover:bg-accent/60 relative z-10 w-1 shrink-0 cursor-col-resize transition-colors select-none"
               >
-                <PanelRightOpen className="size-4" />
-              </button>
-            </div>
-          ) : (
-            /* Expanded panel */
-            <div className="shrink-0 overflow-hidden" style={{ width: `${panelWidth}px` }}>
-              <CanvasPropertiesPanel
-                engineRef={engineRef}
-                onCollapse={() => { panelAutoCollapsedRef.current = false; setPanelCollapsed(true) }}
-              />
-            </div>
-          )}
-        </>
-      )}
+                <div className="absolute inset-y-0 -right-1.5 -left-1.5" />
+              </div>
+            )}
 
-      {loading && (
-        <div className="text-fg-muted absolute inset-0 z-10 flex items-center justify-center bg-neutral-100 text-sm dark:bg-neutral-900">
-          Loading canvas…
-        </div>
-      )}
+            {panelCollapsed ? (
+              /* Collapsed rail */
+              <div className="border-border bg-bg flex h-full w-10 shrink-0 flex-col items-center border-l pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    panelAutoCollapsedRef.current = false
+                    setPanelCollapsed(false)
+                  }}
+                  title="Expand properties"
+                  aria-label="Expand properties panel"
+                  className="text-fg-muted hover:text-fg hover:bg-bg-hover flex size-8 items-center justify-center rounded-md transition-colors"
+                >
+                  <PanelRightOpen className="size-4" />
+                </button>
+              </div>
+            ) : (
+              /* Expanded panel */
+              <div className="shrink-0 overflow-hidden" style={{ width: `${panelWidth}px` }}>
+                <CanvasPropertiesPanel
+                  engineRef={engineRef}
+                  onCollapse={() => {
+                    panelAutoCollapsedRef.current = false
+                    setPanelCollapsed(true)
+                  }}
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {loading && (
+          <div className="text-fg-muted absolute inset-0 z-10 flex items-center justify-center bg-neutral-100 text-sm dark:bg-neutral-900">
+            Loading canvas…
+          </div>
+        )}
       </div>
     </div>
   )

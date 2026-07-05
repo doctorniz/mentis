@@ -7,12 +7,36 @@ import { cn } from '@/utils/cn'
 import type { MindmapNodeData } from '@/types/mindmap'
 
 const COLOR_STYLES: Record<string, { border: string; bg: string; dot: string }> = {
-  teal:    { border: 'border-teal-400 dark:border-teal-500',    bg: 'bg-teal-50 dark:bg-teal-950/60',    dot: 'bg-teal-400' },
-  violet:  { border: 'border-violet-400 dark:border-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/60', dot: 'bg-violet-400' },
-  amber:   { border: 'border-amber-400 dark:border-amber-500',  bg: 'bg-amber-50 dark:bg-amber-950/60',  dot: 'bg-amber-400' },
-  rose:    { border: 'border-rose-400 dark:border-rose-500',    bg: 'bg-rose-50 dark:bg-rose-950/60',    dot: 'bg-rose-400' },
-  sky:     { border: 'border-sky-400 dark:border-sky-500',      bg: 'bg-sky-50 dark:bg-sky-950/60',      dot: 'bg-sky-400' },
-  emerald: { border: 'border-emerald-400 dark:border-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/60', dot: 'bg-emerald-400' },
+  teal: {
+    border: 'border-teal-400 dark:border-teal-500',
+    bg: 'bg-teal-50 dark:bg-teal-950/60',
+    dot: 'bg-teal-400',
+  },
+  violet: {
+    border: 'border-violet-400 dark:border-violet-500',
+    bg: 'bg-violet-50 dark:bg-violet-950/60',
+    dot: 'bg-violet-400',
+  },
+  amber: {
+    border: 'border-amber-400 dark:border-amber-500',
+    bg: 'bg-amber-50 dark:bg-amber-950/60',
+    dot: 'bg-amber-400',
+  },
+  rose: {
+    border: 'border-rose-400 dark:border-rose-500',
+    bg: 'bg-rose-50 dark:bg-rose-950/60',
+    dot: 'bg-rose-400',
+  },
+  sky: {
+    border: 'border-sky-400 dark:border-sky-500',
+    bg: 'bg-sky-50 dark:bg-sky-950/60',
+    dot: 'bg-sky-400',
+  },
+  emerald: {
+    border: 'border-emerald-400 dark:border-emerald-500',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/60',
+    dot: 'bg-emerald-400',
+  },
 }
 
 const DEFAULT_STYLE = { border: 'border-border', bg: 'bg-bg-secondary', dot: 'bg-fg-muted' }
@@ -94,7 +118,7 @@ export function MindmapNodeComponent({ id, data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        'group relative flex min-w-[100px] max-w-[200px] items-center rounded-xl border-2 px-3 py-2 shadow-sm transition-all',
+        'group relative flex max-w-[200px] min-w-[100px] items-center rounded-xl border-2 px-3 py-2 shadow-sm transition-all',
         style.border,
         style.bg,
         selected && 'ring-2 ring-teal-400/60 ring-offset-1',
@@ -109,9 +133,7 @@ export function MindmapNodeComponent({ id, data, selected }: NodeProps) {
       />
 
       {/* Color dot */}
-      {color && (
-        <span className={cn('mr-2 size-2 shrink-0 rounded-full', style.dot)} aria-hidden />
-      )}
+      {color && <span className={cn('mr-2 size-2 shrink-0 rounded-full', style.dot)} aria-hidden />}
 
       {/* Label / inline editor */}
       {editing ? (
@@ -126,7 +148,7 @@ export function MindmapNodeComponent({ id, data, selected }: NodeProps) {
           placeholder="Node label"
         />
       ) : (
-        <span className="text-fg min-w-0 flex-1 truncate text-sm font-medium leading-snug">
+        <span className="text-fg min-w-0 flex-1 truncate text-sm leading-snug font-medium">
           {label || <span className="text-fg-muted italic">Untitled</span>}
         </span>
       )}
@@ -144,7 +166,7 @@ export function MindmapNodeComponent({ id, data, selected }: NodeProps) {
         onClick={handleAddClick}
         aria-label="Add child node"
         className={cn(
-          'absolute -right-8 top-1/2 -translate-y-1/2',
+          'absolute top-1/2 -right-8 -translate-y-1/2',
           'flex size-6 items-center justify-center rounded-full border',
           'border-border bg-bg text-fg-muted shadow-sm',
           'opacity-0 transition-opacity group-hover:opacity-100',

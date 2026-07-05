@@ -14,17 +14,11 @@
  * it Gemini returns a JSON array, which is harder to stream.
  */
 
-import type {
-  ChatCompletionRequest,
-  ChatProvider,
-  ChatStreamChunk,
-} from './types'
+import type { ChatCompletionRequest, ChatProvider, ChatStreamChunk } from './types'
 
 const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
 
-async function* streamGemini(
-  req: ChatCompletionRequest,
-): AsyncGenerator<ChatStreamChunk> {
+async function* streamGemini(req: ChatCompletionRequest): AsyncGenerator<ChatStreamChunk> {
   const base = (req.baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/$/, '')
   // Gemini's REST convention: model name lives in the path, not the body.
   const modelSegment = encodeURIComponent(req.model)
@@ -49,9 +43,7 @@ async function* streamGemini(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents,
-        ...(systemText
-          ? { systemInstruction: { parts: [{ text: systemText }] } }
-          : {}),
+        ...(systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}),
       }),
       signal: req.signal,
     })

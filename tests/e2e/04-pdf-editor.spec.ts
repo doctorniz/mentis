@@ -234,7 +234,9 @@ test.describe('PDF Editor', () => {
       }
 
       // Find the delete button in the page panel (each page thumbnail has page actions)
-      const deleteBtn = page.locator('button[title="Delete page"], button[aria-label*="Delete"]').first()
+      const deleteBtn = page
+        .locator('button[title="Delete page"], button[aria-label*="Delete"]')
+        .first()
       if (await deleteBtn.isVisible().catch(() => false)) {
         await deleteBtn.click()
         await page.waitForTimeout(2_000)
@@ -253,7 +255,9 @@ test.describe('PDF Editor', () => {
       }
 
       // Find the rotate button in the page panel
-      const rotateBtn = page.locator('button[title="Rotate page"], button[aria-label*="Rotate"]').first()
+      const rotateBtn = page
+        .locator('button[title="Rotate page"], button[aria-label*="Rotate"]')
+        .first()
       if (await rotateBtn.isVisible().catch(() => false)) {
         await rotateBtn.click()
         await page.waitForTimeout(2_000)
@@ -268,25 +272,21 @@ test.describe('PDF Editor', () => {
   // ── 4.4 Persistence & Auto-Save ───────────────────────────────────
 
   test.describe('4.4 Persistence & Auto-Save', () => {
-    test.fixme(
-      '4.4.1 Annotations written into PDF bytes',
-      async ({ vaultPage: page }) => {
-        // Verifying that annotations are written into PDF bytes requires:
-        // 1. Making an annotation (drawing/highlight — hard to simulate)
-        // 2. Triggering save
-        // 3. Re-reading the PDF from OPFS and parsing it
-        // This is better suited for a unit test on annotation-writer.ts.
-      },
-    )
+    test.fixme('4.4.1 Annotations written into PDF bytes', async ({ vaultPage: page }) => {
+      // Verifying that annotations are written into PDF bytes requires:
+      // 1. Making an annotation (drawing/highlight — hard to simulate)
+      // 2. Triggering save
+      // 3. Re-reading the PDF from OPFS and parsing it
+      // This is better suited for a unit test on annotation-writer.ts.
+    })
 
-    test.fixme(
-      '4.4.6 Save after annotation — close — reopen — annotations present',
-      async ({ vaultPage: page }) => {
-        // Requires reliable annotation creation (drawing on Fabric.js canvas),
-        // save, close tab, reopen, and verify annotations loaded back.
-        // The Fabric.js interaction is the blocker.
-      },
-    )
+    test.fixme('4.4.6 Save after annotation — close — reopen — annotations present', async ({
+      vaultPage: page,
+    }) => {
+      // Requires reliable annotation creation (drawing on Fabric.js canvas),
+      // save, close tab, reopen, and verify annotations loaded back.
+      // The Fabric.js interaction is the blocker.
+    })
   })
 
   // ── 4.6 Edge Cases ────────────────────────────────────────────────
@@ -294,29 +294,27 @@ test.describe('PDF Editor', () => {
   test.describe('4.6 Edge Cases', () => {
     test('4.6.2 Corrupted PDF — error message, no crash', async ({ vaultPage: page }) => {
       // Write corrupted bytes directly (no valid PDF header)
-      await page.evaluate(
-        async () => {
-          const bytes = new TextEncoder().encode('This is not a PDF file at all')
-          const root = await navigator.storage.getDirectory()
+      await page.evaluate(async () => {
+        const bytes = new TextEncoder().encode('This is not a PDF file at all')
+        const root = await navigator.storage.getDirectory()
 
-          async function findVaultDir(
-            dir: FileSystemDirectoryHandle,
-          ): Promise<FileSystemDirectoryHandle> {
-            for await (const [name, handle] of (dir as any).entries()) {
-              if (handle.kind === 'directory' && name !== '_marrow') {
-                return handle as FileSystemDirectoryHandle
-              }
+        async function findVaultDir(
+          dir: FileSystemDirectoryHandle,
+        ): Promise<FileSystemDirectoryHandle> {
+          for await (const [name, handle] of (dir as any).entries()) {
+            if (handle.kind === 'directory' && name !== '_marrow') {
+              return handle as FileSystemDirectoryHandle
             }
-            return dir
           }
+          return dir
+        }
 
-          const vaultDir = (await findVaultDir(root)) ?? root
-          const file = await vaultDir.getFileHandle('corrupted.pdf', { create: true })
-          const writable = await file.createWritable()
-          await writable.write(bytes)
-          await writable.close()
-        },
-      )
+        const vaultDir = (await findVaultDir(root)) ?? root
+        const file = await vaultDir.getFileHandle('corrupted.pdf', { create: true })
+        const writable = await file.createWritable()
+        await writable.write(bytes)
+        await writable.close()
+      })
 
       await page.evaluate(() => {
         window.dispatchEvent(new CustomEvent('ink:vault-changed'))

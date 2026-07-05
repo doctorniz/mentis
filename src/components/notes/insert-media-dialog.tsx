@@ -65,7 +65,9 @@ function VaultFilePicker({
               }
             }
           }
-        } catch { /* ignore unreadable dirs */ }
+        } catch {
+          /* ignore unreadable dirs */
+        }
       }
       await walk('/')
       if (!cancelled) {
@@ -73,7 +75,9 @@ function VaultFilePicker({
         setLoading(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [vaultFs, mode])
 
   if (loading) {
@@ -163,8 +167,13 @@ function UploadTab({
         tabIndex={0}
         aria-label={`Drop ${mode} here or click to browse`}
         onClick={() => inputRef.current?.click()}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click() }}
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click()
+        }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => {
           e.preventDefault()
@@ -220,7 +229,12 @@ export function InsertMediaDialog({
   const title = mode === 'image' ? 'Insert image' : 'Insert video'
 
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose()
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[299] bg-black/40 backdrop-blur-[1px]" />
         <Dialog.Content
@@ -251,7 +265,7 @@ export function InsertMediaDialog({
                   className={cn(
                     'border-b-2 px-3 py-2.5 text-xs font-medium capitalize transition-colors',
                     'data-[state=active]:border-accent data-[state=active]:text-accent',
-                    'data-[state=inactive]:border-transparent data-[state=inactive]:text-fg-secondary data-[state=inactive]:hover:text-fg',
+                    'data-[state=inactive]:text-fg-secondary data-[state=inactive]:hover:text-fg data-[state=inactive]:border-transparent',
                   )}
                 >
                   {tab === 'upload' ? 'Upload' : 'From vault'}
@@ -264,7 +278,10 @@ export function InsertMediaDialog({
                 <UploadTab
                   mode={mode}
                   attachmentFolder={attachmentFolder}
-                  onInserted={(path, name) => { onInsert(path, name); onClose() }}
+                  onInserted={(path, name) => {
+                    onInsert(path, name)
+                    onClose()
+                  }}
                 />
               </Tabs.Content>
               <Tabs.Content value="vault" className="flex min-h-0 flex-1 flex-col">

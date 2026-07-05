@@ -84,7 +84,11 @@ export class FsapiAdapter implements FileSystemAdapter {
         await writable.write(buf)
         await writable.close()
       } catch (err) {
-        try { await writable.abort() } catch { /* ignore */ }
+        try {
+          await writable.abort()
+        } catch {
+          /* ignore */
+        }
         throw err
       }
     }
@@ -196,7 +200,9 @@ export class FsapiAdapter implements FileSystemAdapter {
       try {
         await h.move(newResolved.parent, newResolved.name)
         return
-      } catch { /* fall through to manual copy */ }
+      } catch {
+        /* fall through to manual copy */
+      }
     }
 
     if (isDir) {

@@ -115,12 +115,8 @@ export class CanvasEngine {
     if (x < this._width && y < this._height) return
 
     const STEP = 1024
-    const newW = x >= this._width
-      ? Math.ceil((x + 1) / STEP) * STEP
-      : this._width
-    const newH = y >= this._height
-      ? Math.ceil((y + 1) / STEP) * STEP
-      : this._height
+    const newW = x >= this._width ? Math.ceil((x + 1) / STEP) * STEP : this._width
+    const newH = y >= this._height ? Math.ceil((y + 1) / STEP) * STEP : this._height
 
     this.layerManager.expandCanvas(newW, newH)
     this._width = this.layerManager.canvasWidth
@@ -174,12 +170,7 @@ export class CanvasEngine {
     this.app.stage.addChild(this.viewport)
 
     // Subsystems
-    this.layerManager = new LayerManager(
-      this.app,
-      this.viewport,
-      this._width,
-      this._height,
-    )
+    this.layerManager = new LayerManager(this.app, this.viewport, this._width, this._height)
     this.brushSystem = new BrushSystem(this.app)
     this.strokeEngine = new StrokeEngine(this.layerManager, this.brushSystem)
     this.viewportController = new ViewportController(this.viewport)
@@ -227,7 +218,9 @@ export class CanvasEngine {
     if (!this._initialized) return
     try {
       this.app.ticker.start()
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   /** Set up a default canvas with one blank layer. */
@@ -262,14 +255,18 @@ export class CanvasEngine {
       try {
         if (this.hostContainer) this.resizeObserver.unobserve(this.hostContainer)
         this.resizeObserver.disconnect()
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       this.resizeObserver = null
     }
     this.hostContainer = null
 
     try {
       this.app.ticker?.stop()
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     this.undoManager.clear()
     this.brushSystem.destroy()
@@ -277,6 +274,8 @@ export class CanvasEngine {
 
     try {
       this.app.destroy(true, { children: true })
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 }

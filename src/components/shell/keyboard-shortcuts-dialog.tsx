@@ -38,7 +38,7 @@ export function KeyboardShortcutsDialog({
               if (items.length === 0) return null
               return (
                 <div key={cat}>
-                  <h3 className="text-fg mb-1.5 text-xs font-bold uppercase tracking-wider">
+                  <h3 className="text-fg mb-1.5 text-xs font-bold tracking-wider uppercase">
                     {cat}
                   </h3>
                   <div className="divide-border divide-y">

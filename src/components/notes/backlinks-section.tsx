@@ -37,9 +37,7 @@ export function BacklinksSection({
   /** Tailwind class cap on the expanded list; default 40% of container. */
   maxExpandedHeightClass?: string
 }) {
-  const [backlinks, setBacklinks] = useState<
-    Awaited<ReturnType<typeof findBacklinksForNote>>
-  >([])
+  const [backlinks, setBacklinks] = useState<Awaited<ReturnType<typeof findBacklinksForNote>>>([])
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -50,14 +48,12 @@ export function BacklinksSection({
     }
     let cancelled = false
     setBusy(true)
-    void findBacklinksForNote(vaultFs, markdownPaths, activeNotePath).then(
-      (hits) => {
-        if (!cancelled) {
-          setBacklinks(hits)
-          setBusy(false)
-        }
-      },
-    )
+    void findBacklinksForNote(vaultFs, markdownPaths, activeNotePath).then((hits) => {
+      if (!cancelled) {
+        setBacklinks(hits)
+        setBusy(false)
+      }
+    })
     return () => {
       cancelled = true
     }
@@ -74,7 +70,7 @@ export function BacklinksSection({
     <section
       className={cn(
         'border-border flex flex-col border-t',
-        growsToFill ? 'flex-1 min-h-0' : 'shrink-0',
+        growsToFill ? 'min-h-0 flex-1' : 'shrink-0',
         collapsed ? 'h-auto' : maxExpandedHeightClass,
       )}
       aria-label="Backlinks"
@@ -104,14 +100,10 @@ export function BacklinksSection({
       {!collapsed && (
         <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
           {busy ? (
-            <p className="text-fg-muted px-2 py-3 text-center text-xs">
-              Scanning…
-            </p>
+            <p className="text-fg-muted px-2 py-3 text-center text-xs">Scanning…</p>
           ) : backlinks.length === 0 ? (
             <p className="text-fg-muted px-2 py-3 text-center text-xs leading-relaxed">
-              {activeNotePath
-                ? 'No notes link here yet.'
-                : 'Open a note to see backlinks.'}
+              {activeNotePath ? 'No notes link here yet.' : 'Open a note to see backlinks.'}
             </p>
           ) : (
             <ul className="space-y-0.5">

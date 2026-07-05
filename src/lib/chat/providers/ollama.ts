@@ -13,17 +13,11 @@
  * Ollama box can override via Settings → AI → Base URL.
  */
 
-import type {
-  ChatCompletionRequest,
-  ChatProvider,
-  ChatStreamChunk,
-} from './types'
+import type { ChatCompletionRequest, ChatProvider, ChatStreamChunk } from './types'
 
 const DEFAULT_BASE_URL = 'http://localhost:11434/v1'
 
-async function* streamOllama(
-  req: ChatCompletionRequest,
-): AsyncGenerator<ChatStreamChunk> {
+async function* streamOllama(req: ChatCompletionRequest): AsyncGenerator<ChatStreamChunk> {
   const base = (req.baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/$/, '')
   const url = `${base}/chat/completions`
 

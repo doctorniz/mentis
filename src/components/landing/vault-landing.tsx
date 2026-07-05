@@ -16,10 +16,7 @@ import {
 import type { FileSystemAdapter } from '@/lib/fs'
 import { bootstrapNewVault, loadVaultConfig, createVault, isVault } from '@/lib/vault'
 import { discoverVaults } from '@/lib/vault/discover'
-import {
-  getStoredActiveVaultPath,
-  setStoredActiveVaultPath,
-} from '@/lib/vault/session-storage'
+import { getStoredActiveVaultPath, setStoredActiveVaultPath } from '@/lib/vault/session-storage'
 import type { VaultConfig } from '@/types/vault'
 
 export interface VaultLandingProps {
@@ -192,7 +189,9 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
       setPendingHandle(null)
       await clearStoredDirectoryHandle().catch(() => {})
       setStoredActiveVaultPath(null)
-      setError(e instanceof Error ? e.message : 'Could not reconnect — please open the folder again.')
+      setError(
+        e instanceof Error ? e.message : 'Could not reconnect — please open the folder again.',
+      )
     } finally {
       setBusy(false)
     }
@@ -249,9 +248,7 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
           <p className="text-fg-muted mt-1 text-xs font-medium tracking-wide uppercase">
             an app by Marrow Group
           </p>
-          <p className="text-fg-secondary mt-4 text-sm leading-relaxed">
-            Local first
-          </p>
+          <p className="text-fg-secondary mt-4 text-sm leading-relaxed">Local first</p>
         </div>
 
         {error && (
@@ -301,7 +298,7 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
 
         <form onSubmit={handleCreate} className="mb-10 space-y-4">
           <label className="block">
-            <span className="text-fg-secondary text-center mb-1.5 block text-xs font-medium uppercase tracking-wide">
+            <span className="text-fg-secondary mb-1.5 block text-center text-xs font-medium tracking-wide uppercase">
               New vault
             </span>
             <input
@@ -309,7 +306,7 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
               value={name}
               onChange={(ev) => setName(ev.target.value)}
               placeholder="Vault name"
-              className="border-border-strong text-center focus:border-accent focus:ring-accent/20 bg-bg text-fg placeholder:text-fg-muted w-full rounded-lg border px-3 py-2.5 text-sm shadow-sm focus:ring-2 focus:outline-none"
+              className="border-border-strong focus:border-accent focus:ring-accent/20 bg-bg text-fg placeholder:text-fg-muted w-full rounded-lg border px-3 py-2.5 text-center text-sm shadow-sm focus:ring-2 focus:outline-none"
               disabled={busy}
             />
           </label>
@@ -341,9 +338,7 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
               <FolderOpen className="size-4" />
               Open a folder
             </Button>
-            <p className="text-fg-muted mt-2 text-center text-xs">
-              Chromium only
-            </p>
+            <p className="text-fg-muted mt-2 text-center text-xs">Chromium only</p>
           </div>
         )}
 

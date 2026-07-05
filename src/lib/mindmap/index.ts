@@ -220,5 +220,8 @@ export function deleteNode(
  * Extract all node labels for search indexing.
  */
 export function extractMindmapText(file: MindmapFile): string {
-  return file.nodes.map((n) => n.data.label).filter(Boolean).join('\n')
+  return file.nodes
+    .map((n) => n.data.label)
+    .filter(Boolean)
+    .join('\n')
 }

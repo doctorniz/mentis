@@ -30,15 +30,16 @@ function readStoredTheme(): ThemeChoice {
   try {
     const v = localStorage.getItem('ink-theme')
     if (v === 'light' || v === 'dark') return v
-  } catch { /* noop */ }
+  } catch {
+    /* noop */
+  }
   return 'system'
 }
 
 function applyThemeClass(theme: ThemeChoice) {
   if (typeof document === 'undefined') return
   const isDark =
-    theme === 'dark' ||
-    (theme === 'system' && matchMedia('(prefers-color-scheme:dark)').matches)
+    theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme:dark)').matches)
   document.documentElement.classList.toggle('dark', isDark)
 }
 
@@ -48,7 +49,9 @@ function readStoredVaultMode(): VaultLayoutMode {
     const v = localStorage.getItem('ink-vault-mode')
     if (v === 'browse' || v === 'tree') return v
     if (v === 'sync') return 'tree'
-  } catch { /* noop */ }
+  } catch {
+    /* noop */
+  }
   return 'tree'
 }
 
@@ -73,7 +76,9 @@ export const useUiStore = create<UiState>()(
           localStorage.setItem('ink-vault-mode', mode)
           const path = useVaultStore.getState().activeVaultPath
           if (path) localStorage.setItem(`ink-vault-layout:${path}`, mode)
-        } catch { /* noop */ }
+        } catch {
+          /* noop */
+        }
       }),
 
     hydrateVaultLayoutForActiveVault: () =>
@@ -84,7 +89,9 @@ export const useUiStore = create<UiState>()(
           const v = localStorage.getItem(`ink-vault-layout:${path}`)
           if (v === 'browse' || v === 'tree') state.vaultMode = v
           else if (v === 'sync') state.vaultMode = 'tree'
-        } catch { /* noop */ }
+        } catch {
+          /* noop */
+        }
       }),
 
     toggleSidebar: () =>
@@ -105,7 +112,11 @@ export const useUiStore = create<UiState>()(
     setTheme: (theme) =>
       set((state) => {
         state.theme = theme
-        try { localStorage.setItem('ink-theme', theme) } catch { /* noop */ }
+        try {
+          localStorage.setItem('ink-theme', theme)
+        } catch {
+          /* noop */
+        }
         applyThemeClass(theme)
       }),
 

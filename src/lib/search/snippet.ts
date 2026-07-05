@@ -32,7 +32,10 @@ export function buildSnippet(
 
   const pad = Math.max(0, Math.floor((maxLen - bestTerm.length) / 2))
   const start = Math.max(0, bestIdx - pad)
-  const end = Math.min(t.length, bestIdx + bestTerm.length + (maxLen - bestTerm.length - (bestIdx - start)))
+  const end = Math.min(
+    t.length,
+    bestIdx + bestTerm.length + (maxLen - bestTerm.length - (bestIdx - start)),
+  )
   const before = `${start > 0 ? '…' : ''}${t.slice(start, bestIdx)}`
   const hit = t.slice(bestIdx, bestIdx + bestTerm.length)
   const after = `${t.slice(bestIdx + bestTerm.length, end)}${end < t.length ? '…' : ''}`

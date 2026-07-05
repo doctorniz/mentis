@@ -18,9 +18,9 @@ describe('board vault export helpers', () => {
 
   it('extractBoardVaultImagePaths skips http URLs', () => {
     expect(extractBoardVaultImagePaths('![](https://x/y.png)')).toEqual([])
-    expect(
-      extractBoardVaultImagePaths('![](_marrow/_board/_assets/a.png)'),
-    ).toEqual(['_marrow/_board/_assets/a.png'])
+    expect(extractBoardVaultImagePaths('![](_marrow/_board/_assets/a.png)')).toEqual([
+      '_marrow/_board/_assets/a.png',
+    ])
   })
 
   it('boardBodyIsImageOnly allows headings only besides images', () => {

@@ -67,9 +67,8 @@ export async function loadVaultConfig(fs: FileSystemAdapter): Promise<VaultConfi
       }
     }
 
-    const legacyChatProvider = (
-      parsed as { chat?: { provider?: string | null; model?: string } }
-    ).chat?.provider
+    const legacyChatProvider = (parsed as { chat?: { provider?: string | null; model?: string } })
+      .chat?.provider
     if (legacyChatProvider === 'webllm') {
       merged.chat = {
         ...DEFAULT_CHAT_SETTINGS,
@@ -98,10 +97,7 @@ export async function loadVaultConfig(fs: FileSystemAdapter): Promise<VaultConfi
   }
 }
 
-export async function saveVaultConfig(
-  fs: FileSystemAdapter,
-  config: VaultConfig,
-): Promise<void> {
+export async function saveVaultConfig(fs: FileSystemAdapter, config: VaultConfig): Promise<void> {
   await fs.writeTextFile(CONFIG_FILE, JSON.stringify(config, null, 2))
 }
 

@@ -50,14 +50,10 @@ export function ChatMessage({ message, onVaultPathOpen }: ChatMessageProps) {
             <p className="leading-snug">{message.error}</p>
           </div>
         ) : isUser ? (
-          <div className="text-fg text-sm whitespace-pre-wrap break-words">
-            {message.content}
-          </div>
+          <div className="text-fg text-sm break-words whitespace-pre-wrap">{message.content}</div>
         ) : (
           <ChatAssistantHtml
-            className={cn(
-              'text-fg max-w-none',
-            )}
+            className={cn('text-fg max-w-none')}
             html={
               renderChatMarkdown(message.content) +
               (showCursor ? '<span class="chat-cursor">▌</span>' : '')

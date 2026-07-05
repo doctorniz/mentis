@@ -39,7 +39,10 @@ export function AudioPlayerView({
 
     void assetToBlobUrl(vaultFs, path)
       .then((u) => {
-        if (revoked) { URL.revokeObjectURL(u); return }
+        if (revoked) {
+          URL.revokeObjectURL(u)
+          return
+        }
         url = u
         setBlobUrl(u)
       })
@@ -141,8 +144,8 @@ export function AudioPlayerView({
       <div className="flex w-full max-w-lg flex-col gap-5">
         {/* File header */}
         <div className="flex flex-col items-center gap-3">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-accent/10">
-            <Mic className="size-8 text-accent" />
+          <div className="bg-accent/10 flex size-16 items-center justify-center rounded-2xl">
+            <Mic className="text-accent size-8" />
           </div>
           <h2 className="text-fg text-lg font-semibold">{title}</h2>
         </div>
@@ -158,7 +161,7 @@ export function AudioPlayerView({
             type="button"
             onClick={handleTranscribe}
             disabled={transcribing}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-bg px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-hover hover:text-fg disabled:cursor-not-allowed disabled:opacity-60"
+            className="border-border bg-bg text-fg-secondary hover:bg-bg-hover hover:text-fg flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60"
           >
             {transcribing ? (
               <>
@@ -173,7 +176,7 @@ export function AudioPlayerView({
             )}
           </button>
         ) : (
-          <div className="rounded-xl border border-border bg-bg-secondary p-4">
+          <div className="border-border bg-bg-secondary rounded-xl border p-4">
             <div className="mb-2.5 flex items-center justify-between">
               <span className="text-fg-muted text-xs font-medium tracking-wide uppercase">
                 Transcript
@@ -182,18 +185,20 @@ export function AudioPlayerView({
                 <button
                   type="button"
                   onClick={handleRetranscribe}
-                  className="rounded px-2 py-1 text-xs text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg"
+                  className="text-fg-muted hover:bg-bg-hover hover:text-fg rounded px-2 py-1 text-xs transition-colors"
                 >
                   Redo
                 </button>
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="flex items-center gap-1 rounded px-2 py-1 text-xs text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg"
+                  className="text-fg-muted hover:bg-bg-hover hover:text-fg flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors"
                 >
-                  {copied
-                    ? <Check className="size-3 text-green-500" />
-                    : <Copy className="size-3" />}
+                  {copied ? (
+                    <Check className="size-3 text-green-500" />
+                  ) : (
+                    <Copy className="size-3" />
+                  )}
                   {copied ? 'Copied' : 'Copy'}
                 </button>
               </div>

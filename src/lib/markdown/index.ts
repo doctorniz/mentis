@@ -75,10 +75,7 @@ function wikiStemKey(s: string): string {
     .trim()
 }
 
-export function resolveWikiLinkPath(
-  link: string,
-  allPaths: string[],
-): string | null {
+export function resolveWikiLinkPath(link: string, allPaths: string[]): string | null {
   const needleKey = wikiStemKey(link)
 
   // Exact basename match (e.g. "My Note" ↔ `my-note.md`)

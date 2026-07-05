@@ -86,10 +86,7 @@ export function AppRoot() {
         showAbout ? (
           <AboutOverlay onBack={() => setShowAbout(false)} />
         ) : (
-          <VaultLanding
-            onVaultReady={handleVaultReady}
-            onShowAbout={() => setShowAbout(true)}
-          />
+          <VaultLanding onVaultReady={handleVaultReady} onShowAbout={() => setShowAbout(true)} />
         )
       ) : (
         <ErrorBoundary>

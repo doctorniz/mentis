@@ -8,19 +8,19 @@ There is no production-quality browser-only PPTX renderer. The old `pptx2html` /
 
 The options come down to:
 
-| Approach | Fidelity | Complexity | Bundle |
-|---|---|---|---|
-| **A. JSZip DIY parser** — parse OOXML XML, render slides to HTML/SVG | Medium (~70-80% of slides look reasonable) | High — weeks of work, but fully local | ~50KB (JSZip) |
-| **B. Convert to images at import** — extract embedded thumbnails or rasterize via offscreen rendering | Low-medium (static images, no text selection) | Low | ~50KB (JSZip) |
-| **C. Prompt user to import as PDF** — detect PPTX, show a toast suggesting PDF conversion externally | Perfect (it's a PDF) | Trivial — reuses existing PDF viewer | Zero new deps |
+| Approach                                                                                              | Fidelity                                      | Complexity                            | Bundle        |
+| ----------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------- | ------------- |
+| **A. JSZip DIY parser** — parse OOXML XML, render slides to HTML/SVG                                  | Medium (~70-80% of slides look reasonable)    | High — weeks of work, but fully local | ~50KB (JSZip) |
+| **B. Convert to images at import** — extract embedded thumbnails or rasterize via offscreen rendering | Low-medium (static images, no text selection) | Low                                   | ~50KB (JSZip) |
+| **C. Prompt user to import as PDF** — detect PPTX, show a toast suggesting PDF conversion externally  | Perfect (it's a PDF)                          | Trivial — reuses existing PDF viewer  | Zero new deps |
 
 **Recommended: Approach A** with a fallback to B for slides that fail to render. This gives Mentis a real PPTX viewer that handles the majority of presentation content (text boxes, images, shapes, backgrounds, basic formatting), looks native to the app, and degrades gracefully. Complex elements (charts, SmartArt, 3D effects) show placeholders instead of breaking.
 
 ## Dependencies
 
-| Package | Purpose | Size |
-|---|---|---|
-| `jszip` | Extract PPTX archive (XML + media) | ~50KB |
+| Package       | Purpose                                         | Size            |
+| ------------- | ----------------------------------------------- | --------------- |
+| `jszip`       | Extract PPTX archive (XML + media)              | ~50KB           |
 | `html2pdf.js` | Slide grid → PDF export (shared with DOCX/XLSX) | ~300KB (shared) |
 
 Both lazy-imported. No heavy rendering engines.
@@ -70,7 +70,7 @@ The core parser. Takes `Uint8Array`, returns a structured representation of the 
 
 ```ts
 interface PptxPresentation {
-  slideWidth: number        // in pixels (converted from EMU)
+  slideWidth: number // in pixels (converted from EMU)
   slideHeight: number
   slides: PptxSlide[]
   theme: PptxTheme
@@ -89,11 +89,14 @@ type SlideElement =
   | ShapeElement
   | GroupElement
   | TableElement
-  | PlaceholderElement      // fallback for unsupported elements
+  | PlaceholderElement // fallback for unsupported elements
 
 interface TextBoxElement {
   type: 'textbox'
-  x: number; y: number; w: number; h: number
+  x: number
+  y: number
+  w: number
+  h: number
   rotation?: number
   paragraphs: TextParagraph[]
 }
@@ -110,34 +113,43 @@ interface TextRun {
   bold?: boolean
   italic?: boolean
   underline?: boolean
-  fontSize?: number         // in pt
+  fontSize?: number // in pt
   fontFamily?: string
-  color?: string            // resolved hex (not theme ref)
+  color?: string // resolved hex (not theme ref)
   highlight?: string
   link?: string
 }
 
 interface ImageElement {
   type: 'image'
-  x: number; y: number; w: number; h: number
+  x: number
+  y: number
+  w: number
+  h: number
   rotation?: number
-  src: string               // blob URL from extracted media
+  src: string // blob URL from extracted media
   alt?: string
 }
 
 interface ShapeElement {
   type: 'shape'
-  x: number; y: number; w: number; h: number
+  x: number
+  y: number
+  w: number
+  h: number
   rotation?: number
-  preset?: string           // e.g. 'rect', 'roundRect', 'ellipse', 'arrow'
-  fill?: string             // hex color
+  preset?: string // e.g. 'rect', 'roundRect', 'ellipse', 'arrow'
+  fill?: string // hex color
   stroke?: { color: string; width: number }
-  text?: TextParagraph[]    // shapes can contain text
+  text?: TextParagraph[] // shapes can contain text
 }
 
 interface TableElement {
   type: 'table'
-  x: number; y: number; w: number; h: number
+  x: number
+  y: number
+  w: number
+  h: number
   rows: TableRow[]
 }
 
@@ -160,30 +172,37 @@ interface TableCell {
 
 interface SlideBackground {
   color?: string
-  image?: string            // blob URL
+  image?: string // blob URL
   gradient?: { stops: Array<{ pos: number; color: string }> }
 }
 
 interface PptxTheme {
-  colors: Record<string, string>    // dk1, lt1, accent1-6, etc. resolved to hex
+  colors: Record<string, string> // dk1, lt1, accent1-6, etc. resolved to hex
   fontHeading: string
   fontBody: string
 }
 
 interface GroupElement {
   type: 'group'
-  x: number; y: number; w: number; h: number
+  x: number
+  y: number
+  w: number
+  h: number
   children: SlideElement[]
 }
 
 interface PlaceholderElement {
   type: 'placeholder'
-  x: number; y: number; w: number; h: number
-  label: string             // e.g. "Chart", "SmartArt", "Video"
+  x: number
+  y: number
+  w: number
+  h: number
+  label: string // e.g. "Chart", "SmartArt", "Video"
 }
 ```
 
 **Parsing flow:**
+
 1. Open ZIP with JSZip
 2. Parse `ppt/presentation.xml` for slide size and slide order
 3. Parse `ppt/theme/theme1.xml` for color scheme and font definitions
@@ -239,6 +258,7 @@ PresentationViewer({ tabId, path, onRenamed })
 **Grid mode:** All slides in a responsive grid, useful for overview. Toggle between modes via a toolbar button.
 
 **Toolbar (top bar):**
+
 - `InlineFileTitle` for rename + `.pptx` badge
 - Slide counter: "3 / 12"
 - Previous / Next buttons (arrow icons)
@@ -248,6 +268,7 @@ PresentationViewer({ tabId, path, onRenamed })
 - Speaker notes toggle (if notes exist)
 
 **Keyboard navigation:**
+
 - `←` / `→` or `↑` / `↓` — previous / next slide
 - `Home` / `End` — first / last slide
 - `F` — toggle filmstrip / grid
@@ -281,6 +302,7 @@ export async function exportPresentationAsPdf(
 - Return `Uint8Array` for vault write
 
 **In the viewer**, the Export PDF button:
+
 1. Shows "Exporting…" state with a progress bar (per-slide progress)
 2. Calls the export utility
 3. Writes `<name>.pdf` next to the source file
@@ -314,20 +336,20 @@ export async function exportPresentationAsPdf(
 
 ## File summary
 
-| File | Action |
-|---|---|
-| `src/types/files.ts` | Add `Presentation` to enum + `getFileType` |
-| `src/types/editor.ts` | Add `'presentation'` to type union |
-| `src/lib/notes/editor-tab-from-path.ts` | Add Presentation case |
-| `src/lib/notes/tree-filter.ts` | Add Presentation to filter |
-| `src/components/notes/notes-file-tree.tsx` | Add icon |
-| `src/lib/presentation/parse-pptx.ts` | **New** — OOXML parser |
-| `src/components/notes/slide-renderer.tsx` | **New** — single slide HTML renderer |
-| `src/components/notes/presentation-viewer.tsx` | **New** — viewer with filmstrip/grid/nav |
-| `src/lib/presentation/export-pdf.ts` | **New** — multi-page PDF export |
-| `src/components/views/notes-view.tsx` | Add routing branch |
-| `src/app/globals.css` | Add slide/filmstrip styles |
-| `package.json` | Add `jszip` |
+| File                                           | Action                                     |
+| ---------------------------------------------- | ------------------------------------------ |
+| `src/types/files.ts`                           | Add `Presentation` to enum + `getFileType` |
+| `src/types/editor.ts`                          | Add `'presentation'` to type union         |
+| `src/lib/notes/editor-tab-from-path.ts`        | Add Presentation case                      |
+| `src/lib/notes/tree-filter.ts`                 | Add Presentation to filter                 |
+| `src/components/notes/notes-file-tree.tsx`     | Add icon                                   |
+| `src/lib/presentation/parse-pptx.ts`           | **New** — OOXML parser                     |
+| `src/components/notes/slide-renderer.tsx`      | **New** — single slide HTML renderer       |
+| `src/components/notes/presentation-viewer.tsx` | **New** — viewer with filmstrip/grid/nav   |
+| `src/lib/presentation/export-pdf.ts`           | **New** — multi-page PDF export            |
+| `src/components/views/notes-view.tsx`          | Add routing branch                         |
+| `src/app/globals.css`                          | Add slide/filmstrip styles                 |
+| `package.json`                                 | Add `jszip`                                |
 
 ## Rendering coverage
 

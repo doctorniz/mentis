@@ -33,9 +33,7 @@ test.describe('7 — Task Manager', () => {
       await expect(page.getByText('Buy milk')).toBeVisible({ timeout: 5_000 })
     })
 
-    test('7.1.2 "Weekly standup every monday" sets repeat=weekly', async ({
-      vaultPage: page,
-    }) => {
+    test('7.1.2 "Weekly standup every monday" sets repeat=weekly', async ({ vaultPage: page }) => {
       const input = page.getByPlaceholder('Add a task...')
       await input.fill('Weekly standup every monday')
 
@@ -49,9 +47,7 @@ test.describe('7 — Task Manager', () => {
       await expect(page.getByText('Weekly standup')).toBeVisible({ timeout: 5_000 })
     })
 
-    test('7.1.4 "Call dentist >tomorrow" sets due to tomorrow', async ({
-      vaultPage: page,
-    }) => {
+    test('7.1.4 "Call dentist >tomorrow" sets due to tomorrow', async ({ vaultPage: page }) => {
       const input = page.getByPlaceholder('Add a task...')
       await input.fill('Call dentist >tomorrow')
 
@@ -201,9 +197,7 @@ test.describe('7 — Task Manager', () => {
       await expect(taskText).not.toBeVisible({ timeout: 5_000 })
     })
 
-    test('7.3.7 create custom list — subfolder created', async ({
-      vaultPage: page,
-    }) => {
+    test('7.3.7 create custom list — subfolder created', async ({ vaultPage: page }) => {
       // Click "Add list" in the sidebar
       const addListBtn = page.getByText('Add list')
       await addListBtn.click()
@@ -223,53 +217,48 @@ test.describe('7 — Task Manager', () => {
   // ─── 7.4 Recurring Tasks ───────────────────────────────────────────────────
 
   test.describe('7.4 Recurring Tasks', () => {
-    test.fixme(
-      '7.4.1 complete repeating task — due rolls forward',
-      async ({ vaultPage: page }) => {
-        // Create a recurring task
-        const input = page.getByPlaceholder('Add a task...')
-        await input.fill('Standup every monday')
-        await input.press('Enter')
-        await page.waitForTimeout(1_000)
+    test.fixme('7.4.1 complete repeating task — due rolls forward', async ({ vaultPage: page }) => {
+      // Create a recurring task
+      const input = page.getByPlaceholder('Add a task...')
+      await input.fill('Standup every monday')
+      await input.press('Enter')
+      await page.waitForTimeout(1_000)
 
-        const taskText = page.getByText('Standup')
-        await expect(taskText).toBeVisible({ timeout: 5_000 })
+      const taskText = page.getByText('Standup')
+      await expect(taskText).toBeVisible({ timeout: 5_000 })
 
-        // Click the task to open detail dialog
-        const taskRow = taskText.locator('xpath=ancestor::div[@role="button"]')
-        await taskRow.click()
-        await page.waitForTimeout(500)
+      // Click the task to open detail dialog
+      const taskRow = taskText.locator('xpath=ancestor::div[@role="button"]')
+      await taskRow.click()
+      await page.waitForTimeout(500)
 
-        // Note the current due date in the dialog
-        const dueDateInput = page
-          .locator('[role="dialog"]')
-          .locator('input[type="date"]')
-        const dueBefore = await dueDateInput.inputValue()
+      // Note the current due date in the dialog
+      const dueDateInput = page.locator('[role="dialog"]').locator('input[type="date"]')
+      const dueBefore = await dueDateInput.inputValue()
 
-        // Close dialog
-        const cancelBtn = page.locator('[role="dialog"]').getByText('Cancel')
-        await cancelBtn.click()
-        await page.waitForTimeout(300)
+      // Close dialog
+      const cancelBtn = page.locator('[role="dialog"]').getByText('Cancel')
+      await cancelBtn.click()
+      await page.waitForTimeout(300)
 
-        // Toggle complete — should roll due forward, not mark done
-        const toggleBtn = taskRow.locator(
-          'button[aria-label="Mark complete"], button[aria-label="Mark incomplete"]',
-        )
-        await toggleBtn.click()
-        await page.waitForTimeout(1_500)
+      // Toggle complete — should roll due forward, not mark done
+      const toggleBtn = taskRow.locator(
+        'button[aria-label="Mark complete"], button[aria-label="Mark incomplete"]',
+      )
+      await toggleBtn.click()
+      await page.waitForTimeout(1_500)
 
-        // Re-open detail dialog
-        await taskRow.click()
-        await page.waitForTimeout(500)
+      // Re-open detail dialog
+      await taskRow.click()
+      await page.waitForTimeout(500)
 
-        const dueAfter = await page
-          .locator('[role="dialog"]')
-          .locator('input[type="date"]')
-          .inputValue()
+      const dueAfter = await page
+        .locator('[role="dialog"]')
+        .locator('input[type="date"]')
+        .inputValue()
 
-        // Due should have moved forward (later date)
-        expect(dueAfter > dueBefore).toBe(true)
-      },
-    )
+      // Due should have moved forward (later date)
+      expect(dueAfter > dueBefore).toBe(true)
+    })
   })
 })

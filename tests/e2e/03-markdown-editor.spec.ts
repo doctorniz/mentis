@@ -1,4 +1,11 @@
-import { test, expect, navigateTo, createMarkdownNote, typeInEditor, waitForAutoSave } from './fixtures'
+import {
+  test,
+  expect,
+  navigateTo,
+  createMarkdownNote,
+  typeInEditor,
+  waitForAutoSave,
+} from './fixtures'
 
 test.describe('Markdown Editor', () => {
   test.beforeEach(async ({ vaultPage: page }) => {
@@ -32,7 +39,9 @@ test.describe('Markdown Editor', () => {
       await expect(h1Option).toBeVisible()
     })
 
-    test('3.1.3 Select Heading 1, 2, 3 — verify block type changes', async ({ vaultPage: page }) => {
+    test('3.1.3 Select Heading 1, 2, 3 — verify block type changes', async ({
+      vaultPage: page,
+    }) => {
       const editor = page.locator('.tiptap').first()
 
       for (const level of [1, 2, 3] as const) {
@@ -210,7 +219,9 @@ test.describe('Markdown Editor', () => {
   // ── 3.5 Tables, Code Blocks, Task Lists ───────────────────────────
 
   test.describe('3.5 Tables, Code Blocks, Task Lists', () => {
-    test('3.5.2 Code block with language hint — verify syntax highlighting', async ({ vaultPage: page }) => {
+    test('3.5.2 Code block with language hint — verify syntax highlighting', async ({
+      vaultPage: page,
+    }) => {
       const editor = page.locator('.tiptap').first()
       await editor.click()
       await editor.press('Enter')
@@ -289,7 +300,9 @@ test.describe('Markdown Editor', () => {
       await expect(textarea).toContainText('Hello world')
     })
 
-    test('3.7.2 Edit in source mode — switch back — changes reflected', async ({ vaultPage: page }) => {
+    test('3.7.2 Edit in source mode — switch back — changes reflected', async ({
+      vaultPage: page,
+    }) => {
       const editor = page.locator('.tiptap').first()
       await editor.click()
       await editor.press('Enter')
@@ -350,7 +363,9 @@ test.describe('Markdown Editor', () => {
   // ── 3.8 Frontmatter ───────────────────────────────────────────────
 
   test.describe('3.8 Frontmatter', () => {
-    test('3.8.1 File with YAML frontmatter — parsed correctly, not shown in editor', async ({ vaultPage: page }) => {
+    test('3.8.1 File with YAML frontmatter — parsed correctly, not shown in editor', async ({
+      vaultPage: page,
+    }) => {
       // Write a markdown file with frontmatter directly via OPFS
       await page.evaluate(async () => {
         const content = `---
@@ -365,7 +380,9 @@ This is the body after frontmatter.`
         const root = await navigator.storage.getDirectory()
 
         // Walk into the vault directory structure
-        async function findVaultDir(dir: FileSystemDirectoryHandle): Promise<FileSystemDirectoryHandle | null> {
+        async function findVaultDir(
+          dir: FileSystemDirectoryHandle,
+        ): Promise<FileSystemDirectoryHandle | null> {
           for await (const [name, handle] of (dir as any).entries()) {
             if (handle.kind === 'directory' && name !== '_marrow') {
               return handle as FileSystemDirectoryHandle
@@ -374,7 +391,7 @@ This is the body after frontmatter.`
           return dir
         }
 
-        const vaultDir = await findVaultDir(root) ?? root
+        const vaultDir = (await findVaultDir(root)) ?? root
         const file = await vaultDir.getFileHandle('frontmatter-test.md', { create: true })
         const writable = await file.createWritable()
         await writable.write(new TextEncoder().encode(content))

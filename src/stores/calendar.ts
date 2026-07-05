@@ -31,11 +31,7 @@ interface CalendarState {
   removeEvent: (fs: FileSystemAdapter, path: string) => Promise<void>
 }
 
-async function collectEventFiles(
-  fs: FileSystemAdapter,
-  dir: string,
-  acc: string[],
-): Promise<void> {
+async function collectEventFiles(fs: FileSystemAdapter, dir: string, acc: string[]): Promise<void> {
   const entries = await fs.readdir(dir)
   for (const e of entries) {
     if (e.isDirectory) {
@@ -52,11 +48,16 @@ export const useCalendarStore = create<CalendarState>()(
     loading: false,
 
     loadEvents: async (fs) => {
-      set((s) => { s.loading = true })
+      set((s) => {
+        s.loading = true
+      })
       try {
         const exists = await fs.exists(CALENDAR_DIR)
         if (!exists) {
-          set((s) => { s.events = []; s.loading = false })
+          set((s) => {
+            s.events = []
+            s.loading = false
+          })
           return
         }
         const paths: string[] = []
@@ -66,11 +67,18 @@ export const useCalendarStore = create<CalendarState>()(
           try {
             const raw = await fs.readTextFile(p)
             events.push(parseCalendarEvent(p, raw))
-          } catch { /* skip unreadable */ }
+          } catch {
+            /* skip unreadable */
+          }
         }
-        set((s) => { s.events = events; s.loading = false })
+        set((s) => {
+          s.events = events
+          s.loading = false
+        })
       } catch {
-        set((s) => { s.loading = false })
+        set((s) => {
+          s.loading = false
+        })
       }
     },
 
@@ -84,7 +92,7 @@ export const useCalendarStore = create<CalendarState>()(
         allDay: opts.allDay,
         color: opts.color,
         ...(opts.location ? { location: opts.location } : {}),
-        ...(opts.url      ? { url:      opts.url      } : {}),
+        ...(opts.url ? { url: opts.url } : {}),
       })
 
       const filename = generateEventFilename()
@@ -93,7 +101,9 @@ export const useCalendarStore = create<CalendarState>()(
       await fs.writeTextFile(path, raw)
 
       const ev = parseCalendarEvent(path, raw)
-      set((s) => { s.events.push(ev) })
+      set((s) => {
+        s.events.push(ev)
+      })
       return ev
     },
 
@@ -108,7 +118,7 @@ export const useCalendarStore = create<CalendarState>()(
         allDay: opts.allDay,
         color: opts.color,
         ...(opts.location ? { location: opts.location } : {}),
-        ...(opts.url      ? { url:      opts.url      } : {}),
+        ...(opts.url ? { url: opts.url } : {}),
         created: existing.created,
       })
 
@@ -123,8 +133,14 @@ export const useCalendarStore = create<CalendarState>()(
     },
 
     removeEvent: async (fs, path) => {
-      try { await fs.remove(path) } catch { /* already gone */ }
-      set((s) => { s.events = s.events.filter((e) => e.path !== path) })
+      try {
+        await fs.remove(path)
+      } catch {
+        /* already gone */
+      }
+      set((s) => {
+        s.events = s.events.filter((e) => e.path !== path)
+      })
     },
   })),
 )

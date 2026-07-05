@@ -6,8 +6,8 @@ Mentis can optionally sync vault files to **Dropbox**. Sync is **last-write-wins
 
 Read at **build time** for the static export (`NEXT_PUBLIC_*`). Set in `.env.local` and restart `pnpm dev` / `pnpm build`.
 
-| Variable | Used for | What it is |
-|----------|-----------|------------|
+| Variable                            | Used for      | What it is                                                                                                                         |
+| ----------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | **`NEXT_PUBLIC_DROPBOX_CLIENT_ID`** | Dropbox OAuth | **App key** from the [Dropbox App Console](https://www.dropbox.com/developers/apps). Not a secret. Register redirect URIs (below). |
 
 If it is missing, **Connect Dropbox** in Settings will alert.

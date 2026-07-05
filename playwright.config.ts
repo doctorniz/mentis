@@ -17,10 +17,7 @@ export default defineConfig({
     video: 'retain-on-failure',
     actionTimeout: 15_000,
     launchOptions: {
-      args: [
-        '--enable-features=SharedArrayBuffer',
-        '--enable-experimental-web-platform-features',
-      ],
+      args: ['--enable-features=SharedArrayBuffer', '--enable-experimental-web-platform-features'],
     },
   },
 

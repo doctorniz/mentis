@@ -89,8 +89,8 @@ const FEATURES: {
       <>
         <p>
           A full WYSIWYG editor that renders Markdown live, with a toggle to raw source view.
-          Supports GFM tables, task lists, math (KaTeX), code blocks with syntax highlighting,
-          slash commands, and drag-and-drop image embeds.
+          Supports GFM tables, task lists, math (KaTeX), code blocks with syntax highlighting, slash
+          commands, and drag-and-drop image embeds.
         </p>
         <p>
           Every note is a plain <code className="text-accent text-xs">.md</code> file — open your
@@ -104,9 +104,8 @@ const FEATURES: {
     title: 'Wiki-Links & Backlinks',
     content: (
       <p>
-        Link between notes with{' '}
-        <code className="text-accent text-xs">{'[[note-name]]'}</code> syntax.
-        Autocomplete suggestions appear as you type. A backlinks panel shows every note that
+        Link between notes with <code className="text-accent text-xs">{'[[note-name]]'}</code>{' '}
+        syntax. Autocomplete suggestions appear as you type. A backlinks panel shows every note that
         references the current one.
       </p>
     ),
@@ -148,9 +147,9 @@ const FEATURES: {
     title: 'Board',
     content: (
       <p>
-        A quick-capture notice board for thoughts, images, and voice recordings. Masonry layout
-        with inline editing. Audio thoughts can be transcribed offline using Whisper. Move any item
-        to the vault when it matures.
+        A quick-capture notice board for thoughts, images, and voice recordings. Masonry layout with
+        inline editing. Audio thoughts can be transcribed offline using Whisper. Move any item to
+        the vault when it matures.
       </p>
     ),
   },
@@ -170,8 +169,8 @@ const FEATURES: {
     title: 'Tasks',
     content: (
       <p>
-        A local-first task manager with priorities, due dates, tags, subtasks, and recurring
-        tasks. Natural language quick-add understands phrases like &quot;!1 #work &gt;tomorrow&quot;.
+        A local-first task manager with priorities, due dates, tags, subtasks, and recurring tasks.
+        Natural language quick-add understands phrases like &quot;!1 #work &gt;tomorrow&quot;.
         Export to iCalendar format.
       </p>
     ),
@@ -181,8 +180,8 @@ const FEATURES: {
     title: 'Calendar',
     content: (
       <p>
-        Day, week, and month views for events stored as Markdown files. Tasks with due dates
-        surface automatically. Color-coded events with all-day and timed support.
+        Day, week, and month views for events stored as Markdown files. Tasks with due dates surface
+        automatically. Color-coded events with all-day and timed support.
       </p>
     ),
   },
@@ -191,10 +190,9 @@ const FEATURES: {
     title: 'Kanban Boards',
     content: (
       <p>
-        Any Markdown file with{' '}
-        <code className="text-accent text-xs">type: kanban</code> frontmatter renders as a
-        drag-and-drop board. Columns are headings, cards are checklist items. The file stays a
-        readable <code className="text-accent text-xs">.md</code> everywhere else.
+        Any Markdown file with <code className="text-accent text-xs">type: kanban</code> frontmatter
+        renders as a drag-and-drop board. Columns are headings, cards are checklist items. The file
+        stays a readable <code className="text-accent text-xs">.md</code> everywhere else.
       </p>
     ),
   },
@@ -213,9 +211,9 @@ const FEATURES: {
     title: 'Presentations',
     content: (
       <p>
-        Open and edit PowerPoint (<code className="text-accent text-xs">.pptx</code>) files
-        inline with a ribbon UI for text, shapes, images, and slide management. Auto-saves edits
-        back to the vault.
+        Open and edit PowerPoint (<code className="text-accent text-xs">.pptx</code>) files inline
+        with a ribbon UI for text, shapes, images, and slide management. Auto-saves edits back to
+        the vault.
       </p>
     ),
   },
@@ -225,13 +223,11 @@ const FEATURES: {
     content: (
       <>
         <p>
-          Bring your own LLM — supports OpenRouter, OpenAI, Anthropic, Gemini, Ollama, and a
-          fully offline local model (Gemma). Chat per-document or across the entire vault with
-          RAG-powered context.
+          Bring your own LLM — supports OpenRouter, OpenAI, Anthropic, Gemini, Ollama, and a fully
+          offline local model (Gemma). Chat per-document or across the entire vault with RAG-powered
+          context.
         </p>
-        <p>
-          API keys are stored locally and never leave your device.
-        </p>
+        <p>API keys are stored locally and never leave your device.</p>
       </>
     ),
   },
@@ -240,9 +236,8 @@ const FEATURES: {
     title: 'Full-Text Search',
     content: (
       <p>
-        Instant search across all notes, PDFs, and canvases with fuzzy matching, tag filters,
-        date ranges, folder prefixes, and file-type filters. Index updates incrementally on every
-        save.
+        Instant search across all notes, PDFs, and canvases with fuzzy matching, tag filters, date
+        ranges, folder prefixes, and file-type filters. Index updates incrementally on every save.
       </p>
     ),
   },
@@ -278,7 +273,7 @@ export function AboutOverlay({ onBack }: { onBack: () => void }) {
   return (
     <div className="bg-bg-secondary flex min-h-screen flex-col">
       {/* Top bar */}
-      <div className="border-border sticky top-0 z-10 flex items-center gap-3 border-b bg-bg-secondary/80 px-4 py-3 backdrop-blur-sm">
+      <div className="border-border bg-bg-secondary/80 sticky top-0 z-10 flex items-center gap-3 border-b px-4 py-3 backdrop-blur-sm">
         <button
           type="button"
           onClick={onBack}
@@ -309,8 +304,8 @@ export function AboutOverlay({ onBack }: { onBack: () => void }) {
             <p className="text-fg-secondary text-sm leading-relaxed">
               Mentis is a <strong className="text-fg font-medium">local-first</strong>,
               offline-capable workspace for notes, documents, and creative work. Every file you
-              create — Markdown notes, PDFs, drawings, tasks — lives on your device as a plain
-              file you fully own. No account required, no cloud dependency, no lock-in.
+              create — Markdown notes, PDFs, drawings, tasks — lives on your device as a plain file
+              you fully own. No account required, no cloud dependency, no lock-in.
             </p>
           </section>
 
@@ -319,10 +314,10 @@ export function AboutOverlay({ onBack }: { onBack: () => void }) {
             <h2 className="text-fg mb-3 text-lg font-semibold">Primary use</h2>
             <p className="text-fg-secondary text-sm leading-relaxed">
               A single place to write, think, and organise knowledge. Open or create a{' '}
-              <strong className="text-fg font-medium">vault</strong> — a folder on your
-              device — and everything lives inside it: notes in Markdown, annotated PDFs,
-              freehand drawings, tasks, bookmarks, and more. Switch between a file tree, a
-              visual graph of connections, or a quick-capture board depending on how you work.
+              <strong className="text-fg font-medium">vault</strong> — a folder on your device — and
+              everything lives inside it: notes in Markdown, annotated PDFs, freehand drawings,
+              tasks, bookmarks, and more. Switch between a file tree, a visual graph of connections,
+              or a quick-capture board depending on how you work.
             </p>
           </section>
 
@@ -330,33 +325,31 @@ export function AboutOverlay({ onBack }: { onBack: () => void }) {
           <section className="mb-10">
             <h2 className="text-fg mb-3 text-lg font-semibold">Scope &amp; secondary uses</h2>
             <div className="text-fg-secondary space-y-3 text-sm leading-relaxed">
-              <p>
-                While note-taking is the core, Mentis doubles as:
-              </p>
+              <p>While note-taking is the core, Mentis doubles as:</p>
               <ul className="list-inside list-disc space-y-1.5 pl-1">
                 <li>
-                  <strong className="text-fg font-medium">PDF editor</strong> — annotate,
-                  highlight, sign, fill forms, merge, split, and reorder pages.
+                  <strong className="text-fg font-medium">PDF editor</strong> — annotate, highlight,
+                  sign, fill forms, merge, split, and reorder pages.
                 </li>
                 <li>
                   <strong className="text-fg font-medium">Drawing canvas</strong> — pressure-
                   sensitive, layer-based raster art with infinite zoom.
                 </li>
                 <li>
-                  <strong className="text-fg font-medium">Task manager</strong> — priorities,
-                  due dates, recurring tasks, and natural language quick-add.
+                  <strong className="text-fg font-medium">Task manager</strong> — priorities, due
+                  dates, recurring tasks, and natural language quick-add.
                 </li>
                 <li>
-                  <strong className="text-fg font-medium">Bookmark organiser</strong> — save
-                  web links with auto-fetched metadata.
+                  <strong className="text-fg font-medium">Bookmark organiser</strong> — save web
+                  links with auto-fetched metadata.
                 </li>
                 <li>
-                  <strong className="text-fg font-medium">Voice recorder</strong> — MP3
-                  recording with offline Whisper transcription.
+                  <strong className="text-fg font-medium">Voice recorder</strong> — MP3 recording
+                  with offline Whisper transcription.
                 </li>
                 <li>
-                  <strong className="text-fg font-medium">Presentation viewer</strong> — open
-                  and edit <code className="text-accent text-xs">.pptx</code> files inline.
+                  <strong className="text-fg font-medium">Presentation viewer</strong> — open and
+                  edit <code className="text-accent text-xs">.pptx</code> files inline.
                 </li>
               </ul>
               <p>
@@ -367,26 +360,21 @@ export function AboutOverlay({ onBack }: { onBack: () => void }) {
           </section>
 
           {/* Privacy */}
-          <section className="mb-10 flex items-start gap-3 rounded-lg border border-border bg-bg px-5 py-4">
+          <section className="border-border bg-bg mb-10 flex items-start gap-3 rounded-lg border px-5 py-4">
             <Shield className="text-success mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
             <div className="text-fg-secondary text-sm leading-relaxed">
-              <strong className="text-fg font-medium">Privacy by design.</strong> No telemetry,
-              no account, no data leaves your device unless you opt into cloud sync. AI chat keys
-              are stored locally and never transmitted through Mentis servers.
+              <strong className="text-fg font-medium">Privacy by design.</strong> No telemetry, no
+              account, no data leaves your device unless you opt into cloud sync. AI chat keys are
+              stored locally and never transmitted through Mentis servers.
             </div>
           </section>
 
           {/* Features accordion */}
           <section className="mb-16">
             <h2 className="text-fg mb-4 text-lg font-semibold">Features</h2>
-            <div className="border-border overflow-hidden rounded-lg border bg-bg">
+            <div className="border-border bg-bg overflow-hidden rounded-lg border">
               {FEATURES.map((f) => (
-                <AccordionItem
-                  key={f.title}
-                  icon={f.icon}
-                  iconColor={f.iconColor}
-                  title={f.title}
-                >
+                <AccordionItem key={f.title} icon={f.icon} iconColor={f.iconColor} title={f.title}>
                   {f.content}
                 </AccordionItem>
               ))}

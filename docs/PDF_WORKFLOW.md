@@ -94,12 +94,12 @@ This document describes product behaviour for **Mentis**. Repository **licensing
 
 ### Page Style Specifications
 
-| Style | Description |
-|---|---|
-| **Blank** | Pure white page, no lines or marks |
-| **Lined** | Horizontal lines at 8mm intervals, with a left margin line |
-| **Grid** | 5mm × 5mm square grid |
-| **Dot grid** | Dots at 5mm intervals in a grid pattern |
+| Style        | Description                                                |
+| ------------ | ---------------------------------------------------------- |
+| **Blank**    | Pure white page, no lines or marks                         |
+| **Lined**    | Horizontal lines at 8mm intervals, with a left margin line |
+| **Grid**     | 5mm × 5mm square grid                                      |
+| **Dot grid** | Dots at 5mm intervals in a grid pattern                    |
 
 ## 12. Export & Share
 

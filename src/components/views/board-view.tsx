@@ -51,8 +51,14 @@ function ColorPickerPopover({
         <button
           key={c}
           type="button"
-          onClick={() => { onPick(c); onClose() }}
-          className={cn('size-6 rounded-full border-2 border-transparent transition-transform hover:scale-110', COLOR_DOT[c])}
+          onClick={() => {
+            onPick(c)
+            onClose()
+          }}
+          className={cn(
+            'size-6 rounded-full border-2 border-transparent transition-transform hover:scale-110',
+            COLOR_DOT[c],
+          )}
           aria-label={`${c} thought`}
         />
       ))}

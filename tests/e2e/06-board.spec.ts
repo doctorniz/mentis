@@ -22,9 +22,9 @@ async function openBoard(page: import('@playwright/test').Page) {
 /** Create a thought via the toolbar button and wait for editor to mount. */
 async function createThought(page: import('@playwright/test').Page) {
   // Use the "Add thought" button (empty state) or toolbar "Thought" button
-  const addBtn = page.getByRole('button', { name: /add thought/i }).or(
-    page.getByRole('button', { name: /^Thought$/i }),
-  )
+  const addBtn = page
+    .getByRole('button', { name: /add thought/i })
+    .or(page.getByRole('button', { name: /^Thought$/i }))
   await addBtn.first().click()
   await page.waitForTimeout(600)
 }
@@ -61,14 +61,16 @@ test.describe('6.1 Thought CRUD', () => {
     await page.waitForTimeout(400)
 
     // Card should appear in the masonry grid with readable content
-    await expect(page.locator('.board-card-prose').filter({ hasText: 'Test thought' })).toBeVisible()
+    await expect(
+      page.locator('.board-card-prose').filter({ hasText: 'Test thought' }),
+    ).toBeVisible()
   })
 
   test('6.1.2 Set color — verify visual change on creation', async ({ vaultPage: page }) => {
     // Right-click the "Thought" / "Add thought" button to get the color picker
-    const addBtn = page.getByRole('button', { name: /add thought/i }).or(
-      page.getByRole('button', { name: /^Thought$/i }),
-    )
+    const addBtn = page
+      .getByRole('button', { name: /add thought/i })
+      .or(page.getByRole('button', { name: /^Thought$/i }))
     await addBtn.first().click({ button: 'right' })
     await page.waitForTimeout(400)
 
@@ -105,7 +107,9 @@ test.describe('6.1 Thought CRUD', () => {
     await page.waitForTimeout(500)
 
     // Verify the title appears in read mode
-    await expect(page.locator('.board-card-prose').filter({ hasText: 'Original title' })).toBeVisible()
+    await expect(
+      page.locator('.board-card-prose').filter({ hasText: 'Original title' }),
+    ).toBeVisible()
 
     // Click the card to re-enter edit mode
     const card = cardByText(page, 'Original title')
@@ -121,7 +125,9 @@ test.describe('6.1 Thought CRUD', () => {
     await page.keyboard.press('Escape')
     await page.waitForTimeout(500)
 
-    await expect(page.locator('.board-card-prose').filter({ hasText: 'Updated title' })).toBeVisible()
+    await expect(
+      page.locator('.board-card-prose').filter({ hasText: 'Updated title' }),
+    ).toBeVisible()
   })
 
   test('6.1.4 Inline edit body', async ({ vaultPage: page }) => {
@@ -167,7 +173,9 @@ test.describe('6.1 Thought CRUD', () => {
     await expect(cardByText(page, 'Delete me')).toBeHidden()
   })
 
-  test('6.1.6 Auto-save on edit — content persists after navigation', async ({ vaultPage: page }) => {
+  test('6.1.6 Auto-save on edit — content persists after navigation', async ({
+    vaultPage: page,
+  }) => {
     await createThought(page)
     const editor = boardEditor(page)
     await expect(editor).toBeVisible()
@@ -185,8 +193,12 @@ test.describe('6.1 Thought CRUD', () => {
     await page.waitForTimeout(500)
     await openBoard(page)
 
-    await expect(page.locator('.board-card-prose').filter({ hasText: 'Persisted thought' })).toBeVisible()
-    await expect(page.locator('.board-card-prose').filter({ hasText: 'Body that should persist.' })).toBeVisible()
+    await expect(
+      page.locator('.board-card-prose').filter({ hasText: 'Persisted thought' }),
+    ).toBeVisible()
+    await expect(
+      page.locator('.board-card-prose').filter({ hasText: 'Body that should persist.' }),
+    ).toBeVisible()
   })
 })
 

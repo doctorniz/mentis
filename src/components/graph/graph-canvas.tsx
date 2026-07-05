@@ -98,9 +98,18 @@ function nodeRadius(n: GraphNode, maxLinks: number): number {
 }
 
 /** Rounded-rect helper (shared by pdf, docx). */
-function traceRoundedRect(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, cornerRatio = 0.3): void {
+function traceRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  s: number,
+  cornerRatio = 0.3,
+): void {
   const corner = s * cornerRatio
-  const x = cx - s; const y = cy - s; const w = s * 2; const h = s * 2
+  const x = cx - s
+  const y = cy - s
+  const w = s * 2
+  const h = s * 2
   ctx.moveTo(x + corner, y)
   ctx.lineTo(x + w - corner, y)
   ctx.arcTo(x + w, y, x + w, y + corner, corner)
@@ -173,7 +182,9 @@ function drawNode(
   isDark: boolean,
   zoom: number,
 ): void {
-  const scheme = (TYPE_COLORS as unknown as Record<string, typeof TYPE_COLORS['note']>)[n.type] ?? TYPE_COLORS.note
+  const scheme =
+    (TYPE_COLORS as unknown as Record<string, (typeof TYPE_COLORS)['note']>)[n.type] ??
+    TYPE_COLORS.note
   const theme = isDark ? 'dark' : 'light'
 
   let fill: string
@@ -224,7 +235,10 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
   useEffect(() => {
     const entries = Object.entries(ICON_SVG)
     for (const [type, paths] of entries) {
-      for (const [theme, color] of [['dark', 'rgba(255,255,255,0.88)'], ['light', 'rgba(15,23,42,0.78)']] as const) {
+      for (const [theme, color] of [
+        ['dark', 'rgba(255,255,255,0.88)'],
+        ['light', 'rgba(15,23,42,0.78)'],
+      ] as const) {
         const img = new Image()
         img.src = makeIconUrl(paths, color)
         iconImgsRef.current[`${type}-${theme}`] = img
@@ -251,20 +265,17 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
     edgesRef.current = edges
   }, [nodes, edges])
 
-  const screenToWorld = useCallback(
-    (sx: number, sy: number) => {
-      const c = cameraRef.current
-      const canvas = canvasRef.current
-      if (!canvas) return { wx: 0, wy: 0 }
-      const cx = canvas.width / 2
-      const cy = canvas.height / 2
-      return {
-        wx: (sx - cx) / c.zoom - c.x,
-        wy: (sy - cy) / c.zoom - c.y,
-      }
-    },
-    [],
-  )
+  const screenToWorld = useCallback((sx: number, sy: number) => {
+    const c = cameraRef.current
+    const canvas = canvasRef.current
+    if (!canvas) return { wx: 0, wy: 0 }
+    const cx = canvas.width / 2
+    const cy = canvas.height / 2
+    return {
+      wx: (sx - cx) / c.zoom - c.x,
+      wy: (sy - cy) / c.zoom - c.y,
+    }
+  }, [])
 
   const findNodeAt = useCallback(
     (sx: number, sy: number): GraphNode | null => {
@@ -321,12 +332,18 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
             let dx = a.x - b.x
             let dy = a.y - b.y
             let dist2 = dx * dx + dy * dy
-            if (dist2 < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; dist2 = 1 }
+            if (dist2 < 1) {
+              dx = Math.random() - 0.5
+              dy = Math.random() - 0.5
+              dist2 = 1
+            }
             const force = REPULSION / dist2
-            const fx = dx / Math.sqrt(dist2) * force
-            const fy = dy / Math.sqrt(dist2) * force
-            a.vx += fx; a.vy += fy
-            b.vx -= fx; b.vy -= fy
+            const fx = (dx / Math.sqrt(dist2)) * force
+            const fy = (dy / Math.sqrt(dist2)) * force
+            a.vx += fx
+            a.vy += fy
+            b.vx -= fx
+            b.vy -= fy
           }
         }
 
@@ -342,8 +359,10 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
           const dy = b.y - a.y
           const fx = dx * ATTRACTION
           const fy = dy * ATTRACTION
-          a.vx += fx; a.vy += fy
-          b.vx -= fx; b.vy -= fy
+          a.vx += fx
+          a.vy += fy
+          b.vx -= fx
+          b.vy -= fy
         }
 
         // Center gravity
@@ -355,7 +374,11 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
         // Apply velocity
         let totalV = 0
         for (const n of ns) {
-          if (dragRef.current?.node === n) { n.vx = 0; n.vy = 0; continue }
+          if (dragRef.current?.node === n) {
+            n.vx = 0
+            n.vy = 0
+            continue
+          }
           n.vx *= DAMPING
           n.vy *= DAMPING
           n.x += n.vx
@@ -458,9 +481,14 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
         const isSelected = sel === n
         const isDimmed = hasSelection && !connectedNodeIds.has(n.id)
         ctx.globalAlpha = isDimmed ? 0.2 : 1
-        ctx.fillStyle = isSelected || isHover
-          ? (isDark ? '#f1f5f9' : '#1e293b')
-          : (isDark ? 'rgba(203,213,225,0.8)' : 'rgba(51,65,85,0.75)')
+        ctx.fillStyle =
+          isSelected || isHover
+            ? isDark
+              ? '#f1f5f9'
+              : '#1e293b'
+            : isDark
+              ? 'rgba(203,213,225,0.8)'
+              : 'rgba(51,65,85,0.75)'
         ctx.fillText(n.label, n.x, n.y + r + LABEL_OFFSET)
         ctx.globalAlpha = 1
       }
@@ -490,7 +518,12 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
         const { wx, wy } = screenToWorld(sx, sy)
         dragRef.current = { node, offsetX: node.x - wx, offsetY: node.y - wy }
       } else {
-        panRef.current = { startX: e.clientX, startY: e.clientY, camX: cameraRef.current.x, camY: cameraRef.current.y }
+        panRef.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          camX: cameraRef.current.x,
+          camY: cameraRef.current.y,
+        }
       }
     }
 
@@ -567,7 +600,11 @@ export function GraphCanvas({ nodes, edges, onClickNode }: Props) {
     canvas.addEventListener('mousedown', onMouseDown)
     canvas.addEventListener('mousemove', onMouseMove)
     canvas.addEventListener('mouseup', onMouseUp)
-    canvas.addEventListener('mouseleave', () => { dragRef.current = null; panRef.current = null; hoverRef.current = null })
+    canvas.addEventListener('mouseleave', () => {
+      dragRef.current = null
+      panRef.current = null
+      hoverRef.current = null
+    })
     canvas.addEventListener('wheel', onWheel, { passive: false })
 
     return () => {

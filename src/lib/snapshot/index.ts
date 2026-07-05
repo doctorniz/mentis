@@ -31,10 +31,7 @@ export function parseSnapshotTimestamp(ts: string): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 
-export async function createSnapshot(
-  fs: FileSystemAdapter,
-  pdfPath: string,
-): Promise<string> {
+export async function createSnapshot(fs: FileSystemAdapter, pdfPath: string): Promise<string> {
   const filename = getSnapshotFilename(pdfPath)
   const snapshotPath = `${SNAPSHOTS_DIR}/${filename}`
 
@@ -91,17 +88,11 @@ export async function restoreSnapshot(
   await fs.writeFile(originalPdfPath, bytes)
 }
 
-export async function deleteSnapshot(
-  fs: FileSystemAdapter,
-  snapshotPath: string,
-): Promise<void> {
+export async function deleteSnapshot(fs: FileSystemAdapter, snapshotPath: string): Promise<void> {
   await fs.remove(snapshotPath)
 }
 
-export async function pruneSnapshots(
-  fs: FileSystemAdapter,
-  config: SnapshotConfig,
-): Promise<void> {
+export async function pruneSnapshots(fs: FileSystemAdapter, config: SnapshotConfig): Promise<void> {
   const allSnapshots = await listSnapshots(fs)
 
   const byFile = new Map<string, SnapshotInfo[]>()

@@ -35,12 +35,15 @@ export function InlineFileTitle({
       onFocused?.()
     }, 120)
     return () => window.clearTimeout(t)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFocus])
 
   function commit() {
     const trimmed = value.trim()
-    if (!trimmed) { setValue(stem); return }
+    if (!trimmed) {
+      setValue(stem)
+      return
+    }
     if (trimmed !== stem) onRename(pathRef.current, trimmed)
   }
 
@@ -55,11 +58,17 @@ export function InlineFileTitle({
       onBlur={commit}
       onFocus={(e) => e.currentTarget.select()}
       onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur() }
-        if (e.key === 'Escape') { setValue(stem); (e.target as HTMLInputElement).blur() }
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          ;(e.target as HTMLInputElement).blur()
+        }
+        if (e.key === 'Escape') {
+          setValue(stem)
+          ;(e.target as HTMLInputElement).blur()
+        }
       }}
       aria-label="File title"
-      className="text-fg placeholder:text-fg-muted min-w-0 flex-1 border-none bg-transparent text-lg font-bold leading-tight tracking-tight outline-none"
+      className="text-fg placeholder:text-fg-muted min-w-0 flex-1 border-none bg-transparent text-lg leading-tight font-bold tracking-tight outline-none"
       placeholder="Untitled"
     />
   )

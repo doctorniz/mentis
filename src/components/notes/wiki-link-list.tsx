@@ -41,9 +41,7 @@ export const WikiLinkList = forwardRef<
   }))
 
   if (!items.length) {
-    return (
-      <div className="text-fg-muted px-3 py-2 text-xs">No matching notes</div>
-    )
+    return <div className="text-fg-muted px-3 py-2 text-xs">No matching notes</div>
   }
 
   return (

@@ -24,7 +24,13 @@ import { PdfUndoStack } from '@/lib/pdf/undo-stack'
 import { createSnapshot, pruneSnapshots } from '@/lib/snapshot'
 import { useEditorStore } from '@/stores/editor'
 import { toast } from '@/stores/toast'
-import type { PdfAnnotation, PdfPageInfo, PdfNewPageOptions, PdfTextComment, Signature } from '@/types/pdf'
+import type {
+  PdfAnnotation,
+  PdfPageInfo,
+  PdfNewPageOptions,
+  PdfTextComment,
+  Signature,
+} from '@/types/pdf'
 import { PdfAnnotationType, PdfTool } from '@/types/pdf'
 import { PdfToolbar } from '@/components/pdf/pdf-toolbar'
 import { PdfPageCanvas } from '@/components/pdf/pdf-page-canvas'
@@ -124,7 +130,9 @@ export function PdfViewer({ path }: { path: string }) {
         setDocument({
           path,
           pageCount: doc.numPages,
-          title: ((await doc.getMetadata().catch(() => null))?.info as Record<string, unknown> | undefined)?.Title as string | undefined,
+          title: (
+            (await doc.getMetadata().catch(() => null))?.info as Record<string, unknown> | undefined
+          )?.Title as string | undefined,
           pages: pageInfos,
         })
         for (const a of allAnns) {
@@ -243,7 +251,13 @@ export function PdfViewer({ path }: { path: string }) {
       await vaultFs.writeFile(tmpPath, newBytes)
       const written = await vaultFs.readFile(tmpPath)
       if (written.length >= 5) {
-        const h = String.fromCharCode(written[0]!, written[1]!, written[2]!, written[3]!, written[4]!)
+        const h = String.fromCharCode(
+          written[0]!,
+          written[1]!,
+          written[2]!,
+          written[3]!,
+          written[4]!,
+        )
         if (h !== '%PDF-') {
           await vaultFs.remove(tmpPath).catch(() => {})
           throw new Error('Written PDF failed integrity check')
@@ -311,7 +325,7 @@ export function PdfViewer({ path }: { path: string }) {
   const applyPageOp = useCallback(
     async (transform: (bytes: Uint8Array) => Promise<Uint8Array>) => {
       try {
-        const bytes = rawPdfBytes ?? await vaultFs.readFile(path)
+        const bytes = rawPdfBytes ?? (await vaultFs.readFile(path))
         undoStackRef.current.push(bytes)
         const newBytes = await transform(bytes)
         await vaultFs.writeFile(path, newBytes)
@@ -384,11 +398,16 @@ export function PdfViewer({ path }: { path: string }) {
           const bytes = await vaultFs.readFile(path)
           const newBytes = await extractPages(bytes, indices)
 
-          const stem = path.replace(/\.[^/.]+$/i, '').split('/').pop() ?? 'Extracted'
+          const stem =
+            path
+              .replace(/\.[^/.]+$/i, '')
+              .split('/')
+              .pop() ?? 'Extracted'
           const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
-          const label = indices.length === 1
-            ? `p${indices[0]! + 1}`
-            : `p${indices[0]! + 1}-${indices[indices.length - 1]! + 1}`
+          const label =
+            indices.length === 1
+              ? `p${indices[0]! + 1}`
+              : `p${indices[0]! + 1}-${indices[indices.length - 1]! + 1}`
           const newName = `${stem} (${label}).pdf`
           const newPath = dir ? `${dir}/${newName}` : newName
 
@@ -403,7 +422,9 @@ export function PdfViewer({ path }: { path: string }) {
             isDirty: false,
           })
 
-          toast.success(`Saved ${indices.length} page${indices.length > 1 ? 's' : ''} as ${newName}`)
+          toast.success(
+            `Saved ${indices.length} page${indices.length > 1 ? 's' : ''} as ${newName}`,
+          )
         } catch (e) {
           console.error('Extract pages failed', e)
           toast.error('Could not extract pages')
@@ -425,7 +446,7 @@ export function PdfViewer({ path }: { path: string }) {
   )
 
   const handleUndo = useCallback(async () => {
-    const current = rawPdfBytes ?? await vaultFs.readFile(path)
+    const current = rawPdfBytes ?? (await vaultFs.readFile(path))
     const prev = undoStackRef.current.undo(current)
     if (!prev) return
     try {
@@ -441,7 +462,7 @@ export function PdfViewer({ path }: { path: string }) {
   }, [rawPdfBytes, vaultFs, path, loadPdf, syncUndoState])
 
   const handleRedo = useCallback(async () => {
-    const current = rawPdfBytes ?? await vaultFs.readFile(path)
+    const current = rawPdfBytes ?? (await vaultFs.readFile(path))
     const next = undoStackRef.current.redo(current)
     if (!next) return
     try {
@@ -574,7 +595,9 @@ export function PdfViewer({ path }: { path: string }) {
             {!searchBusy &&
               searchMatches.length > 0 &&
               `${activeSearchIdx + 1} / ${searchMatches.length} match${searchMatches.length === 1 ? '' : 'es'}`}
-            {!searchBusy && !searchQuery.trim() && 'Type to search extractable text · Enter / Shift+Enter'}
+            {!searchBusy &&
+              !searchQuery.trim() &&
+              'Type to search extractable text · Enter / Shift+Enter'}
           </span>
         </div>
       )}
@@ -600,8 +623,7 @@ export function PdfViewer({ path }: { path: string }) {
               const vp = p.getViewport({ scale: zoom })
               const pageH = Math.floor(vp.height)
               const textComments = annotations.filter(
-                (a): a is PdfTextComment =>
-                  a.type === PdfAnnotationType.Text && a.pageIndex === i,
+                (a): a is PdfTextComment => a.type === PdfAnnotationType.Text && a.pageIndex === i,
               )
               return (
                 <div

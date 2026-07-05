@@ -64,10 +64,12 @@ export function BookmarkCard({
       tabIndex={0}
       className={cn(
         'border-border bg-bg group relative flex cursor-pointer gap-3 rounded-lg border p-3 transition-all duration-150',
-        'hover:shadow-sm hover:border-border-strong',
+        'hover:border-border-strong hover:shadow-sm',
       )}
       onClick={handleCardClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCardClick() }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') handleCardClick()
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >

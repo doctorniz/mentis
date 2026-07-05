@@ -21,9 +21,7 @@ export async function collectBrowserFiles(
   showHidden = false,
 ): Promise<FbFileItem[]> {
   const entries = await vaultFs.readdir(folder)
-  return entries
-    .filter((e) => showHidden || !isHiddenPath(e.path))
-    .map(toFbItem)
+  return entries.filter((e) => showHidden || !isHiddenPath(e.path)).map(toFbItem)
 }
 
 function cmp(a: string | number, b: string | number, dir: 'asc' | 'desc'): number {
@@ -51,10 +49,7 @@ export function sortBrowserFiles(files: FbFileItem[], sort: FbSort): FbFileItem[
   })
 }
 
-export function filterBrowserFiles(
-  files: FbFileItem[],
-  types?: string[],
-): FbFileItem[] {
+export function filterBrowserFiles(files: FbFileItem[], types?: string[]): FbFileItem[] {
   if (!types?.length) return files
   const s = new Set(types)
   return files.filter((f) => f.isDirectory || s.has(f.type))

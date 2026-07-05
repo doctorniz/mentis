@@ -5,10 +5,7 @@ import type { FileEntry, FileStats } from '@/types/files'
  * Wraps an adapter so all paths are relative to `basePath` (vault root inside OPFS).
  * Empty string `""` refers to the vault root directory.
  */
-export function createScopedAdapter(
-  inner: FileSystemAdapter,
-  basePath: string,
-): FileSystemAdapter {
+export function createScopedAdapter(inner: FileSystemAdapter, basePath: string): FileSystemAdapter {
   const base = basePath.replace(/^\/+|\/+$/g, '')
 
   const join = (path: string): string => {

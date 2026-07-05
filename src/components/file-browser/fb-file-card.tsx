@@ -1,7 +1,14 @@
 'use client'
 
 import { forwardRef, useEffect, useRef, useState, type ComponentPropsWithoutRef } from 'react'
-import { File, FileText, FileType as FileTypeIcon, ImageIcon, LayoutGrid, Table2 } from 'lucide-react'
+import {
+  File,
+  FileText,
+  FileType as FileTypeIcon,
+  ImageIcon,
+  LayoutGrid,
+  Table2,
+} from 'lucide-react'
 import type { FbFileItem } from '@/types/file-browser'
 import type { FileSystemAdapter } from '@/lib/fs'
 import { getImageThumbnail } from '@/lib/file-browser/image-thumbnail'
@@ -48,7 +55,7 @@ function GridIcon({ className }: { className?: string }) {
 function FileCardIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string | null }) {
   if (item.isDirectory) {
     return (
-      <div className="text-amber-400 dark:text-amber-300 flex h-14 w-14 items-center justify-center">
+      <div className="flex h-14 w-14 items-center justify-center text-amber-400 dark:text-amber-300">
         <FolderSvg className="h-full w-full drop-shadow-sm" />
       </div>
     )
@@ -75,32 +82,32 @@ function FileCardIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string |
   switch (item.type) {
     case 'pdf':
       return (
-        <div className="bg-red-50 dark:bg-red-950/40 flex h-14 w-14 items-center justify-center rounded-xl">
-          <FileTypeIcon className="text-red-500 size-8" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/40">
+          <FileTypeIcon className="size-8 text-red-500" />
         </div>
       )
     case 'markdown':
       return (
-        <div className="bg-blue-50 dark:bg-blue-950/40 flex h-14 w-14 items-center justify-center rounded-xl">
-          <FileText className="text-blue-500 size-8" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/40">
+          <FileText className="size-8 text-blue-500" />
         </div>
       )
     case 'canvas':
       return (
-        <div className="bg-violet-50 dark:bg-violet-950/40 flex h-14 w-14 items-center justify-center rounded-xl">
-          <GridIcon className="text-violet-500 size-8" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40">
+          <GridIcon className="size-8 text-violet-500" />
         </div>
       )
     case 'image':
       return (
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 flex h-14 w-14 items-center justify-center rounded-xl">
-          <ImageIcon className="text-emerald-500 size-8" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40">
+          <ImageIcon className="size-8 text-emerald-500" />
         </div>
       )
     case 'spreadsheet':
       return (
-        <div className="bg-green-50 dark:bg-green-950/40 flex h-14 w-14 items-center justify-center rounded-xl">
-          <Table2 className="text-green-500 size-8" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-green-50 dark:bg-green-950/40">
+          <Table2 className="size-8 text-green-500" />
         </div>
       )
     default:
@@ -136,22 +143,25 @@ export type FbFileCardProps = FbFileCardOwnProps &
     keyof FbFileCardOwnProps | 'children' | 'dangerouslySetInnerHTML'
   >
 
-export const FbFileCard = forwardRef<HTMLDivElement, FbFileCardProps>(function FbFileCard({
-  item,
-  vaultFs,
-  isSelected,
-  isEditing,
-  onClick,
-  onDoubleClick,
-  onStartEdit,
-  onCommitEdit,
-  onCancelEdit,
-  onDropFile,
-  onDropExternalFiles,
-  className,
-  onKeyDown,
-  ...rest
-}, ref) {
+export const FbFileCard = forwardRef<HTMLDivElement, FbFileCardProps>(function FbFileCard(
+  {
+    item,
+    vaultFs,
+    isSelected,
+    isEditing,
+    onClick,
+    onDoubleClick,
+    onStartEdit,
+    onCommitEdit,
+    onCancelEdit,
+    onDropFile,
+    onDropExternalFiles,
+    className,
+    onKeyDown,
+    ...rest
+  },
+  ref,
+) {
   const [thumbUrl, setThumbUrl] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const editRef = useRef<HTMLTextAreaElement>(null)
@@ -182,7 +192,9 @@ export const FbFileCard = forwardRef<HTMLDivElement, FbFileCardProps>(function F
     void loader(vaultFs, item.path).then((url) => {
       if (!cancel) setThumbUrl(url)
     })
-    return () => { cancel = true }
+    return () => {
+      cancel = true
+    }
   }, [item.path, item.type, item.isDirectory, vaultFs])
 
   useEffect(() => () => clearTimeout(renameTimerRef.current), [])
@@ -205,48 +217,70 @@ export const FbFileCard = forwardRef<HTMLDivElement, FbFileCardProps>(function F
         e.dataTransfer.setData(FB_DND_TYPE, item.path)
         e.dataTransfer.effectAllowed = 'move'
       }}
-      onDragOver={item.isDirectory ? (e) => {
-        if (e.dataTransfer.types.includes(FB_DND_TYPE) || e.dataTransfer.types.includes('Files')) {
-          e.preventDefault()
-          e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'move'
-          setDragOver(true)
-        }
-      } : undefined}
-      onDragLeave={item.isDirectory ? (e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
-      } : undefined}
-      onDrop={item.isDirectory ? (e) => {
-        setDragOver(false)
-        if (e.dataTransfer.files.length > 0 && !e.dataTransfer.types.includes(FB_DND_TYPE)) {
-          e.preventDefault()
-          e.stopPropagation()
-          onDropExternalFiles?.(e.dataTransfer.files, item.path)
-          return
-        }
-        const src = e.dataTransfer.getData(FB_DND_TYPE)
-        if (!src) return
-        e.preventDefault()
-        e.stopPropagation()
-        onDropFile?.(src, item.path)
-      } : undefined}
+      onDragOver={
+        item.isDirectory
+          ? (e) => {
+              if (
+                e.dataTransfer.types.includes(FB_DND_TYPE) ||
+                e.dataTransfer.types.includes('Files')
+              ) {
+                e.preventDefault()
+                e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'move'
+                setDragOver(true)
+              }
+            }
+          : undefined
+      }
+      onDragLeave={
+        item.isDirectory
+          ? (e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
+            }
+          : undefined
+      }
+      onDrop={
+        item.isDirectory
+          ? (e) => {
+              setDragOver(false)
+              if (e.dataTransfer.files.length > 0 && !e.dataTransfer.types.includes(FB_DND_TYPE)) {
+                e.preventDefault()
+                e.stopPropagation()
+                onDropExternalFiles?.(e.dataTransfer.files, item.path)
+                return
+              }
+              const src = e.dataTransfer.getData(FB_DND_TYPE)
+              if (!src) return
+              e.preventDefault()
+              e.stopPropagation()
+              onDropFile?.(src, item.path)
+            }
+          : undefined
+      }
       onClick={onClick}
-      onDoubleClick={isEditing ? undefined : () => {
-        clearTimeout(renameTimerRef.current)
-        onDoubleClick()
-      }}
+      onDoubleClick={
+        isEditing
+          ? undefined
+          : () => {
+              clearTimeout(renameTimerRef.current)
+              onDoubleClick()
+            }
+      }
       onKeyDown={(e) => {
         onKeyDown?.(e)
         if (e.defaultPrevented) return
         if (e.key === 'Enter' && !isEditing) onDoubleClick()
-        if (e.key === 'F2' && !isEditing) { e.preventDefault(); onStartEdit?.() }
+        if (e.key === 'F2' && !isEditing) {
+          e.preventDefault()
+          onStartEdit?.()
+        }
       }}
       tabIndex={0}
       role="option"
       aria-selected={isSelected}
       className={cn(
-        'group flex select-none flex-col items-center gap-1.5 rounded-xl p-2 outline-none transition-colors duration-75 focus-visible:ring-1',
+        'group flex flex-col items-center gap-1.5 rounded-xl p-2 transition-colors duration-75 outline-none select-none focus-visible:ring-1',
         isSelected
-          ? 'bg-accent/20 ring-accent/40 ring-1 focus-visible:ring-accent'
+          ? 'bg-accent/20 ring-accent/40 focus-visible:ring-accent ring-1'
           : dragOver
             ? 'bg-accent/10 ring-accent/30 ring-1'
             : 'hover:bg-bg-hover focus-visible:ring-accent/40',
@@ -282,12 +316,12 @@ export const FbFileCard = forwardRef<HTMLDivElement, FbFileCardProps>(function F
               }
               e.stopPropagation()
             }}
-            className="text-fg bg-bg border-accent box-border w-full min-w-0 max-w-full resize-none overflow-y-auto rounded border px-1 py-0.5 text-left text-[11px] font-medium leading-tight break-all outline-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            className="text-fg bg-bg border-accent box-border w-full max-w-full min-w-0 resize-none overflow-y-auto rounded border px-1 py-0.5 text-left text-[11px] leading-tight font-medium break-all outline-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
           <span
-            className="text-fg line-clamp-2 cursor-default text-[11px] font-medium leading-tight"
+            className="text-fg line-clamp-2 cursor-default text-[11px] leading-tight font-medium"
             title={item.name}
             onClick={(e) => {
               if (isSelected) {
@@ -311,7 +345,7 @@ export const FbFileCard = forwardRef<HTMLDivElement, FbFileCardProps>(function F
 
 function FileRowIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string | null }) {
   if (item.isDirectory) {
-    return <FolderSvg className="text-amber-400 dark:text-amber-300 h-4 w-5 shrink-0" />
+    return <FolderSvg className="h-4 w-5 shrink-0 text-amber-400 dark:text-amber-300" />
   }
   if (item.type === 'image' && thumbUrl) {
     return (
@@ -323,13 +357,13 @@ function FileRowIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string | 
   }
   switch (item.type) {
     case 'pdf':
-      return <FileTypeIcon className="text-red-500 size-4 shrink-0" />
+      return <FileTypeIcon className="size-4 shrink-0 text-red-500" />
     case 'markdown':
-      return <FileText className="text-blue-500 size-4 shrink-0" />
+      return <FileText className="size-4 shrink-0 text-blue-500" />
     case 'canvas':
-      return <GridIcon className="text-violet-500 size-4 shrink-0" />
+      return <GridIcon className="size-4 shrink-0 text-violet-500" />
     case 'image':
-      return <ImageIcon className="text-emerald-500 size-4 shrink-0" />
+      return <ImageIcon className="size-4 shrink-0 text-emerald-500" />
     default:
       return <File className="text-fg-muted size-4 shrink-0" />
   }
@@ -355,22 +389,25 @@ export type FbFileRowProps = FbFileRowOwnProps &
     keyof FbFileRowOwnProps | 'children' | 'dangerouslySetInnerHTML'
   >
 
-export const FbFileRow = forwardRef<HTMLDivElement, FbFileRowProps>(function FbFileRow({
-  item,
-  vaultFs,
-  isSelected,
-  isEditing,
-  onClick,
-  onDoubleClick,
-  onStartEdit,
-  onCommitEdit,
-  onCancelEdit,
-  onDropFile,
-  onDropExternalFiles,
-  className,
-  onKeyDown,
-  ...rest
-}, ref) {
+export const FbFileRow = forwardRef<HTMLDivElement, FbFileRowProps>(function FbFileRow(
+  {
+    item,
+    vaultFs,
+    isSelected,
+    isEditing,
+    onClick,
+    onDoubleClick,
+    onStartEdit,
+    onCommitEdit,
+    onCancelEdit,
+    onDropFile,
+    onDropExternalFiles,
+    className,
+    onKeyDown,
+    ...rest
+  },
+  ref,
+) {
   const [thumbUrl, setThumbUrl] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const editRef = useRef<HTMLInputElement>(null)
@@ -382,7 +419,9 @@ export const FbFileRow = forwardRef<HTMLDivElement, FbFileRowProps>(function FbF
     void getImageThumbnail(vaultFs, item.path).then((url) => {
       if (!cancel) setThumbUrl(url)
     })
-    return () => { cancel = true }
+    return () => {
+      cancel = true
+    }
   }, [item.path, item.type, item.isDirectory, vaultFs])
 
   useEffect(() => () => clearTimeout(renameTimerRef.current), [])
@@ -404,48 +443,70 @@ export const FbFileRow = forwardRef<HTMLDivElement, FbFileRowProps>(function FbF
         e.dataTransfer.setData(FB_DND_TYPE, item.path)
         e.dataTransfer.effectAllowed = 'move'
       }}
-      onDragOver={item.isDirectory ? (e) => {
-        if (e.dataTransfer.types.includes(FB_DND_TYPE) || e.dataTransfer.types.includes('Files')) {
-          e.preventDefault()
-          e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'move'
-          setDragOver(true)
-        }
-      } : undefined}
-      onDragLeave={item.isDirectory ? (e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
-      } : undefined}
-      onDrop={item.isDirectory ? (e) => {
-        setDragOver(false)
-        if (e.dataTransfer.files.length > 0 && !e.dataTransfer.types.includes(FB_DND_TYPE)) {
-          e.preventDefault()
-          e.stopPropagation()
-          onDropExternalFiles?.(e.dataTransfer.files, item.path)
-          return
-        }
-        const src = e.dataTransfer.getData(FB_DND_TYPE)
-        if (!src) return
-        e.preventDefault()
-        e.stopPropagation()
-        onDropFile?.(src, item.path)
-      } : undefined}
+      onDragOver={
+        item.isDirectory
+          ? (e) => {
+              if (
+                e.dataTransfer.types.includes(FB_DND_TYPE) ||
+                e.dataTransfer.types.includes('Files')
+              ) {
+                e.preventDefault()
+                e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'move'
+                setDragOver(true)
+              }
+            }
+          : undefined
+      }
+      onDragLeave={
+        item.isDirectory
+          ? (e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
+            }
+          : undefined
+      }
+      onDrop={
+        item.isDirectory
+          ? (e) => {
+              setDragOver(false)
+              if (e.dataTransfer.files.length > 0 && !e.dataTransfer.types.includes(FB_DND_TYPE)) {
+                e.preventDefault()
+                e.stopPropagation()
+                onDropExternalFiles?.(e.dataTransfer.files, item.path)
+                return
+              }
+              const src = e.dataTransfer.getData(FB_DND_TYPE)
+              if (!src) return
+              e.preventDefault()
+              e.stopPropagation()
+              onDropFile?.(src, item.path)
+            }
+          : undefined
+      }
       onClick={onClick}
-      onDoubleClick={isEditing ? undefined : () => {
-        clearTimeout(renameTimerRef.current)
-        onDoubleClick()
-      }}
+      onDoubleClick={
+        isEditing
+          ? undefined
+          : () => {
+              clearTimeout(renameTimerRef.current)
+              onDoubleClick()
+            }
+      }
       onKeyDown={(e) => {
         onKeyDown?.(e)
         if (e.defaultPrevented) return
         if (e.key === 'Enter' && !isEditing) onDoubleClick()
-        if (e.key === 'F2' && !isEditing) { e.preventDefault(); onStartEdit?.() }
+        if (e.key === 'F2' && !isEditing) {
+          e.preventDefault()
+          onStartEdit?.()
+        }
       }}
       tabIndex={0}
       role="option"
       aria-selected={isSelected}
       className={cn(
-        'group flex select-none items-center gap-3 rounded-lg px-3 py-2 text-sm outline-none transition-colors duration-75 focus-visible:ring-1',
+        'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-75 outline-none select-none focus-visible:ring-1',
         isSelected
-          ? 'bg-accent/20 ring-accent/40 ring-1 focus-visible:ring-accent'
+          ? 'bg-accent/20 ring-accent/40 focus-visible:ring-accent ring-1'
           : dragOver
             ? 'bg-accent/10 ring-accent/30 ring-1'
             : 'hover:bg-bg-hover focus-visible:ring-accent/40',
@@ -466,8 +527,14 @@ export const FbFileRow = forwardRef<HTMLDivElement, FbFileRowProps>(function FbF
           }}
           onBlur={commitEdit}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); commitEdit() }
-            if (e.key === 'Escape') { e.preventDefault(); onCancelEdit?.() }
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              commitEdit()
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault()
+              onCancelEdit?.()
+            }
             e.stopPropagation()
           }}
           className="text-fg bg-bg border-accent min-w-0 flex-1 rounded border px-1 py-0 text-sm font-medium outline-none"

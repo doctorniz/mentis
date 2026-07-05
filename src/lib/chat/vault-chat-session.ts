@@ -19,10 +19,7 @@ export function readVaultChatLastThreadId(vaultPath: string): string | null {
   }
 }
 
-export function writeVaultChatLastThreadId(
-  vaultPath: string,
-  threadId: string,
-): void {
+export function writeVaultChatLastThreadId(vaultPath: string, threadId: string): void {
   try {
     sessionStorage.setItem(LAST_THREAD_PREFIX + vaultPath, threadId)
   } catch {

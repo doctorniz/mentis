@@ -95,17 +95,13 @@ async function downloadModelBytes(): Promise<Uint8Array<ArrayBuffer>> {
 /*  Public API — model-aware                                           */
 /* ------------------------------------------------------------------ */
 
-export async function getDeviceModelStatus(
-  modelId?: string,
-): Promise<DeviceModelStatus> {
+export async function getDeviceModelStatus(modelId?: string): Promise<DeviceModelStatus> {
   void modelId
   const bytes = await readCachedModelBytes()
   return bytes ? 'ready' : 'missing'
 }
 
-export async function ensureDeviceModelDownloaded(
-  modelId?: string,
-): Promise<void> {
+export async function ensureDeviceModelDownloaded(modelId?: string): Promise<void> {
   void modelId
   const cached = await readCachedModelBytes()
   if (cached) {

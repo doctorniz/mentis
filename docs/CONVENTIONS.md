@@ -2,15 +2,15 @@
 
 ## License
 
-| Item | Detail |
-|---|---|
-| **Full text** | Root [`LICENSE`](../LICENSE) — **Business Source License 1.1** (MariaDB-style parameters + terms). |
-| **Licensor / work** | **Marrow Group** / **Mentis** (this repository). |
-| **Additional Use Grant** | Production use for **any purpose** (see `LICENSE` — adjust only with legal review). |
-| **Change Date / Change License** | **2030-04-09** / **MPL 2.0** (edit in `LICENSE` if policy changes). |
-| **`package.json`** | `"license": "SEE LICENSE IN LICENSE"`. |
-| **README** | **AI assistance** section — tooling disclosure; **License** section — pointer to BSL; neither replaces `LICENSE`. |
-| **Docs** | [`ARCHITECTURE.md`](./ARCHITECTURE.md) §10, [`TECH_STACK.md`](./TECH_STACK.md) (footer), [`PRD.md`](./PRD.md) §6, [`DEPLOYMENT.md`](./DEPLOYMENT.md) (static hosting / headers), this file, [`CURSOR.md`](./CURSOR.md). |
+| Item                             | Detail                                                                                                                                                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Full text**                    | Root [`LICENSE`](../LICENSE) — **Business Source License 1.1** (MariaDB-style parameters + terms).                                                                                                                      |
+| **Licensor / work**              | **Marrow Group** / **Mentis** (this repository).                                                                                                                                                                        |
+| **Additional Use Grant**         | Production use for **any purpose** (see `LICENSE` — adjust only with legal review).                                                                                                                                     |
+| **Change Date / Change License** | **2030-04-09** / **MPL 2.0** (edit in `LICENSE` if policy changes).                                                                                                                                                     |
+| **`package.json`**               | `"license": "SEE LICENSE IN LICENSE"`.                                                                                                                                                                                  |
+| **README**                       | **AI assistance** section — tooling disclosure; **License** section — pointer to BSL; neither replaces `LICENSE`.                                                                                                       |
+| **Docs**                         | [`ARCHITECTURE.md`](./ARCHITECTURE.md) §10, [`TECH_STACK.md`](./TECH_STACK.md) (footer), [`PRD.md`](./PRD.md) §6, [`DEPLOYMENT.md`](./DEPLOYMENT.md) (static hosting / headers), this file, [`CURSOR.md`](./CURSOR.md). |
 
 Third-party npm packages remain under their respective licenses.
 
@@ -117,28 +117,28 @@ ink-marrow/
 
 ### Files & Directories
 
-| Type | Convention | Example |
-|---|---|---|
-| React components | PascalCase | `FileTreeSidebar.tsx` |
-| Hooks | camelCase with `use` prefix | `useVaultStore.ts` |
-| Utilities/lib | kebab-case | `pdf-annotations.ts` |
-| Types | kebab-case | `vault-types.ts` |
-| Stores | kebab-case | `file-tree.ts` |
-| Tests | `*.test.ts` / `*.test.tsx` | `vault.test.ts` |
-| Constants | SCREAMING_SNAKE_CASE in file | `MAX_SNAPSHOT_COUNT` |
+| Type             | Convention                   | Example               |
+| ---------------- | ---------------------------- | --------------------- |
+| React components | PascalCase                   | `FileTreeSidebar.tsx` |
+| Hooks            | camelCase with `use` prefix  | `useVaultStore.ts`    |
+| Utilities/lib    | kebab-case                   | `pdf-annotations.ts`  |
+| Types            | kebab-case                   | `vault-types.ts`      |
+| Stores           | kebab-case                   | `file-tree.ts`        |
+| Tests            | `*.test.ts` / `*.test.tsx`   | `vault.test.ts`       |
+| Constants        | SCREAMING_SNAKE_CASE in file | `MAX_SNAPSHOT_COUNT`  |
 
 ### Code
 
-| Type | Convention | Example |
-|---|---|---|
-| Components | PascalCase | `FileTreeSidebar` |
-| Functions | camelCase | `createVault()` |
-| Variables | camelCase | `searchResults` |
-| Constants | SCREAMING_SNAKE_CASE | `MAX_SNAPSHOTS_PER_FILE` |
-| Types/Interfaces | PascalCase | `VaultConfig`, `FileEntry` |
-| Enums | PascalCase (members too) | `ViewMode.FileBrowser` |
-| Zustand stores | `use[Name]Store` | `useVaultStore` |
-| Event handlers | `handle[Event]` or `on[Event]` | `handleFileClick`, `onDrop` |
+| Type             | Convention                     | Example                     |
+| ---------------- | ------------------------------ | --------------------------- |
+| Components       | PascalCase                     | `FileTreeSidebar`           |
+| Functions        | camelCase                      | `createVault()`             |
+| Variables        | camelCase                      | `searchResults`             |
+| Constants        | SCREAMING_SNAKE_CASE           | `MAX_SNAPSHOTS_PER_FILE`    |
+| Types/Interfaces | PascalCase                     | `VaultConfig`, `FileEntry`  |
+| Enums            | PascalCase (members too)       | `ViewMode.FileBrowser`      |
+| Zustand stores   | `use[Name]Store`               | `useVaultStore`             |
+| Event handlers   | `handle[Event]` or `on[Event]` | `handleFileClick`, `onDrop` |
 
 ## Component Patterns
 
@@ -176,11 +176,7 @@ export function FileTreeItem({ entry, depth, onSelect }: FileTreeItemProps) {
   }, [entry, onSelect])
 
   // render
-  return (
-    <div className={cn('flex items-center', depth > 0 && 'ml-4')}>
-      {/* ... */}
-    </div>
-  )
+  return <div className={cn('flex items-center', depth > 0 && 'ml-4')}>{/* ... */}</div>
 }
 ```
 
@@ -217,7 +213,7 @@ export const useVaultStore = create<VaultState>()(
         state.config = null
       })
     },
-  }))
+  })),
 )
 ```
 
@@ -252,11 +248,11 @@ Always use `@/` path aliases for imports within `src/`. Never use relative paths
 
 ## Testing Strategy
 
-| Layer | Tool | Focus |
-|---|---|---|
-| Unit | Vitest | Pure functions, store logic, adapters |
-| Integration | Vitest + Testing Library | Component interactions, store + component |
-| E2E | Playwright | Full user flows (create vault, edit note, annotate PDF) |
+| Layer       | Tool                     | Focus                                                   |
+| ----------- | ------------------------ | ------------------------------------------------------- |
+| Unit        | Vitest                   | Pure functions, store logic, adapters                   |
+| Integration | Vitest + Testing Library | Component interactions, store + component               |
+| E2E         | Playwright               | Full user flows (create vault, edit note, annotate PDF) |
 
 ## Git Conventions
 
@@ -292,4 +288,4 @@ docs(readme): add development setup instructions
 
 - Project rules live in **`.cursor/rules/`** (`.mdc` files). See **`docs/CURSOR.md`** for the current list and purpose.
 - When using Cursor Agent on this repo, the default expectation is: greet with **Assalamualaikum** on substantive help, and **update `docs/`** (and `README.md` when needed) at the end of runs that change behavior, architecture, or dependencies—then summarize which doc files changed in the final reply.
-- For **UX or user-visible behavior** changes, also refresh **`docs/LAUNCH_DEFERRALS.md` → *Manual verification queue* → *To do*** (and move verified rows to **Done**); repeat that checklist in the closeout under **Manual verification** so a human can smoke-test in the app.
+- For **UX or user-visible behavior** changes, also refresh **`docs/LAUNCH_DEFERRALS.md` → _Manual verification queue_ → _To do_** (and move verified rows to **Done**); repeat that checklist in the closeout under **Manual verification** so a human can smoke-test in the app.

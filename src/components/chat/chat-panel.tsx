@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Plus, Sparkles, Trash2, X } from 'lucide-react'
 
 import { useVaultSession } from '@/contexts/vault-fs-context'
@@ -277,7 +271,7 @@ export function ChatPanel({
               <button
                 type="button"
                 onClick={() => void handleDeleteThread(t.id)}
-                className="text-fg-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger"
+                className="text-fg-muted hover:text-danger opacity-0 transition-opacity group-hover:opacity-100"
                 title="Delete chat"
               >
                 <Trash2 className="size-3" />
@@ -287,31 +281,17 @@ export function ChatPanel({
         </nav>
       )}
 
-      <div
-        ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto py-2"
-      >
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto py-2">
         {!activeThread || activeThread.messages.length === 0 ? (
-          <EmptyState
-            providerMissing={providerMissing}
-            keyMissing={keyMissing}
-          />
+          <EmptyState providerMissing={providerMissing} keyMissing={keyMissing} />
         ) : (
           activeThread.messages.map((m) => (
-            <ChatMessage
-              key={m.id}
-              message={m}
-              onVaultPathOpen={openVaultPath}
-            />
+            <ChatMessage key={m.id} message={m} onVaultPathOpen={openVaultPath} />
           ))
         )}
       </div>
 
-      {error && (
-        <div className="text-danger border-border border-t px-3 py-2 text-xs">
-          {error}
-        </div>
-      )}
+      {error && <div className="text-danger border-border border-t px-3 py-2 text-xs">{error}</div>}
 
       <ChatInput
         disabled={composerDisabled}
@@ -344,24 +324,24 @@ function EmptyState({
         <>
           <p className="font-medium">Chat isn&apos;t set up yet</p>
           <p className="text-fg-muted mt-1 text-xs">
-            Add a provider and API key in Settings → AI to start asking
-            questions about this document.
+            Add a provider and API key in Settings → AI to start asking questions about this
+            document.
           </p>
         </>
       ) : keyMissing ? (
         <>
           <p className="font-medium">API key required</p>
           <p className="text-fg-muted mt-1 text-xs">
-            Open Settings → AI and paste your key for this provider. Keys
-            are stored locally in the browser, never synced.
+            Open Settings → AI and paste your key for this provider. Keys are stored locally in the
+            browser, never synced.
           </p>
         </>
       ) : (
         <>
           <p className="font-medium">Ask about this document</p>
           <p className="text-fg-muted mt-1 text-xs">
-            Answers are grounded in the open file&apos;s content. The model
-            won&apos;t see the rest of your vault.
+            Answers are grounded in the open file&apos;s content. The model won&apos;t see the rest
+            of your vault.
           </p>
         </>
       )}

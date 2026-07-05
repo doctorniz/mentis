@@ -23,12 +23,7 @@ import {
 } from '@/lib/chat/vault-chat-session'
 import { getProvider, toWire } from '@/lib/chat/providers'
 import { useVaultStore } from '@/stores/vault'
-import type {
-  ChatMessage,
-  ChatSettings,
-  ChatThread,
-  ChatProviderId,
-} from '@/types/chat'
+import type { ChatMessage, ChatSettings, ChatThread, ChatProviderId } from '@/types/chat'
 
 /**
  * Vault-scoped chat store (tier 1).
@@ -75,16 +70,10 @@ interface VaultChatState {
   reset: () => void
   selectThread: (threadId: string) => void
   createThread: () => Promise<ChatThread>
-  deleteThread: (args: {
-    vaultFs: FileSystemAdapter
-    threadId: string
-  }) => Promise<void>
+  deleteThread: (args: { vaultFs: FileSystemAdapter; threadId: string }) => Promise<void>
   sendMessage: (args: SendArgs) => Promise<void>
   cancel: () => void
-  toggleFavourite: (args: {
-    vaultFs: FileSystemAdapter
-    threadId: string
-  }) => Promise<void>
+  toggleFavourite: (args: { vaultFs: FileSystemAdapter; threadId: string }) => Promise<void>
 }
 
 const MAX_TITLE_CHARS = 60
@@ -92,9 +81,7 @@ const MAX_TITLE_CHARS = 60
 function titleFromFirstUserMessage(text: string): string {
   const trimmed = text.trim().replace(/\s+/g, ' ')
   if (!trimmed) return 'New chat'
-  return trimmed.length <= MAX_TITLE_CHARS
-    ? trimmed
-    : `${trimmed.slice(0, MAX_TITLE_CHARS - 1)}…`
+  return trimmed.length <= MAX_TITLE_CHARS ? trimmed : `${trimmed.slice(0, MAX_TITLE_CHARS - 1)}…`
 }
 
 export const useVaultChatStore = create<VaultChatState>()(
@@ -123,8 +110,7 @@ export const useVaultChatStore = create<VaultChatState>()(
       const remembered = readVaultChatLastThreadId(vaultPath)
 
       if (existing.length > 0) {
-        const replay =
-          remembered != null && existing.some((t) => t.id === remembered)
+        const replay = remembered != null && existing.some((t) => t.id === remembered)
 
         if (replay) {
           set((s) => {
@@ -306,8 +292,7 @@ export const useVaultChatStore = create<VaultChatState>()(
           try {
             await writeThread(vaultFs, failedThread)
           } catch (persistErr) {
-            const pmsg =
-              persistErr instanceof Error ? persistErr.message : String(persistErr)
+            const pmsg = persistErr instanceof Error ? persistErr.message : String(persistErr)
             set((s) => {
               s.error = `Failed to save chat: ${pmsg}`
             })
@@ -317,10 +302,7 @@ export const useVaultChatStore = create<VaultChatState>()(
       }
 
       const prior = thread.messages.concat(userMsg)
-      const wire = [
-        { role: 'system' as const, content: systemMessage },
-        ...toWire(prior),
-      ]
+      const wire = [{ role: 'system' as const, content: systemMessage }, ...toWire(prior)]
 
       let sawDelta = false
       let streamError: string | null = null
@@ -363,12 +345,7 @@ export const useVaultChatStore = create<VaultChatState>()(
           if (!sawDelta && !streamError && abort.signal.aborted) {
             last.error = 'Cancelled'
           }
-          if (
-            !streamError &&
-            !last.error &&
-            ctx.hits.length > 0 &&
-            sawDelta
-          ) {
+          if (!streamError && !last.error && ctx.hits.length > 0 && sawDelta) {
             last.content = mergeVaultSourcesSection(last.content, ctx.hits)
             last.vaultRagHitPaths = ctx.hits.map((h) => h.path)
           }
@@ -401,9 +378,7 @@ export const useVaultChatStore = create<VaultChatState>()(
       set((s) => {
         const t = s.threads.find((x) => x.id === threadId)
         if (!t) return
-        t.favouritedAt = t.favouritedAt
-          ? undefined
-          : new Date().toISOString()
+        t.favouritedAt = t.favouritedAt ? undefined : new Date().toISOString()
         t.modifiedAt = new Date().toISOString()
       })
       const t = get().threads.find((x) => x.id === threadId)
@@ -422,9 +397,7 @@ export const useVaultChatStore = create<VaultChatState>()(
 )
 
 /** Selector: the currently visible thread, or null if none. */
-export function selectActiveVaultThread(
-  s: VaultChatState,
-): ChatThread | null {
+export function selectActiveVaultThread(s: VaultChatState): ChatThread | null {
   if (!s.activeThreadId) return null
   return s.threads.find((t) => t.id === s.activeThreadId) ?? null
 }

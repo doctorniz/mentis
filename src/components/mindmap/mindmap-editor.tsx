@@ -35,7 +35,11 @@ import {
   autoLayoutMindmap,
   wouldCreateCycle,
 } from '@/lib/mindmap'
-import type { MindmapFile, MindmapNode as MindmapNodeData, MindmapEdge as MindmapEdgeData } from '@/types/mindmap'
+import type {
+  MindmapFile,
+  MindmapNode as MindmapNodeData,
+  MindmapEdge as MindmapEdgeData,
+} from '@/types/mindmap'
 import { MindmapNodeComponent } from './mindmap-node'
 import type { MindmapNodeCallbacks } from './mindmap-node'
 import { toast } from '@/stores/toast'
@@ -115,7 +119,10 @@ function fromRFNodes(rfNodes: Node[], libNodes: MindmapNodeData[]): MindmapNodeD
     const existing = libNodes.find((n) => n.id === rn.id)
     return {
       id: rn.id,
-      data: { label: (rn.data as { label: string }).label, color: (rn.data as { color?: string }).color },
+      data: {
+        label: (rn.data as { label: string }).label,
+        color: (rn.data as { color?: string }).color,
+      },
       position: rn.position,
       parentId: existing?.parentId,
       manualPosition: true,
@@ -294,7 +301,16 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
         target: connection.target!,
       }
       libEdgesRef.current = [...libEdgesRef.current, newEdge]
-      setRFEdges((prev) => addEdge({ ...connection, type: 'smoothstep', style: { stroke: 'var(--color-fg-muted)', strokeWidth: 1.5 } }, prev))
+      setRFEdges((prev) =>
+        addEdge(
+          {
+            ...connection,
+            type: 'smoothstep',
+            style: { stroke: 'var(--color-fg-muted)', strokeWidth: 1.5 },
+          },
+          prev,
+        ),
+      )
       history.push(libNodesRef.current, libEdgesRef.current)
       markDirty()
     },
@@ -337,7 +353,7 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      const active = rfNodes.find((n) => (n.selected))
+      const active = rfNodes.find((n) => n.selected)
 
       // Don't intercept when inside an input/contenteditable
       const target = e.target as HTMLElement
@@ -464,7 +480,12 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
     libNodesRef.current = [...libNodesRef.current, newNode]
     setRFNodes((prev) => [
       ...prev,
-      { id: newId, type: 'mindmapNode', position: newNode.position, data: { label: '', editing: true, ...callbacks } },
+      {
+        id: newId,
+        type: 'mindmapNode',
+        position: newNode.position,
+        data: { label: '', editing: true, ...callbacks },
+      },
     ])
     setEditingId(newId)
     history.push(libNodesRef.current, libEdgesRef.current)
@@ -476,7 +497,7 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
     <div className="flex h-full min-h-0 flex-col">
       {/* Title bar */}
       <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
-        <GitBranch className="text-teal-500 size-4 shrink-0" aria-hidden />
+        <GitBranch className="size-4 shrink-0 text-teal-500" aria-hidden />
         <InlineFileTitle
           path={path}
           onRename={(oldPath, newStem) => onRename?.(tabId, oldPath, newStem, '.mind')}
@@ -513,7 +534,7 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
           {!isMobile && (
             <Controls
               showInteractive={false}
-              className="!border-border !bg-bg !shadow-sm [&>button]:!border-border [&>button]:!bg-bg [&>button]:!text-fg-muted"
+              className="!border-border !bg-bg [&>button]:!border-border [&>button]:!bg-bg [&>button]:!text-fg-muted !shadow-sm"
             />
           )}
 
@@ -565,7 +586,7 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
                 aria-label="Add node"
                 className={cn(
                   'flex size-14 items-center justify-center rounded-full shadow-lg',
-                  'bg-teal-500 text-white active:scale-95 transition-transform',
+                  'bg-teal-500 text-white transition-transform active:scale-95',
                 )}
               >
                 <Plus className="size-6" aria-hidden />
@@ -576,7 +597,7 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
           {/* Keyboard hint — desktop only */}
           {!isMobile && (
             <Panel position="bottom-left">
-              <p className="text-fg-muted/60 select-none text-[10px]">
+              <p className="text-fg-muted/60 text-[10px] select-none">
                 Tab = child · Enter = sibling · F2 = rename · Del = delete · Double-click = new node
               </p>
             </Panel>
@@ -631,9 +652,7 @@ export function MindmapEditor({ tabId, path, onRename, onPersisted }: MindmapEdi
 
   if (!file) {
     return (
-      <div className="text-fg-muted flex h-full items-center justify-center text-sm">
-        Loading…
-      </div>
+      <div className="text-fg-muted flex h-full items-center justify-center text-sm">Loading…</div>
     )
   }
 

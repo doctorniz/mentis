@@ -1,10 +1,5 @@
 import type { FileSystemAdapter } from '@/lib/fs/types'
-import type {
-  RemoteSyncProvider,
-  RemoteFileEntry,
-  SyncManifestEntry,
-  SyncStatus,
-} from './types'
+import type { RemoteSyncProvider, RemoteFileEntry, SyncManifestEntry, SyncStatus } from './types'
 import { SyncState } from './sync-state'
 import { detectLocalChanges, hashBytes } from './change-detector'
 
@@ -92,8 +87,7 @@ export class SyncManager {
         } else if (manifestEntry.remoteHash !== remote.hash) {
           // Remote changed since last sync
           const isLocallyChanged =
-            localChanges.modified.includes(path) ||
-            localChanges.created.includes(path)
+            localChanges.modified.includes(path) || localChanges.created.includes(path)
           if (isLocallyChanged) {
             const winner = this.resolveConflict(path, localChanges, remote, manifestEntry)
             if (winner === 'remote') {
@@ -223,10 +217,7 @@ export class SyncManager {
     }
   }
 
-  private async applyRemoteChanges(
-    entries: RemoteFileEntry[],
-    deleted: string[],
-  ): Promise<void> {
+  private async applyRemoteChanges(entries: RemoteFileEntry[], deleted: string[]): Promise<void> {
     for (const remote of entries) {
       if (remote.isDirectory) continue
       const manifestEntry = await this.state.getEntry(remote.path)

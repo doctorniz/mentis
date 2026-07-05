@@ -128,18 +128,12 @@ describe('listSnapshots', () => {
 
   beforeEach(() => {
     fs = new InMemoryAdapter()
-    fs.files.set(
-      '_marrow/snapshots/report_2026-03-30T10-00-00-000Z.pdf',
-      new Uint8Array([1, 2, 3]),
-    )
+    fs.files.set('_marrow/snapshots/report_2026-03-30T10-00-00-000Z.pdf', new Uint8Array([1, 2, 3]))
     fs.files.set(
       '_marrow/snapshots/report_2026-03-31T10-00-00-000Z.pdf',
       new Uint8Array([4, 5, 6, 7]),
     )
-    fs.files.set(
-      '_marrow/snapshots/other_2026-03-29T08-00-00-000Z.pdf',
-      new Uint8Array([8]),
-    )
+    fs.files.set('_marrow/snapshots/other_2026-03-29T08-00-00-000Z.pdf', new Uint8Array([8]))
   })
 
   it('lists all snapshots sorted newest first', async () => {
@@ -208,10 +202,7 @@ describe('pruneSnapshots', () => {
     fs = new InMemoryAdapter()
     for (let i = 1; i <= 7; i++) {
       const ts = `2026-03-${String(i).padStart(2, '0')}T10-00-00-000Z`
-      fs.files.set(
-        `_marrow/snapshots/report_${ts}.pdf`,
-        new Uint8Array([i]),
-      )
+      fs.files.set(`_marrow/snapshots/report_${ts}.pdf`, new Uint8Array([i]))
     }
   })
 

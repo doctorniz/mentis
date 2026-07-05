@@ -20,9 +20,7 @@ export function ChatAssistantHtml({
   const handleClick = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
       if (!onVaultPathOpen) return
-      const a = (e.target as HTMLElement).closest<HTMLAnchorElement>(
-        'a.chat-vault-source',
-      )
+      const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a.chat-vault-source')
       if (!a) return
       e.preventDefault()
       const path = a.getAttribute('data-ink-path')

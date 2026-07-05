@@ -9,17 +9,11 @@
  * LM Studio, Ollama, or any other `/v1/chat/completions` gateway.
  */
 
-import type {
-  ChatCompletionRequest,
-  ChatProvider,
-  ChatStreamChunk,
-} from './types'
+import type { ChatCompletionRequest, ChatProvider, ChatStreamChunk } from './types'
 
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1'
 
-async function* streamOpenAI(
-  req: ChatCompletionRequest,
-): AsyncGenerator<ChatStreamChunk> {
+async function* streamOpenAI(req: ChatCompletionRequest): AsyncGenerator<ChatStreamChunk> {
   const base = (req.baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/$/, '')
   const url = `${base}/chat/completions`
 

@@ -16,9 +16,7 @@ async function writeFileToVault(
     },
     { name: filename, text: content },
   )
-  await page.evaluate(() =>
-    window.dispatchEvent(new CustomEvent('ink:vault-changed')),
-  )
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('ink:vault-changed')))
   await page.waitForTimeout(1000)
 }
 
@@ -111,9 +109,7 @@ But the body should still render.`
     expect(hasContent).toBe(true)
 
     // No fatal unhandled errors
-    const fatal = errors.filter(
-      (e) => !e.includes('ResizeObserver') && !e.includes('AbortError'),
-    )
+    const fatal = errors.filter((e) => !e.includes('ResizeObserver') && !e.includes('AbortError'))
     expect(fatal).toHaveLength(0)
   })
 
@@ -130,9 +126,7 @@ But the body should still render.`
     await page.waitForTimeout(1000)
 
     // Should be a no-op — no crash or error
-    const fatal = errors.filter(
-      (e) => !e.includes('ResizeObserver') && !e.includes('AbortError'),
-    )
+    const fatal = errors.filter((e) => !e.includes('ResizeObserver') && !e.includes('AbortError'))
     expect(fatal).toHaveLength(0)
   })
 
@@ -160,7 +154,9 @@ But the body should still render.`
 
 test.describe('18.3 — Performance', () => {
   // Stress test: opening 20+ tabs requires creating many files and may be slow in CI
-  test.fixme('18.3.4 Many open tabs (20+) — memory stays reasonable', async ({ vaultPage: page }) => {
+  test.fixme('18.3.4 Many open tabs (20+) — memory stays reasonable', async ({
+    vaultPage: page,
+  }) => {
     for (let i = 0; i < 25; i++) {
       await writeFileToVault(page, `perf-note-${i}.md`, `# Note ${i}\n\nContent ${i}`)
     }
@@ -205,7 +201,9 @@ test.describe('18.3 — Performance', () => {
     // Track vault-changed events during rapid typing
     await page.evaluate(() => {
       let count = 0
-      const handler = () => { count++ }
+      const handler = () => {
+        count++
+      }
       window.addEventListener('ink:vault-changed', handler)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(window as any).__e2eWriteCount = () => {

@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  mergeVaultSourcesSection,
-  parseCitedSuperscriptIndices,
-} from '@/lib/chat/vault-rag'
+import { mergeVaultSourcesSection, parseCitedSuperscriptIndices } from '@/lib/chat/vault-rag'
 
 const hits = [
   {

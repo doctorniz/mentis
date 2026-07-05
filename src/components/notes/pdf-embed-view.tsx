@@ -35,9 +35,7 @@ export function PdfEmbedView({
       <div className="text-fg-muted border-border flex items-center gap-2 border-b px-3 py-1.5 text-xs">
         <span className="font-medium">{file}</span>
         <span>
-          {pages.length === 1
-            ? `page ${pages[0]}`
-            : `pages ${pages[0]}–${pages[pages.length - 1]}`}
+          {pages.length === 1 ? `page ${pages[0]}` : `pages ${pages[0]}–${pages[pages.length - 1]}`}
         </span>
       </div>
       <div className="flex flex-col items-center gap-2 p-2">
@@ -101,11 +99,7 @@ function PdfPageCanvas({
   }, [file, pageNum, vaultFs])
 
   if (error) {
-    return (
-      <div className="text-danger px-3 py-2 text-xs">
-        {error}
-      </div>
-    )
+    return <div className="text-danger px-3 py-2 text-xs">{error}</div>
   }
 
   return (

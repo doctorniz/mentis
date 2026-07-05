@@ -6,7 +6,9 @@ test.describe('2.1 — View Switching', () => {
     await page.waitForTimeout(1000)
 
     // Chat view should show thread list, composer, or chat-related content
-    const chatIndicator = page.locator('text=Chat, text=New chat, [class*="chat"], textarea, [placeholder*="message"]').first()
+    const chatIndicator = page
+      .locator('text=Chat, text=New chat, [class*="chat"], textarea, [placeholder*="message"]')
+      .first()
     await expect(chatIndicator).toBeVisible({ timeout: 10_000 })
   })
 
@@ -15,7 +17,9 @@ test.describe('2.1 — View Switching', () => {
     await page.waitForTimeout(1000)
 
     // Vault view shows file tree or editor area
-    const vaultIndicator = page.locator('.tiptap, .ProseMirror, [class*="tree"], [class*="file-tree"]').first()
+    const vaultIndicator = page
+      .locator('.tiptap, .ProseMirror, [class*="tree"], [class*="file-tree"]')
+      .first()
     await expect(vaultIndicator).toBeVisible({ timeout: 10_000 })
   })
 
@@ -24,7 +28,11 @@ test.describe('2.1 — View Switching', () => {
     await page.waitForTimeout(1000)
 
     // Board view shows masonry layout or "board is empty" text or add-thought button
-    const boardIndicator = page.locator('text=board is empty, [aria-label="Add thought"], [class*="masonry"], [class*="columns"]').first()
+    const boardIndicator = page
+      .locator(
+        'text=board is empty, [aria-label="Add thought"], [class*="masonry"], [class*="columns"]',
+      )
+      .first()
     await expect(boardIndicator).toBeVisible({ timeout: 10_000 })
   })
 
@@ -33,7 +41,9 @@ test.describe('2.1 — View Switching', () => {
     await page.waitForTimeout(1000)
 
     // Tasks view shows task list, inbox, or quick-add bar
-    const tasksIndicator = page.locator('text=Inbox, text=Today, text=Upcoming, [class*="task"], [placeholder*="task"]').first()
+    const tasksIndicator = page
+      .locator('text=Inbox, text=Today, text=Upcoming, [class*="task"], [placeholder*="task"]')
+      .first()
     await expect(tasksIndicator).toBeVisible({ timeout: 10_000 })
   })
 
@@ -42,7 +52,9 @@ test.describe('2.1 — View Switching', () => {
     await page.waitForTimeout(1000)
 
     // Bookmarks view shows bookmark list or "add bookmark" button
-    const bookmarksIndicator = page.locator('text=Bookmarks, text=Add bookmark, [class*="bookmark"]').first()
+    const bookmarksIndicator = page
+      .locator('text=Bookmarks, text=Add bookmark, [class*="bookmark"]')
+      .first()
     await expect(bookmarksIndicator).toBeVisible({ timeout: 10_000 })
   })
 
@@ -51,7 +63,9 @@ test.describe('2.1 — View Switching', () => {
     await page.waitForTimeout(1000)
 
     // Calendar view shows month grid or day/week layout
-    const calendarIndicator = page.locator('text=Mon, text=Tue, text=Sun, [class*="calendar"], [class*="grid"]').first()
+    const calendarIndicator = page
+      .locator('text=Mon, text=Tue, text=Sun, [class*="calendar"], [class*="grid"]')
+      .first()
     await expect(calendarIndicator).toBeVisible({ timeout: 10_000 })
   })
 
@@ -78,7 +92,9 @@ test.describe('2.1 — View Switching', () => {
     await page.waitForTimeout(1000)
 
     // Search view shows search input
-    const searchInput = page.locator('input[type="search"], input[placeholder*="earch"], input[placeholder*="Search"]').first()
+    const searchInput = page
+      .locator('input[type="search"], input[placeholder*="earch"], input[placeholder*="Search"]')
+      .first()
     await expect(searchInput).toBeVisible({ timeout: 10_000 })
   })
 
@@ -94,7 +110,17 @@ test.describe('2.1 — View Switching', () => {
   })
 
   test('2.1.11 All view shortcuts cycle without crash', async ({ vaultPage: page }) => {
-    const shortcuts = ['Control+0', 'Control+1', 'Control+2', 'Control+3', 'Control+4', 'Control+5', 'Control+6', 'Control+7', 'Control+8']
+    const shortcuts = [
+      'Control+0',
+      'Control+1',
+      'Control+2',
+      'Control+3',
+      'Control+4',
+      'Control+5',
+      'Control+6',
+      'Control+7',
+      'Control+8',
+    ]
 
     for (const shortcut of shortcuts) {
       await page.keyboard.press(shortcut)
@@ -116,8 +142,9 @@ test.describe('2.1 — View Switching', () => {
 
     // Check it has a visually distinct style (accent background or font-medium)
     const parentButton = boardNavItem.locator('..')
-    const classes = await parentButton.getAttribute('class') ?? ''
-    const isActive = classes.includes('accent') || classes.includes('active') || classes.includes('font-medium')
+    const classes = (await parentButton.getAttribute('class')) ?? ''
+    const isActive =
+      classes.includes('accent') || classes.includes('active') || classes.includes('font-medium')
     expect(isActive).toBe(true)
 
     // Switch to Bookmarks — Board should no longer be active
@@ -127,15 +154,19 @@ test.describe('2.1 — View Switching', () => {
     const bookmarkNavItem = page.locator('aside').getByText('Bookmarks').first()
     await expect(bookmarkNavItem).toBeVisible({ timeout: 5000 })
     const bookmarkParent = bookmarkNavItem.locator('..')
-    const bookmarkClasses = await bookmarkParent.getAttribute('class') ?? ''
+    const bookmarkClasses = (await bookmarkParent.getAttribute('class')) ?? ''
     const bookmarkIsActive =
-      bookmarkClasses.includes('accent') || bookmarkClasses.includes('active') || bookmarkClasses.includes('font-medium')
+      bookmarkClasses.includes('accent') ||
+      bookmarkClasses.includes('active') ||
+      bookmarkClasses.includes('font-medium')
     expect(bookmarkIsActive).toBe(true)
   })
 })
 
 test.describe('2.2 — Sidebar & Layout', () => {
-  test('2.2.1 Toggle sidebar with Ctrl+\\ — verify collapse/expand', async ({ vaultPage: page }) => {
+  test('2.2.1 Toggle sidebar with Ctrl+\\ — verify collapse/expand', async ({
+    vaultPage: page,
+  }) => {
     // Sidebar should be visible initially
     const sidebar = page.locator('aside').first()
     await expect(sidebar).toBeVisible({ timeout: 5000 })
@@ -181,7 +212,7 @@ test.describe('2.4 — Theme & Appearance', () => {
     }
 
     // In light mode, the <html> element should NOT have the 'dark' class
-    const htmlClass = await page.locator('html').getAttribute('class') ?? ''
+    const htmlClass = (await page.locator('html').getAttribute('class')) ?? ''
     expect(htmlClass).not.toContain('dark')
 
     // Background should be light-ish (verify computed style)
@@ -202,7 +233,7 @@ test.describe('2.4 — Theme & Appearance', () => {
     }
 
     // In dark mode, the <html> element should have the 'dark' class
-    const htmlClass = await page.locator('html').getAttribute('class') ?? ''
+    const htmlClass = (await page.locator('html').getAttribute('class')) ?? ''
     expect(htmlClass).toContain('dark')
   })
 
@@ -215,7 +246,7 @@ test.describe('2.4 — Theme & Appearance', () => {
     }
 
     // Verify dark class set
-    let htmlClass = await page.locator('html').getAttribute('class') ?? ''
+    let htmlClass = (await page.locator('html').getAttribute('class')) ?? ''
     expect(htmlClass).toContain('dark')
 
     // Reload the page
@@ -225,7 +256,7 @@ test.describe('2.4 — Theme & Appearance', () => {
     await page.waitForTimeout(1000)
 
     // Theme should persist — still dark
-    htmlClass = await page.locator('html').getAttribute('class') ?? ''
+    htmlClass = (await page.locator('html').getAttribute('class')) ?? ''
     expect(htmlClass).toContain('dark')
   })
 })

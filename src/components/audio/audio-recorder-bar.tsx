@@ -78,12 +78,14 @@ export function AudioRecorderBar({
   const handleStop = useCallback(() => {
     const r = recorderRef.current
     if (!r) return
-    r.stop().then(({ audioBytes, durationMs, mimeType }) => {
-      completeRef.current(audioBytes, durationMs, mimeType)
-    }).catch((err) => {
-      console.error('Recording stop failed:', err)
-      setError('Failed to process recording')
-    })
+    r.stop()
+      .then(({ audioBytes, durationMs, mimeType }) => {
+        completeRef.current(audioBytes, durationMs, mimeType)
+      })
+      .catch((err) => {
+        console.error('Recording stop failed:', err)
+        setError('Failed to process recording')
+      })
   }, [])
 
   const handleCancel = useCallback(() => {
@@ -93,13 +95,18 @@ export function AudioRecorderBar({
 
   if (error) {
     return (
-      <div className={cn('flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3', className)}>
-        <Mic className="size-4 text-destructive" />
-        <span className="text-sm text-destructive">{error}</span>
+      <div
+        className={cn(
+          'border-destructive/30 bg-destructive/5 flex items-center gap-3 rounded-xl border px-4 py-3',
+          className,
+        )}
+      >
+        <Mic className="text-destructive size-4" />
+        <span className="text-destructive text-sm">{error}</span>
         <button
           type="button"
           onClick={onCancel}
-          className="ml-auto rounded-md p-1 text-fg-muted hover:text-fg transition-colors"
+          className="text-fg-muted hover:text-fg ml-auto rounded-md p-1 transition-colors"
           aria-label="Dismiss"
         >
           <X className="size-4" />
@@ -119,22 +126,20 @@ export function AudioRecorderBar({
   })
 
   return (
-    <div className={cn(
-      'flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors',
-      isRecording
-        ? 'border-red-300/60 bg-red-50/50 dark:border-red-800/40 dark:bg-red-950/20'
-        : 'border-border bg-bg-secondary',
-      className,
-    )}>
+    <div
+      className={cn(
+        'flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors',
+        isRecording
+          ? 'border-red-300/60 bg-red-50/50 dark:border-red-800/40 dark:bg-red-950/20'
+          : 'border-border bg-bg-secondary',
+        className,
+      )}
+    >
       {/* Recording indicator */}
       <div className="flex items-center gap-2">
-        {isRecording && (
-          <div className="size-2 animate-pulse rounded-full bg-red-500" />
-        )}
-        {isPaused && (
-          <div className="size-2 rounded-full bg-amber-500" />
-        )}
-        <span className="font-mono text-sm font-medium text-fg tabular-nums">
+        {isRecording && <div className="size-2 animate-pulse rounded-full bg-red-500" />}
+        {isPaused && <div className="size-2 rounded-full bg-amber-500" />}
+        <span className="text-fg font-mono text-sm font-medium tabular-nums">
           {formatElapsed(state.elapsedMs)}
         </span>
       </div>
@@ -173,13 +178,13 @@ export function AudioRecorderBar({
             <button
               type="button"
               onClick={handlePauseResume}
-              className="flex size-8 items-center justify-center rounded-lg border border-border bg-bg transition-colors hover:bg-bg-hover"
+              className="border-border bg-bg hover:bg-bg-hover flex size-8 items-center justify-center rounded-lg border transition-colors"
               aria-label={isRecording ? 'Pause' : 'Resume'}
             >
               {isRecording ? (
-                <Pause className="size-3.5 text-fg" />
+                <Pause className="text-fg size-3.5" />
               ) : (
-                <Play className="size-3.5 text-fg ml-0.5" />
+                <Play className="text-fg ml-0.5 size-3.5" />
               )}
             </button>
 
@@ -187,7 +192,7 @@ export function AudioRecorderBar({
             <button
               type="button"
               onClick={handleStop}
-              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition-colors hover:bg-accent/90"
+              className="bg-accent text-accent-fg hover:bg-accent/90 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
               aria-label="Stop and save"
             >
               <Square className="size-3" fill="currentColor" />
@@ -200,7 +205,7 @@ export function AudioRecorderBar({
         <button
           type="button"
           onClick={handleCancel}
-          className="flex size-8 items-center justify-center rounded-lg text-fg-muted transition-colors hover:text-fg hover:bg-bg-hover"
+          className="text-fg-muted hover:text-fg hover:bg-bg-hover flex size-8 items-center justify-center rounded-lg transition-colors"
           aria-label="Cancel recording"
         >
           <X className="size-4" />

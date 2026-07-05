@@ -15,25 +15,17 @@
  * override `baseUrl` in Settings.
  */
 
-import type {
-  ChatCompletionRequest,
-  ChatProvider,
-  ChatStreamChunk,
-} from './types'
+import type { ChatCompletionRequest, ChatProvider, ChatStreamChunk } from './types'
 
 const DEFAULT_BASE_URL = 'https://api.anthropic.com/v1'
 const DEFAULT_MAX_TOKENS = 4096
 
-async function* streamAnthropic(
-  req: ChatCompletionRequest,
-): AsyncGenerator<ChatStreamChunk> {
+async function* streamAnthropic(req: ChatCompletionRequest): AsyncGenerator<ChatStreamChunk> {
   const base = (req.baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/$/, '')
   const url = `${base}/messages`
 
   // Split out the single system message; Anthropic expects it top-level.
-  const systemParts = req.messages
-    .filter((m) => m.role === 'system')
-    .map((m) => m.content)
+  const systemParts = req.messages.filter((m) => m.role === 'system').map((m) => m.content)
   const system = systemParts.join('\n\n')
   const convo = req.messages
     .filter((m) => m.role !== 'system')

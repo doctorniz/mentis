@@ -52,16 +52,16 @@ export function Toaster() {
             key={t.id}
             role="status"
             className={cn(
-              'bg-bg-secondary border shadow-lg rounded-lg px-4 py-3 flex items-start gap-3 toast-enter',
+              'bg-bg-secondary toast-enter flex items-start gap-3 rounded-lg border px-4 py-3 shadow-lg',
               VARIANT_STYLES[t.variant],
             )}
           >
-            <Icon className={cn('size-5 shrink-0 mt-0.5', ICON_STYLES[t.variant])} aria-hidden />
-            <p className="text-sm flex-1 leading-snug">{t.message}</p>
+            <Icon className={cn('mt-0.5 size-5 shrink-0', ICON_STYLES[t.variant])} aria-hidden />
+            <p className="flex-1 text-sm leading-snug">{t.message}</p>
             <button
               type="button"
               onClick={() => dismiss(t.id)}
-              className="text-fg-muted hover:text-fg shrink-0 -mt-0.5 -mr-1"
+              className="text-fg-muted hover:text-fg -mt-0.5 -mr-1 shrink-0"
               aria-label="Dismiss"
             >
               <X className="size-4" />

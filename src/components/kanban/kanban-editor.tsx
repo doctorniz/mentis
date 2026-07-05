@@ -58,7 +58,9 @@ export function KanbanEditor({
         if (!cancelled) setLoading(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [vaultFs, path])
 
   // Auto-save
@@ -222,9 +224,7 @@ export function KanbanEditor({
   const handleSetColumnColor = useCallback(
     (columnId: string, color: KanbanColumnColor | undefined) => {
       mutate((b) => ({
-        columns: b.columns.map((col) =>
-          col.id === columnId ? { ...col, color } : col,
-        ),
+        columns: b.columns.map((col) => (col.id === columnId ? { ...col, color } : col)),
       }))
     },
     [mutate],
@@ -282,11 +282,7 @@ export function KanbanEditor({
     <div className="flex h-full min-h-0 flex-col">
       {/* Title bar */}
       <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
-        <InlineFileTitle
-          path={path}
-          autoFocus={isNew}
-          onRename={handleRenameFile}
-        />
+        <InlineFileTitle path={path} autoFocus={isNew} onRename={handleRenameFile} />
         {path.endsWith('.kanban') && (
           <span className="text-fg-muted font-mono text-xs">.kanban</span>
         )}

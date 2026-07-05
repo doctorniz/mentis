@@ -145,7 +145,9 @@ export class OpfsAdapter implements FileSystemAdapter {
     const oldResolved = await this.resolvePath(oldPath)
     const newResolved = await this.resolvePath(newPath)
 
-    type WithMove = { move?: (name: string, options?: { parent?: FileSystemDirectoryHandle }) => Promise<void> }
+    type WithMove = {
+      move?: (name: string, options?: { parent?: FileSystemDirectoryHandle }) => Promise<void>
+    }
 
     let handle: FileSystemFileHandle | FileSystemDirectoryHandle
     let isDir = false
@@ -161,7 +163,9 @@ export class OpfsAdapter implements FileSystemAdapter {
       try {
         await h.move(newResolved.name, { parent: newResolved.parent })
         return
-      } catch { /* fall through to manual copy */ }
+      } catch {
+        /* fall through to manual copy */
+      }
     }
 
     if (isDir) {

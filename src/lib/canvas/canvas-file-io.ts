@@ -183,9 +183,7 @@ async function loadLayerBitmaps(
       // `ArrayBufferLike` backing buffer, which strict lib.dom rejects as
       // a `BlobPart` (its `ArrayBuffer | SharedArrayBuffer` union includes
       // SharedArrayBuffer). The bytes are always plain ArrayBuffer here.
-      const bitmap = await createImageBitmap(
-        new Blob([bytes as BlobPart], { type: 'image/png' }),
-      )
+      const bitmap = await createImageBitmap(new Blob([bytes as BlobPart], { type: 'image/png' }))
       bitmaps.set(layer.id, bitmap)
     } catch {
       // Sidecar missing or undecodable — layer loads blank. Keep going

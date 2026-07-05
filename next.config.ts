@@ -29,9 +29,7 @@ const nextConfig: NextConfig = {
     // any `node:*` request to the empty-module stub, which is safe because none
     // of that Node I/O code is ever reached at browser runtime.
     if (!isServer) {
-      config.plugins.push(
-        new webpack.NormalModuleReplacementPlugin(/^node:/, canvasStub)
-      )
+      config.plugins.push(new webpack.NormalModuleReplacementPlugin(/^node:/, canvasStub))
     }
     return config
   },

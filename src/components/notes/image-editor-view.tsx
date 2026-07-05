@@ -1,16 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import {
-  Contrast,
-  Crop,
-  RotateCcw,
-  RotateCw,
-  Save,
-  Sun,
-  SunMedium,
-  Undo2,
-} from 'lucide-react'
+import { Contrast, Crop, RotateCcw, RotateCw, Save, Sun, SunMedium, Undo2 } from 'lucide-react'
 import type { FileSystemAdapter } from '@/lib/fs'
 import {
   defaultImageEditOpts,
@@ -257,9 +248,7 @@ export function ImageEditorView({
   }
 
   if (loadError) {
-    return (
-      <div className="text-danger text-sm">Could not load image for editing.</div>
-    )
+    return <div className="text-danger text-sm">Could not load image for editing.</div>
   }
 
   if (!imgEl) {

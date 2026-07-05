@@ -44,11 +44,7 @@ interface TasksState {
   toggleTask: (fs: FileSystemAdapter, path: string) => Promise<void>
   removeTask: (fs: FileSystemAdapter, path: string) => Promise<void>
   clearCompleted: (fs: FileSystemAdapter, list?: string | null) => Promise<void>
-  moveToList: (
-    fs: FileSystemAdapter,
-    path: string,
-    newList: string | null,
-  ) => Promise<void>
+  moveToList: (fs: FileSystemAdapter, path: string, newList: string | null) => Promise<void>
   reorderTask: (fs: FileSystemAdapter, path: string, newOrder: number) => Promise<void>
   createList: (fs: FileSystemAdapter, name: string) => Promise<void>
   removeList: (fs: FileSystemAdapter, name: string) => Promise<void>
@@ -56,11 +52,7 @@ interface TasksState {
   setActiveFilter: (filter: TaskFilter) => void
 }
 
-async function collectTaskFiles(
-  fs: FileSystemAdapter,
-  dir: string,
-  acc: string[],
-): Promise<void> {
+async function collectTaskFiles(fs: FileSystemAdapter, dir: string, acc: string[]): Promise<void> {
   const entries = await fs.readdir(dir)
   for (const e of entries) {
     if (e.isDirectory) {
@@ -85,12 +77,18 @@ export const useTasksStore = create<TasksState>()(
     loading: false,
 
     loadTasks: async (fs) => {
-      set((s) => { s.loading = true })
+      set((s) => {
+        s.loading = true
+      })
       try {
         const exists = await fs.exists(TASKS_DIR)
         if (!exists) {
           await fs.mkdir(TASKS_DIR)
-          set((s) => { s.items = []; s.lists = []; s.loading = false })
+          set((s) => {
+            s.items = []
+            s.lists = []
+            s.loading = false
+          })
           return
         }
 
@@ -102,13 +100,21 @@ export const useTasksStore = create<TasksState>()(
           try {
             const raw = await fs.readTextFile(p)
             items.push(parseTaskItem(p, raw))
-          } catch { /* skip unreadable */ }
+          } catch {
+            /* skip unreadable */
+          }
         }
 
         const lists = await collectLists(fs)
-        set((s) => { s.items = items; s.lists = lists; s.loading = false })
+        set((s) => {
+          s.items = items
+          s.lists = lists
+          s.loading = false
+        })
       } catch {
-        set((s) => { s.loading = false })
+        set((s) => {
+          s.loading = false
+        })
       }
     },
 
@@ -178,10 +184,7 @@ export const useTasksStore = create<TasksState>()(
       const isDone = existing.status === 'done'
       const now = new Date().toISOString()
 
-      const rollWeekly =
-        !isDone &&
-        existing.repeat === 'weekly' &&
-        existing.repeatWeekday != null
+      const rollWeekly = !isDone && existing.repeat === 'weekly' && existing.repeatWeekday != null
 
       const newStatus = rollWeekly ? 'todo' : isDone ? 'todo' : 'done'
       const nextDue =
@@ -223,14 +226,20 @@ export const useTasksStore = create<TasksState>()(
       const target = state.items.find((i) => i.path === path)
       if (!target) return
 
-      const childPaths = state.items
-        .filter((i) => i.parent === target.uid)
-        .map((i) => i.path)
+      const childPaths = state.items.filter((i) => i.parent === target.uid).map((i) => i.path)
 
       for (const cp of childPaths) {
-        try { await fs.remove(cp) } catch { /* already gone */ }
+        try {
+          await fs.remove(cp)
+        } catch {
+          /* already gone */
+        }
       }
-      try { await fs.remove(path) } catch { /* already gone */ }
+      try {
+        await fs.remove(path)
+      } catch {
+        /* already gone */
+      }
 
       set((s) => {
         const uid = target.uid
@@ -241,13 +250,15 @@ export const useTasksStore = create<TasksState>()(
     clearCompleted: async (fs, list) => {
       const state = get()
       const toRemove = state.items.filter(
-        (i) =>
-          i.status === 'done' &&
-          (list === undefined ? true : i.list === list),
+        (i) => i.status === 'done' && (list === undefined ? true : i.list === list),
       )
 
       for (const item of toRemove) {
-        try { await fs.remove(item.path) } catch { /* ignore */ }
+        try {
+          await fs.remove(item.path)
+        } catch {
+          /* ignore */
+        }
       }
 
       const removePaths = new Set(toRemove.map((i) => i.path))
@@ -325,7 +336,11 @@ export const useTasksStore = create<TasksState>()(
 
     removeList: async (fs, name) => {
       const dir = `${TASKS_DIR}/${name}`
-      try { await fs.removeDir(dir) } catch { /* ignore */ }
+      try {
+        await fs.removeDir(dir)
+      } catch {
+        /* ignore */
+      }
       set((s) => {
         s.lists = s.lists.filter((l) => l !== name)
         s.items = s.items.filter((i) => i.list !== name)
@@ -334,9 +349,13 @@ export const useTasksStore = create<TasksState>()(
     },
 
     setActiveList: (list) =>
-      set((s) => { s.activeList = list }),
+      set((s) => {
+        s.activeList = list
+      }),
 
     setActiveFilter: (filter) =>
-      set((s) => { s.activeFilter = filter }),
+      set((s) => {
+        s.activeFilter = filter
+      }),
   })),
 )

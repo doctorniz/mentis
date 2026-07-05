@@ -17,11 +17,7 @@
  */
 
 import type { FileSystemAdapter } from '@/lib/fs'
-import {
-  CHAT_SCHEMA_VERSION,
-  type ChatMessage,
-  type ChatThread,
-} from '@/types/chat'
+import { CHAT_SCHEMA_VERSION, type ChatMessage, type ChatThread } from '@/types/chat'
 import { MARROW_DIR } from '@/types/vault'
 
 export const CHATS_DIR = `${MARROW_DIR}/_chats`
@@ -44,10 +40,7 @@ export function threadPath(chatAssetId: string, threadId: string): string {
 }
 
 /** Save a user-picked file for vault chat (+ menu); returns vault-relative path. */
-export async function saveVaultChatUpload(
-  vaultFs: FileSystemAdapter,
-  file: File,
-): Promise<string> {
+export async function saveVaultChatUpload(vaultFs: FileSystemAdapter, file: File): Promise<string> {
   await ensureDir(vaultFs, CHATS_DIR)
   await ensureDir(vaultFs, `${CHATS_DIR}/${VAULT_CHAT_ASSET_FOLDER}`)
   const dir = vaultChatUploadsDir()
@@ -153,10 +146,7 @@ export async function readThread(
   }
 }
 
-export async function writeThread(
-  vaultFs: FileSystemAdapter,
-  thread: ChatThread,
-): Promise<void> {
+export async function writeThread(vaultFs: FileSystemAdapter, thread: ChatThread): Promise<void> {
   await ensureDir(vaultFs, CHATS_DIR)
   await ensureDir(vaultFs, threadFolder(thread.documentAssetId))
 

@@ -36,11 +36,26 @@ export const DEFAULT_BRUSH: BrushSettings = {
 export const DEFAULT_VIEWPORT: ViewportState = { x: 0, y: 0, zoom: 1 }
 
 export const COLOR_SWATCHES = [
-  '#212529', '#495057', '#adb5bd', '#ffffff',
-  '#e03131', '#f08c00', '#ffd43b', '#40c057',
-  '#1c7ed6', '#7950f2', '#e64980', '#20c997',
-  '#845ef7', '#fd7e14', '#ffe066', '#69db7c',
-  '#339af0', '#be4bdb', '#ff6b6b', '#a9e34b',
+  '#212529',
+  '#495057',
+  '#adb5bd',
+  '#ffffff',
+  '#e03131',
+  '#f08c00',
+  '#ffd43b',
+  '#40c057',
+  '#1c7ed6',
+  '#7950f2',
+  '#e64980',
+  '#20c997',
+  '#845ef7',
+  '#fd7e14',
+  '#ffe066',
+  '#69db7c',
+  '#339af0',
+  '#be4bdb',
+  '#ff6b6b',
+  '#a9e34b',
 ]
 
 /**
@@ -72,11 +87,7 @@ export const STANDARD_BLEND_MODES = [
  * removed. A proper implementation requires a filter-backed composite
  * pass, which is deferred.
  */
-export const HSL_BLEND_MODES = [
-  'luminosity',
-  'color',
-  'saturation',
-] as const
+export const HSL_BLEND_MODES = ['luminosity', 'color', 'saturation'] as const
 
 /**
  * Legacy flat list — kept so callers that only need to validate stored
@@ -84,7 +95,4 @@ export const HSL_BLEND_MODES = [
  * UI that renders the dropdown should prefer `STANDARD_BLEND_MODES` +
  * `HSL_BLEND_MODES` to surface the fallback caveat to the user.
  */
-export const BLEND_MODES = [
-  ...STANDARD_BLEND_MODES,
-  ...HSL_BLEND_MODES,
-] as const
+export const BLEND_MODES = [...STANDARD_BLEND_MODES, ...HSL_BLEND_MODES] as const

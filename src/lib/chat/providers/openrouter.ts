@@ -11,17 +11,11 @@
  * `choices[0].delta.content`. We yield only non-empty content strings.
  */
 
-import type {
-  ChatCompletionRequest,
-  ChatProvider,
-  ChatStreamChunk,
-} from './types'
+import type { ChatCompletionRequest, ChatProvider, ChatStreamChunk } from './types'
 
 const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1'
 
-async function* streamOpenRouter(
-  req: ChatCompletionRequest,
-): AsyncGenerator<ChatStreamChunk> {
+async function* streamOpenRouter(req: ChatCompletionRequest): AsyncGenerator<ChatStreamChunk> {
   const base = (req.baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/$/, '')
   const url = `${base}/chat/completions`
 
@@ -34,8 +28,7 @@ async function* streamOpenRouter(
         Authorization: `Bearer ${req.apiKey}`,
         // OpenRouter asks for HTTP-Referer + X-Title for leaderboard /
         // routing; they're optional but nice to send.
-        'HTTP-Referer':
-          typeof window !== 'undefined' ? window.location.origin : '',
+        'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : '',
         'X-Title': 'Mentis by Marrow',
       },
       body: JSON.stringify({

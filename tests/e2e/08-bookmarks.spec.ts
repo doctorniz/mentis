@@ -8,9 +8,7 @@ test.describe('8 — Bookmark Manager', () => {
   // ─── 8.1 Bookmark CRUD ─────────────────────────────────────────────────────
 
   test.describe('8.1 Bookmark CRUD', () => {
-    test('8.1.1 add bookmark by URL — metadata auto-fetched', async ({
-      vaultPage: page,
-    }) => {
+    test('8.1.1 add bookmark by URL — metadata auto-fetched', async ({ vaultPage: page }) => {
       // Click the "+ Bookmark" button in the header
       const addBtn = page.locator('button', { hasText: 'Bookmark' }).first()
       await addBtn.click()
@@ -43,14 +41,10 @@ test.describe('8 — Bookmark Manager', () => {
       await page.waitForTimeout(1_500)
 
       // Bookmark should appear in the list
-      await expect(
-        page.getByText(/example/i).first(),
-      ).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByText(/example/i).first()).toBeVisible({ timeout: 5_000 })
     })
 
-    test('8.1.3 edit bookmark — update via dialog', async ({
-      vaultPage: page,
-    }) => {
+    test('8.1.3 edit bookmark — update via dialog', async ({ vaultPage: page }) => {
       // First, add a bookmark to edit
       const addBtn = page.locator('button', { hasText: 'Bookmark' }).first()
       await addBtn.click()
@@ -180,9 +174,7 @@ test.describe('8 — Bookmark Manager', () => {
       await expect(page.getByText('All Bookmarks')).toBeVisible()
 
       // The main panel should show the bookmarks header
-      await expect(
-        page.locator('h1').filter({ hasText: /All Bookmarks/ }),
-      ).toBeVisible()
+      await expect(page.locator('h1').filter({ hasText: /All Bookmarks/ })).toBeVisible()
 
       // The "+ Bookmark" button should be present in the header
       const addBtn = page.locator('button', { hasText: 'Bookmark' }).first()

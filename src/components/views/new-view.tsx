@@ -1,14 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import {
-  FileText,
-  FileUp,
-  Layout,
-  Plus,
-  Settings,
-  Trash2,
-} from 'lucide-react'
+import { FileText, FileUp, Layout, Plus, Settings, Trash2 } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useUiStore } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
@@ -50,7 +43,9 @@ function useFolderList() {
               await walk(p)
             }
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
       await walk('/')
       setFolders(result)
@@ -64,7 +59,13 @@ function useFolderList() {
 /*  Markdown note creator                                              */
 /* ------------------------------------------------------------------ */
 
-function NewMarkdownNote({ templates, templateFolder }: { templates: NoteTemplate[]; templateFolder: string }) {
+function NewMarkdownNote({
+  templates,
+  templateFolder,
+}: {
+  templates: NoteTemplate[]
+  templateFolder: string
+}) {
   const { vaultFs } = useVaultSession()
   const setActiveView = useUiStore((s) => s.setActiveView)
   const openTab = useEditorStore((s) => s.openTab)
@@ -94,7 +95,9 @@ function NewMarkdownNote({ templates, templateFolder }: { templates: NoteTemplat
       if (templateId) {
         try {
           content = await readTemplate(vaultFs, templateId, templateFolder)
-        } catch { /* fall through to default */ }
+        } catch {
+          /* fall through to default */
+        }
       }
 
       await vaultFs.writeTextFile(filePath, content)
@@ -311,7 +314,11 @@ function NewCanvas() {
       const dir = folder === '/' ? '' : folder
       const rawPath = `${dir}/${filename}`.replace(/^\/+/, '')
       const filePath = await allocateUniqueFilePath(vaultFs, rawPath)
-      const finalStem = filePath.replace(/\.canvas$/, '').split('/').pop() ?? stem.replace(/\.canvas$/, '')
+      const finalStem =
+        filePath
+          .replace(/\.canvas$/, '')
+          .split('/')
+          .pop() ?? stem.replace(/\.canvas$/, '')
 
       await vaultFs.writeTextFile(filePath, createEmptyCanvasJson())
 
@@ -397,9 +404,7 @@ function TemplateManager({
   return (
     <div className="space-y-4">
       <h3 className="text-fg text-sm font-semibold">Templates</h3>
-      {templates.length === 0 && (
-        <p className="text-fg-muted text-xs">No templates yet.</p>
-      )}
+      {templates.length === 0 && <p className="text-fg-muted text-xs">No templates yet.</p>}
       <ul className="space-y-1.5">
         {templates.map((t) => (
           <li
@@ -497,10 +502,18 @@ export function NewView() {
       </div>
 
       <div className="mt-6 max-w-xl">
-        {tab === 'markdown' && <NewMarkdownNote templates={templates} templateFolder={templateFolder} />}
+        {tab === 'markdown' && (
+          <NewMarkdownNote templates={templates} templateFolder={templateFolder} />
+        )}
         {tab === 'pdf' && <NewPdfNote />}
         {tab === 'canvas' && <NewCanvas />}
-        {tab === 'templates' && <TemplateManager templates={templates} templateFolder={templateFolder} onRefresh={refresh} />}
+        {tab === 'templates' && (
+          <TemplateManager
+            templates={templates}
+            templateFolder={templateFolder}
+            onRefresh={refresh}
+          />
+        )}
       </div>
     </div>
   )

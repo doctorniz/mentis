@@ -1,7 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Columns3, FileText, GitBranch, Layout, Mic, StickyNote, Upload } from 'lucide-react'
+import {
+  Camera,
+  Columns3,
+  FileText,
+  GitBranch,
+  Layout,
+  Mic,
+  StickyNote,
+  Upload,
+} from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useNewFileActions } from '@/lib/notes/use-new-file-actions'
 import { useUiStore } from '@/stores/ui'
@@ -28,12 +37,21 @@ export function NewFilePopover({
     onDismiss?.()
   }
 
-  const { createNote, createThought, createDrawing, createKanban, createMindmap, importFiles, busy } =
-    useNewFileActions(close)
+  const {
+    createNote,
+    createThought,
+    createDrawing,
+    createKanban,
+    createMindmap,
+    importFiles,
+    busy,
+  } = useNewFileActions(close)
 
   useEffect(() => {
     if (!enableGlobalShortcut) return
-    function handler() { setOpen(true) }
+    function handler() {
+      setOpen(true)
+    }
     window.addEventListener('ink:open-new-popover', handler)
     return () => window.removeEventListener('ink:open-new-popover', handler)
   }, [enableGlobalShortcut])
@@ -140,7 +158,7 @@ export function NewFilePopover({
                 disabled={busy}
                 onSelect={action}
                 className={cn(
-                  'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium outline-none transition-colors select-none',
+                  'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors outline-none select-none',
                   'text-fg hover:bg-bg-hover focus:bg-bg-hover',
                   'data-[disabled]:pointer-events-none data-[disabled]:opacity-40',
                 )}

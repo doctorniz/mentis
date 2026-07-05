@@ -58,9 +58,10 @@ export function TasksView() {
 
   const doneCount = useMemo(() => {
     if (activeFilter === 'today' || activeFilter === 'upcoming') return 0
-    const pool = activeList !== null
-      ? items.filter((i) => i.list === activeList)
-      : items.filter((i) => i.list === null)
+    const pool =
+      activeList !== null
+        ? items.filter((i) => i.list === activeList)
+        : items.filter((i) => i.list === null)
     return pool.filter((i) => i.status === 'done').length
   }, [items, activeList, activeFilter])
 
@@ -84,11 +85,12 @@ export function TasksView() {
     void clearCompleted(vaultFs, list ?? undefined)
   }, [vaultFs, activeList, activeFilter, clearCompleted])
 
-  const heading = activeFilter === 'today'
-    ? 'Today'
-    : activeFilter === 'upcoming'
-      ? 'Upcoming'
-      : activeList ?? 'Inbox'
+  const heading =
+    activeFilter === 'today'
+      ? 'Today'
+      : activeFilter === 'upcoming'
+        ? 'Upcoming'
+        : (activeList ?? 'Inbox')
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
@@ -175,11 +177,7 @@ export function TasksView() {
         </div>
       </div>
 
-      <TaskDetailDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        task={editTask}
-      />
+      <TaskDetailDialog open={dialogOpen} onOpenChange={setDialogOpen} task={editTask} />
     </div>
   )
 }

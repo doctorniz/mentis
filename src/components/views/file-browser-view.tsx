@@ -81,9 +81,7 @@ function computeRubberBandSelection(
   }
 
   // Grid
-  const colW = cols > 1
-    ? (containerWidth - (cols - 1) * CARD_GAP) / cols
-    : containerWidth
+  const colW = cols > 1 ? (containerWidth - (cols - 1) * CARD_GAP) / cols : containerWidth
 
   return files
     .filter((_, i) => {
@@ -93,7 +91,9 @@ function computeRubberBandSelection(
       const bottom = top + CARD_HEIGHT
       const left = c * (colW + CARD_GAP)
       const right = left + colW
-      return rb.y1 > top && rb.y0 < bottom && rb.x1 > left && rb.x0 < left + colW - 0 && rb.x0 < right
+      return (
+        rb.y1 > top && rb.y0 < bottom && rb.x1 > left && rb.x0 < left + colW - 0 && rb.x0 < right
+      )
     })
     .map((f) => f.path)
 }
@@ -143,7 +143,10 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
 
   useEffect(() => {
     const { text, hashTags } = parseSearchQuery(searchDebounced)
-    if (!text.length && !hashTags.length) { setSearchResults([]); return }
+    if (!text.length && !hashTags.length) {
+      setSearchResults([])
+      return
+    }
     setSearchResults(searchVault(searchDebounced, {}))
   }, [searchDebounced])
 
@@ -175,10 +178,17 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
 
   // Rubber-band selection
   const rbAnchor = useRef<{
-    clientX: number; clientY: number
-    contentX: number; contentY: number
+    clientX: number
+    clientY: number
+    contentX: number
+    contentY: number
   } | null>(null)
-  const [rbRect, setRbRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
+  const [rbRect, setRbRect] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   /** Set when blur(commit) is triggered from capture-phase outside-click; consumed in `handleScrollPointerDown`. */
   const skipRubberBandForRenameCloseRef = useRef(false)
   const renameOutsideClickTimeoutRef = useRef<number>(0)
@@ -321,7 +331,11 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
       y1: Math.max(rbAnchor.current.contentY, curContentY),
     }
     const paths = computeRubberBandSelection(
-      files, rb, viewMode, gridColsRef.current, el.clientWidth,
+      files,
+      rb,
+      viewMode,
+      gridColsRef.current,
+      el.clientWidth,
     )
     useFileBrowserStore.getState().setSelectedPaths(paths)
   }
@@ -380,7 +394,8 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
       removeSearchDocument(item.path)
       if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
       const tab = useEditorStore.getState().tabs.find((t) => t.path === item.path)
-      if (tab) useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
+      if (tab)
+        useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
       setRefreshKey((n) => n + 1)
     } catch (e) {
       console.error('Rename failed', e)
@@ -421,7 +436,8 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
       removeSearchDocument(srcPath)
       if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
       const tab = useEditorStore.getState().tabs.find((t) => t.path === srcPath)
-      if (tab) useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
+      if (tab)
+        useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
       setRefreshKey((n) => n + 1)
       toast.success(`Moved to ${destFolder || 'current folder'}`)
     } catch (e) {
@@ -465,7 +481,10 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
       const f = rawFiles.find((x) => x.path === p)
       if (!f) continue
       if (f.isDirectory) await vaultFs.removeDir(p)
-      else { removeSearchDocument(p); await vaultFs.remove(p) }
+      else {
+        removeSearchDocument(p)
+        await vaultFs.remove(p)
+      }
     }
     clearSelection()
     setRefreshKey((n) => n + 1)
@@ -502,7 +521,8 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
           removeSearchDocument(p)
           if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
           const tab = useEditorStore.getState().tabs.find((t) => t.path === p)
-          if (tab) useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
+          if (tab)
+            useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
         }
       }
     } catch (e) {
@@ -524,7 +544,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
   }
 
   function toggleType(t: string) {
-    setTypeFilter((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])
+    setTypeFilter((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
   }
 
   async function handleInlineRenameFile(
@@ -548,7 +568,8 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
       removeSearchDocument(oldPath)
       if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
       const tab = useEditorStore.getState().tabs.find((t) => t.path === oldPath)
-      if (tab) useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
+      if (tab)
+        useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
       setPath(newPath)
     } catch {
       toast.error('Failed to rename')
@@ -654,8 +675,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
         <div className="border-accent bg-accent/10 pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed">
           <span className="text-accent text-sm font-semibold">Drop files to import</span>
           <span className="text-fg-muted text-xs">
-            Files will be added to{' '}
-            <span className="font-medium">{currentFolder || 'Root'}</span>
+            Files will be added to <span className="font-medium">{currentFolder || 'Root'}</span>
           </span>
         </div>
       )}
@@ -679,12 +699,15 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
             <ChevronLeft className="size-4" />
           </Button>
         )}
-        <h2 className="text-fg min-w-0 max-w-full truncate text-xl font-semibold tracking-tight">
+        <h2 className="text-fg max-w-full min-w-0 truncate text-xl font-semibold tracking-tight">
           {currentFolder ? `${config.name} / ${currentFolder}` : config.name}
         </h2>
 
         {/* Search bar */}
-        <div className="border-border bg-bg-secondary flex flex-1 items-center gap-2 rounded-lg border px-3 py-1.5" style={{ minWidth: 160, maxWidth: 360 }}>
+        <div
+          className="border-border bg-bg-secondary flex flex-1 items-center gap-2 rounded-lg border px-3 py-1.5"
+          style={{ minWidth: 160, maxWidth: 360 }}
+        >
           <Search className="text-fg-muted size-3.5 shrink-0" aria-hidden />
           <input
             ref={searchInputRef}
@@ -694,7 +717,9 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
             placeholder="Search files and contentâ€¦"
             className="text-fg placeholder:text-fg-muted min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
             aria-label="Search files"
-            onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery('') }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setSearchQuery('')
+            }}
           />
           {searchQuery && (
             <button
@@ -709,11 +734,13 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
-
           <button
             type="button"
             onClick={() => setShowFilters((f) => !f)}
-            className={cn('hover:bg-bg-hover rounded-md p-2', showFilters && 'bg-bg-active text-accent')}
+            className={cn(
+              'hover:bg-bg-hover rounded-md p-2',
+              showFilters && 'bg-bg-active text-accent',
+            )}
             aria-label="Toggle filters"
           >
             <SlidersHorizontal className="size-4" />
@@ -732,7 +759,11 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
             className="hover:bg-bg-hover rounded-md p-2"
             aria-label={sort.dir === 'asc' ? 'Sort descending' : 'Sort ascending'}
           >
-            {sort.dir === 'asc' ? <ArrowDownAZ className="size-4" /> : <ArrowUpZA className="size-4" />}
+            {sort.dir === 'asc' ? (
+              <ArrowDownAZ className="size-4" />
+            ) : (
+              <ArrowUpZA className="size-4" />
+            )}
           </button>
           <button
             type="button"
@@ -770,7 +801,9 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
 
       <MoveToFolderDialog
         open={movePaths !== null}
-        onOpenChange={(open) => { if (!open) setMovePaths(null) }}
+        onOpenChange={(open) => {
+          if (!open) setMovePaths(null)
+        }}
         vaultFs={vaultFs}
         itemNames={movePaths?.map((p) => p.split('/').pop() ?? p) ?? []}
         onConfirm={(dest) => void executeMoveToFolder(dest)}
@@ -778,7 +811,9 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
 
       <ConfirmDialog
         open={deletePaths !== null}
-        onOpenChange={(open) => { if (!open) setDeletePaths(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeletePaths(null)
+        }}
         title={
           deletePaths?.length === 1
             ? `Delete "${deletePaths[0].split('/').pop()}"?`
@@ -809,7 +844,9 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
                   {r.snippetHit && (
                     <p className="text-fg-secondary mt-1.5 line-clamp-2 text-sm leading-relaxed">
                       {r.snippetBefore}
-                      <mark className="bg-highlight-yellow text-fg rounded px-0.5">{r.snippetHit}</mark>
+                      <mark className="bg-highlight-yellow text-fg rounded px-0.5">
+                        {r.snippetHit}
+                      </mark>
                       {r.snippetAfter}
                     </p>
                   )}
@@ -819,61 +856,63 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
           )}
         </div>
       ) : (
-      <div
-        ref={listScrollRef}
-        className="min-h-0 flex-1 overflow-y-auto"
-        onPointerDown={handleScrollPointerDown}
-        onPointerMove={handleScrollPointerMove}
-        onPointerUp={handleScrollPointerUp}
-      >
-        {files.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-16">
-            <p className="text-fg-muted text-sm">
-              {currentFolder ? 'This folder is empty.' : 'No files in your vault yet.'}
-            </p>
-            <p className="text-fg-muted text-xs">Drop files here to import them.</p>
-          </div>
-        ) : viewMode === 'grid' ? (
-          <VirtualGrid
-            files={files}
-            scrollRef={listScrollRef}
-            selected={selected}
-            editingPath={editingPath}
-            vaultFs={vaultFs}
-            onOpen={handleOpen}
-            onRename={(i) => void handleCommitRename(i, i.name)}
-            onDuplicate={(i) => void handleDuplicate(i)}
-            onMove={(i) => void handleMove(i)}
-            onDelete={(i) => void handleDelete(i)}
-            onItemClick={handleItemClick}
-            onStartEdit={handleStartRename}
-            onCommitEdit={(item, name) => void handleCommitRename(item, name)}
-            onCancelEdit={() => setEditingPath(null)}
-            onDropFile={(src, dest) => void handleDropMove(src, dest)}
-            onDropExternalFiles={(f, dest) => void handleExternalImport(f, dest)}
-            onColsChange={(c) => { gridColsRef.current = c }}
-          />
-        ) : (
-          <VirtualList
-            files={files}
-            scrollRef={listScrollRef}
-            selected={selected}
-            editingPath={editingPath}
-            vaultFs={vaultFs}
-            onOpen={handleOpen}
-            onRename={(i) => void handleCommitRename(i, i.name)}
-            onDuplicate={(i) => void handleDuplicate(i)}
-            onMove={(i) => void handleMove(i)}
-            onDelete={(i) => void handleDelete(i)}
-            onItemClick={handleItemClick}
-            onStartEdit={handleStartRename}
-            onCommitEdit={(item, name) => void handleCommitRename(item, name)}
-            onCancelEdit={() => setEditingPath(null)}
-            onDropFile={(src, dest) => void handleDropMove(src, dest)}
-            onDropExternalFiles={(f, dest) => void handleExternalImport(f, dest)}
-          />
-        )}
-      </div>
+        <div
+          ref={listScrollRef}
+          className="min-h-0 flex-1 overflow-y-auto"
+          onPointerDown={handleScrollPointerDown}
+          onPointerMove={handleScrollPointerMove}
+          onPointerUp={handleScrollPointerUp}
+        >
+          {files.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-16">
+              <p className="text-fg-muted text-sm">
+                {currentFolder ? 'This folder is empty.' : 'No files in your vault yet.'}
+              </p>
+              <p className="text-fg-muted text-xs">Drop files here to import them.</p>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <VirtualGrid
+              files={files}
+              scrollRef={listScrollRef}
+              selected={selected}
+              editingPath={editingPath}
+              vaultFs={vaultFs}
+              onOpen={handleOpen}
+              onRename={(i) => void handleCommitRename(i, i.name)}
+              onDuplicate={(i) => void handleDuplicate(i)}
+              onMove={(i) => void handleMove(i)}
+              onDelete={(i) => void handleDelete(i)}
+              onItemClick={handleItemClick}
+              onStartEdit={handleStartRename}
+              onCommitEdit={(item, name) => void handleCommitRename(item, name)}
+              onCancelEdit={() => setEditingPath(null)}
+              onDropFile={(src, dest) => void handleDropMove(src, dest)}
+              onDropExternalFiles={(f, dest) => void handleExternalImport(f, dest)}
+              onColsChange={(c) => {
+                gridColsRef.current = c
+              }}
+            />
+          ) : (
+            <VirtualList
+              files={files}
+              scrollRef={listScrollRef}
+              selected={selected}
+              editingPath={editingPath}
+              vaultFs={vaultFs}
+              onOpen={handleOpen}
+              onRename={(i) => void handleCommitRename(i, i.name)}
+              onDuplicate={(i) => void handleDuplicate(i)}
+              onMove={(i) => void handleMove(i)}
+              onDelete={(i) => void handleDelete(i)}
+              onItemClick={handleItemClick}
+              onStartEdit={handleStartRename}
+              onCommitEdit={(item, name) => void handleCommitRename(item, name)}
+              onCancelEdit={() => setEditingPath(null)}
+              onDropFile={(src, dest) => void handleDropMove(src, dest)}
+              onDropExternalFiles={(f, dest) => void handleExternalImport(f, dest)}
+            />
+          )}
+        </div>
       )}
     </div>
   )
@@ -903,10 +942,22 @@ interface VirtualProps {
 }
 
 function VirtualList({
-  files, scrollRef, selected, editingPath, vaultFs,
-  onOpen, onRename: _onRename, onDuplicate, onMove, onDelete,
-  onItemClick, onStartEdit, onCommitEdit, onCancelEdit,
-  onDropFile, onDropExternalFiles,
+  files,
+  scrollRef,
+  selected,
+  editingPath,
+  vaultFs,
+  onOpen,
+  onRename: _onRename,
+  onDuplicate,
+  onMove,
+  onDelete,
+  onItemClick,
+  onStartEdit,
+  onCommitEdit,
+  onCancelEdit,
+  onDropFile,
+  onDropExternalFiles,
 }: VirtualProps) {
   const virtualizer = useVirtualizer({
     count: files.length,
@@ -923,7 +974,10 @@ function VirtualList({
           <div
             key={item.path}
             style={{
-              position: 'absolute', top: 0, left: 0, width: '100%',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
               transform: `translateY(${vi.start}px)`,
               height: vi.size,
             }}
@@ -958,10 +1012,23 @@ function VirtualList({
 }
 
 function VirtualGrid({
-  files, scrollRef, selected, editingPath, vaultFs,
-  onOpen, onRename: _onRename, onDuplicate, onMove, onDelete,
-  onItemClick, onStartEdit, onCommitEdit, onCancelEdit,
-  onDropFile, onDropExternalFiles, onColsChange,
+  files,
+  scrollRef,
+  selected,
+  editingPath,
+  vaultFs,
+  onOpen,
+  onRename: _onRename,
+  onDuplicate,
+  onMove,
+  onDelete,
+  onItemClick,
+  onStartEdit,
+  onCommitEdit,
+  onCancelEdit,
+  onDropFile,
+  onDropExternalFiles,
+  onColsChange,
 }: VirtualProps & { onColsChange?: (cols: number) => void }) {
   const [cols, setCols] = useState(3)
 
@@ -998,7 +1065,10 @@ function VirtualGrid({
           <div
             key={vi.index}
             style={{
-              position: 'absolute', top: 0, left: 0, width: '100%',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
               transform: `translateY(${vi.start}px)`,
               height: vi.size,
               display: 'grid',

@@ -45,13 +45,7 @@ export interface ChatMessage {
 }
 
 /** Supported provider ids. */
-export type ChatProviderId =
-  | 'openrouter'
-  | 'anthropic'
-  | 'openai'
-  | 'gemini'
-  | 'ollama'
-  | 'device'
+export type ChatProviderId = 'openrouter' | 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'device'
 
 /** Provider + model frozen when a thread gets its first user message. */
 export interface ChatThreadBinding {

@@ -24,7 +24,9 @@ function readColumnDragData(e: React.DragEvent): { fromIndex: number } | null {
   let raw = ''
   try {
     raw = e.dataTransfer.getData(COLUMN_DRAG_MIME)
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   if (!raw) {
     const plain = e.dataTransfer.getData('text/plain')
     if (plain.startsWith(COLUMN_PREFIX)) raw = plain.slice(COLUMN_PREFIX.length)
@@ -33,7 +35,9 @@ function readColumnDragData(e: React.DragEvent): { fromIndex: number } | null {
   try {
     const parsed = JSON.parse(raw) as { fromIndex: number }
     if (typeof parsed.fromIndex === 'number') return parsed
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return null
 }
 
@@ -42,15 +46,11 @@ function columnDragActive(types: readonly string[]): boolean {
 }
 
 const COLUMN_SHELL: Record<KanbanColumnColor, string> = {
-  slate:
-    'bg-slate-100/90 border-slate-200 dark:bg-slate-900/35 dark:border-slate-700',
-  amber:
-    'bg-amber-50/95 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800',
+  slate: 'bg-slate-100/90 border-slate-200 dark:bg-slate-900/35 dark:border-slate-700',
+  amber: 'bg-amber-50/95 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800',
   sky: 'bg-sky-50/95 border-sky-200 dark:bg-sky-950/35 dark:border-sky-800',
-  emerald:
-    'bg-emerald-50/95 border-emerald-200 dark:bg-emerald-950/35 dark:border-emerald-800',
-  violet:
-    'bg-violet-50/95 border-violet-200 dark:bg-violet-950/35 dark:border-violet-800',
+  emerald: 'bg-emerald-50/95 border-emerald-200 dark:bg-emerald-950/35 dark:border-emerald-800',
+  violet: 'bg-violet-50/95 border-violet-200 dark:bg-violet-950/35 dark:border-violet-800',
   rose: 'bg-rose-50/95 border-rose-200 dark:bg-rose-950/35 dark:border-rose-800',
   zinc: 'bg-zinc-100/90 border-zinc-200 dark:bg-zinc-900/40 dark:border-zinc-700',
 }
@@ -94,7 +94,12 @@ export function KanbanColumn({
   onToggleCard: (cardId: string) => void
   onDeleteCard: (cardId: string) => void
   onRenameCard: (cardId: string, title: string) => void
-  onMoveCard: (cardId: string, fromColumnId: string, toColumnId: string, insertIndex: number) => void
+  onMoveCard: (
+    cardId: string,
+    fromColumnId: string,
+    toColumnId: string,
+    insertIndex: number,
+  ) => void
   onRenameColumn: (columnId: string, heading: string) => void
   onDeleteColumn: (columnId: string) => void
   onSetColumnColor: (columnId: string, color: KanbanColumnColor | undefined) => void
@@ -213,8 +218,14 @@ export function KanbanColumn({
               onChange={(e) => setHeadingDraft(e.target.value)}
               onBlur={commitHeading}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); commitHeading() }
-                if (e.key === 'Escape') { setHeadingDraft(column.heading); setEditingHeading(false) }
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  commitHeading()
+                }
+                if (e.key === 'Escape') {
+                  setHeadingDraft(column.heading)
+                  setEditingHeading(false)
+                }
               }}
               autoFocus
               className="text-fg min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
@@ -222,15 +233,16 @@ export function KanbanColumn({
           ) : (
             <h3
               className="text-fg min-w-0 flex-1 cursor-text truncate text-sm font-semibold"
-              onClick={() => { setHeadingDraft(column.heading); setEditingHeading(true) }}
+              onClick={() => {
+                setHeadingDraft(column.heading)
+                setEditingHeading(true)
+              }}
             >
               {column.heading}
             </h3>
           )}
 
-          <span className="text-fg-muted shrink-0 text-xs tabular-nums">
-            {column.cards.length}
-          </span>
+          <span className="text-fg-muted shrink-0 text-xs tabular-nums">{column.cards.length}</span>
 
           <button
             type="button"
@@ -287,9 +299,7 @@ export function KanbanColumn({
         ))}
 
         {column.cards.length === 0 && !dropCardOver && (
-          <div className="text-fg-muted/30 py-6 text-center text-xs">
-            Drop cards here
-          </div>
+          <div className="text-fg-muted/30 py-6 text-center text-xs">Drop cards here</div>
         )}
       </div>
 
@@ -302,7 +312,10 @@ export function KanbanColumn({
             value={addText}
             onChange={(e) => setAddText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); handleAddCard() }
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleAddCard()
+              }
             }}
             placeholder="Add card..."
             className="text-fg placeholder:text-fg-muted/40 min-w-0 flex-1 bg-transparent text-sm outline-none"

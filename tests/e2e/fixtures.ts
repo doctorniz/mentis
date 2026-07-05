@@ -26,7 +26,10 @@ async function seedVault(page: Page) {
   await page.waitForLoadState('domcontentloaded')
 
   // Wait for the landing page or auto-restored vault
-  const isLanding = await page.locator('form, [data-testid="vault-landing"]').isVisible().catch(() => false)
+  const isLanding = await page
+    .locator('form, [data-testid="vault-landing"]')
+    .isVisible()
+    .catch(() => false)
 
   if (isLanding) {
     // Fill vault name and create
@@ -63,7 +66,16 @@ export async function navigateTo(page: Page, view: ViewName) {
   await page.waitForTimeout(500)
 }
 
-export type ViewName = 'chat' | 'vault' | 'board' | 'tasks' | 'bookmarks' | 'calendar' | 'graph' | 'files' | 'search'
+export type ViewName =
+  | 'chat'
+  | 'vault'
+  | 'board'
+  | 'tasks'
+  | 'bookmarks'
+  | 'calendar'
+  | 'graph'
+  | 'files'
+  | 'search'
 
 /** Create a new markdown note via Ctrl+N → Markdown. */
 export async function createMarkdownNote(page: Page, title?: string) {
@@ -114,7 +126,10 @@ export async function dismissToasts(page: Page) {
   const closeButtons = page.locator('[data-testid="toast"] button, [role="status"] button')
   const count = await closeButtons.count()
   for (let i = 0; i < count; i++) {
-    await closeButtons.nth(i).click().catch(() => {})
+    await closeButtons
+      .nth(i)
+      .click()
+      .catch(() => {})
   }
 }
 

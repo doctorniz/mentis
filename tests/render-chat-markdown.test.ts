@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  preprocessChatMarkdown,
-  renderChatMarkdown,
-} from '@/lib/chat/render-markdown'
+import { preprocessChatMarkdown, renderChatMarkdown } from '@/lib/chat/render-markdown'
 
 describe('preprocessChatMarkdown', () => {
   it('appends a deduped chat-sources chip list for vault backtick paths', () => {
@@ -18,8 +15,7 @@ describe('preprocessChatMarkdown', () => {
   })
 
   it('does not append Sources when already present', () => {
-    const md =
-      'Hi `Notes/A.md`.\n\n## Sources\n\n1. [`Notes/A.md`](Notes/A.md)\n'
+    const md = 'Hi `Notes/A.md`.\n\n## Sources\n\n1. [`Notes/A.md`](Notes/A.md)\n'
     const pre = preprocessChatMarkdown(md)
     const count = pre.match(/## Sources/g)?.length ?? 0
     expect(count).toBe(1)

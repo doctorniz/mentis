@@ -25,10 +25,14 @@ const MODEL_ID = 'Xenova/whisper-tiny.en'
 async function resolveDevice(): Promise<'webgpu' | 'wasm'> {
   try {
     if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
-      const adapter = await (navigator as unknown as { gpu: { requestAdapter: () => Promise<unknown> } }).gpu.requestAdapter()
+      const adapter = await (
+        navigator as unknown as { gpu: { requestAdapter: () => Promise<unknown> } }
+      ).gpu.requestAdapter()
       if (adapter) return 'webgpu'
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return 'wasm'
 }
 
@@ -52,19 +56,13 @@ async function getPipeline() {
         resolveDevice(),
       ])
 
-      pipelineInstance = await pipeline(
-        'automatic-speech-recognition',
-        MODEL_ID,
-        {
-          dtype: device === 'webgpu' ? 'fp16' : 'q8',
-          device,
-          progress_callback: (progress: { status: string; progress?: number; file?: string }) => {
-            window.dispatchEvent(
-              new CustomEvent('ink:whisper-progress', { detail: progress }),
-            )
-          },
+      pipelineInstance = await pipeline('automatic-speech-recognition', MODEL_ID, {
+        dtype: device === 'webgpu' ? 'fp16' : 'q8',
+        device,
+        progress_callback: (progress: { status: string; progress?: number; file?: string }) => {
+          window.dispatchEvent(new CustomEvent('ink:whisper-progress', { detail: progress }))
         },
-      )
+      })
     } finally {
       loading = false
     }
@@ -152,9 +150,7 @@ function chunksToText(chunks: WhisperChunk[]): string {
  * First call downloads the model (~40MB); subsequent calls use the cached pipeline.
  * Pauses ≥ 1.5 s between chunks produce paragraph breaks.
  */
-export async function transcribeAudio(
-  audioBytes: Uint8Array,
-): Promise<TranscribeResult> {
+export async function transcribeAudio(audioBytes: Uint8Array): Promise<TranscribeResult> {
   const transcriber = await getPipeline()
   const pcm = await decodeAudioToFloat32(audioBytes)
 

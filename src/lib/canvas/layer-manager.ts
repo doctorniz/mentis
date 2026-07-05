@@ -1,17 +1,6 @@
-import {
-  Container,
-  Sprite,
-  RenderTexture,
-  Graphics,
-  Texture,
-  type Application,
-} from 'pixi.js'
+import { Container, Sprite, RenderTexture, Graphics, Texture, type Application } from 'pixi.js'
 import type { CanvasLayerData, CanvasLayerMeta } from '@/types/canvas'
-import {
-  DEFAULT_CANVAS_WIDTH,
-  DEFAULT_CANVAS_HEIGHT,
-  MAX_LAYERS,
-} from '@/lib/canvas/constants'
+import { DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, MAX_LAYERS } from '@/lib/canvas/constants'
 import { floodFill } from '@/lib/canvas/flood-fill'
 
 /* ------------------------------------------------------------------ */
@@ -67,8 +56,12 @@ export class LayerManager {
   private _canvasWidth: number
   private _canvasHeight: number
 
-  get canvasWidth(): number { return this._canvasWidth }
-  get canvasHeight(): number { return this._canvasHeight }
+  get canvasWidth(): number {
+    return this._canvasWidth
+  }
+  get canvasHeight(): number {
+    return this._canvasHeight
+  }
 
   /**
    * Update the stored canvas dimensions without resizing any existing
@@ -861,9 +854,10 @@ export class LayerManager {
       this.layers.push(layer)
     }
 
-    this._activeLayerId = this.layers.find((l) => l.id === activeId)?.id
-      ?? this.layers[this.layers.length - 1]?.id
-      ?? null
+    this._activeLayerId =
+      this.layers.find((l) => l.id === activeId)?.id ??
+      this.layers[this.layers.length - 1]?.id ??
+      null
     this.syncVisuals()
     this.reorderScratchpad()
   }

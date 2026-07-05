@@ -107,21 +107,16 @@ function matchInfoToLegacy(match: Record<string, string[]>): SearchResult['match
 export function searchVault(rawQuery: string, filters: SearchFilters = {}): SearchResult[] {
   const index = getSearchIndex()
   const { text, hashTags } = parseSearchQuery(rawQuery)
-  const tagSet = new Set([
-    ...(filters.tags ?? []).map((t) => t.toLowerCase()),
-    ...hashTags,
-  ])
+  const tagSet = new Set([...(filters.tags ?? []).map((t) => t.toLowerCase()), ...hashTags])
   const mergedFilters: SearchFilters = {
     ...filters,
     tags: tagSet.size > 0 ? [...tagSet] : undefined,
   }
 
-  const query: string | typeof MiniSearch.wildcard =
-    text.length > 0 ? text : MiniSearch.wildcard
+  const query: string | typeof MiniSearch.wildcard = text.length > 0 ? text : MiniSearch.wildcard
 
   const raw = index.search(query, {
-    filter: (result) =>
-      applyFilters(result as unknown as SearchIndexDocument, mergedFilters),
+    filter: (result) => applyFilters(result as unknown as SearchIndexDocument, mergedFilters),
   })
 
   return raw.map((r) => {

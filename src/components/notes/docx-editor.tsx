@@ -250,9 +250,12 @@ export function DocxEditorView({
   const handleDownload = useCallback(async () => {
     try {
       const bytes = await vaultFs.readFile(pathRef.current)
-      const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], {
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      })
+      const blob = new Blob(
+        [bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer],
+        {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        },
+      )
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -290,7 +293,14 @@ export function DocxEditorView({
           }
         }
         await vaultFs.rename(oldPath, newPath)
-        retargetTabPath(tabId, newPath, newPath.replace(/\.[^/.]+$/i, '').split('/').pop() ?? newPath)
+        retargetTabPath(
+          tabId,
+          newPath,
+          newPath
+            .replace(/\.[^/.]+$/i, '')
+            .split('/')
+            .pop() ?? newPath,
+        )
         pathRef.current = newPath
         onRenamed?.()
         window.dispatchEvent(new CustomEvent('ink:vault-changed'))
@@ -305,7 +315,7 @@ export function DocxEditorView({
       {/* Toolbar — file title + download */}
       <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
         <InlineFileTitle path={path} onRename={handleRename} />
-        <span className="text-fg-muted text-xs font-mono">.docx</span>
+        <span className="text-fg-muted font-mono text-xs">.docx</span>
 
         {isCompact && (
           <span

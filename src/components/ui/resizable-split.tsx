@@ -1,13 +1,6 @@
 'use client'
 
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/utils/cn'
 
 /**
@@ -119,10 +112,7 @@ export function ResizableSplit({
   }, [])
 
   return (
-    <div
-      ref={containerRef}
-      className={cn('relative flex min-h-0 min-w-0 flex-1', className)}
-    >
+    <div ref={containerRef} className={cn('relative flex min-h-0 min-w-0 flex-1', className)}>
       <div className="flex min-h-0 min-w-0 flex-1">{left}</div>
 
       {!collapsed && (
@@ -136,19 +126,16 @@ export function ResizableSplit({
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
             className={cn(
-              'group relative z-10 w-1 cursor-col-resize shrink-0 select-none',
+              'group relative z-10 w-1 shrink-0 cursor-col-resize select-none',
               'bg-border hover:bg-accent/60 transition-colors',
               dragging && 'bg-accent',
             )}
           >
             {/* Widen the hit target without visually taking space. */}
-            <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
+            <div className="absolute inset-y-0 -right-1.5 -left-1.5" />
           </div>
 
-          <div
-            className="flex min-h-0 shrink-0 flex-col"
-            style={{ width: `${rightPx}px` }}
-          >
+          <div className="flex min-h-0 shrink-0 flex-col" style={{ width: `${rightPx}px` }}>
             {right}
           </div>
         </>

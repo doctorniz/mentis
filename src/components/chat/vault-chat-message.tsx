@@ -25,7 +25,7 @@ export function VaultChatMessage({ message, onVaultPathOpen }: VaultChatMessageP
         <div
           className={cn(
             'max-w-[min(85%,34rem)] rounded-2xl rounded-br-md px-3.5 py-2.5',
-            'bg-accent text-accent-fg whitespace-pre-wrap break-words',
+            'bg-accent text-accent-fg break-words whitespace-pre-wrap',
           )}
         >
           {message.content}

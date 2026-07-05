@@ -95,10 +95,7 @@ export const useEditorStore = create<EditorState>()(
 
     addRecentFile: (path) =>
       set((state) => {
-        state.recentFiles = [path, ...state.recentFiles.filter((p) => p !== path)].slice(
-          0,
-          20,
-        )
+        state.recentFiles = [path, ...state.recentFiles.filter((p) => p !== path)].slice(0, 20)
       }),
 
     closeAllTabs: () =>

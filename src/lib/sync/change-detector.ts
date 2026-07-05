@@ -13,10 +13,7 @@ export async function hashBytes(data: Uint8Array): Promise<string> {
   return hex.join('')
 }
 
-async function walkDir(
-  fs: FileSystemAdapter,
-  dir: string,
-): Promise<string[]> {
+async function walkDir(fs: FileSystemAdapter, dir: string): Promise<string[]> {
   const entries = await fs.readdir(dir)
   const paths: string[] = []
   for (const entry of entries) {

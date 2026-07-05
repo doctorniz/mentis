@@ -31,23 +31,23 @@ function combineDateAndTime(date: string, time: string): string {
 
 export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDialogProps) {
   const { vaultFs } = useVaultSession()
-  const addEvent    = useCalendarStore((s) => s.addEvent)
+  const addEvent = useCalendarStore((s) => s.addEvent)
   const updateEvent = useCalendarStore((s) => s.updateEvent)
   const removeEvent = useCalendarStore((s) => s.removeEvent)
 
   const today = toDateStr(new Date())
 
-  const [title,     setTitle]     = useState('')
-  const [body,      setBody]      = useState('')
-  const [location,  setLocation]  = useState('')
-  const [url,       setUrl]       = useState('')
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [location, setLocation] = useState('')
+  const [url, setUrl] = useState('')
   const [startDate, setStartDate] = useState(defaultDate ?? today)
-  const [endDate,   setEndDate]   = useState(defaultDate ?? today)
+  const [endDate, setEndDate] = useState(defaultDate ?? today)
   const [startTime, setStartTime] = useState('09:00')
-  const [endTime,   setEndTime]   = useState('10:00')
-  const [allDay,    setAllDay]    = useState(true)
-  const [color,     setColor]     = useState<CalendarEventColor>('violet')
-  const [saving,    setSaving]    = useState(false)
+  const [endTime, setEndTime] = useState('10:00')
+  const [allDay, setAllDay] = useState(true)
+  const [color, setColor] = useState<CalendarEventColor>('violet')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -79,7 +79,7 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
         const startT = d.slice(11, 16)
         const [h, m] = startT.split(':').map(Number) as [number, number]
         const endMin = h * 60 + m + 60
-        const endT   = `${String(Math.min(23, Math.floor(endMin / 60))).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`
+        const endT = `${String(Math.min(23, Math.floor(endMin / 60))).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`
         setAllDay(false)
         setStartTime(startT)
         setEndTime(endT)
@@ -95,19 +95,19 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
     if (!title.trim()) return
     setSaving(true)
     try {
-      const start    = allDay ? startDate : combineDateAndTime(startDate, startTime)
-      const end      = allDay ? endDate   : combineDateAndTime(endDate, endTime)
+      const start = allDay ? startDate : combineDateAndTime(startDate, startTime)
+      const end = allDay ? endDate : combineDateAndTime(endDate, endTime)
       const finalEnd = end < start ? start : end
 
       const opts = {
-        title:    title.trim(),
+        title: title.trim(),
         start,
-        end:      finalEnd,
+        end: finalEnd,
         allDay,
         color,
         body,
         location: location.trim() || undefined,
-        url:      url.trim()      || undefined,
+        url: url.trim() || undefined,
       }
 
       if (event) {
@@ -119,7 +119,23 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
     } finally {
       setSaving(false)
     }
-  }, [title, body, location, url, startDate, endDate, startTime, endTime, allDay, color, event, vaultFs, addEvent, updateEvent, onOpenChange])
+  }, [
+    title,
+    body,
+    location,
+    url,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    allDay,
+    color,
+    event,
+    vaultFs,
+    addEvent,
+    updateEvent,
+    onOpenChange,
+  ])
 
   const handleDelete = useCallback(async () => {
     if (!event) return
@@ -179,7 +195,7 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
                       'size-6 rounded-full transition-all',
                       EVENT_COLOR_DOT[value],
                       color === value
-                        ? 'ring-2 ring-offset-2 ring-offset-bg ring-current scale-110'
+                        ? 'ring-offset-bg scale-110 ring-2 ring-current ring-offset-2'
                         : 'opacity-60 hover:opacity-100',
                     )}
                     aria-label={value}
@@ -197,7 +213,7 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
                 aria-checked={allDay}
                 onClick={() => setAllDay((v) => !v)}
                 className={cn(
-                  'inline-flex h-6 w-11 items-center rounded-full p-0.5 transition-colors border border-transparent',
+                  'inline-flex h-6 w-11 items-center rounded-full border border-transparent p-0.5 transition-colors',
                   allDay ? 'bg-accent' : 'bg-bg-tertiary border-border',
                 )}
               >
@@ -213,7 +229,9 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
             {/* Date / time rows */}
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
               <div className="min-w-0">
-                <label className="text-fg-secondary mb-1 block text-xs font-medium">Start date</label>
+                <label className="text-fg-secondary mb-1 block text-xs font-medium">
+                  Start date
+                </label>
                 <input
                   type="date"
                   value={startDate}
@@ -221,7 +239,7 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
                     setStartDate(e.target.value)
                     if (endDate < e.target.value) setEndDate(e.target.value)
                   }}
-                  className="border-border bg-bg-secondary text-fg min-w-0 w-full rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                  className="border-border bg-bg-secondary text-fg focus:ring-accent/40 w-full min-w-0 rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1"
                 />
               </div>
               <div className="min-w-0">
@@ -231,27 +249,31 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
                   value={endDate}
                   min={startDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="border-border bg-bg-secondary text-fg min-w-0 w-full rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                  className="border-border bg-bg-secondary text-fg focus:ring-accent/40 w-full min-w-0 rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1"
                 />
               </div>
               {!allDay && (
                 <>
                   <div className="min-w-0">
-                    <label className="text-fg-secondary mb-1 block text-xs font-medium">Start time</label>
+                    <label className="text-fg-secondary mb-1 block text-xs font-medium">
+                      Start time
+                    </label>
                     <input
                       type="time"
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
-                      className="border-border bg-bg-secondary text-fg min-w-0 w-full rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                      className="border-border bg-bg-secondary text-fg focus:ring-accent/40 w-full min-w-0 rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1"
                     />
                   </div>
                   <div className="min-w-0">
-                    <label className="text-fg-secondary mb-1 block text-xs font-medium">End time</label>
+                    <label className="text-fg-secondary mb-1 block text-xs font-medium">
+                      End time
+                    </label>
                     <input
                       type="time"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      className="border-border bg-bg-secondary text-fg min-w-0 w-full rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                      className="border-border bg-bg-secondary text-fg focus:ring-accent/40 w-full min-w-0 rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1"
                     />
                   </div>
                 </>
@@ -266,7 +288,7 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Location"
-                className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full rounded-lg border py-2 pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 w-full rounded-lg border py-2 pr-3 pl-8 text-sm outline-none focus:ring-1"
               />
             </div>
 
@@ -278,7 +300,7 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="URL (video call, ticket…)"
-                className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full rounded-lg border py-2 pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 w-full rounded-lg border py-2 pr-3 pl-8 text-sm outline-none focus:ring-1"
               />
             </div>
 
@@ -288,7 +310,7 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
               onChange={(e) => setBody(e.target.value)}
               placeholder="Notes…"
               rows={3}
-              className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+              className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
             />
           </div>
 
@@ -308,9 +330,15 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
             )}
             <div className="flex gap-2">
               <Dialog.Close asChild>
-                <Button variant="ghost" size="sm">Cancel</Button>
+                <Button variant="ghost" size="sm">
+                  Cancel
+                </Button>
               </Dialog.Close>
-              <Button size="sm" onClick={() => void handleSave()} disabled={saving || !title.trim()}>
+              <Button
+                size="sm"
+                onClick={() => void handleSave()}
+                disabled={saving || !title.trim()}
+              >
                 {saving && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
                 {isEdit ? 'Save' : 'Create'}
               </Button>

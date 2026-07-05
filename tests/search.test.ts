@@ -177,7 +177,12 @@ describe('Search Index', () => {
 
   it('filters by folder prefix', () => {
     replaceSearchIndex([
-      makeDoc({ id: 'journal/entry.md', path: 'journal/entry.md', title: 'Entry', content: 'data' }),
+      makeDoc({
+        id: 'journal/entry.md',
+        path: 'journal/entry.md',
+        title: 'Entry',
+        content: 'data',
+      }),
       makeDoc({ id: 'notes/other.md', path: 'notes/other.md', title: 'Other', content: 'data' }),
     ])
     const results = searchVault('data', { folder: 'journal' })
@@ -187,7 +192,13 @@ describe('Search Index', () => {
 
   it('filters by tags', () => {
     replaceSearchIndex([
-      makeDoc({ id: 'a.md', title: 'A', content: 'stuff', tags: 'work meeting', tagCsv: 'work,meeting' }),
+      makeDoc({
+        id: 'a.md',
+        title: 'A',
+        content: 'stuff',
+        tags: 'work meeting',
+        tagCsv: 'work,meeting',
+      }),
       makeDoc({ id: 'b.md', title: 'B', content: 'stuff', tags: 'personal', tagCsv: 'personal' }),
     ])
     const results = searchVault('stuff', { tags: ['work'] })
@@ -207,8 +218,18 @@ describe('Search Index', () => {
 
   it('filters by date range', () => {
     replaceSearchIndex([
-      makeDoc({ id: 'old.md', title: 'Old', content: 'item', modifiedAt: '2025-01-01T00:00:00.000Z' }),
-      makeDoc({ id: 'new.md', title: 'New', content: 'item', modifiedAt: '2026-06-15T00:00:00.000Z' }),
+      makeDoc({
+        id: 'old.md',
+        title: 'Old',
+        content: 'item',
+        modifiedAt: '2025-01-01T00:00:00.000Z',
+      }),
+      makeDoc({
+        id: 'new.md',
+        title: 'New',
+        content: 'item',
+        modifiedAt: '2026-06-15T00:00:00.000Z',
+      }),
     ])
     const results = searchVault('item', { dateRange: { from: '2026-01-01' } })
     expect(results).toHaveLength(1)

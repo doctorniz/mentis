@@ -1,14 +1,6 @@
-import {
-  DEVICE_MODEL_ID,
-  loadDeviceModelBytes,
-} from '@/lib/chat/device-model-store'
+import { DEVICE_MODEL_ID, loadDeviceModelBytes } from '@/lib/chat/device-model-store'
 import { nextGemmaStreamDelta } from '@/lib/chat/providers/gemma-stream-delta'
-import type {
-  ChatCompletionRequest,
-  ChatProvider,
-  ChatStreamChunk,
-  WireMessage,
-} from './types'
+import type { ChatCompletionRequest, ChatProvider, ChatStreamChunk, WireMessage } from './types'
 
 /**
  * MediaPipe defaults `maxTokens` to 512 (input + output combined). Override here
@@ -18,10 +10,7 @@ const DEVICE_MAX_TOKENS = 4096
 
 /** Reserve tokens for the assistant; trim prompt to the rest (≈3 chars / token). */
 const DEVICE_OUTPUT_RESERVE_TOKENS = 800
-const DEFAULT_PROMPT_CHARS = Math.max(
-  1500,
-  (DEVICE_MAX_TOKENS - DEVICE_OUTPUT_RESERVE_TOKENS) * 3,
-)
+const DEFAULT_PROMPT_CHARS = Math.max(1500, (DEVICE_MAX_TOKENS - DEVICE_OUTPUT_RESERVE_TOKENS) * 3)
 const MIN_CONTEXT_CHARS = 1000
 
 interface LlmInference {
@@ -82,8 +71,7 @@ function mergeSystemIntoFirstUser(messages: WireMessage[]): WireMessage[] {
   }
   if (rest[0].role === 'user') {
     const body = rest[0].content
-    const merged =
-      prefix.length > 0 ? `${prefix}\n\n${body}` : body
+    const merged = prefix.length > 0 ? `${prefix}\n\n${body}` : body
     return [{ role: 'user', content: merged }, ...rest.slice(1)]
   }
   return [{ role: 'user', content: prefix }, ...rest]
@@ -104,16 +92,12 @@ function formatGemmaPrompt(messages: WireMessage[]): string {
 }
 
 function fitPrompt(messages: WireMessage[]): WireMessage[] {
-  const totalChars = (arr: WireMessage[]) =>
-    arr.reduce((n, m) => n + m.content.length, 0)
+  const totalChars = (arr: WireMessage[]) => arr.reduce((n, m) => n + m.content.length, 0)
 
   let working = [...messages]
   while (totalChars(working) > DEFAULT_PROMPT_CHARS) {
     const firstUserIdx = working.findIndex((m, i) => i > 0 && m.role === 'user')
-    const lastUserIdx = working.reduce(
-      (last, m, i) => (m.role === 'user' ? i : last),
-      -1,
-    )
+    const lastUserIdx = working.reduce((last, m, i) => (m.role === 'user' ? i : last), -1)
     if (firstUserIdx === -1 || firstUserIdx === lastUserIdx) break
     const dropEnd =
       firstUserIdx + 1 < working.length && working[firstUserIdx + 1].role === 'assistant'
@@ -166,9 +150,7 @@ async function getInference(): Promise<LlmInference> {
   }
 }
 
-async function* streamDevice(
-  req: ChatCompletionRequest,
-): AsyncGenerator<ChatStreamChunk> {
+async function* streamDevice(req: ChatCompletionRequest): AsyncGenerator<ChatStreamChunk> {
   if (!hasWebGpu()) {
     yield {
       type: 'error',
@@ -206,10 +188,7 @@ async function* streamDevice(
       if (aborted) return
       const next = partial ?? ''
       if (next.length > 0) {
-        const { delta, emittedTotal: nextTotal } = nextGemmaStreamDelta(
-          emittedTotal,
-          next,
-        )
+        const { delta, emittedTotal: nextTotal } = nextGemmaStreamDelta(emittedTotal, next)
         emittedTotal = nextTotal
         if (delta.length > 0) queue.push(delta)
       }

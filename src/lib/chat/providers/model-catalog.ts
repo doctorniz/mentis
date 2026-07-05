@@ -72,10 +72,7 @@ export function getDefaultModel(provider: ChatProviderId | null): string {
 /*  OpenAI                                                             */
 /* ------------------------------------------------------------------ */
 
-async function fetchOpenAIModels(
-  apiKey: string,
-  baseUrl?: string,
-): Promise<ModelEntry[]> {
+async function fetchOpenAIModels(apiKey: string, baseUrl?: string): Promise<ModelEntry[]> {
   const base = (baseUrl?.trim() || 'https://api.openai.com/v1').replace(/\/$/, '')
   const res = await fetch(`${base}/models`, {
     headers: { Authorization: `Bearer ${apiKey}` },
@@ -93,10 +90,7 @@ async function fetchOpenAIModels(
 /*  OpenRouter                                                         */
 /* ------------------------------------------------------------------ */
 
-async function fetchOpenRouterModels(
-  _apiKey: string,
-  baseUrl?: string,
-): Promise<ModelEntry[]> {
+async function fetchOpenRouterModels(_apiKey: string, baseUrl?: string): Promise<ModelEntry[]> {
   const base = (baseUrl?.trim() || 'https://openrouter.ai/api/v1').replace(/\/$/, '')
   const res = await fetch(`${base}/models`)
   if (!res.ok) throw new Error(`OpenRouter ${res.status}`)
@@ -111,10 +105,7 @@ async function fetchOpenRouterModels(
 /*  Anthropic                                                          */
 /* ------------------------------------------------------------------ */
 
-async function fetchAnthropicModels(
-  apiKey: string,
-  baseUrl?: string,
-): Promise<ModelEntry[]> {
+async function fetchAnthropicModels(apiKey: string, baseUrl?: string): Promise<ModelEntry[]> {
   const base = (baseUrl?.trim() || 'https://api.anthropic.com/v1').replace(/\/$/, '')
   try {
     const res = await fetch(`${base}/models`, {
@@ -147,10 +138,7 @@ async function fetchAnthropicModels(
 /*  Gemini                                                             */
 /* ------------------------------------------------------------------ */
 
-async function fetchGeminiModels(
-  apiKey: string,
-  baseUrl?: string,
-): Promise<ModelEntry[]> {
+async function fetchGeminiModels(apiKey: string, baseUrl?: string): Promise<ModelEntry[]> {
   const base = (baseUrl?.trim() || 'https://generativelanguage.googleapis.com/v1beta').replace(
     /\/$/,
     '',
@@ -173,10 +161,7 @@ async function fetchGeminiModels(
 /*  Ollama                                                             */
 /* ------------------------------------------------------------------ */
 
-async function fetchOllamaModels(
-  _apiKey: string,
-  baseUrl?: string,
-): Promise<ModelEntry[]> {
+async function fetchOllamaModels(_apiKey: string, baseUrl?: string): Promise<ModelEntry[]> {
   // Ollama's native API uses /api/tags; the OpenAI-compat layer uses /v1/models.
   const base = (baseUrl?.trim() || 'http://localhost:11434').replace(/\/$/, '')
   // Try native Ollama endpoint first

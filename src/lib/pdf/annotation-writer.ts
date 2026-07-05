@@ -47,7 +47,15 @@ function hexToRgb(hex: string): [number, number, number] {
   const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(hex)
   if (m) return [Number(m[1]) / 255, Number(m[2]) / 255, Number(m[3]) / 255]
   const h = hex.replace('#', '')
-  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16)
+  const n = parseInt(
+    h.length === 3
+      ? h
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : h,
+    16,
+  )
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
 }
 
@@ -141,9 +149,7 @@ export async function writeAnnotationsIntoPdf(
       try {
         const imgBytes = dataUrlToUint8Array(st.imageData)
         const isPng = st.imageData.startsWith('data:image/png')
-        const img = isPng
-          ? await doc.embedPng(imgBytes)
-          : await doc.embedJpg(imgBytes)
+        const img = isPng ? await doc.embedPng(imgBytes) : await doc.embedJpg(imgBytes)
         page.drawImage(img, {
           x: st.rect.x,
           y: ph - st.rect.y - st.rect.height,

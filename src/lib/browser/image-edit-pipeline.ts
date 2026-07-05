@@ -42,7 +42,11 @@ export function getCropSourceRect(
   return { sx, sy, sw, sh }
 }
 
-export function outputDimensionsAfterRotation(sw: number, sh: number, rotationDeg: number): { w: number; h: number } {
+export function outputDimensionsAfterRotation(
+  sw: number,
+  sh: number,
+  rotationDeg: number,
+): { w: number; h: number } {
   const r = ((rotationDeg % 360) + 360) % 360
   if (r === 90 || r === 270) return { w: sh, h: sw }
   return { w: sw, h: sh }

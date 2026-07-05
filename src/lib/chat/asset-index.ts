@@ -31,10 +31,7 @@ interface IndexShape {
   entries: Record<string, string>
 }
 
-async function ensureDir(
-  vaultFs: FileSystemAdapter,
-  path: string,
-): Promise<void> {
+async function ensureDir(vaultFs: FileSystemAdapter, path: string): Promise<void> {
   try {
     await vaultFs.mkdir(path)
   } catch {
@@ -62,10 +59,7 @@ async function readIndex(vaultFs: FileSystemAdapter): Promise<IndexShape> {
   }
 }
 
-async function writeIndex(
-  vaultFs: FileSystemAdapter,
-  next: IndexShape,
-): Promise<void> {
+async function writeIndex(vaultFs: FileSystemAdapter, next: IndexShape): Promise<void> {
   await ensureDir(vaultFs, MARROW_DIR)
   await ensureDir(vaultFs, CHATS_DIR)
   const finalPath = CHAT_ASSET_INDEX_PATH

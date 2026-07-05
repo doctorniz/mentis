@@ -55,7 +55,7 @@ function FolderRow({
         role="button"
         tabIndex={0}
         className={cn(
-          'flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors cursor-pointer',
+          'flex w-full cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
           isSelected
             ? 'bg-accent/15 text-accent font-medium'
             : 'text-fg-secondary hover:bg-bg-tertiary',
@@ -64,19 +64,27 @@ function FolderRow({
         onClick={() => onSelect(node.path)}
         onDoubleClick={() => onToggle(node.path)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(node.path) }
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onSelect(node.path)
+          }
         }}
       >
         {hasChildren ? (
           <button
             type="button"
             className="shrink-0 rounded p-0.5 hover:bg-white/10"
-            onClick={(e) => { e.stopPropagation(); onToggle(node.path) }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggle(node.path)
+            }}
             aria-label={node.expanded ? 'Collapse' : 'Expand'}
           >
-            {node.expanded
-              ? <ChevronDown className="size-3.5" />
-              : <ChevronRight className="size-3.5" />}
+            {node.expanded ? (
+              <ChevronDown className="size-3.5" />
+            ) : (
+              <ChevronRight className="size-3.5" />
+            )}
           </button>
         ) : (
           <span className="w-[18px] shrink-0" />
@@ -85,16 +93,17 @@ function FolderRow({
         <span className="truncate">{node.name}</span>
       </div>
 
-      {node.expanded && node.children?.map((child) => (
-        <FolderRow
-          key={child.path}
-          node={child}
-          depth={depth + 1}
-          selected={selected}
-          onSelect={onSelect}
-          onToggle={onToggle}
-        />
-      ))}
+      {node.expanded &&
+        node.children?.map((child) => (
+          <FolderRow
+            key={child.path}
+            node={child}
+            depth={depth + 1}
+            selected={selected}
+            onSelect={onSelect}
+            onToggle={onToggle}
+          />
+        ))}
     </>
   )
 }
@@ -126,35 +135,38 @@ export function MoveToFolderDialog({
     void loadFolders(vaultFs, '').then(setTree)
   }, [open, vaultFs])
 
-  const toggleFolder = useCallback(async (path: string) => {
-    setTree((prev) => {
-      const update = (nodes: FolderNode[]): FolderNode[] =>
-        nodes.map((n) => {
-          if (n.path === path) {
-            return { ...n, expanded: !n.expanded }
-          }
-          if (n.children) {
-            return { ...n, children: update(n.children) }
-          }
-          return n
-        })
-      return update(prev)
-    })
-
-    const target = findNode(tree, path)
-    if (target && target.children === null) {
-      const children = await loadFolders(vaultFs, path)
+  const toggleFolder = useCallback(
+    async (path: string) => {
       setTree((prev) => {
         const update = (nodes: FolderNode[]): FolderNode[] =>
           nodes.map((n) => {
-            if (n.path === path) return { ...n, children, expanded: true }
-            if (n.children) return { ...n, children: update(n.children) }
+            if (n.path === path) {
+              return { ...n, expanded: !n.expanded }
+            }
+            if (n.children) {
+              return { ...n, children: update(n.children) }
+            }
             return n
           })
         return update(prev)
       })
-    }
-  }, [tree, vaultFs])
+
+      const target = findNode(tree, path)
+      if (target && target.children === null) {
+        const children = await loadFolders(vaultFs, path)
+        setTree((prev) => {
+          const update = (nodes: FolderNode[]): FolderNode[] =>
+            nodes.map((n) => {
+              if (n.path === path) return { ...n, children, expanded: true }
+              if (n.children) return { ...n, children: update(n.children) }
+              return n
+            })
+          return update(prev)
+        })
+      }
+    },
+    [tree, vaultFs],
+  )
 
   async function handleCreateFolder() {
     const name = newFolderName.trim().replace(/[/\\:*?"<>|]/g, '')
@@ -188,19 +200,15 @@ export function MoveToFolderDialog({
     setBusy(false)
   }
 
-  const label = itemNames.length === 1
-    ? `Move "${itemNames[0]}"`
-    : `Move ${itemNames.length} items`
+  const label = itemNames.length === 1 ? `Move "${itemNames[0]}"` : `Move ${itemNames.length} items`
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
-        <Dialog.Content className="border-border bg-bg fixed left-1/2 top-1/2 z-50 flex max-h-[80vh] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border shadow-2xl">
+        <Dialog.Content className="border-border bg-bg fixed top-1/2 left-1/2 z-50 flex max-h-[80vh] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border shadow-2xl">
           <div className="flex items-center justify-between px-4 pt-4 pb-2">
-            <Dialog.Title className="text-fg text-sm font-semibold">
-              {label}
-            </Dialog.Title>
+            <Dialog.Title className="text-fg text-sm font-semibold">{label}</Dialog.Title>
             <Dialog.Close className="text-fg-muted hover:text-fg rounded-md p-1">
               <X className="size-4" />
             </Dialog.Close>
@@ -210,7 +218,7 @@ export function MoveToFolderDialog({
             Select a destination folder or choose root.
           </p>
 
-          <div className="border-border mx-4 min-h-[180px] max-h-[40vh] overflow-y-auto rounded-lg border p-1">
+          <div className="border-border mx-4 max-h-[40vh] min-h-[180px] overflow-y-auto rounded-lg border p-1">
             <button
               type="button"
               className={cn(
@@ -241,7 +249,7 @@ export function MoveToFolderDialog({
             <div className="flex items-center gap-2 px-4 pt-2">
               <input
                 autoFocus
-                className="border-border bg-bg-secondary text-fg min-w-0 flex-1 rounded-md border px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-accent"
+                className="border-border bg-bg-secondary text-fg focus:ring-accent min-w-0 flex-1 rounded-md border px-2 py-1 text-sm outline-none focus:ring-1"
                 placeholder="New folder name"
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
@@ -250,7 +258,9 @@ export function MoveToFolderDialog({
                   if (e.key === 'Escape') setShowNewFolder(false)
                 }}
               />
-              <Button size="sm" onClick={() => void handleCreateFolder()}>Create</Button>
+              <Button size="sm" onClick={() => void handleCreateFolder()}>
+                Create
+              </Button>
               <button
                 type="button"
                 className="text-fg-muted hover:text-fg p-1"

@@ -107,10 +107,7 @@ export async function appendBlankPage(
 }
 
 /** Delete page at `index` (0-based). Returns new PDF bytes. */
-export async function deletePage(
-  pdfBytes: Uint8Array,
-  index: number,
-): Promise<Uint8Array> {
+export async function deletePage(pdfBytes: Uint8Array, index: number): Promise<Uint8Array> {
   const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true })
   if (doc.getPageCount() <= 1) throw new Error('Cannot delete the only page')
   doc.removePage(index)
@@ -131,10 +128,7 @@ export async function rotatePage(
 }
 
 /** Reorder pages. `newOrder` is an array of old indices in the new order. */
-export async function reorderPages(
-  pdfBytes: Uint8Array,
-  newOrder: number[],
-): Promise<Uint8Array> {
+export async function reorderPages(pdfBytes: Uint8Array, newOrder: number[]): Promise<Uint8Array> {
   const src = await PDFDocument.load(pdfBytes, { ignoreEncryption: true })
   const dst = await PDFDocument.create()
 
@@ -242,7 +236,9 @@ export async function fillFormFields(
       } else if ('select' in field && typeof field.select === 'function') {
         ;(field.select as (v: string) => void)(val)
       }
-    } catch { /* field not found or unsupported */ }
+    } catch {
+      /* field not found or unsupported */
+    }
   }
 
   if (flatten) form.flatten()

@@ -68,16 +68,32 @@ export const inkEditorTheme = EditorView.theme(
  */
 export const inkHighlightStyle = syntaxHighlighting(
   HighlightStyle.define([
-    { tag: [t.keyword, t.operatorKeyword, t.modifier, t.controlKeyword], color: 'var(--hl-keyword)' },
+    {
+      tag: [t.keyword, t.operatorKeyword, t.modifier, t.controlKeyword],
+      color: 'var(--hl-keyword)',
+    },
     { tag: [t.string, t.special(t.string), t.regexp], color: 'var(--hl-string)' },
-    { tag: [t.comment, t.lineComment, t.blockComment, t.docComment], color: 'var(--hl-comment)', fontStyle: 'italic' },
-    { tag: [t.function(t.variableName), t.function(t.definition(t.variableName))], color: 'var(--hl-function)' },
+    {
+      tag: [t.comment, t.lineComment, t.blockComment, t.docComment],
+      color: 'var(--hl-comment)',
+      fontStyle: 'italic',
+    },
+    {
+      tag: [t.function(t.variableName), t.function(t.definition(t.variableName))],
+      color: 'var(--hl-function)',
+    },
     { tag: [t.number, t.integer, t.float, t.bool], color: 'var(--hl-number)' },
     { tag: [t.tagName, t.angleBracket], color: 'var(--hl-tag)' },
     { tag: [t.attributeName], color: 'var(--hl-attr)' },
     { tag: [t.typeName, t.className, t.namespace], color: 'var(--hl-builtin)' },
-    { tag: [t.operator, t.compareOperator, t.arithmeticOperator, t.logicOperator], color: 'var(--hl-operator)' },
-    { tag: [t.punctuation, t.separator, t.paren, t.squareBracket, t.brace], color: 'var(--hl-punctuation)' },
+    {
+      tag: [t.operator, t.compareOperator, t.arithmeticOperator, t.logicOperator],
+      color: 'var(--hl-operator)',
+    },
+    {
+      tag: [t.punctuation, t.separator, t.paren, t.squareBracket, t.brace],
+      color: 'var(--hl-punctuation)',
+    },
     { tag: [t.variableName], color: 'var(--color-fg)' },
     { tag: [t.definition(t.variableName)], color: 'var(--hl-function)' },
     { tag: [t.propertyName], color: 'var(--hl-attr)' },

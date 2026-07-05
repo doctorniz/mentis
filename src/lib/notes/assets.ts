@@ -26,7 +26,9 @@ export async function saveAsset(
   targetFolder?: string,
 ): Promise<string> {
   const folder =
-    targetFolder && targetFolder !== '/' ? targetFolder.replace(/^\/+|\/+$/g, '') : DEFAULT_ASSETS_DIR
+    targetFolder && targetFolder !== '/'
+      ? targetFolder.replace(/^\/+|\/+$/g, '')
+      : DEFAULT_ASSETS_DIR
   await fs.mkdir(folder)
   const name = uniqueName(fileName)
   const path = `${folder}/${name}`
@@ -38,10 +40,7 @@ export async function saveAsset(
  * Read a vault-relative asset and return a blob: URL.
  * Caller is responsible for revoking the URL when done.
  */
-export async function assetToBlobUrl(
-  fs: FileSystemAdapter,
-  vaultPath: string,
-): Promise<string> {
+export async function assetToBlobUrl(fs: FileSystemAdapter, vaultPath: string): Promise<string> {
   const data = await fs.readFile(vaultPath)
   const ext = vaultPath.split('.').pop()?.toLowerCase() ?? ''
   const mime = MIME_MAP[ext] ?? 'application/octet-stream'

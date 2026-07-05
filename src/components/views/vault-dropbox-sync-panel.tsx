@@ -40,7 +40,7 @@ function NumberInput({
           const n = parseInt(e.target.value, 10)
           if (!isNaN(n)) onChange(n)
         }}
-        className="border-border bg-bg-secondary text-fg w-20 rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent/50"
+        className="border-border bg-bg-secondary text-fg focus:ring-accent/50 w-20 rounded-md border px-2.5 py-1.5 text-sm focus:ring-1 focus:outline-none"
       />
       {suffix && <span className="text-fg-muted text-xs">{suffix}</span>}
     </div>
@@ -201,9 +201,7 @@ export function VaultDropboxSyncPanel({
                 : 'Not connected'}
           </span>
         </div>
-        {connectError && (
-          <p className="text-destructive text-xs leading-snug">{connectError}</p>
-        )}
+        {connectError && <p className="text-destructive text-xs leading-snug">{connectError}</p>}
 
         <div className="flex flex-col items-start gap-2">
           {isConnected ? (

@@ -179,8 +179,9 @@ export class UndoManager {
     // Direction B: capture fresh data, then remove. Fresh capture is
     // important — a user could have edited the restored layer and then
     // hit Redo, in which case their edits would otherwise be lost.
-    const fresh: CanvasLayerData | null =
-      await this.layerManager.captureLayerData(entry.layerData.id)
+    const fresh: CanvasLayerData | null = await this.layerManager.captureLayerData(
+      entry.layerData.id,
+    )
     this.layerManager.removeLayer(entry.layerData.id)
 
     return {

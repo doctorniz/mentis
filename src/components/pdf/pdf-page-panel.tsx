@@ -2,13 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PDFPageProxy } from 'pdfjs-dist'
-import {
-  FilePlus,
-  FileStack,
-  RotateCw,
-  Save,
-  Trash2,
-} from 'lucide-react'
+import { FilePlus, FileStack, RotateCw, Save, Trash2 } from 'lucide-react'
 import { usePdfStore } from '@/stores/pdf'
 import { cn } from '@/utils/cn'
 
@@ -56,7 +50,13 @@ function PageThumbnail({ page, index }: { page: PDFPageProxy; index: number }) {
     }
   }, [page, index])
 
-  return <canvas ref={canvasRef} className="pointer-events-none w-full rounded" aria-label={`Page ${index + 1} thumbnail`} />
+  return (
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none w-full rounded"
+      aria-label={`Page ${index + 1} thumbnail`}
+    />
+  )
 }
 
 export function PdfPagePanel({
@@ -262,16 +262,21 @@ export function PdfPagePanel({
                     ? 'border-accent bg-accent/10 shadow-sm'
                     : i === currentPage
                       ? 'border-accent shadow-sm'
-                      : 'border-transparent hover:border-border-strong',
-                  dropIdx === i && dragIdx !== null && dragIdx !== i && 'border-accent border-dashed',
+                      : 'hover:border-border-strong border-transparent',
+                  dropIdx === i &&
+                    dragIdx !== null &&
+                    dragIdx !== i &&
+                    'border-accent border-dashed',
                   dragIdx === i && 'opacity-40',
                 )}
               >
                 <PageThumbnail page={page} index={i} />
-                <span className={cn(
-                  'absolute bottom-1 left-1/2 -translate-x-1/2 rounded px-1.5 py-0.5 text-[10px] font-medium',
-                  isSelected ? 'bg-accent text-white' : 'bg-bg/80 text-fg-muted',
-                )}>
+                <span
+                  className={cn(
+                    'absolute bottom-1 left-1/2 -translate-x-1/2 rounded px-1.5 py-0.5 text-[10px] font-medium',
+                    isSelected ? 'bg-accent text-white' : 'bg-bg/80 text-fg-muted',
+                  )}
+                >
                   {i + 1}
                 </span>
               </button>

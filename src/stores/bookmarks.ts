@@ -29,11 +29,7 @@ interface BookmarksState {
     fields: Partial<BookmarkFrontmatter>,
   ) => Promise<void>
   removeBookmark: (fs: FileSystemAdapter, path: string) => Promise<void>
-  moveToCategory: (
-    fs: FileSystemAdapter,
-    path: string,
-    newCategory: string | null,
-  ) => Promise<void>
+  moveToCategory: (fs: FileSystemAdapter, path: string, newCategory: string | null) => Promise<void>
   createCategory: (fs: FileSystemAdapter, name: string) => Promise<void>
   removeCategory: (fs: FileSystemAdapter, name: string) => Promise<void>
   setActiveCategory: (category: string | null) => void
@@ -67,12 +63,18 @@ export const useBookmarksStore = create<BookmarksState>()(
     loading: false,
 
     loadBookmarks: async (fs) => {
-      set((s) => { s.loading = true })
+      set((s) => {
+        s.loading = true
+      })
       try {
         const exists = await fs.exists(BOOKMARKS_DIR)
         if (!exists) {
           await fs.mkdir(BOOKMARKS_DIR)
-          set((s) => { s.items = []; s.categories = []; s.loading = false })
+          set((s) => {
+            s.items = []
+            s.categories = []
+            s.loading = false
+          })
           return
         }
 
@@ -84,14 +86,22 @@ export const useBookmarksStore = create<BookmarksState>()(
           try {
             const raw = await fs.readTextFile(p)
             items.push(parseBookmarkItem(p, raw))
-          } catch { /* skip unreadable */ }
+          } catch {
+            /* skip unreadable */
+          }
         }
         items.sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime())
 
         const cats = await collectCategories(fs)
-        set((s) => { s.items = items; s.categories = cats; s.loading = false })
+        set((s) => {
+          s.items = items
+          s.categories = cats
+          s.loading = false
+        })
       } catch {
-        set((s) => { s.loading = false })
+        set((s) => {
+          s.loading = false
+        })
       }
     },
 
@@ -166,8 +176,14 @@ export const useBookmarksStore = create<BookmarksState>()(
     },
 
     removeBookmark: async (fs, path) => {
-      try { await fs.remove(path) } catch { /* already gone */ }
-      set((s) => { s.items = s.items.filter((i) => i.path !== path) })
+      try {
+        await fs.remove(path)
+      } catch {
+        /* already gone */
+      }
+      set((s) => {
+        s.items = s.items.filter((i) => i.path !== path)
+      })
     },
 
     moveToCategory: async (fs, path, newCategory) => {
@@ -209,7 +225,11 @@ export const useBookmarksStore = create<BookmarksState>()(
 
     removeCategory: async (fs, name) => {
       const dir = `${BOOKMARKS_DIR}/${name}`
-      try { await fs.removeDir(dir) } catch { /* ignore */ }
+      try {
+        await fs.removeDir(dir)
+      } catch {
+        /* ignore */
+      }
       set((s) => {
         s.categories = s.categories.filter((c) => c !== name)
         s.items = s.items.filter((i) => i.category !== name)
@@ -218,6 +238,8 @@ export const useBookmarksStore = create<BookmarksState>()(
     },
 
     setActiveCategory: (category) =>
-      set((s) => { s.activeCategory = category }),
+      set((s) => {
+        s.activeCategory = category
+      }),
   })),
 )

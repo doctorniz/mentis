@@ -60,7 +60,11 @@ export function PdfOutlineContent({
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-1 py-1" role="tree" aria-label="PDF document outline">
+    <div
+      className="min-h-0 flex-1 overflow-y-auto px-1 py-1"
+      role="tree"
+      aria-label="PDF document outline"
+    >
       {outline.map((node, i) => (
         <OutlineItem
           key={i}
@@ -104,11 +108,7 @@ function OutlineItem({
               setExpanded(!expanded)
             }}
           >
-            {expanded ? (
-              <ChevronDown className="size-3" />
-            ) : (
-              <ChevronRight className="size-3" />
-            )}
+            {expanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
           </button>
         ) : (
           <span className="w-4 shrink-0" />

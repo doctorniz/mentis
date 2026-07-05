@@ -16,10 +16,9 @@ import { test, expect, navigateTo, waitForView, waitForAutoSave } from './fixtur
 async function createCanvas(page: import('@playwright/test').Page) {
   await page.keyboard.press('Control+n')
   await page.waitForTimeout(400)
-  const canvasBtn =
-    page.getByRole('button', { name: 'Canvas' }).or(
-      page.getByRole('menuitem', { name: 'Canvas' }),
-    )
+  const canvasBtn = page
+    .getByRole('button', { name: 'Canvas' })
+    .or(page.getByRole('menuitem', { name: 'Canvas' }))
   await canvasBtn.first().click()
   // Wait for canvas editor to mount and finish loading
   await expect(page.getByText('Loading canvas…')).toBeHidden({ timeout: 15_000 })
@@ -315,7 +314,9 @@ test.describe('5.4 Save & Lifecycle', () => {
 /* ================================================================== */
 
 test.describe('5.5 File Format', () => {
-  test.fixme('5.5.3 v5 format: small JSON + layer PNGs in _marrow/_drawings/', async ({ vaultPage: page }) => {
+  test.fixme('5.5.3 v5 format: small JSON + layer PNGs in _marrow/_drawings/', async ({
+    vaultPage: page,
+  }) => {
     // Manual: create canvas, draw, save, then inspect OPFS via DevTools
     // to verify _marrow/_drawings/<assetId>/<layerId>.png structure
     // and that the .canvas JSON is a small metadata file with an assetId field.

@@ -42,7 +42,11 @@ function formatTimestamp(ts: string): string {
   else relative = date.toLocaleDateString()
 
   const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  const day = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  const day = date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
   return `${day} at ${time} (${relative})`
 }
 
@@ -66,7 +70,9 @@ export function PdfVersionHistory({ pdfPath, vaultFs, onRestore }: Props) {
     }
   }, [vaultFs, pdfFilename])
 
-  useEffect(() => { void refresh() }, [refresh])
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
 
   async function handleRestore(snap: SnapshotInfo) {
     setRestoring(snap.path)
@@ -121,12 +127,10 @@ export function PdfVersionHistory({ pdfPath, vaultFs, onRestore }: Props) {
                 key={snap.path}
                 className="border-border hover:bg-bg-hover group border-b px-3 py-2.5"
               >
-                <div className="text-fg text-xs font-medium leading-tight">
+                <div className="text-fg text-xs leading-tight font-medium">
                   {formatTimestamp(snap.timestamp)}
                 </div>
-                <div className="text-fg-muted mt-0.5 text-[10px]">
-                  {formatBytes(snap.size)}
-                </div>
+                <div className="text-fg-muted mt-0.5 text-[10px]">{formatBytes(snap.size)}</div>
 
                 <div className="mt-1.5 flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
@@ -149,7 +153,7 @@ export function PdfVersionHistory({ pdfPath, vaultFs, onRestore }: Props) {
                       <button
                         type="button"
                         onClick={() => void handleDelete(snap)}
-                        className="text-red-500 hover:text-red-600 font-medium"
+                        className="font-medium text-red-500 hover:text-red-600"
                       >
                         Confirm
                       </button>
@@ -167,7 +171,7 @@ export function PdfVersionHistory({ pdfPath, vaultFs, onRestore }: Props) {
                       title="Delete this snapshot"
                       aria-label="Delete this snapshot"
                       onClick={() => setConfirmDelete(snap.path)}
-                      className="text-fg-muted hover:text-red-500 rounded p-0.5 transition-colors"
+                      className="text-fg-muted rounded p-0.5 transition-colors hover:text-red-500"
                     >
                       <Trash2 className="size-3" />
                     </button>

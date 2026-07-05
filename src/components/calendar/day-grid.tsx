@@ -58,7 +58,7 @@ export function DayGrid({
   const hasDailyNote = dailyNoteDates?.has(dateStr) ?? false
 
   const allDayEvents = dayEvents.filter((ev) => ev.allDay)
-  const timedEvents  = dayEvents.filter((ev) => !ev.allDay)
+  const timedEvents = dayEvents.filter((ev) => !ev.allDay)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -102,7 +102,9 @@ export function DayGrid({
         {/* All-day events */}
         {allDayEvents.length > 0 && (
           <section>
-            <p className="text-fg-muted mb-2 text-xs font-medium uppercase tracking-wide">All day</p>
+            <p className="text-fg-muted mb-2 text-xs font-medium tracking-wide uppercase">
+              All day
+            </p>
             <div className="flex flex-col gap-1.5">
               {allDayEvents.map((ev) => (
                 <EventCard key={ev.path} event={ev} onClick={onEventClick} />
@@ -114,7 +116,7 @@ export function DayGrid({
         {/* Timed events */}
         {timedEvents.length > 0 && (
           <section>
-            <p className="text-fg-muted mb-2 text-xs font-medium uppercase tracking-wide">Events</p>
+            <p className="text-fg-muted mb-2 text-xs font-medium tracking-wide uppercase">Events</p>
             <div className="flex flex-col gap-1.5">
               {timedEvents.map((ev) => (
                 <EventCard key={ev.path} event={ev} onClick={onEventClick} showTime />
@@ -126,7 +128,9 @@ export function DayGrid({
         {/* Tasks due */}
         {dayTasks.length > 0 && (
           <section>
-            <p className="text-fg-muted mb-2 text-xs font-medium uppercase tracking-wide">Due today</p>
+            <p className="text-fg-muted mb-2 text-xs font-medium tracking-wide uppercase">
+              Due today
+            </p>
             <div className="flex flex-col gap-1.5">
               {dayTasks.map((t) => (
                 <div
@@ -134,7 +138,9 @@ export function DayGrid({
                   className="border-border bg-bg-secondary flex items-center gap-3 rounded-lg border px-3 py-2.5"
                 >
                   <div className="border-border size-4 shrink-0 rounded-full border-2" />
-                  <span className="text-fg-secondary min-w-0 flex-1 truncate text-sm">{t.title || 'Untitled'}</span>
+                  <span className="text-fg-secondary min-w-0 flex-1 truncate text-sm">
+                    {t.title || 'Untitled'}
+                  </span>
                 </div>
               ))}
             </div>
@@ -148,7 +154,7 @@ export function DayGrid({
             <button
               type="button"
               onClick={() => onAddEvent(dateStr)}
-              className="text-accent hover:underline text-sm"
+              className="text-accent text-sm hover:underline"
             >
               Add event
             </button>
@@ -170,11 +176,11 @@ function EventCard({
 }) {
   const colorMap: Record<string, string> = {
     violet: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
-    sky:    'bg-sky-500/15 text-sky-700 dark:text-sky-300',
-    emerald:'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-    amber:  'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-    rose:   'bg-rose-500/15 text-rose-700 dark:text-rose-300',
-    slate:  'bg-slate-500/15 text-slate-600 dark:text-slate-300',
+    sky: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+    emerald: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    amber: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    rose: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+    slate: 'bg-slate-500/15 text-slate-600 dark:text-slate-300',
   }
   const colorCls = colorMap[event.color ?? 'violet'] ?? colorMap['violet']!
 
@@ -204,7 +210,7 @@ function EventCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="mt-0.5 block truncate text-xs opacity-60 underline hover:opacity-100"
+            className="mt-0.5 block truncate text-xs underline opacity-60 hover:opacity-100"
           >
             {event.url.replace(/^https?:\/\//, '')}
           </a>

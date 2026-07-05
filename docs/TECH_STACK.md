@@ -4,116 +4,116 @@
 
 ### Core Framework
 
-| Technology | Version | Purpose |
-|---|---|---|
-| **Next.js** | 15.x (App Router) | React framework with SSG/SSR, file-based routing, optimized bundling |
-| **React** | 19.x | UI library |
-| **TypeScript** | 5.x | Type safety across the entire codebase |
-| **Inter** (`next/font/google`) | bundled | Primary UI typography; assistant chat HTML uses `.chat-assistant-prose` for spacing/heading rhythm |
+| Technology                     | Version           | Purpose                                                                                            |
+| ------------------------------ | ----------------- | -------------------------------------------------------------------------------------------------- |
+| **Next.js**                    | 15.x (App Router) | React framework with SSG/SSR, file-based routing, optimized bundling                               |
+| **React**                      | 19.x              | UI library                                                                                         |
+| **TypeScript**                 | 5.x               | Type safety across the entire codebase                                                             |
+| **Inter** (`next/font/google`) | bundled           | Primary UI typography; assistant chat HTML uses `.chat-assistant-prose` for spacing/heading rhythm |
 
 ### Markdown Editing
 
-| Technology | Purpose |
-|---|---|
-| **Tiptap** | ProseMirror-based rich text editor with extension system |
-| **@tiptap/suggestion** | `/` slash menu and `[[` wiki-link note picker (filtered list + keyboard nav) |
-| **@tiptap/starter-kit** | Base editor extensions (bold, italic, lists, etc.) |
-| **@tiptap/extension-task-list** | Task list / checkbox support |
-| **@tiptap/extension-table** | GFM table support |
-| **@tiptap/extension-code-block-lowlight** + **lowlight** | Syntax-highlighted code blocks (common languages bundle) |
-| **@tiptap/extension-placeholder** | Placeholder text for empty documents |
-| **KaTeX** | LaTeX math rendering for `$...$` (inline) and `$$...$$` (display) via custom Tiptap nodes |
-| **gray-matter** | Frontmatter read/write for note files |
-| **marked** | Markdown → HTML for loading into Tiptap |
-| **@tiptap/html** | HTML ↔ Tiptap JSON (`generateJSON` / `generateHTML`) |
-| **turndown** | HTML → Markdown on save (round-trip with editor; some GFM fidelity gaps) |
+| Technology                                               | Purpose                                                                                   |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Tiptap**                                               | ProseMirror-based rich text editor with extension system                                  |
+| **@tiptap/suggestion**                                   | `/` slash menu and `[[` wiki-link note picker (filtered list + keyboard nav)              |
+| **@tiptap/starter-kit**                                  | Base editor extensions (bold, italic, lists, etc.)                                        |
+| **@tiptap/extension-task-list**                          | Task list / checkbox support                                                              |
+| **@tiptap/extension-table**                              | GFM table support                                                                         |
+| **@tiptap/extension-code-block-lowlight** + **lowlight** | Syntax-highlighted code blocks (common languages bundle)                                  |
+| **@tiptap/extension-placeholder**                        | Placeholder text for empty documents                                                      |
+| **KaTeX**                                                | LaTeX math rendering for `$...$` (inline) and `$$...$$` (display) via custom Tiptap nodes |
+| **gray-matter**                                          | Frontmatter read/write for note files                                                     |
+| **marked**                                               | Markdown → HTML for loading into Tiptap                                                   |
+| **@tiptap/html**                                         | HTML ↔ Tiptap JSON (`generateJSON` / `generateHTML`)                                      |
+| **turndown**                                             | HTML → Markdown on save (round-trip with editor; some GFM fidelity gaps)                  |
 
 ### PDF Engine
 
-| Technology | Purpose |
-|---|---|
-| **pdfjs-dist** (PDF.js) | PDF rendering, text layer, search, outline extraction |
-| **pdf-lib** | Client-side PDF manipulation — annotation writing, page management, merge, page extract/reorder, form filling, signature stamping |
-| **Fabric.js** | Canvas overlay for annotation editing on PDF pages |
-| **PixiJS** v8 | WebGL-accelerated layer-based drawing canvas (`.canvas` editor) with brush engine and Photoshop-style properties panel |
-| **@xyflow/react** 12.x | Node-based interactive graph UI for the Mindmap editor (`.mind` files) — pan/zoom, draggable nodes, custom node/edge rendering, touch support |
+| Technology              | Purpose                                                                                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **pdfjs-dist** (PDF.js) | PDF rendering, text layer, search, outline extraction                                                                                         |
+| **pdf-lib**             | Client-side PDF manipulation — annotation writing, page management, merge, page extract/reorder, form filling, signature stamping             |
+| **Fabric.js**           | Canvas overlay for annotation editing on PDF pages                                                                                            |
+| **PixiJS** v8           | WebGL-accelerated layer-based drawing canvas (`.canvas` editor) with brush engine and Photoshop-style properties panel                        |
+| **@xyflow/react** 12.x  | Node-based interactive graph UI for the Mindmap editor (`.mind` files) — pan/zoom, draggable nodes, custom node/edge rendering, touch support |
 
 ### Search
 
-| Technology | Purpose |
-|---|---|
+| Technology     | Purpose                                                                                     |
+| -------------- | ------------------------------------------------------------------------------------------- |
 | **MiniSearch** | Lightweight client-side full-text search with fuzzy matching, prefix search, field boosting |
 
 ### AI Runtime
 
-| Technology | Purpose |
-|---|---|
-| **@mediapipe/tasks-genai** | Gemma 4 E2B inference in browser (WebGPU) via LiteRT `.task` format |
-| **@huggingface/transformers** | Whisper transcription in browser (Transformers.js). |
-| **OPFS** | Caches the Gemma 4 E2B `.task` model locally after first download |
+| Technology                    | Purpose                                                             |
+| ----------------------------- | ------------------------------------------------------------------- |
+| **@mediapipe/tasks-genai**    | Gemma 4 E2B inference in browser (WebGPU) via LiteRT `.task` format |
+| **@huggingface/transformers** | Whisper transcription in browser (Transformers.js).                 |
+| **OPFS**                      | Caches the Gemma 4 E2B `.task` model locally after first download   |
 
 The `device` chat provider (labeled **Local** in Settings) runs Gemma 4 E2B via MediaPipe/WebGPU only.
 
 ### State Management
 
-| Technology | Purpose |
-|---|---|
-| **Zustand** | Minimal, performant state management with devtools support |
-| **Immer** (via Zustand middleware) | Immutable state updates with mutable syntax |
+| Technology                         | Purpose                                                    |
+| ---------------------------------- | ---------------------------------------------------------- |
+| **Zustand**                        | Minimal, performant state management with devtools support |
+| **Immer** (via Zustand middleware) | Immutable state updates with mutable syntax                |
 
 ### Styling & UI
 
-| Technology | Purpose |
-|---|---|
-| **Tailwind CSS** | Utility-first CSS framework |
-| **tailwind-merge** | Intelligent class merging for component variants |
-| **class-variance-authority (CVA)** | Type-safe component variant definitions |
-| **Lucide React** | Icon library (consistent, tree-shakeable) |
-| **Radix UI** | Unstyled, accessible UI primitives (dialogs, dropdowns, tooltips, etc.) |
-| **@tanstack/react-virtual** | Virtualized list/grid rendering for large vaults (file browser, search results) |
-| **Framer Motion** | Animations and transitions |
+| Technology                         | Purpose                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| **Tailwind CSS**                   | Utility-first CSS framework                                                     |
+| **tailwind-merge**                 | Intelligent class merging for component variants                                |
+| **class-variance-authority (CVA)** | Type-safe component variant definitions                                         |
+| **Lucide React**                   | Icon library (consistent, tree-shakeable)                                       |
+| **Radix UI**                       | Unstyled, accessible UI primitives (dialogs, dropdowns, tooltips, etc.)         |
+| **@tanstack/react-virtual**        | Virtualized list/grid rendering for large vaults (file browser, search results) |
+| **Framer Motion**                  | Animations and transitions                                                      |
 
 ### File System & Offline
 
-| Technology | Purpose |
-|---|---|
-| **Origin Private File System (OPFS)** | Browser-native performant local storage |
-| **File System Access API** | `FsapiAdapter` wraps `showDirectoryPicker()` for "open folder" vault access on Chromium browsers |
-| **Service Worker** | Hand-written `public/sw.js` with stale-while-revalidate caching (no Workbox dependency) |
+| Technology                            | Purpose                                                                                          |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Origin Private File System (OPFS)** | Browser-native performant local storage                                                          |
+| **File System Access API**            | `FsapiAdapter` wraps `showDirectoryPicker()` for "open folder" vault access on Chromium browsers |
+| **Service Worker**                    | Hand-written `public/sw.js` with stale-while-revalidate caching (no Workbox dependency)          |
 
 ### Build & Dev Tooling
 
-| Technology | Purpose |
-|---|---|
-| **pnpm** | Fast, disk-efficient package manager |
-| **ESLint** | Linting with flat config |
-| **Prettier** | Code formatting |
-| **Vitest** | Unit and integration testing (261 tests across 21 suite files under `tests/`) |
-| **happy-dom** | Lightweight DOM implementation for Vitest tests requiring a browser environment (Tiptap bridge) |
-| **Playwright** | E2E browser testing |
-| **Husky + lint-staged** | Pre-commit hooks |
+| Technology              | Purpose                                                                                         |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| **pnpm**                | Fast, disk-efficient package manager                                                            |
+| **ESLint**              | Linting with flat config                                                                        |
+| **Prettier**            | Code formatting                                                                                 |
+| **Vitest**              | Unit and integration testing (261 tests across 21 suite files under `tests/`)                   |
+| **happy-dom**           | Lightweight DOM implementation for Vitest tests requiring a browser environment (Tiptap bridge) |
+| **Playwright**          | E2E browser testing                                                                             |
+| **Husky + lint-staged** | Pre-commit hooks                                                                                |
 
 ---
 
 ## Phase 2: Desktop (Tauri)
 
-| Technology | Purpose |
-|---|---|
-| **Tauri v2** | Rust-based desktop shell, small binary, native FS access |
-| **Tauri FS plugin** | Direct read/write to user's vault directory |
-| **Tauri updater** | Auto-update mechanism |
-| **Tauri shell plugin** | System integration (open in default app, etc.) |
+| Technology             | Purpose                                                  |
+| ---------------------- | -------------------------------------------------------- |
+| **Tauri v2**           | Rust-based desktop shell, small binary, native FS access |
+| **Tauri FS plugin**    | Direct read/write to user's vault directory              |
+| **Tauri updater**      | Auto-update mechanism                                    |
+| **Tauri shell plugin** | System integration (open in default app, etc.)           |
 
 ---
 
 ## Phase 3: Mobile
 
-| Technology | Purpose |
-|---|---|
-| **Capacitor** (or Tauri Mobile) | Mobile shell wrapping the web app |
-| **Pointer Events API** | Stylus/Apple Pencil pressure sensitivity |
-| **Capacitor Filesystem** | Sandboxed file storage |
-| **iCloud / SAF integration** | Native cloud sync per platform |
+| Technology                      | Purpose                                  |
+| ------------------------------- | ---------------------------------------- |
+| **Capacitor** (or Tauri Mobile) | Mobile shell wrapping the web app        |
+| **Pointer Events API**          | Stylus/Apple Pencil pressure sensitivity |
+| **Capacitor Filesystem**        | Sandboxed file storage                   |
+| **iCloud / SAF integration**    | Native cloud sync per platform           |
 
 ---
 
@@ -169,11 +169,11 @@ The `device` chat provider (labeled **Local** in Settings) runs Gemma 4 E2B via 
 
 ## License & repository metadata
 
-| Item | Value |
-|---|---|
-| **License** | [Business Source License 1.1](../LICENSE) (BSL 1.1) — not OSI-open-source until the **Change Date** in `LICENSE`; then **MPL 2.0** for that version as specified there. |
-| **`package.json` `license`** | `SEE LICENSE IN LICENSE` |
-| **AI assistance** | Disclosed in the root [README](../README.md); does not override the license. |
+| Item                         | Value                                                                                                                                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **License**                  | [Business Source License 1.1](../LICENSE) (BSL 1.1) — not OSI-open-source until the **Change Date** in `LICENSE`; then **MPL 2.0** for that version as specified there. |
+| **`package.json` `license`** | `SEE LICENSE IN LICENSE`                                                                                                                                                |
+| **AI assistance**            | Disclosed in the root [README](../README.md); does not override the license.                                                                                            |
 
 Dependency licenses are those of each npm package (see lockfile / `pnpm licenses`); the **Mentis** application source is under BSL as above.
 

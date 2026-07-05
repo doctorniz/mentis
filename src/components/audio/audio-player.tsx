@@ -72,15 +72,18 @@ export function AudioPlayer({ src, duration: hintDuration, compact, className }:
     }
   }, [playing])
 
-  const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = audioRef.current
-    const bar = progressRef.current
-    if (!el || !bar || !duration) return
-    const rect = bar.getBoundingClientRect()
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-    el.currentTime = ratio * duration
-    setCurrentTime(el.currentTime)
-  }, [duration])
+  const seek = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const el = audioRef.current
+      const bar = progressRef.current
+      if (!el || !bar || !duration) return
+      const rect = bar.getBoundingClientRect()
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+      el.currentTime = ratio * duration
+      setCurrentTime(el.currentTime)
+    },
+    [duration],
+  )
 
   const cycleSpeed = useCallback(() => {
     const next = (speedIdx + 1) % SPEEDS.length
@@ -110,8 +113,8 @@ export function AudioPlayer({ src, duration: hintDuration, compact, className }:
         className={cn(
           'flex shrink-0 items-center justify-center rounded-full transition-colors',
           compact
-            ? 'size-7 bg-accent/10 text-accent hover:bg-accent/20'
-            : 'size-9 bg-accent text-accent-fg hover:bg-accent/90',
+            ? 'bg-accent/10 text-accent hover:bg-accent/20 size-7'
+            : 'bg-accent text-accent-fg hover:bg-accent/90 size-9',
         )}
         aria-label={playing ? 'Pause' : 'Play'}
       >
@@ -128,7 +131,7 @@ export function AudioPlayer({ src, duration: hintDuration, compact, className }:
           ref={progressRef}
           onClick={seek}
           className={cn(
-            'relative w-full cursor-pointer rounded-full bg-fg/10',
+            'bg-fg/10 relative w-full cursor-pointer rounded-full',
             compact ? 'h-1' : 'h-1.5',
           )}
           role="slider"
@@ -145,7 +148,12 @@ export function AudioPlayer({ src, duration: hintDuration, compact, className }:
 
         {/* Time + speed */}
         <div className="flex items-center justify-between">
-          <span className={cn('font-mono text-fg-muted select-none', compact ? 'text-[9px]' : 'text-[10px]')}>
+          <span
+            className={cn(
+              'text-fg-muted font-mono select-none',
+              compact ? 'text-[9px]' : 'text-[10px]',
+            )}
+          >
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
           <div className="flex items-center gap-1">
@@ -153,7 +161,7 @@ export function AudioPlayer({ src, duration: hintDuration, compact, className }:
               <button
                 type="button"
                 onClick={restart}
-                className="rounded p-0.5 text-fg-muted transition-colors hover:text-fg"
+                className="text-fg-muted hover:text-fg rounded p-0.5 transition-colors"
                 aria-label="Restart"
               >
                 <RotateCcw className="size-3" />
@@ -163,7 +171,7 @@ export function AudioPlayer({ src, duration: hintDuration, compact, className }:
               type="button"
               onClick={cycleSpeed}
               className={cn(
-                'rounded px-1 font-mono text-fg-muted transition-colors hover:text-fg',
+                'text-fg-muted hover:text-fg rounded px-1 font-mono transition-colors',
                 compact ? 'text-[9px]' : 'text-[10px]',
               )}
               aria-label={`Speed: ${SPEEDS[speedIdx]}x`}

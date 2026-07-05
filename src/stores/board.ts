@@ -62,12 +62,17 @@ export const useBoardStore = create<BoardState>()(
     activeItemPath: null,
 
     loadBoard: async (fs) => {
-      set((s) => { s.loading = true })
+      set((s) => {
+        s.loading = true
+      })
       try {
         const exists = await fs.exists(BOARD_DIR)
         if (!exists) {
           await fs.mkdir(BOARD_DIR)
-          set((s) => { s.items = []; s.loading = false })
+          set((s) => {
+            s.items = []
+            s.loading = false
+          })
           return
         }
 
@@ -85,9 +90,14 @@ export const useBoardStore = create<BoardState>()(
         }
 
         items.sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime())
-        set((s) => { s.items = items; s.loading = false })
+        set((s) => {
+          s.items = items
+          s.loading = false
+        })
       } catch {
-        set((s) => { s.loading = false })
+        set((s) => {
+          s.loading = false
+        })
       }
     },
 
@@ -115,10 +125,13 @@ export const useBoardStore = create<BoardState>()(
       if (!assetsExist) await fs.mkdir(BOARD_ASSETS_DIR)
 
       // Derive file extension from MIME type (fallback to mp3)
-      const ext = mimeType?.includes('mp4') ? 'mp4'
-        : mimeType?.includes('ogg') ? 'ogg'
-        : mimeType?.includes('webm') ? 'webm'
-        : 'mp3'
+      const ext = mimeType?.includes('mp4')
+        ? 'mp4'
+        : mimeType?.includes('ogg')
+          ? 'ogg'
+          : mimeType?.includes('webm')
+            ? 'webm'
+            : 'mp3'
 
       // Save audio to assets
       const ts = Date.now().toString(36)
@@ -207,7 +220,11 @@ export const useBoardStore = create<BoardState>()(
     },
 
     removeItem: async (fs, path) => {
-      try { await fs.remove(path) } catch { /* already gone */ }
+      try {
+        await fs.remove(path)
+      } catch {
+        /* already gone */
+      }
       set((s) => {
         s.items = s.items.filter((i) => i.path !== path)
         if (s.activeItemPath === path) s.activeItemPath = null
@@ -237,13 +254,12 @@ export const useBoardStore = create<BoardState>()(
         // Voice note → vault root audio file (not a markdown attachment card)
         if (item.type === 'audio' || fm.type === 'audio') {
           const audioRel =
-            typeof item.audioPath === 'string' ? item.audioPath
-            : typeof fm.audioPath === 'string' ? fm.audioPath
-            : null
-          if (
-            !audioRel ||
-            !audioRel.startsWith(`${BOARD_ASSETS_DIR}/`)
-          ) {
+            typeof item.audioPath === 'string'
+              ? item.audioPath
+              : typeof fm.audioPath === 'string'
+                ? fm.audioPath
+                : null
+          if (!audioRel || !audioRel.startsWith(`${BOARD_ASSETS_DIR}/`)) {
             console.error('Board audio item missing asset path')
             return null
           }
@@ -254,8 +270,16 @@ export const useBoardStore = create<BoardState>()(
           const base = boardExportBasenamePreferTitle(item.title, assetFile, extWithDot)
           const destPath = await uniquifyVaultBasename(fs, base)
           await fs.writeFile(destPath, bytes)
-          try { await fs.remove(audioRel) } catch { /* noop */ }
-          try { await fs.remove(path) } catch { /* noop */ }
+          try {
+            await fs.remove(audioRel)
+          } catch {
+            /* noop */
+          }
+          try {
+            await fs.remove(path)
+          } catch {
+            /* noop */
+          }
           return finalize(destPath)
         }
 
@@ -263,11 +287,7 @@ export const useBoardStore = create<BoardState>()(
         const boardImagePaths = extractBoardVaultImagePaths(content).filter((p) =>
           p.startsWith(`${BOARD_ASSETS_DIR}/`),
         )
-        if (
-          boardImagePaths.length === 1 &&
-          boardBodyIsImageOnly(content) &&
-          !fm.audioPath
-        ) {
+        if (boardImagePaths.length === 1 && boardBodyIsImageOnly(content) && !fm.audioPath) {
           const imgPath = boardImagePaths[0]
           const bytes = await fs.readFile(imgPath)
           const assetFile = imgPath.split('/').pop() ?? 'image.png'
@@ -276,8 +296,16 @@ export const useBoardStore = create<BoardState>()(
           const base = boardExportBasenamePreferTitle(item.title, assetFile, extWithDot)
           const destPath = await uniquifyVaultBasename(fs, base)
           await fs.writeFile(destPath, bytes)
-          try { await fs.remove(imgPath) } catch { /* noop */ }
-          try { await fs.remove(path) } catch { /* noop */ }
+          try {
+            await fs.remove(imgPath)
+          } catch {
+            /* noop */
+          }
+          try {
+            await fs.remove(path)
+          } catch {
+            /* noop */
+          }
           return finalize(destPath)
         }
 
@@ -312,7 +340,9 @@ export const useBoardStore = create<BoardState>()(
             const assetBytes = await fs.readFile(oldAssetPath)
             await fs.writeFile(newAssetPath, assetBytes)
             await fs.remove(oldAssetPath)
-          } catch { /* asset may already be moved or missing */ }
+          } catch {
+            /* asset may already be moved or missing */
+          }
           updatedContent = updatedContent.replaceAll(oldAssetPath, newAssetPath)
           if (fm.audioPath === oldAssetPath) fm.audioPath = newAssetPath
         }
@@ -333,7 +363,11 @@ export const useBoardStore = create<BoardState>()(
         const newRaw = matterLib.stringify(updatedContent, vaultFm)
         await fs.writeTextFile(destPath, newRaw)
 
-        try { await fs.remove(path) } catch { /* already gone */ }
+        try {
+          await fs.remove(path)
+        } catch {
+          /* already gone */
+        }
 
         return finalize(destPath)
       } catch (e) {
@@ -343,6 +377,8 @@ export const useBoardStore = create<BoardState>()(
     },
 
     setActiveItem: (path) =>
-      set((s) => { s.activeItemPath = path }),
+      set((s) => {
+        s.activeItemPath = path
+      }),
   })),
 )

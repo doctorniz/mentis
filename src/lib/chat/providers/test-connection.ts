@@ -51,10 +51,7 @@ async function testOpenAICompat(
 /*  Anthropic                                                          */
 /* ------------------------------------------------------------------ */
 
-async function testAnthropic(
-  apiKey: string,
-  baseUrl?: string,
-): Promise<TestResult> {
+async function testAnthropic(apiKey: string, baseUrl?: string): Promise<TestResult> {
   const base = (baseUrl?.trim() || 'https://api.anthropic.com/v1').replace(/\/$/, '')
   try {
     // Try the models endpoint first
@@ -118,19 +115,15 @@ async function testAnthropic(
 /*  Gemini                                                             */
 /* ------------------------------------------------------------------ */
 
-async function testGemini(
-  apiKey: string,
-  baseUrl?: string,
-): Promise<TestResult> {
+async function testGemini(apiKey: string, baseUrl?: string): Promise<TestResult> {
   const base = (baseUrl?.trim() || 'https://generativelanguage.googleapis.com/v1beta').replace(
     /\/$/,
     '',
   )
   try {
-    const res = await fetch(
-      `${base}/models?key=${encodeURIComponent(apiKey)}&pageSize=1`,
-      { signal: AbortSignal.timeout(15_000) },
-    )
+    const res = await fetch(`${base}/models?key=${encodeURIComponent(apiKey)}&pageSize=1`, {
+      signal: AbortSignal.timeout(15_000),
+    })
     if (res.ok) return { ok: true }
     let detail = ''
     try {
@@ -152,10 +145,7 @@ async function testGemini(
 /*  Ollama                                                             */
 /* ------------------------------------------------------------------ */
 
-async function testOllama(
-  _apiKey: string,
-  baseUrl?: string,
-): Promise<TestResult> {
+async function testOllama(_apiKey: string, baseUrl?: string): Promise<TestResult> {
   const base = (baseUrl?.trim() || 'http://localhost:11434').replace(/\/$/, '')
   try {
     // Try native Ollama tags endpoint
@@ -197,8 +187,7 @@ function testDevice(): TestResult {
   if (!hasGpu) {
     return {
       ok: false,
-      error:
-        'WebGPU not available. Local mode requires Chrome, Edge, or a recent Chromium build.',
+      error: 'WebGPU not available. Local mode requires Chrome, Edge, or a recent Chromium build.',
     }
   }
   return { ok: true }
@@ -215,11 +204,7 @@ export async function testConnection(
 ): Promise<TestResult> {
   switch (provider) {
     case 'openai':
-      return testOpenAICompat(
-        apiKey,
-        baseUrl?.trim() || 'https://api.openai.com/v1',
-        'OpenAI',
-      )
+      return testOpenAICompat(apiKey, baseUrl?.trim() || 'https://api.openai.com/v1', 'OpenAI')
     case 'openrouter':
       return testOpenAICompat(
         apiKey,

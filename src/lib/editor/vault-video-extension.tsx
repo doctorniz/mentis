@@ -24,7 +24,10 @@ function VideoNodeView({ node }: NodeViewProps) {
     let revoked = false
     void assetToBlobUrl(_vaultFs, src)
       .then((url) => {
-        if (revoked) { URL.revokeObjectURL(url); return }
+        if (revoked) {
+          URL.revokeObjectURL(url)
+          return
+        }
         urlRef.current = url
         setBlobUrl(url)
       })

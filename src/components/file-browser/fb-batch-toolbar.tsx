@@ -18,9 +18,7 @@ export function FbBatchToolbar({
 
   return (
     <div className="border-border bg-bg-secondary pointer-events-auto fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border px-3 py-2 shadow-lg">
-      <span className="text-fg text-sm font-medium">
-        {count} selected
-      </span>
+      <span className="text-fg text-sm font-medium">{count} selected</span>
       <Button variant="secondary" size="sm" onClick={onMove}>
         <FolderInput className="size-4" />
         Move

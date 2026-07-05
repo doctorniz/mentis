@@ -27,7 +27,7 @@ export function ConfirmDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
-        <Dialog.Content className="border-border bg-bg fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border shadow-2xl">
+        <Dialog.Content className="border-border bg-bg fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border shadow-2xl">
           <div className="flex items-start gap-3 px-5 pt-5 pb-2">
             {variant === 'danger' && (
               <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-red-500/10">
@@ -35,9 +35,7 @@ export function ConfirmDialog({
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <Dialog.Title className="text-fg text-sm font-semibold">
-                {title}
-              </Dialog.Title>
+              <Dialog.Title className="text-fg text-sm font-semibold">{title}</Dialog.Title>
               {description && (
                 <Dialog.Description className="text-fg-secondary mt-1 text-xs leading-relaxed">
                   {description}
@@ -56,7 +54,10 @@ export function ConfirmDialog({
             <Button
               variant={variant === 'danger' ? 'danger' : 'primary'}
               size="sm"
-              onClick={() => { onConfirm(); onOpenChange(false) }}
+              onClick={() => {
+                onConfirm()
+                onOpenChange(false)
+              }}
             >
               {confirmLabel}
             </Button>

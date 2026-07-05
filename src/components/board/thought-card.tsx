@@ -6,7 +6,11 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import { marked } from 'marked'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { stripBoardImageMarkdown } from '@/lib/board'
-import { getBoardEditorExtensions, boardMarkdownToJSON, boardJSONToMarkdown } from '@/lib/editor/board-extensions'
+import {
+  getBoardEditorExtensions,
+  boardMarkdownToJSON,
+  boardJSONToMarkdown,
+} from '@/lib/editor/board-extensions'
 import { assetToBlobUrl } from '@/lib/notes/assets'
 import { AudioPlayer } from '@/components/audio/audio-player'
 import { useBoardStore } from '@/stores/board'
@@ -18,12 +22,27 @@ import { ViewMode } from '@/types/vault'
 import { toast } from '@/stores/toast'
 
 const COLOR_CLASSES: Record<ThoughtColor, { bg: string; border: string }> = {
-  yellow: { bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200/60 dark:border-amber-800/40' },
-  blue:   { bg: 'bg-sky-50 dark:bg-sky-950/30', border: 'border-sky-200/60 dark:border-sky-800/40' },
-  pink:   { bg: 'bg-pink-50 dark:bg-pink-950/30', border: 'border-pink-200/60 dark:border-pink-800/40' },
-  green:  { bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200/60 dark:border-emerald-800/40' },
-  purple: { bg: 'bg-violet-50 dark:bg-violet-950/30', border: 'border-violet-200/60 dark:border-violet-800/40' },
-  white:  { bg: 'bg-white dark:bg-zinc-900/60', border: 'border-zinc-200/60 dark:border-zinc-700/40' },
+  yellow: {
+    bg: 'bg-amber-50 dark:bg-amber-950/30',
+    border: 'border-amber-200/60 dark:border-amber-800/40',
+  },
+  blue: { bg: 'bg-sky-50 dark:bg-sky-950/30', border: 'border-sky-200/60 dark:border-sky-800/40' },
+  pink: {
+    bg: 'bg-pink-50 dark:bg-pink-950/30',
+    border: 'border-pink-200/60 dark:border-pink-800/40',
+  },
+  green: {
+    bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+    border: 'border-emerald-200/60 dark:border-emerald-800/40',
+  },
+  purple: {
+    bg: 'bg-violet-50 dark:bg-violet-950/30',
+    border: 'border-violet-200/60 dark:border-violet-800/40',
+  },
+  white: {
+    bg: 'bg-white dark:bg-zinc-900/60',
+    border: 'border-zinc-200/60 dark:border-zinc-700/40',
+  },
 }
 
 function formatRelativeDate(iso: string): string {
@@ -42,7 +61,10 @@ function formatRelativeDate(iso: string): string {
 
 /** Strip image references from a body before rendering — ImagePreview handles them separately. */
 function bodyWithoutImages(body: string): string {
-  return body.replace(/!\[[^\]]*\]\([^)]+\)/g, '').replace(/\n{3,}/g, '\n\n').trim()
+  return body
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
 function ReadContent({ body }: { body: string }) {
@@ -65,13 +87,7 @@ function ReadContent({ body }: { body: string }) {
   )
 }
 
-function EditContent({
-  item,
-  onDone,
-}: {
-  item: BoardItem
-  onDone: () => void
-}) {
+function EditContent({ item, onDone }: { item: BoardItem; onDone: () => void }) {
   const { vaultFs } = useVaultSession()
   const updateItem = useBoardStore((s) => s.updateItem)
   const extensions = useMemo(() => getBoardEditorExtensions(), [])
@@ -101,7 +117,7 @@ function EditContent({
 
   useEffect(() => {
     if (editor) setTimeout(() => editor.commands.focus('end'), 0)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const save = useCallback(() => {
@@ -119,17 +135,22 @@ function EditContent({
     void updateItem(vaultFs, item.path, parts.length ? `\n${parts.join('\n\n')}\n` : '\n')
   }, [editor, vaultFs, item.path, updateItem, imageLines])
 
-  const handleBlur = useCallback((e: React.FocusEvent) => {
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      save()
-      doneRef.current()
-    }
-  }, [save])
+  const handleBlur = useCallback(
+    (e: React.FocusEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget)) {
+        save()
+        doneRef.current()
+      }
+    },
+    [save],
+  )
 
   const saveRef = useRef(save)
   saveRef.current = save
   useEffect(() => {
-    return () => { saveRef.current() }
+    return () => {
+      saveRef.current()
+    }
   }, [])
 
   return (
@@ -147,10 +168,17 @@ function ImagePreview({ vaultPath, alt }: { vaultPath: string; alt: string }) {
   useEffect(() => {
     let url: string | null = null
     assetToBlobUrl(vaultFs, vaultPath)
-      .then((u) => { url = u; setBlobUrl(u) })
-      .catch(() => {/* ignore missing file */})
-    return () => { if (url) URL.revokeObjectURL(url) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      .then((u) => {
+        url = u
+        setBlobUrl(u)
+      })
+      .catch(() => {
+        /* ignore missing file */
+      })
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultPath])
 
   if (!blobUrl) return null
@@ -169,7 +197,8 @@ function parseImageFromBody(body: string): { alt: string; vaultPath: string } | 
   const match = /!\[([^\]]*)\]\(([^)]+)\)/.exec(body)
   if (!match) return null
   const [, alt, src] = match
-  if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('blob:')) return null
+  if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('blob:'))
+    return null
   return { alt, vaultPath: src }
 }
 
@@ -181,10 +210,17 @@ function AudioPreview({ audioPath, duration }: { audioPath: string; duration: nu
   useEffect(() => {
     let url: string | null = null
     assetToBlobUrl(vaultFs, audioPath)
-      .then((u) => { url = u; setBlobUrl(u) })
-      .catch(() => {/* ignore missing file */})
-    return () => { if (url) URL.revokeObjectURL(url) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      .then((u) => {
+        url = u
+        setBlobUrl(u)
+      })
+      .catch(() => {
+        /* ignore missing file */
+      })
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioPath])
 
   if (!blobUrl) return null
@@ -195,7 +231,6 @@ function AudioPreview({ audioPath, duration }: { audioPath: string; duration: nu
     </div>
   )
 }
-
 
 function TranscribeButton({ item }: { item: BoardItem }) {
   const { vaultFs } = useVaultSession()
@@ -216,31 +251,34 @@ function TranscribeButton({ item }: { item: BoardItem }) {
     return () => window.removeEventListener('ink:whisper-progress', handler)
   }, [])
 
-  const handleTranscribe = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!item.audioPath || transcribing) return
-    setTranscribing(true)
-    try {
-      const audioBytes = await vaultFs.readFile(item.audioPath)
-      const { transcribeAudio } = await import('@/lib/audio/transcribe')
-      const { text } = await transcribeAudio(audioBytes)
-      if (text) {
-        await updateItemMeta(vaultFs, item.path, { transcript: text })
+  const handleTranscribe = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (!item.audioPath || transcribing) return
+      setTranscribing(true)
+      try {
+        const audioBytes = await vaultFs.readFile(item.audioPath)
+        const { transcribeAudio } = await import('@/lib/audio/transcribe')
+        const { text } = await transcribeAudio(audioBytes)
+        if (text) {
+          await updateItemMeta(vaultFs, item.path, { transcript: text })
+        }
+      } catch (err) {
+        console.error('Transcription failed:', err)
+      } finally {
+        setTranscribing(false)
+        setProgress(null)
       }
-    } catch (err) {
-      console.error('Transcription failed:', err)
-    } finally {
-      setTranscribing(false)
-      setProgress(null)
-    }
-  }, [vaultFs, item.audioPath, item.path, transcribing, updateItemMeta])
+    },
+    [vaultFs, item.audioPath, item.path, transcribing, updateItemMeta],
+  )
 
   return (
     <button
       type="button"
       onClick={handleTranscribe}
       disabled={transcribing}
-      className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-hover hover:text-fg disabled:opacity-60"
+      className="border-border bg-bg text-fg-secondary hover:bg-bg-hover hover:text-fg mb-2 flex w-full items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-60"
     >
       {transcribing ? (
         <>
@@ -299,29 +337,31 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
   return (
     <div
       className={cn(
-        'group relative break-inside-avoid mb-3 overflow-hidden rounded-xl border transition-all duration-200',
+        'group relative mb-3 break-inside-avoid overflow-hidden rounded-xl border transition-all duration-200',
         colors.bg,
         colors.border,
         isEditing
-          ? 'shadow-md ring-1 ring-accent/30'
-          : 'shadow-sm hover:shadow-md hover:-translate-y-0.5',
+          ? 'ring-accent/30 shadow-md ring-1'
+          : 'shadow-sm hover:-translate-y-0.5 hover:shadow-md',
       )}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={() => { if (!isEditing) setActiveItem(item.path) }}
+      onClick={() => {
+        if (!isEditing) setActiveItem(item.path)
+      }}
     >
       {/* Image always visible — even in edit mode — so it cannot be lost */}
-      {imageInfo && (
-        <ImagePreview vaultPath={imageInfo.vaultPath} alt={imageInfo.alt} />
-      )}
+      {imageInfo && <ImagePreview vaultPath={imageInfo.vaultPath} alt={imageInfo.alt} />}
 
       <div className="p-4">
         {/* Audio player for audio thoughts */}
         {item.type === 'audio' && item.audioPath && (
           <div className="mb-2">
             <div className="mb-1.5 flex items-center gap-1.5">
-              <Mic className="size-3 text-fg-muted" />
-              <span className="text-[10px] font-medium uppercase tracking-wider text-fg-muted">Voice Note</span>
+              <Mic className="text-fg-muted size-3" />
+              <span className="text-fg-muted text-[10px] font-medium tracking-wider uppercase">
+                Voice Note
+              </span>
             </div>
             <AudioPreview audioPath={item.audioPath} duration={item.audioDuration} />
           </div>
@@ -329,8 +369,8 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
 
         {/* Transcript for audio thoughts */}
         {item.type === 'audio' && item.transcript && (
-          <div className="mb-2 rounded-lg bg-fg/[0.03] px-2.5 py-2">
-            <p className="text-xs leading-relaxed text-fg-secondary">{item.transcript}</p>
+          <div className="bg-fg/[0.03] mb-2 rounded-lg px-2.5 py-2">
+            <p className="text-fg-secondary text-xs leading-relaxed">{item.transcript}</p>
           </div>
         )}
 
@@ -351,7 +391,7 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
         )}
 
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-[10px] text-fg-muted/50 select-none">
+          <span className="text-fg-muted/50 text-[10px] select-none">
             {formatRelativeDate(item.modified)}
           </span>
           {(hovered || isEditing) && (
@@ -359,7 +399,7 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
               <button
                 type="button"
                 onClick={handleMoveToVault}
-                className="rounded-md p-1 text-fg-muted/40 transition-colors hover:text-accent hover:bg-accent/10"
+                className="text-fg-muted/40 hover:text-accent hover:bg-accent/10 rounded-md p-1 transition-colors"
                 aria-label="Move to Vault"
                 title="Move to Vault"
               >
@@ -368,7 +408,7 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
               <button
                 type="button"
                 onClick={handleDelete}
-                className="rounded-md p-1 text-fg-muted/40 transition-colors hover:text-destructive hover:bg-destructive/10"
+                className="text-fg-muted/40 hover:text-destructive hover:bg-destructive/10 rounded-md p-1 transition-colors"
                 aria-label="Delete thought"
               >
                 <Trash2 className="size-3.5" />

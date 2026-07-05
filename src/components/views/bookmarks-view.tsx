@@ -24,10 +24,7 @@ export function BookmarksView() {
   }, [vaultFs, loadBookmarks])
 
   const filtered = useMemo(
-    () =>
-      activeCategory === null
-        ? items
-        : items.filter((i) => i.category === activeCategory),
+    () => (activeCategory === null ? items : items.filter((i) => i.category === activeCategory)),
     [items, activeCategory],
   )
 
@@ -48,9 +45,7 @@ export function BookmarksView() {
       <div className="border-border flex min-h-0 flex-1 flex-col border-l">
         {/* Header */}
         <div className="border-border bg-bg-secondary flex shrink-0 items-center justify-between border-b px-4 py-2.5">
-          <h1 className="text-fg text-sm font-semibold">
-            {activeCategory ?? 'All Bookmarks'}
-          </h1>
+          <h1 className="text-fg text-sm font-semibold">{activeCategory ?? 'All Bookmarks'}</h1>
           <button
             type="button"
             onClick={handleAdd}
@@ -71,9 +66,7 @@ export function BookmarksView() {
             <div className="flex h-full flex-col items-center justify-center gap-3 px-6">
               <Bookmark className="text-fg-muted/30 size-10" />
               <p className="text-fg-muted text-sm">
-                {activeCategory
-                  ? `No bookmarks in "${activeCategory}".`
-                  : 'No bookmarks yet.'}
+                {activeCategory ? `No bookmarks in "${activeCategory}".` : 'No bookmarks yet.'}
               </p>
               <button
                 type="button"
@@ -94,11 +87,7 @@ export function BookmarksView() {
         </div>
       </div>
 
-      <AddBookmarkDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        editItem={editItem}
-      />
+      <AddBookmarkDialog open={dialogOpen} onOpenChange={setDialogOpen} editItem={editItem} />
     </div>
   )
 }

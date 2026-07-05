@@ -69,14 +69,7 @@ export class StrokeEngine {
     const target = this.getStrokeTarget()
     if (!target) return
 
-    this.brushSystem.stampAt(
-      point.x,
-      point.y,
-      point.pressure,
-      settings,
-      target,
-      isEraser,
-    )
+    this.brushSystem.stampAt(point.x, point.y, point.pressure, settings, target, isEraser)
   }
 
   continueStroke(point: StrokePoint, settings: BrushSettings): void {

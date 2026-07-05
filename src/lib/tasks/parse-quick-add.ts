@@ -137,9 +137,7 @@ export function parseQuickAdd(input: string): QuickAddResult {
   const repeatWeekday = nl.repeatWeekday
 
   if (repeat === 'weekly' && repeatWeekday != null) {
-    due =
-      explicitDue ??
-      formatLocalDate(nextWeekdayOnOrAfter(new Date(), repeatWeekday))
+    due = explicitDue ?? formatLocalDate(nextWeekdayOnOrAfter(new Date(), repeatWeekday))
   } else if (!explicitDue && nl.singularDue) {
     due = nl.singularDue
   } else {

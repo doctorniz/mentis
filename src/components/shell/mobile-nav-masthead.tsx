@@ -45,12 +45,12 @@ type MobileNavEntry =
   | { kind: 'todo'; label: string; icon: typeof Vault }
 
 const NAV: MobileNavEntry[] = [
-  { kind: 'view', mode: ViewMode.VaultChat,  label: 'Chat',      icon: Sparkles },
-  { kind: 'view', mode: ViewMode.Vault,      label: 'Vault',     icon: Vault },
-  { kind: 'view', mode: ViewMode.Board,      label: 'Board',     icon: LayoutGrid },
-  { kind: 'view', mode: ViewMode.Organizer,  label: 'Organizer', icon: CalendarCheck },
-  { kind: 'view', mode: ViewMode.Bookmarks,  label: 'Bookmarks', icon: Bookmark },
-  { kind: 'view', mode: ViewMode.Files,      label: 'Files',     icon: Files },
+  { kind: 'view', mode: ViewMode.VaultChat, label: 'Chat', icon: Sparkles },
+  { kind: 'view', mode: ViewMode.Vault, label: 'Vault', icon: Vault },
+  { kind: 'view', mode: ViewMode.Board, label: 'Board', icon: LayoutGrid },
+  { kind: 'view', mode: ViewMode.Organizer, label: 'Organizer', icon: CalendarCheck },
+  { kind: 'view', mode: ViewMode.Bookmarks, label: 'Bookmarks', icon: Bookmark },
+  { kind: 'view', mode: ViewMode.Files, label: 'Files', icon: Files },
 ]
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
@@ -83,7 +83,8 @@ function DailyNoteDate({ onClose }: { onClose: () => void }) {
     setBusy(true)
     try {
       const path = await openOrCreateDailyNote(vaultFs, now, folder)
-      const { detectEditorTabType, titleFromVaultPath } = await import('@/lib/notes/editor-tab-from-path')
+      const { detectEditorTabType, titleFromVaultPath } =
+        await import('@/lib/notes/editor-tab-from-path')
       const type = await detectEditorTabType(vaultFs, path)
       useFileTreeStore.getState().setSelectedPath(path)
       useEditorStore.getState().addRecentFile(path)
@@ -141,8 +142,15 @@ export function MobileNavMasthead({
     setNewExpanded(false)
   }, [])
 
-  const { createNote, createThought, createDrawing, createKanban, createMindmap, importFiles, busy } =
-    useNewFileActions(closeMenu)
+  const {
+    createNote,
+    createThought,
+    createDrawing,
+    createKanban,
+    createMindmap,
+    importFiles,
+    busy,
+  } = useNewFileActions(closeMenu)
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
@@ -160,20 +168,56 @@ export function MobileNavMasthead({
     return () => window.removeEventListener('ink:open-new-popover', onOpenNewPopover)
   }, [])
 
-  const NEW_ITEMS: { label: string; icon: typeof FileText; accent: string; action: () => void }[] = [
-    { label: 'Note',      icon: FileText,   accent: 'text-blue-500',    action: () => void createNote() },
-    { label: 'Thought',   icon: StickyNote, accent: 'text-yellow-500',  action: () => void createThought() },
-    { label: 'Canvas',    icon: Layout,     accent: 'text-violet-500',  action: () => void createDrawing() },
-    { label: 'Kanban',    icon: Columns3,   accent: 'text-amber-500',   action: () => void createKanban() },
-    { label: 'Mindmap',   icon: GitBranch,  accent: 'text-teal-500',    action: () => void createMindmap() },
-    { label: 'Recording', icon: Mic,        accent: 'text-red-500',     action: () => {
-      useUiStore.getState().setActiveView(ViewMode.Board)
-      setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
-      closeMenu()
-    }},
-    { label: 'Photo',     icon: Camera,     accent: 'text-sky-500',     action: () => photoInputRef.current?.click() },
-    { label: 'File',      icon: Upload,     accent: 'text-emerald-500', action: () => fileInputRef.current?.click() },
-  ]
+  const NEW_ITEMS: { label: string; icon: typeof FileText; accent: string; action: () => void }[] =
+    [
+      { label: 'Note', icon: FileText, accent: 'text-blue-500', action: () => void createNote() },
+      {
+        label: 'Thought',
+        icon: StickyNote,
+        accent: 'text-yellow-500',
+        action: () => void createThought(),
+      },
+      {
+        label: 'Canvas',
+        icon: Layout,
+        accent: 'text-violet-500',
+        action: () => void createDrawing(),
+      },
+      {
+        label: 'Kanban',
+        icon: Columns3,
+        accent: 'text-amber-500',
+        action: () => void createKanban(),
+      },
+      {
+        label: 'Mindmap',
+        icon: GitBranch,
+        accent: 'text-teal-500',
+        action: () => void createMindmap(),
+      },
+      {
+        label: 'Recording',
+        icon: Mic,
+        accent: 'text-red-500',
+        action: () => {
+          useUiStore.getState().setActiveView(ViewMode.Board)
+          setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
+          closeMenu()
+        },
+      },
+      {
+        label: 'Photo',
+        icon: Camera,
+        accent: 'text-sky-500',
+        action: () => photoInputRef.current?.click(),
+      },
+      {
+        label: 'File',
+        icon: Upload,
+        accent: 'text-emerald-500',
+        action: () => fileInputRef.current?.click(),
+      },
+    ]
 
   return (
     <header className="border-border bg-bg flex shrink-0 items-center gap-2 border-b px-2 py-2 md:hidden">
@@ -217,7 +261,10 @@ export function MobileNavMasthead({
               </Dialog.Close>
             </div>
 
-            <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2" aria-label="Main views">
+            <nav
+              className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2"
+              aria-label="Main views"
+            >
               <DailyNoteDate onClose={closeMenu} />
 
               {NAV.map((entry) => {
@@ -226,7 +273,7 @@ export function MobileNavMasthead({
                   return (
                     <div
                       key={entry.label}
-                      className="text-fg-muted/40 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium select-none cursor-default"
+                      className="text-fg-muted/40 flex w-full cursor-default items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium select-none"
                     >
                       <Icon className="size-5 shrink-0 opacity-50" aria-hidden />
                       <span className="flex-1 truncate">{entry.label}</span>
@@ -263,10 +310,27 @@ export function MobileNavMasthead({
               })}
 
               {/* Hidden file inputs */}
-              <input ref={fileInputRef} type="file" multiple className="hidden"
-                onChange={(e) => { if (e.target.files) void importFiles(e.target.files); e.currentTarget.value = '' }} />
-              <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-                onChange={(e) => { if (e.target.files) void importFiles(e.target.files); e.currentTarget.value = '' }} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) void importFiles(e.target.files)
+                  e.currentTarget.value = ''
+                }}
+              />
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) void importFiles(e.target.files)
+                  e.currentTarget.value = ''
+                }}
+              />
 
               {/* New — inline expand */}
               <button
@@ -279,9 +343,21 @@ export function MobileNavMasthead({
                     : 'text-fg-secondary hover:bg-sidebar-hover hover:text-fg',
                 )}
               >
-                <Plus className={cn('size-5 shrink-0 opacity-90 transition-transform', newExpanded && 'rotate-45')} aria-hidden />
+                <Plus
+                  className={cn(
+                    'size-5 shrink-0 opacity-90 transition-transform',
+                    newExpanded && 'rotate-45',
+                  )}
+                  aria-hidden
+                />
                 <span className="flex-1 truncate">New</span>
-                <ChevronDown className={cn('size-3.5 shrink-0 transition-transform', newExpanded && 'rotate-180')} aria-hidden />
+                <ChevronDown
+                  className={cn(
+                    'size-3.5 shrink-0 transition-transform',
+                    newExpanded && 'rotate-180',
+                  )}
+                  aria-hidden
+                />
               </button>
 
               {newExpanded && (
@@ -303,7 +379,11 @@ export function MobileNavMasthead({
             </nav>
 
             <div className="border-border mt-auto border-t p-2">
-              <div className="bg-bg-tertiary mb-1 flex rounded-lg p-0.5" role="radiogroup" aria-label="Theme">
+              <div
+                className="bg-bg-tertiary mb-1 flex rounded-lg p-0.5"
+                role="radiogroup"
+                aria-label="Theme"
+              >
                 {THEMES.map(({ value, label: themeLabel, icon: Icon }) => (
                   <button
                     key={value}

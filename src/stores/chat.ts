@@ -2,10 +2,7 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 
 import type { FileSystemAdapter } from '@/lib/fs'
-import {
-  buildDocumentContext,
-  buildSystemMessage,
-} from '@/lib/chat/context-builder'
+import { buildDocumentContext, buildSystemMessage } from '@/lib/chat/context-builder'
 import {
   deleteThread as deleteThreadOnDisk,
   listThreadsFull,
@@ -14,12 +11,7 @@ import {
   writeThread,
 } from '@/lib/chat/chat-io'
 import { getProvider, toWire } from '@/lib/chat/providers'
-import type {
-  ChatMessage,
-  ChatSettings,
-  ChatThread,
-  ChatProviderId,
-} from '@/types/chat'
+import type { ChatMessage, ChatSettings, ChatThread, ChatProviderId } from '@/types/chat'
 
 /**
  * Per-document chat store.
@@ -66,10 +58,7 @@ interface ChatState {
   openDocument: (args: OpenDocumentArgs) => Promise<void>
   closeDocument: () => void
   selectThread: (threadId: string) => void
-  createThread: (args: {
-    chatAssetId: string
-    documentPath: string
-  }) => Promise<ChatThread>
+  createThread: (args: { chatAssetId: string; documentPath: string }) => Promise<ChatThread>
   deleteThread: (args: {
     vaultFs: FileSystemAdapter
     chatAssetId: string
@@ -84,9 +73,7 @@ const MAX_TITLE_CHARS = 60
 function titleFromFirstUserMessage(text: string): string {
   const trimmed = text.trim().replace(/\s+/g, ' ')
   if (!trimmed) return 'New chat'
-  return trimmed.length <= MAX_TITLE_CHARS
-    ? trimmed
-    : `${trimmed.slice(0, MAX_TITLE_CHARS - 1)}…`
+  return trimmed.length <= MAX_TITLE_CHARS ? trimmed : `${trimmed.slice(0, MAX_TITLE_CHARS - 1)}…`
 }
 
 export const useChatStore = create<ChatState>()(
@@ -178,13 +165,7 @@ export const useChatStore = create<ChatState>()(
       })
     },
 
-    sendMessage: async ({
-      vaultFs,
-      settings,
-      apiKey,
-      documentPath,
-      input,
-    }) => {
+    sendMessage: async ({ vaultFs, settings, apiKey, documentPath, input }) => {
       const text = input.trim()
       if (!text) return
 
@@ -260,8 +241,7 @@ export const useChatStore = create<ChatState>()(
           try {
             await writeThread(vaultFs, failedThread)
           } catch (persistErr) {
-            const pmsg =
-              persistErr instanceof Error ? persistErr.message : String(persistErr)
+            const pmsg = persistErr instanceof Error ? persistErr.message : String(persistErr)
             set((s) => {
               s.error = `Failed to save chat: ${pmsg}`
             })
@@ -273,10 +253,7 @@ export const useChatStore = create<ChatState>()(
       // Compose wire messages: system + all prior, but skip the empty
       // assistant placeholder we just pushed.
       const prior = thread.messages.concat(userMsg)
-      const wire = [
-        { role: 'system' as const, content: systemMessage },
-        ...toWire(prior),
-      ]
+      const wire = [{ role: 'system' as const, content: systemMessage }, ...toWire(prior)]
 
       let sawDelta = false
       let streamError: string | null = null

@@ -5,14 +5,7 @@ export interface KanbanCard {
 }
 
 /** Preset column accent; persisted as `<!--kanban:slug-->` after `##` heading */
-export type KanbanColumnColor =
-  | 'slate'
-  | 'amber'
-  | 'sky'
-  | 'emerald'
-  | 'violet'
-  | 'rose'
-  | 'zinc'
+export type KanbanColumnColor = 'slate' | 'amber' | 'sky' | 'emerald' | 'violet' | 'rose' | 'zinc'
 
 export interface KanbanColumn {
   id: string

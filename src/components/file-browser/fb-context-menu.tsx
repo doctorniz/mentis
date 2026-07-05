@@ -2,13 +2,7 @@
 
 import { useRef } from 'react'
 import * as ContextMenu from '@radix-ui/react-context-menu'
-import {
-  Copy,
-  ExternalLink,
-  FolderInput,
-  Pencil,
-  Trash2,
-} from 'lucide-react'
+import { Copy, ExternalLink, FolderInput, Pencil, Trash2 } from 'lucide-react'
 import type { FbFileItem } from '@/types/file-browser'
 
 export function FbContextMenu({

@@ -25,8 +25,18 @@ type CalendarViewMode = 'day' | 'week' | 'month'
 const LS_KEY = 'ink-calendar-view'
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -48,8 +58,10 @@ function isSameMonth(a: Date, b: Date): boolean {
 }
 
 function isSameWeek(a: Date, b: Date): boolean {
-  const startA = new Date(a); startA.setDate(a.getDate() - a.getDay())
-  const startB = new Date(b); startB.setDate(b.getDate() - b.getDay())
+  const startA = new Date(a)
+  startA.setDate(a.getDate() - a.getDay())
+  const startB = new Date(b)
+  startB.setDate(b.getDate() - b.getDay())
   return toDateStr(startA) === toDateStr(startB)
 }
 
@@ -59,7 +71,10 @@ function formatHeading(viewMode: CalendarViewMode, refDate: Date): string {
   }
   if (viewMode === 'day') {
     return refDate.toLocaleDateString('en-US', {
-      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
     })
   }
   // week: match month headline — spans are obvious from column headers below
@@ -90,7 +105,11 @@ export function CalendarView() {
 
   const setViewMode = (m: CalendarViewMode) => {
     setViewModeState(m)
-    try { localStorage.setItem(LS_KEY, m) } catch { /* noop */ }
+    try {
+      localStorage.setItem(LS_KEY, m)
+    } catch {
+      /* noop */
+    }
   }
 
   // Reference date — the "current" date in view
@@ -113,17 +132,13 @@ export function CalendarView() {
 
   const goPrev = useCallback(() => {
     setRefDate((d) =>
-      viewMode === 'day'   ? addDays(d, -1)
-      : viewMode === 'week'  ? addDays(d, -7)
-      : addMonths(d, -1),
+      viewMode === 'day' ? addDays(d, -1) : viewMode === 'week' ? addDays(d, -7) : addMonths(d, -1),
     )
   }, [viewMode])
 
   const goNext = useCallback(() => {
     setRefDate((d) =>
-      viewMode === 'day'   ? addDays(d, 1)
-      : viewMode === 'week'  ? addDays(d, 7)
-      : addMonths(d, 1),
+      viewMode === 'day' ? addDays(d, 1) : viewMode === 'week' ? addDays(d, 7) : addMonths(d, 1),
     )
   }, [viewMode])
 
@@ -144,24 +159,28 @@ export function CalendarView() {
     setDialogOpen(true)
   }, [])
 
-  const handleDailyNoteClick = useCallback(async (dateStr: string) => {
-    const [y, m, d] = dateStr.split('-').map(Number) as [number, number, number]
-    const date = new Date(y, m - 1, d)
-    const path = await openOrCreateDailyNote(vaultFs, date, dailyFolder)
-    const { detectEditorTabType, titleFromVaultPath } = await import('@/lib/notes/editor-tab-from-path')
-    const type = await detectEditorTabType(vaultFs, path)
-    useFileTreeStore.getState().setSelectedPath(path)
-    useEditorStore.getState().addRecentFile(path)
-    useEditorStore.getState().openTab({
-      id: crypto.randomUUID(),
-      path,
-      type,
-      title: titleFromVaultPath(path),
-      isDirty: false,
-    })
-    setActiveView(ViewMode.Vault)
-    void listDailyNoteDates(vaultFs, dailyFolder).then(setDailyNoteDates)
-  }, [vaultFs, dailyFolder, setActiveView])
+  const handleDailyNoteClick = useCallback(
+    async (dateStr: string) => {
+      const [y, m, d] = dateStr.split('-').map(Number) as [number, number, number]
+      const date = new Date(y, m - 1, d)
+      const path = await openOrCreateDailyNote(vaultFs, date, dailyFolder)
+      const { detectEditorTabType, titleFromVaultPath } =
+        await import('@/lib/notes/editor-tab-from-path')
+      const type = await detectEditorTabType(vaultFs, path)
+      useFileTreeStore.getState().setSelectedPath(path)
+      useEditorStore.getState().addRecentFile(path)
+      useEditorStore.getState().openTab({
+        id: crypto.randomUUID(),
+        path,
+        type,
+        title: titleFromVaultPath(path),
+        isDirty: false,
+      })
+      setActiveView(ViewMode.Vault)
+      void listDailyNoteDates(vaultFs, dailyFolder).then(setDailyNoteDates)
+    },
+    [vaultFs, dailyFolder, setActiveView],
+  )
 
   const handleEventClick = useCallback((ev: CalendarEvent) => {
     setEditEvent(ev)
@@ -173,9 +192,11 @@ export function CalendarView() {
 
   const now = new Date()
   const isAtToday =
-    viewMode === 'day'   ? toDateStr(refDate) === toDateStr(now)
-    : viewMode === 'week'  ? isSameWeek(refDate, now)
-    : isSameMonth(refDate, now)
+    viewMode === 'day'
+      ? toDateStr(refDate) === toDateStr(now)
+      : viewMode === 'week'
+        ? isSameWeek(refDate, now)
+        : isSameMonth(refDate, now)
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -224,9 +245,7 @@ export function CalendarView() {
                 onClick={() => setViewMode(m)}
                 className={cn(
                   'rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors',
-                  viewMode === m
-                    ? 'bg-accent text-accent-fg'
-                    : 'text-fg-secondary hover:text-fg',
+                  viewMode === m ? 'bg-accent text-accent-fg' : 'text-fg-secondary hover:text-fg',
                 )}
               >
                 {m}

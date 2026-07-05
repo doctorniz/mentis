@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import {
-  FileText,
-  File,
-  Presentation,
-  Search,
-  X,
-} from 'lucide-react'
+import { FileText, File, Presentation, Search, X } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
 interface InsertLinkDialogProps {
@@ -56,7 +50,12 @@ export function InsertLinkDialog({
     .slice(0, 200)
 
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose()
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[299] bg-black/40 backdrop-blur-[1px]" />
         <Dialog.Content
@@ -101,7 +100,10 @@ export function InsertLinkDialog({
                   <button
                     key={path}
                     type="button"
-                    onClick={() => { onInsert(path); onClose() }}
+                    onClick={() => {
+                      onInsert(path)
+                      onClose()
+                    }}
                     className={cn(
                       'flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors',
                       'hover:bg-bg-hover',
@@ -109,7 +111,7 @@ export function InsertLinkDialog({
                   >
                     {fileIcon(path)}
                     <span className="text-fg min-w-0 flex-1 truncate text-sm">{name}</span>
-                    <span className="text-fg-muted min-w-0 max-w-[8rem] truncate text-right text-xs">
+                    <span className="text-fg-muted max-w-[8rem] min-w-0 truncate text-right text-xs">
                       {path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''}
                     </span>
                   </button>

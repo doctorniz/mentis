@@ -20,9 +20,7 @@ export function CategorySidebar() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const countFor = (cat: string | null) =>
-    cat === null
-      ? items.length
-      : items.filter((i) => i.category === cat).length
+    cat === null ? items.length : items.filter((i) => i.category === cat).length
 
   const handleAdd = useCallback(() => {
     setAdding(true)
@@ -51,7 +49,7 @@ export function CategorySidebar() {
   return (
     <div className="flex h-full w-48 shrink-0 flex-col overflow-y-auto">
       <div className="px-3 pt-3 pb-2">
-        <h2 className="text-fg-muted text-[10px] font-semibold uppercase tracking-wider">
+        <h2 className="text-fg-muted text-[10px] font-semibold tracking-wider uppercase">
           Categories
         </h2>
       </div>
@@ -113,10 +111,13 @@ export function CategorySidebar() {
               onBlur={() => void handleCreateCommit()}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleCreateCommit()
-                if (e.key === 'Escape') { setAdding(false); setNewName('') }
+                if (e.key === 'Escape') {
+                  setAdding(false)
+                  setNewName('')
+                }
               }}
               placeholder="Category name"
-              className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full rounded-md border px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-accent/40"
+              className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 w-full rounded-md border px-2 py-1 text-xs outline-none focus:ring-1"
             />
           </div>
         ) : (

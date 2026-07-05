@@ -58,8 +58,7 @@ export function SearchView() {
     if (includeMd) types.push('markdown')
     if (includePdf) types.push('pdf')
     if (includeCanvas) types.push('canvas')
-    const fileType =
-      types.length === 0 ? [] : types.length === ALL_TYPES.length ? undefined : types
+    const fileType = types.length === 0 ? [] : types.length === ALL_TYPES.length ? undefined : types
     const tagStr = extraTags
       .split(/[,\s]+/)
       .map((x) => x.replace(/^#/, '').trim().toLowerCase())
@@ -69,9 +68,7 @@ export function SearchView() {
       folder: folderPrefix.trim() || undefined,
       tags: tagStr.length ? tagStr : undefined,
       dateRange:
-        dateFrom || dateTo
-          ? { from: dateFrom || undefined, to: dateTo || undefined }
-          : undefined,
+        dateFrom || dateTo ? { from: dateFrom || undefined, to: dateTo || undefined } : undefined,
     }
   }, [includeMd, includePdf, includeCanvas, folderPrefix, extraTags, dateFrom, dateTo])
 
@@ -88,23 +85,26 @@ export function SearchView() {
 
   const grouped = useMemo(() => groupByType(results), [results])
 
-  const openResult = useCallback((r: SearchResult) => {
-    useUiStore.getState().setActiveView(ViewMode.Vault)
-    useFileTreeStore.getState().setSelectedPath(r.path)
-    useEditorStore.getState().addRecentFile(r.path)
+  const openResult = useCallback(
+    (r: SearchResult) => {
+      useUiStore.getState().setActiveView(ViewMode.Vault)
+      useFileTreeStore.getState().setSelectedPath(r.path)
+      useEditorStore.getState().addRecentFile(r.path)
 
-    void (async () => {
-      const { detectEditorTabType } = await import('@/lib/notes/editor-tab-from-path')
-      const type = await detectEditorTabType(vaultFs, r.path)
-      useEditorStore.getState().openTab({
-        id: crypto.randomUUID(),
-        path: r.path,
-        type,
-        title: r.title,
-        isDirty: false,
-      })
-    })()
-  }, [vaultFs])
+      void (async () => {
+        const { detectEditorTabType } = await import('@/lib/notes/editor-tab-from-path')
+        const type = await detectEditorTabType(vaultFs, r.path)
+        useEditorStore.getState().openTab({
+          id: crypto.randomUUID(),
+          path: r.path,
+          type,
+          title: r.title,
+          isDirty: false,
+        })
+      })()
+    },
+    [vaultFs],
+  )
 
   async function handleReindex() {
     setReindexBusy(true)
@@ -240,7 +240,11 @@ type FlatRow =
   | { kind: 'item'; result: SearchResult }
 
 const TYPE_LABELS: Record<string, string> = { markdown: 'Notes', pdf: 'PDFs', canvas: 'Canvases' }
-const TYPE_ICONS: Record<string, typeof FileText> = { markdown: FileText, pdf: FileType, canvas: LayoutGrid }
+const TYPE_ICONS: Record<string, typeof FileText> = {
+  markdown: FileText,
+  pdf: FileType,
+  canvas: LayoutGrid,
+}
 
 function SearchResultsList({
   results,
@@ -300,7 +304,14 @@ function SearchResultsList({
             return (
               <div
                 key={`h-${row.type}`}
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vi.start}px)`, height: vi.size }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${vi.start}px)`,
+                  height: vi.size,
+                }}
               >
                 <h3 className="text-fg-secondary flex items-center gap-2 pt-4 pb-1 text-xs font-semibold tracking-wide uppercase">
                   <Icon className="size-3.5" aria-hidden />
@@ -314,7 +325,14 @@ function SearchResultsList({
           return (
             <div
               key={r.id}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vi.start}px)`, height: vi.size }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${vi.start}px)`,
+                height: vi.size,
+              }}
             >
               <button
                 type="button"

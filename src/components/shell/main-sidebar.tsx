@@ -46,12 +46,18 @@ type NavEntry =
   | { kind: 'todo'; label: string; icon: typeof Vault }
 
 const NAV: NavEntry[] = [
-  { kind: 'view', mode: ViewMode.VaultChat,  label: 'Chat',      icon: Sparkles,      shortcut: '0' },
-  { kind: 'view', mode: ViewMode.Vault,      label: 'Vault',     icon: Vault,         shortcut: '1' },
-  { kind: 'view', mode: ViewMode.Board,      label: 'Board',     icon: LayoutGrid,    shortcut: '2' },
-  { kind: 'view', mode: ViewMode.Organizer,  label: 'Organizer', icon: CalendarCheck, shortcut: '3' },
-  { kind: 'view', mode: ViewMode.Bookmarks,  label: 'Bookmarks', icon: Bookmark,      shortcut: '4' },
-  { kind: 'view', mode: ViewMode.Files,      label: 'Files',     icon: Files,         shortcut: '5' },
+  { kind: 'view', mode: ViewMode.VaultChat, label: 'Chat', icon: Sparkles, shortcut: '0' },
+  { kind: 'view', mode: ViewMode.Vault, label: 'Vault', icon: Vault, shortcut: '1' },
+  { kind: 'view', mode: ViewMode.Board, label: 'Board', icon: LayoutGrid, shortcut: '2' },
+  {
+    kind: 'view',
+    mode: ViewMode.Organizer,
+    label: 'Organizer',
+    icon: CalendarCheck,
+    shortcut: '3',
+  },
+  { kind: 'view', mode: ViewMode.Bookmarks, label: 'Bookmarks', icon: Bookmark, shortcut: '4' },
+  { kind: 'view', mode: ViewMode.Files, label: 'Files', icon: Files, shortcut: '5' },
 ]
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
@@ -84,7 +90,8 @@ function DailyNoteDate() {
     setBusy(true)
     try {
       const path = await openOrCreateDailyNote(vaultFs, now, folder)
-      const { detectEditorTabType, titleFromVaultPath } = await import('@/lib/notes/editor-tab-from-path')
+      const { detectEditorTabType, titleFromVaultPath } =
+        await import('@/lib/notes/editor-tab-from-path')
       const type = await detectEditorTabType(vaultFs, path)
       useFileTreeStore.getState().setSelectedPath(path)
       useEditorStore.getState().addRecentFile(path)
@@ -140,30 +147,75 @@ export function MainSidebar({
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   const closeNew = () => setNewOpen(false)
-  const { createNote, createThought, createDrawing, createKanban, createMindmap, importFiles, busy: newBusy } =
-    useNewFileActions(closeNew)
+  const {
+    createNote,
+    createThought,
+    createDrawing,
+    createKanban,
+    createMindmap,
+    importFiles,
+    busy: newBusy,
+  } = useNewFileActions(closeNew)
 
   // Ctrl+N global shortcut
   useEffect(() => {
-    function handler() { setNewOpen((o) => !o) }
+    function handler() {
+      setNewOpen((o) => !o)
+    }
     window.addEventListener('ink:open-new-popover', handler)
     return () => window.removeEventListener('ink:open-new-popover', handler)
   }, [])
 
-  const NEW_ITEMS: { label: string; icon: typeof FileText; accent: string; action: () => void }[] = [
-    { label: 'Note',      icon: FileText,   accent: 'text-blue-500',    action: () => void createNote() },
-    { label: 'Thought',   icon: StickyNote, accent: 'text-yellow-500',  action: () => void createThought() },
-    { label: 'Canvas',    icon: Layout,     accent: 'text-violet-500',  action: () => void createDrawing() },
-    { label: 'Kanban',    icon: Columns3,   accent: 'text-amber-500',   action: () => void createKanban() },
-    { label: 'Mindmap',   icon: GitBranch,  accent: 'text-teal-500',    action: () => void createMindmap() },
-    { label: 'Recording', icon: Mic,        accent: 'text-red-500',     action: () => {
-      useUiStore.getState().setActiveView(ViewMode.Board)
-      setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
-      closeNew()
-    }},
-    { label: 'Photo',     icon: Camera,     accent: 'text-sky-500',     action: () => photoInputRef.current?.click() },
-    { label: 'File',      icon: Upload,     accent: 'text-emerald-500', action: () => fileInputRef.current?.click() },
-  ]
+  const NEW_ITEMS: { label: string; icon: typeof FileText; accent: string; action: () => void }[] =
+    [
+      { label: 'Note', icon: FileText, accent: 'text-blue-500', action: () => void createNote() },
+      {
+        label: 'Thought',
+        icon: StickyNote,
+        accent: 'text-yellow-500',
+        action: () => void createThought(),
+      },
+      {
+        label: 'Canvas',
+        icon: Layout,
+        accent: 'text-violet-500',
+        action: () => void createDrawing(),
+      },
+      {
+        label: 'Kanban',
+        icon: Columns3,
+        accent: 'text-amber-500',
+        action: () => void createKanban(),
+      },
+      {
+        label: 'Mindmap',
+        icon: GitBranch,
+        accent: 'text-teal-500',
+        action: () => void createMindmap(),
+      },
+      {
+        label: 'Recording',
+        icon: Mic,
+        accent: 'text-red-500',
+        action: () => {
+          useUiStore.getState().setActiveView(ViewMode.Board)
+          setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
+          closeNew()
+        },
+      },
+      {
+        label: 'Photo',
+        icon: Camera,
+        accent: 'text-sky-500',
+        action: () => photoInputRef.current?.click(),
+      },
+      {
+        label: 'File',
+        icon: Upload,
+        accent: 'text-emerald-500',
+        action: () => fileInputRef.current?.click(),
+      },
+    ]
 
   const syncProvider = useVaultStore((s) => s.config?.sync?.provider)
   const showSync = syncProvider === 'dropbox'
@@ -208,7 +260,7 @@ export function MainSidebar({
             type="button"
             onClick={() => sync?.triggerFullSync()}
             disabled={!canClickSync}
-            className="text-fg-tertiary hover:text-fg hover:bg-sidebar-hover disabled:opacity-40 flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors"
+            className="text-fg-tertiary hover:text-fg hover:bg-sidebar-hover flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors disabled:opacity-40"
             aria-label="Sync now with Dropbox"
             title={
               sync?.canManualSync
@@ -243,7 +295,7 @@ export function MainSidebar({
             return (
               <div
                 key={entry.label}
-                className="text-fg-muted/40 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium select-none cursor-default"
+                className="text-fg-muted/40 flex w-full cursor-default items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium select-none"
                 title="Coming soon"
               >
                 <Icon className="size-5 shrink-0 opacity-50" aria-hidden />
@@ -284,10 +336,27 @@ export function MainSidebar({
         })}
 
         {/* Hidden file inputs */}
-        <input ref={fileInputRef} type="file" multiple className="hidden"
-          onChange={(e) => { if (e.target.files) void importFiles(e.target.files); e.currentTarget.value = '' }} />
-        <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-          onChange={(e) => { if (e.target.files) void importFiles(e.target.files); e.currentTarget.value = '' }} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) void importFiles(e.target.files)
+            e.currentTarget.value = ''
+          }}
+        />
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) void importFiles(e.target.files)
+            e.currentTarget.value = ''
+          }}
+        />
 
         {/* New — inline expand */}
         <button
@@ -300,9 +369,18 @@ export function MainSidebar({
               : 'text-fg-secondary hover:bg-sidebar-hover hover:text-fg',
           )}
         >
-          <Plus className={cn('size-5 shrink-0 opacity-90 transition-transform', newOpen && 'rotate-45')} aria-hidden />
+          <Plus
+            className={cn(
+              'size-5 shrink-0 opacity-90 transition-transform',
+              newOpen && 'rotate-45',
+            )}
+            aria-hidden
+          />
           <span className="flex-1 truncate">New</span>
-          <ChevronDown className={cn('size-3.5 shrink-0 transition-transform', newOpen && 'rotate-180')} aria-hidden />
+          <ChevronDown
+            className={cn('size-3.5 shrink-0 transition-transform', newOpen && 'rotate-180')}
+            aria-hidden
+          />
         </button>
 
         {newOpen && (
@@ -324,7 +402,11 @@ export function MainSidebar({
       </nav>
 
       <div className="border-border mt-auto border-t p-2">
-        <div className="bg-bg-tertiary mb-1 flex rounded-lg p-0.5" role="radiogroup" aria-label="Theme">
+        <div
+          className="bg-bg-tertiary mb-1 flex rounded-lg p-0.5"
+          role="radiogroup"
+          aria-label="Theme"
+        >
           {THEMES.map(({ value, label, icon: Icon }) => (
             <button
               key={value}

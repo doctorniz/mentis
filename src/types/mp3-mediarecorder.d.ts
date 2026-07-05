@@ -4,10 +4,7 @@
 // boolean. The actual types from the package take precedence at runtime.
 declare module 'mp3-mediarecorder' {
   export class Mp3MediaRecorder extends EventTarget {
-    constructor(
-      stream: MediaStream,
-      options?: { worker?: Worker },
-    )
+    constructor(stream: MediaStream, options?: { worker?: Worker })
     readonly state: 'inactive' | 'recording' | 'paused'
     start(timeslice?: number): void
     stop(): void

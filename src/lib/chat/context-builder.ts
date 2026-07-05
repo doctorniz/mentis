@@ -35,10 +35,7 @@ function pdfTextExtractCap(maxChars: number): number {
   return Math.min(maxChars * 2, 200_000)
 }
 
-async function extractPdfText(
-  data: Uint8Array,
-  maxChars: number,
-): Promise<string> {
+async function extractPdfText(data: Uint8Array, maxChars: number): Promise<string> {
   try {
     const pdfjs = await loadPdfjs()
     const doc = await pdfjs.getDocument({ data }).promise
@@ -119,9 +116,7 @@ export async function buildDocumentContext(
     try {
       const raw = await vaultFs.readTextFile(path)
       const doc = parseNote(path, raw)
-      const fmTitle =
-        (typeof doc.frontmatter.title === 'string' && doc.frontmatter.title) ||
-        title
+      const fmTitle = (typeof doc.frontmatter.title === 'string' && doc.frontmatter.title) || title
       const body = doc.content ?? ''
       const capped = smartCap(body, maxChars, query)
       return {
@@ -180,17 +175,14 @@ export async function buildDocumentContext(
 }
 
 const DEFAULT_SYSTEM_PROMPT = [
-  'You are an assistant embedded inside the user\'s personal notes app.',
+  "You are an assistant embedded inside the user's personal notes app.",
   'Answer strictly from the document content provided in this message.',
   'If the answer is not present, say so briefly instead of guessing.',
   'Formatting: use ## or ### headings, blank lines between sections (no --- horizontal rules), **bold** for key terms, unordered (-) lists for lists. Do not use blockquotes. Keep replies concise; cite the document path in backticks when you quote or paraphrase a specific passage.',
 ].join(' ')
 
 /** Compose the `system` message sent with every chat request. */
-export function buildSystemMessage(
-  context: DocumentContext,
-  settings: ChatSettings,
-): string {
+export function buildSystemMessage(context: DocumentContext, settings: ChatSettings): string {
   const base = settings.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT
   const header =
     context.kind === 'pdf'

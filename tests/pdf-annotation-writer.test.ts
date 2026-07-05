@@ -56,8 +56,12 @@ describe('writeAnnotationsIntoPdf', () => {
       modifiedAt: now,
     }
 
-    const pass1 = await writeAnnotationsIntoPdf(blank, [{ ...base, text: 'First' } as PdfTextComment])
-    const pass2 = await writeAnnotationsIntoPdf(pass1, [{ ...base, text: 'Second' } as PdfTextComment])
+    const pass1 = await writeAnnotationsIntoPdf(blank, [
+      { ...base, text: 'First' } as PdfTextComment,
+    ])
+    const pass2 = await writeAnnotationsIntoPdf(pass1, [
+      { ...base, text: 'Second' } as PdfTextComment,
+    ])
 
     const doc = await PDFDocument.load(pass2)
     const annots = doc.getPage(0).node.Annots()

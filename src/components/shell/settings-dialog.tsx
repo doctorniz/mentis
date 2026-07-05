@@ -1,13 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  CalendarDays,
-  Check,
-  FolderOpen,
-  Loader2,
-  X,
-} from 'lucide-react'
+import { CalendarDays, Check, FolderOpen, Loader2, X } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Tabs from '@radix-ui/react-tabs'
 import { useVaultSession } from '@/contexts/vault-fs-context'
@@ -17,12 +11,7 @@ import { saveVaultConfig } from '@/lib/vault'
 import { migrateDailyNotesFolder } from '@/lib/notes/daily-note'
 import { DAILY_NOTES_DIR } from '@/types/vault'
 import { VaultDropboxSyncPanel } from '@/components/views/vault-dropbox-sync-panel'
-import {
-  clearChatKey,
-  getChatKey,
-  setChatKey,
-  notifyChatKeyChanged,
-} from '@/lib/chat/key-store'
+import { clearChatKey, getChatKey, setChatKey, notifyChatKeyChanged } from '@/lib/chat/key-store'
 import { testConnection } from '@/lib/chat/providers/test-connection'
 import {
   fetchModels,
@@ -38,11 +27,7 @@ import {
   getDeviceModelStatus,
   type DeviceModelStatus,
 } from '@/lib/chat/device-model-store'
-import {
-  DEFAULT_CHAT_SETTINGS,
-  type ChatProviderId,
-  type ChatSettings,
-} from '@/types/chat'
+import { DEFAULT_CHAT_SETTINGS, type ChatProviderId, type ChatSettings } from '@/types/chat'
 import { cn } from '@/utils/cn'
 
 /* ------------------------------------------------------------------ */
@@ -51,7 +36,7 @@ import { cn } from '@/utils/cn'
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-fg-tertiary mb-3 text-[10px] font-bold uppercase tracking-widest">
+    <h3 className="text-fg-tertiary mb-3 text-[10px] font-bold tracking-widest uppercase">
       {children}
     </h3>
   )
@@ -127,7 +112,7 @@ function NumberInput({
           const n = parseInt(e.target.value, 10)
           if (!isNaN(n)) onChange(n)
         }}
-        className="border-border bg-bg-secondary text-fg w-20 rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent/50"
+        className="border-border bg-bg-secondary text-fg focus:ring-accent/50 w-20 rounded-md border px-2.5 py-1.5 text-sm focus:ring-1 focus:outline-none"
       />
       {suffix && <span className="text-fg-muted text-xs">{suffix}</span>}
     </div>
@@ -163,7 +148,9 @@ function FolderPicker({
               await walk(p)
             }
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
       await walk('/')
       setFolders(result)
@@ -176,9 +163,13 @@ function FolderPicker({
       <select
         value={value || '/'}
         onChange={(e) => onChange(e.target.value)}
-        className="border-border bg-bg-secondary text-fg w-48 rounded-md border py-1.5 pr-2.5 pl-8 text-sm focus:outline-none focus:ring-1 focus:ring-accent/50"
+        className="border-border bg-bg-secondary text-fg focus:ring-accent/50 w-48 rounded-md border py-1.5 pr-2.5 pl-8 text-sm focus:ring-1 focus:outline-none"
       >
-        {placeholder && <option value="" disabled>{placeholder}</option>}
+        {placeholder && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        )}
         {folders.map((f) => (
           <option key={f} value={f}>
             {f === '/' ? 'Root' : f}
@@ -219,10 +210,7 @@ function VaultTab({
           />
         </Row>
         <Row label="Template folder">
-          <FolderPicker
-            value={draft.templateFolder}
-            onChange={(v) => set('templateFolder', v)}
-          />
+          <FolderPicker value={draft.templateFolder} onChange={(v) => set('templateFolder', v)} />
         </Row>
         <Row label="Default PDF page style">
           <select
@@ -303,9 +291,7 @@ function EditorTab({
                 min={5}
                 max={3600}
                 suffix="seconds"
-                onChange={(v) =>
-                  set('autoSave', { ...draft.autoSave, intervalMs: v * 1000 })
-                }
+                onChange={(v) => set('autoSave', { ...draft.autoSave, intervalMs: v * 1000 })}
               />
             </Row>
           )}
@@ -345,9 +331,7 @@ function SnapshotsTab({
                 value={draft.snapshots.maxPerFile}
                 min={1}
                 max={100}
-                onChange={(v) =>
-                  set('snapshots', { ...draft.snapshots, maxPerFile: v })
-                }
+                onChange={(v) => set('snapshots', { ...draft.snapshots, maxPerFile: v })}
               />
             </Row>
             <Row label="Retention period">
@@ -356,9 +340,7 @@ function SnapshotsTab({
                 min={1}
                 max={365}
                 suffix="days"
-                onChange={(v) =>
-                  set('snapshots', { ...draft.snapshots, retentionDays: v })
-                }
+                onChange={(v) => set('snapshots', { ...draft.snapshots, retentionDays: v })}
               />
             </Row>
           </>
@@ -378,8 +360,10 @@ function CalendarSettingsTab() {
       <SectionHeader>Calendar sync</SectionHeader>
       <p className="text-fg-secondary mb-4 text-xs leading-relaxed">
         Calendar events are stored locally in your vault as markdown files (
-        <code className="bg-bg-tertiary rounded px-1 font-mono text-[10px]">_marrow/_calendar/</code>).
-        External sync options are coming soon.
+        <code className="bg-bg-tertiary rounded px-1 font-mono text-[10px]">
+          _marrow/_calendar/
+        </code>
+        ). External sync options are coming soon.
       </p>
       <div className="divide-border divide-y">
         {/* Google Calendar — coming soon */}
@@ -603,7 +587,7 @@ function AiTab({
     return () => {
       cancelled = true
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider, needsKey])
 
   useEffect(() => {
@@ -690,9 +674,8 @@ function AiTab({
     <div>
       <SectionHeader>AI chat</SectionHeader>
       <p className="text-fg-secondary mb-4 text-xs leading-relaxed">
-        Bring your own key. API keys are stored locally in this browser&apos;s
-        IndexedDB, never synced to Dropbox, and never sent anywhere except
-        the provider you select.
+        Bring your own key. API keys are stored locally in this browser&apos;s IndexedDB, never
+        synced to Dropbox, and never sent anywhere except the provider you select.
       </p>
       <div className="divide-border divide-y">
         <Row label="Provider">
@@ -719,259 +702,258 @@ function AiTab({
           </select>
         </Row>
 
-        {provider && (() => {
-          const opt = PROVIDER_OPTIONS.find((p) => p.id === provider)
-          return (
-            <>
-              {opt?.hint && (
-                <div className="py-2">
-                  <p className="text-fg-muted text-xs leading-relaxed">{opt.hint}</p>
-                </div>
-              )}
+        {provider &&
+          (() => {
+            const opt = PROVIDER_OPTIONS.find((p) => p.id === provider)
+            return (
+              <>
+                {opt?.hint && (
+                  <div className="py-2">
+                    <p className="text-fg-muted text-xs leading-relaxed">{opt.hint}</p>
+                  </div>
+                )}
 
-              {/* Model selection — sits right below provider */}
-              {provider !== 'device' && (
-                <Row label="Model">
-                  <div className="flex w-56 flex-col gap-1.5">
-                    {hasCurated ? (
-                      <>
-                        <select
-                          value={isCustomMode ? '__custom__' : ((chat.model || curatedModels[0]?.id) ?? '')}
-                          onChange={(e) => {
-                            if (e.target.value === '__custom__') {
-                              setIsCustomMode(true)
-                            } else {
-                              setIsCustomMode(false)
-                              setChat('model', e.target.value)
+                {/* Model selection — sits right below provider */}
+                {provider !== 'device' && (
+                  <Row label="Model">
+                    <div className="flex w-56 flex-col gap-1.5">
+                      {hasCurated ? (
+                        <>
+                          <select
+                            value={
+                              isCustomMode
+                                ? '__custom__'
+                                : ((chat.model || curatedModels[0]?.id) ?? '')
                             }
-                          }}
+                            onChange={(e) => {
+                              if (e.target.value === '__custom__') {
+                                setIsCustomMode(true)
+                              } else {
+                                setIsCustomMode(false)
+                                setChat('model', e.target.value)
+                              }
+                            }}
+                            className={cn(INPUT_CLS, 'w-full')}
+                          >
+                            {curatedModels.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.label}
+                              </option>
+                            ))}
+                            <option value="__custom__">Other (custom)…</option>
+                          </select>
+                          {isCustomMode && (
+                            <input
+                              value={chat.model}
+                              onChange={(e) => setChat('model', e.target.value)}
+                              placeholder="model id"
+                              className={cn(INPUT_CLS, 'w-full')}
+                              spellCheck={false}
+                              autoFocus
+                            />
+                          )}
+                        </>
+                      ) : modelsLoading ? (
+                        <div className="text-fg-muted flex items-center gap-1.5 text-xs">
+                          <Loader2 className="size-3 animate-spin" />
+                          Loading models…
+                        </div>
+                      ) : models.length > 0 ? (
+                        <select
+                          value={chat.model}
+                          onChange={(e) => setChat('model', e.target.value)}
                           className={cn(INPUT_CLS, 'w-full')}
                         >
-                          {curatedModels.map((m) => (
+                          {!models.some((m) => m.id === chat.model) && chat.model && (
+                            <option value={chat.model}>{chat.model}</option>
+                          )}
+                          {models.map((m) => (
                             <option key={m.id} value={m.id}>
                               {m.label}
                             </option>
                           ))}
-                          <option value="__custom__">Other (custom)…</option>
                         </select>
-                        {isCustomMode && (
-                          <input
-                            value={chat.model}
-                            onChange={(e) => setChat('model', e.target.value)}
-                            placeholder="model id"
-                            className={cn(INPUT_CLS, 'w-full')}
-                            spellCheck={false}
-                            autoFocus
-                          />
+                      ) : (
+                        <input
+                          value={chat.model}
+                          onChange={(e) => setChat('model', e.target.value)}
+                          placeholder="model-id"
+                          className={cn(INPUT_CLS, 'w-full')}
+                          spellCheck={false}
+                        />
+                      )}
+                    </div>
+                  </Row>
+                )}
+
+                {/* API key — only for providers that need one */}
+                {needsKey && (
+                  <Row label="API key">
+                    <div className="flex w-64 flex-col gap-1.5">
+                      <input
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => {
+                          setApiKey(e.target.value)
+                          setTestStatus('idle')
+                        }}
+                        placeholder={opt?.keyPlaceholder ?? 'sk-…'}
+                        className={cn(INPUT_CLS, 'w-full')}
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-fg-muted text-[10px]">
+                          {keyStatus === 'loaded' ? 'Key saved' : 'No key saved for this provider'}
+                        </span>
+                        {keyStatus === 'loaded' && (
+                          <button
+                            type="button"
+                            onClick={() => void handleClearKey()}
+                            className="text-danger text-[11px] hover:underline"
+                          >
+                            Clear
+                          </button>
                         )}
-                      </>
-                    ) : modelsLoading ? (
-                      <div className="text-fg-muted flex items-center gap-1.5 text-xs">
-                        <Loader2 className="size-3 animate-spin" />
-                        Loading models…
                       </div>
-                    ) : models.length > 0 ? (
+                    </div>
+                  </Row>
+                )}
+
+                {/* Base URL — only for providers that use it */}
+                {needsBaseUrl && (
+                  <Row label="Base URL (optional)">
+                    <input
+                      value={chat.baseUrl ?? ''}
+                      onChange={(e) => setChat('baseUrl', e.target.value || undefined)}
+                      placeholder={opt?.baseUrlPlaceholder ?? ''}
+                      className={INPUT_CLS}
+                      spellCheck={false}
+                    />
+                  </Row>
+                )}
+
+                {provider === 'device' && (
+                  <>
+                    <Row label="Model">
                       <select
                         value={chat.model}
                         onChange={(e) => setChat('model', e.target.value)}
-                        className={cn(INPUT_CLS, 'w-full')}
+                        className={cn(INPUT_CLS, 'w-56')}
                       >
-                        {!models.some((m) => m.id === chat.model) && chat.model && (
-                          <option value={chat.model}>{chat.model}</option>
-                        )}
-                        {models.map((m) => (
+                        {curatedModels.map((m) => (
                           <option key={m.id} value={m.id}>
                             {m.label}
                           </option>
                         ))}
                       </select>
-                    ) : (
-                      <input
-                        value={chat.model}
-                        onChange={(e) => setChat('model', e.target.value)}
-                        placeholder="model-id"
-                        className={cn(INPUT_CLS, 'w-full')}
-                        spellCheck={false}
-                      />
-                    )}
-                  </div>
-                </Row>
-              )}
-
-              {/* API key — only for providers that need one */}
-              {needsKey && (
-                <Row label="API key">
-                  <div className="flex w-64 flex-col gap-1.5">
-                    <input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => {
-                        setApiKey(e.target.value)
-                        setTestStatus('idle')
-                      }}
-                      placeholder={opt?.keyPlaceholder ?? 'sk-…'}
-                      className={cn(INPUT_CLS, 'w-full')}
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-fg-muted text-[10px]">
-                        {keyStatus === 'loaded'
-                          ? 'Key saved'
-                          : 'No key saved for this provider'}
-                      </span>
-                      {keyStatus === 'loaded' && (
+                    </Row>
+                    <Row label="Status">
+                      <div className="flex max-w-xs flex-col items-start gap-1.5">
                         <button
                           type="button"
-                          onClick={() => void handleClearKey()}
-                          className="text-danger hover:underline text-[11px]"
+                          onClick={() => void handleDownloadDeviceModel()}
+                          disabled={deviceLoading}
+                          className={cn(
+                            'inline-flex min-w-[9.5rem] shrink-0 justify-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                            deviceLoading && 'cursor-not-allowed opacity-50',
+                            deviceStatus === 'ready' && !deviceLoading
+                              ? 'bg-green-500/15 text-green-600 dark:text-green-400'
+                              : 'bg-accent text-accent-fg hover:bg-accent/90',
+                          )}
                         >
-                          Clear
+                          {deviceLoading ? (
+                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                              <Loader2 className="size-3 shrink-0 animate-spin" />
+                              {deviceProgress > 0 && deviceProgress < 1
+                                ? `Downloading… ${Math.round(deviceProgress * 100)}%`
+                                : 'Downloading…'}
+                            </span>
+                          ) : deviceStatus === 'ready' ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <Check className="size-3 shrink-0" aria-hidden />
+                              Ready
+                            </span>
+                          ) : (
+                            'Download'
+                          )}
                         </button>
+                        {deviceLoadFailed && (
+                          <p className="text-danger w-full min-w-0 text-[10px] leading-snug break-words">
+                            Error loading model.
+                          </p>
+                        )}
+                      </div>
+                    </Row>
+                  </>
+                )}
+
+                {/* Test connection button */}
+                <Row label="Connection">
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => void handleTest()}
+                      disabled={testStatus === 'testing' || (needsKey && !apiKey.trim())}
+                      className={cn(
+                        'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                        testStatus === 'success'
+                          ? 'bg-green-500/15 text-green-600 dark:text-green-400'
+                          : testStatus === 'error'
+                            ? 'bg-red-500/15 text-red-600 dark:text-red-400'
+                            : 'bg-accent/10 text-accent hover:bg-accent/20',
+                        (testStatus === 'testing' || (needsKey && !apiKey.trim())) &&
+                          'cursor-not-allowed opacity-50',
                       )}
-                    </div>
+                    >
+                      {testStatus === 'testing' && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Loader2 className="size-3 animate-spin" />
+                          Testing…
+                        </span>
+                      )}
+                      {testStatus === 'success' && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Check className="size-3" />
+                          Connected
+                        </span>
+                      )}
+                      {testStatus === 'error' && 'Retry'}
+                      {testStatus === 'idle' && 'Test'}
+                    </button>
+                    {testStatus === 'error' && testError && (
+                      <p className="text-danger text-[10px] leading-snug">{testError}</p>
+                    )}
                   </div>
                 </Row>
-              )}
 
-              {/* Base URL — only for providers that use it */}
-              {needsBaseUrl && (
-                <Row label="Base URL (optional)">
-                  <input
-                    value={chat.baseUrl ?? ''}
-                    onChange={(e) =>
-                      setChat('baseUrl', e.target.value || undefined)
-                    }
-                    placeholder={opt?.baseUrlPlaceholder ?? ''}
-                    className={INPUT_CLS}
-                    spellCheck={false}
+                {/* Context size */}
+                <Row
+                  label="Context size"
+                  hint="Max characters of the open document sent as context."
+                >
+                  <NumberInput
+                    value={chat.maxContextChars}
+                    min={2000}
+                    max={400_000}
+                    suffix="chars"
+                    onChange={(v) => setChat('maxContextChars', v)}
                   />
                 </Row>
-              )}
 
-              {provider === 'device' && (
-                <>
-                  <Row label="Model">
-                    <select
-                      value={chat.model}
-                      onChange={(e) => setChat('model', e.target.value)}
-                      className={cn(INPUT_CLS, 'w-56')}
-                    >
-                      {curatedModels.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Row>
-                  <Row label="Status">
-                    <div className="flex max-w-xs flex-col items-start gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => void handleDownloadDeviceModel()}
-                        disabled={deviceLoading}
-                        className={cn(
-                          'inline-flex min-w-[9.5rem] shrink-0 justify-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                          deviceLoading && 'cursor-not-allowed opacity-50',
-                          deviceStatus === 'ready' && !deviceLoading
-                            ? 'bg-green-500/15 text-green-600 dark:text-green-400'
-                            : 'bg-accent text-accent-fg hover:bg-accent/90',
-                        )}
-                      >
-                        {deviceLoading ? (
-                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                            <Loader2 className="size-3 shrink-0 animate-spin" />
-                            {deviceProgress > 0 && deviceProgress < 1
-                              ? `Downloading… ${Math.round(deviceProgress * 100)}%`
-                              : 'Downloading…'}
-                          </span>
-                        ) : deviceStatus === 'ready' ? (
-                          <span className="inline-flex items-center gap-1.5">
-                            <Check className="size-3 shrink-0" aria-hidden />
-                            Ready
-                          </span>
-                        ) : (
-                          'Download'
-                        )}
-                      </button>
-                      {deviceLoadFailed && (
-                        <p className="text-danger w-full min-w-0 text-[10px] leading-snug break-words">
-                          Error loading model.
-                        </p>
-                      )}
-                    </div>
-                  </Row>
-                </>
-              )}
-
-              {/* Test connection button */}
-              <Row label="Connection">
-                <div className="flex flex-col gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => void handleTest()}
-                    disabled={testStatus === 'testing' || (needsKey && !apiKey.trim())}
-                    className={cn(
-                      'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                      testStatus === 'success'
-                        ? 'bg-green-500/15 text-green-600 dark:text-green-400'
-                        : testStatus === 'error'
-                          ? 'bg-red-500/15 text-red-600 dark:text-red-400'
-                          : 'bg-accent/10 text-accent hover:bg-accent/20',
-                      (testStatus === 'testing' || (needsKey && !apiKey.trim())) &&
-                        'cursor-not-allowed opacity-50',
-                    )}
-                  >
-                    {testStatus === 'testing' && (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Loader2 className="size-3 animate-spin" />
-                        Testing…
-                      </span>
-                    )}
-                    {testStatus === 'success' && (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Check className="size-3" />
-                        Connected
-                      </span>
-                    )}
-                    {testStatus === 'error' && 'Retry'}
-                    {testStatus === 'idle' && 'Test'}
-                  </button>
-                  {testStatus === 'error' && testError && (
-                    <p className="text-danger text-[10px] leading-snug">{testError}</p>
-                  )}
-                </div>
-              </Row>
-
-              {/* Context size */}
-              <Row
-                label="Context size"
-                hint="Max characters of the open document sent as context."
-              >
-                <NumberInput
-                  value={chat.maxContextChars}
-                  min={2000}
-                  max={400_000}
-                  suffix="chars"
-                  onChange={(v) => setChat('maxContextChars', v)}
-                />
-              </Row>
-
-              {/* System prompt */}
-              <Row label="System prompt override">
-                <textarea
-                  value={chat.systemPrompt ?? ''}
-                  onChange={(e) =>
-                    setChat('systemPrompt', e.target.value || undefined)
-                  }
-                  rows={3}
-                  placeholder="Leave blank to use the default."
-                  className={cn(INPUT_CLS, 'h-auto w-64 resize-y py-2')}
-                />
-              </Row>
-            </>
-          )
-        })()}
+                {/* System prompt */}
+                <Row label="System prompt override">
+                  <textarea
+                    value={chat.systemPrompt ?? ''}
+                    onChange={(e) => setChat('systemPrompt', e.target.value || undefined)}
+                    rows={3}
+                    placeholder="Leave blank to use the default."
+                    className={cn(INPUT_CLS, 'h-auto w-64 resize-y py-2')}
+                  />
+                </Row>
+              </>
+            )
+          })()}
       </div>
     </div>
   )
@@ -1012,8 +994,12 @@ export function SettingsDialog({
   const updateConfigRef = useRef(updateConfig)
   /** Tracks the last-saved dailyNotesFolder so we can run migration if it changes. */
   const prevDailyFolderRef = useRef<string>(config?.dailyNotesFolder ?? DAILY_NOTES_DIR)
-  useEffect(() => { vaultFsRef.current = vaultFs }, [vaultFs])
-  useEffect(() => { updateConfigRef.current = updateConfig }, [updateConfig])
+  useEffect(() => {
+    vaultFsRef.current = vaultFs
+  }, [vaultFs])
+  useEffect(() => {
+    updateConfigRef.current = updateConfig
+  }, [updateConfig])
 
   // Reset draft when dialog opens
   useEffect(() => {
@@ -1060,25 +1046,25 @@ export function SettingsDialog({
     }
   }, [draft])
 
-  const setField = useCallback(
-    <K extends keyof VaultConfig>(key: K, value: VaultConfig[K]) => {
-      setDraft((d) => ({ ...d, [key]: value }))
-    },
-    [],
-  )
+  const setField = useCallback(<K extends keyof VaultConfig>(key: K, value: VaultConfig[K]) => {
+    setDraft((d) => ({ ...d, [key]: value }))
+  }, [])
 
   // Used by VaultDropboxSyncPanel before navigating to OAuth — saves immediately without debounce
-  const saveConfigNow = useCallback(async (config: VaultConfig) => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current)
-      saveTimerRef.current = null
-    }
-    isFirstDraft.current = true  // prevent the subsequent setDraft from re-triggering auto-save
-    await saveVaultConfig(vaultFs, config)
-    updateConfig(config)
-    setDraft(config)
-    isFirstDraft.current = false
-  }, [vaultFs, updateConfig])
+  const saveConfigNow = useCallback(
+    async (config: VaultConfig) => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+      isFirstDraft.current = true // prevent the subsequent setDraft from re-triggering auto-save
+      await saveVaultConfig(vaultFs, config)
+      updateConfig(config)
+      setDraft(config)
+      isFirstDraft.current = false
+    },
+    [vaultFs, updateConfig],
+  )
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -1140,7 +1126,7 @@ export function SettingsDialog({
                     'border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
                     activeTab === id
                       ? 'border-accent text-accent'
-                      : 'border-transparent text-fg-secondary hover:text-fg',
+                      : 'text-fg-secondary hover:text-fg border-transparent',
                   )}
                 >
                   {label}

@@ -70,9 +70,7 @@ export function generateUid(): string {
   return crypto.randomUUID()
 }
 
-export function defaultTaskFrontmatter(
-  overrides?: Partial<TaskFrontmatter>,
-): TaskFrontmatter {
+export function defaultTaskFrontmatter(overrides?: Partial<TaskFrontmatter>): TaskFrontmatter {
   const now = new Date().toISOString()
   const base: TaskFrontmatter = {
     uid: generateUid(),
@@ -89,16 +87,12 @@ export function defaultTaskFrontmatter(
   if (!overrides) return base
   return {
     ...base,
-    ...Object.fromEntries(
-      Object.entries(overrides).filter(([, v]) => v !== undefined),
-    ),
+    ...Object.fromEntries(Object.entries(overrides).filter(([, v]) => v !== undefined)),
   } as TaskFrontmatter
 }
 
 export function listFromPath(path: string): string | null {
-  const rel = path.startsWith(TASKS_DIR + '/')
-    ? path.slice(TASKS_DIR.length + 1)
-    : path
+  const rel = path.startsWith(TASKS_DIR + '/') ? path.slice(TASKS_DIR.length + 1) : path
   const parts = rel.split('/')
   return parts.length > 1 ? parts[0] : null
 }
@@ -202,9 +196,7 @@ export function mergeTaskFrontmatterForSave(
     created: existing.created,
     modified: new Date().toISOString(),
     completed:
-      patch.completed !== undefined
-        ? String(patch.completed)
-        : (existing.completed ?? '') || '',
+      patch.completed !== undefined ? String(patch.completed) : (existing.completed ?? '') || '',
     tags: patch.tags ?? existing.tags,
     parent: patch.parent !== undefined ? String(patch.parent) : (existing.parent ?? '') || '',
     order: patch.order ?? existing.order,

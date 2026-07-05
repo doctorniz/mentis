@@ -26,9 +26,7 @@ export async function getPdfThumbnail(
     const ctx = canvas.getContext('2d')!
     await page.render({ canvasContext: ctx, viewport }).promise
 
-    const blob = await new Promise<Blob | null>((res) =>
-      canvas.toBlob((b) => res(b), 'image/png'),
-    )
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob((b) => res(b), 'image/png'))
     if (!blob) return null
     const url = URL.createObjectURL(blob)
     thumbCache.set(path, url)

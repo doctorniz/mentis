@@ -104,9 +104,7 @@ function searchTopK(query: string, topK: number): RawHit[] {
 function extractExcerpt(content: string, terms: string[], maxChars: number): string {
   if (content.length <= maxChars) return content
   const lower = content.toLowerCase()
-  const lowerTerms = terms
-    .map((t) => t.toLowerCase())
-    .filter((t) => t.length > 2) // skip stop-word fragments
+  const lowerTerms = terms.map((t) => t.toLowerCase()).filter((t) => t.length > 2) // skip stop-word fragments
 
   if (lowerTerms.length === 0) return content.slice(0, maxChars)
 
@@ -157,10 +155,7 @@ export { extractExcerpt as extractBestExcerpt }
  * may predate the PDF indexer. Fall back to re-extracting from disk when
  * the stored content is empty.
  */
-async function rehydrateIfEmpty(
-  hit: RawHit,
-  vaultFs: FileSystemAdapter,
-): Promise<string> {
+async function rehydrateIfEmpty(hit: RawHit, vaultFs: FileSystemAdapter): Promise<string> {
   if (hit.content.length > 0) return hit.content
   try {
     if (hit.type === 'markdown') {
@@ -267,7 +262,7 @@ export async function buildVaultContext(
 function vaultSystemPromptBase(): string {
   return [
     "You are an assistant embedded inside the user's personal notes app.",
-    'Below you will find excerpts from the user\'s vault. Read ALL excerpts carefully and thoroughly before answering.',
+    "Below you will find excerpts from the user's vault. Read ALL excerpts carefully and thoroughly before answering.",
     'Base your answer on the information found in these excerpts.',
     'Formatting rules (required): Start every section heading with Markdown ## or ### at the beginning of a line (never use only bold for headings). Leave one blank line before each heading and one blank line between paragraphs. Prefer short paragraphs rather than dense walls of text.',
     'Use **bold** for key terms inside sentences, unordered (-) lists when listing several related points, and avoid blockquotes (no lines starting with >). Between major sections you may insert a Markdown horizontal rule on its own line (`---`). Use at most two per reply.',
@@ -301,10 +296,7 @@ function escapeHtmlText(s: string): string {
  * Strip any model-produced Sources block (often malformed).
  * Append a row of chip links — one per RAG hit — using the vault path as label.
  */
-export function mergeVaultSourcesSection(
-  assistantMarkdown: string,
-  hits: VaultRagHit[],
-): string {
+export function mergeVaultSourcesSection(assistantMarkdown: string, hits: VaultRagHit[]): string {
   if (hits.length === 0) return assistantMarkdown
   const base = assistantMarkdown
     .replace(/\n##\s+Sources\b[\s\S]*$/i, '')
@@ -322,13 +314,8 @@ export function mergeVaultSourcesSection(
   return `${base}\n\n<div class="chat-sources">${chips}</div>\n`
 }
 
-export function buildVaultSystemMessage(
-  context: VaultContext,
-  settings: ChatSettings,
-): string {
-  const base =
-    settings.systemPrompt?.trim() ||
-    vaultSystemPromptBase()
+export function buildVaultSystemMessage(context: VaultContext, settings: ChatSettings): string {
+  const base = settings.systemPrompt?.trim() || vaultSystemPromptBase()
 
   if (context.hits.length === 0) {
     return `${base}\n\n(No vault content matched the user's question — tell them you couldn't find anything relevant and ask them to rephrase.)`

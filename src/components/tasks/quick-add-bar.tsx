@@ -70,10 +70,14 @@ export function QuickAddBar() {
             <span
               className={cn(
                 'rounded-md px-1.5 py-0.5 text-[10px] font-medium',
-                parsed.priority === 1 && 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-                parsed.priority === 2 && 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
-                parsed.priority === 3 && 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-                parsed.priority === 4 && 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
+                parsed.priority === 1 &&
+                  'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+                parsed.priority === 2 &&
+                  'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+                parsed.priority === 3 &&
+                  'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+                parsed.priority === 4 &&
+                  'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
               )}
             >
               {PRIORITY_LABELS[parsed.priority]}

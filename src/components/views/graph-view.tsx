@@ -93,7 +93,9 @@ export function GraphView() {
       setGraphData(data)
       setLoading(false)
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [rebuildToken])
 
   const filteredData = useMemo(() => {
@@ -109,11 +111,17 @@ export function GraphView() {
 
   const handleClickNode = useCallback(
     (nodeId: string) => {
-      const title = nodeId.replace(/\.(md|pdf|canvas)$/i, '').split('/').pop() ?? nodeId
+      const title =
+        nodeId
+          .replace(/\.(md|pdf|canvas)$/i, '')
+          .split('/')
+          .pop() ?? nodeId
 
-      const type = nodeId.endsWith('.pdf') ? 'pdf' as const
-        : nodeId.endsWith('.canvas') ? 'canvas' as const
-        : 'markdown' as const
+      const type = nodeId.endsWith('.pdf')
+        ? ('pdf' as const)
+        : nodeId.endsWith('.canvas')
+          ? ('canvas' as const)
+          : ('markdown' as const)
 
       openTab({ id: nodeId, path: nodeId, type, title, isDirty: false })
       setActiveView(ViewMode.Vault)
@@ -165,15 +173,24 @@ export function GraphView() {
 
         <span className="text-fg-muted text-xs">
           {[
-            countByType['note']        && `${countByType['note']} note${countByType['note'] !== 1 ? 's' : ''}`,
-            countByType['pdf']         && `${countByType['pdf']} PDF${countByType['pdf'] !== 1 ? 's' : ''}`,
-            countByType['canvas']      && `${countByType['canvas']} drawing${countByType['canvas'] !== 1 ? 's' : ''}`,
-            countByType['pptx']        && `${countByType['pptx']} presentation${countByType['pptx'] !== 1 ? 's' : ''}`,
-            countByType['docx']        && `${countByType['docx']} doc${countByType['docx'] !== 1 ? 's' : ''}`,
-            countByType['spreadsheet'] && `${countByType['spreadsheet']} sheet${countByType['spreadsheet'] !== 1 ? 's' : ''}`,
-            countByType['code']        && `${countByType['code']} code file${countByType['code'] !== 1 ? 's' : ''}`,
-            filteredData.edges.length  && `${filteredData.edges.length} link${filteredData.edges.length !== 1 ? 's' : ''}`,
-          ].filter(Boolean).join(' · ')}
+            countByType['note'] &&
+              `${countByType['note']} note${countByType['note'] !== 1 ? 's' : ''}`,
+            countByType['pdf'] && `${countByType['pdf']} PDF${countByType['pdf'] !== 1 ? 's' : ''}`,
+            countByType['canvas'] &&
+              `${countByType['canvas']} drawing${countByType['canvas'] !== 1 ? 's' : ''}`,
+            countByType['pptx'] &&
+              `${countByType['pptx']} presentation${countByType['pptx'] !== 1 ? 's' : ''}`,
+            countByType['docx'] &&
+              `${countByType['docx']} doc${countByType['docx'] !== 1 ? 's' : ''}`,
+            countByType['spreadsheet'] &&
+              `${countByType['spreadsheet']} sheet${countByType['spreadsheet'] !== 1 ? 's' : ''}`,
+            countByType['code'] &&
+              `${countByType['code']} code file${countByType['code'] !== 1 ? 's' : ''}`,
+            filteredData.edges.length &&
+              `${filteredData.edges.length} link${filteredData.edges.length !== 1 ? 's' : ''}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </span>
 
         {folders.length > 1 && (

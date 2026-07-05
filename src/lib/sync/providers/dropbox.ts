@@ -25,11 +25,7 @@ export class DropboxProvider implements RemoteSyncProvider {
   private remoteRoot: string
   private codeVerifier: string | null = null
 
-  constructor(opts: {
-    clientId: string
-    vaultId: string
-    remoteRoot: string
-  }) {
+  constructor(opts: { clientId: string; vaultId: string; remoteRoot: string }) {
     this.clientId = opts.clientId
     this.vaultId = opts.vaultId
     this.remoteRoot = opts.remoteRoot.replace(/\/+$/, '').replace(/^\/+/, '')
@@ -81,12 +77,8 @@ export class DropboxProvider implements RemoteSyncProvider {
     return `${AUTH_URL}?${params.toString()}`
   }
 
-  async handleAuthCallback(
-    code: string,
-    redirectUri: string,
-  ): Promise<void> {
-    const verifier =
-      this.codeVerifier ?? localStorage.getItem('dbx_code_verifier')
+  async handleAuthCallback(code: string, redirectUri: string): Promise<void> {
+    const verifier = this.codeVerifier ?? localStorage.getItem('dbx_code_verifier')
     if (!verifier) throw new Error('Missing PKCE code verifier')
 
     const body = new URLSearchParams({
@@ -237,10 +229,7 @@ export class DropboxProvider implements RemoteSyncProvider {
     return new Uint8Array(buf)
   }
 
-  async upload(
-    remotePath: string,
-    data: Uint8Array,
-  ): Promise<RemoteFileEntry> {
+  async upload(remotePath: string, data: Uint8Array): Promise<RemoteFileEntry> {
     const accessToken = await this.getAccessToken()
     const fullPath = dropboxJoin(this.remoteRoot, remotePath)
     const res = await fetch(`${CONTENT_URL}/files/upload`, {
@@ -312,9 +301,7 @@ export class DropboxProvider implements RemoteSyncProvider {
     return token.accessToken
   }
 
-  private async refreshAccessToken(
-    token: SyncTokenData,
-  ): Promise<SyncTokenData> {
+  private async refreshAccessToken(token: SyncTokenData): Promise<SyncTokenData> {
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: token.refreshToken!,

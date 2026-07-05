@@ -39,8 +39,7 @@ export function boardJSONToMarkdown(doc: JSONContent): string {
   td.addRule('taskItem', {
     filter(node) {
       return (
-        node.nodeName === 'LI' &&
-        (node as HTMLElement).getAttribute('data-type') === 'taskItem'
+        node.nodeName === 'LI' && (node as HTMLElement).getAttribute('data-type') === 'taskItem'
       )
     },
     replacement(content, node) {
@@ -54,8 +53,7 @@ export function boardJSONToMarkdown(doc: JSONContent): string {
   td.addRule('taskList', {
     filter(node) {
       return (
-        node.nodeName === 'UL' &&
-        (node as HTMLElement).getAttribute('data-type') === 'taskList'
+        node.nodeName === 'UL' && (node as HTMLElement).getAttribute('data-type') === 'taskList'
       )
     },
     replacement(content) {

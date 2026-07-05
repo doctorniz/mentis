@@ -40,7 +40,9 @@ export async function allocateUniqueFilePath(
 
 /** Quoted so that titles like `Untitled (2)` don't break YAML parsing. */
 export function getDefaultNoteContent(title = 'Untitled'): string {
-  return ['---', `title: "${title}"`, `created: ${new Date().toISOString()}`, '---', '', ''].join('\n')
+  return ['---', `title: "${title}"`, `created: ${new Date().toISOString()}`, '---', '', ''].join(
+    '\n',
+  )
 }
 
 export async function createUntitledNote(fs: FileSystemAdapter): Promise<string> {

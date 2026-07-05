@@ -48,7 +48,11 @@ export function buildPageTextMap(items: PageTextItem[]): { text: string; charToI
   return { text, charToItem }
 }
 
-export function findAllMatchStartIndices(text: string, needle: string, caseSensitive: boolean): number[] {
+export function findAllMatchStartIndices(
+  text: string,
+  needle: string,
+  caseSensitive: boolean,
+): number[] {
   if (!needle) return []
   const h = caseSensitive ? text : text.toLowerCase()
   const n = caseSensitive ? needle : needle.toLowerCase()
@@ -77,12 +81,10 @@ function collectItemIndicesForRange(
   return set.size ? set : null
 }
 
-function textItemPdfBBox(item: ExtractedTextItem, applyTransform: (p: number[], m: number[]) => number[]): [
-  number,
-  number,
-  number,
-  number,
-] {
+function textItemPdfBBox(
+  item: ExtractedTextItem,
+  applyTransform: (p: number[], m: number[]) => number[],
+): [number, number, number, number] {
   const m = item.transform
   const w = item.width
   const h = item.height
@@ -105,7 +107,9 @@ function textItemPdfBBox(item: ExtractedTextItem, applyTransform: (p: number[], 
   return [minX, minY, maxX, maxY]
 }
 
-function unionPdfBBoxes(boxes: [number, number, number, number][]): [number, number, number, number] {
+function unionPdfBBoxes(
+  boxes: [number, number, number, number][],
+): [number, number, number, number] {
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity

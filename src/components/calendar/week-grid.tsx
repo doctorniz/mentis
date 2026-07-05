@@ -77,9 +77,7 @@ interface TimedEventBlockProps {
 
 function TimedEventBlock({ event, onClick }: TimedEventBlockProps) {
   const startMin = minutesFromMidnight(event.start)
-  const endMin = event.end.includes('T')
-    ? minutesFromMidnight(event.end)
-    : startMin + 60 // default 1 hour if no end time
+  const endMin = event.end.includes('T') ? minutesFromMidnight(event.end) : startMin + 60 // default 1 hour if no end time
   const duration = Math.max(endMin - startMin, 15) // min 15 min display
   const top = (startMin / 60) * HOUR_HEIGHT
   const height = (duration / 60) * HOUR_HEIGHT
@@ -189,9 +187,9 @@ export function WeekGrid({
   const hasAllDayRow = days.some((d) => {
     const ds = toDateStr(d)
     return (
-      allDayEventsForDate(ds).length > 0
-      || tasksForDate(ds).length > 0
-      || (dailyNoteDates?.has(ds) ?? false)
+      allDayEventsForDate(ds).length > 0 ||
+      tasksForDate(ds).length > 0 ||
+      (dailyNoteDates?.has(ds) ?? false)
     )
   })
 
@@ -212,15 +210,15 @@ export function WeekGrid({
                   key={i}
                   className="border-border flex flex-col items-center gap-1 border-r py-2 last:border-r-0"
                 >
-                  <span className="text-fg-muted text-[11px] font-medium">{DAY_HEADERS[day.getDay()]}</span>
+                  <span className="text-fg-muted text-[11px] font-medium">
+                    {DAY_HEADERS[day.getDay()]}
+                  </span>
                   <button
                     type="button"
                     onClick={() => onDayClick(toDateStr(day))}
                     className={cn(
                       'flex size-7 items-center justify-center rounded-full text-sm font-semibold transition-colors',
-                      isToday
-                        ? 'bg-accent text-accent-fg'
-                        : 'text-fg hover:bg-bg-hover',
+                      isToday ? 'bg-accent text-accent-fg' : 'text-fg hover:bg-bg-hover',
                     )}
                   >
                     {day.getDate()}
@@ -231,7 +229,10 @@ export function WeekGrid({
           </div>
 
           {hasAllDayRow && (
-            <div className="border-border grid border-t" style={{ gridTemplateColumns: GRID_TRACKS }}>
+            <div
+              className="border-border grid border-t"
+              style={{ gridTemplateColumns: GRID_TRACKS }}
+            >
               <div className="border-border border-r" aria-hidden />
               {days.map((day, i) => {
                 const dateStr = toDateStr(day)
@@ -291,7 +292,11 @@ export function WeekGrid({
             style={{ height: TOTAL_HEIGHT }}
           >
             {HOURS.map((h) => (
-              <div key={h} className="border-border relative border-t" style={{ height: HOUR_HEIGHT }}>
+              <div
+                key={h}
+                className="border-border relative border-t"
+                style={{ height: HOUR_HEIGHT }}
+              >
                 {h > 0 && (
                   <span className="text-fg-muted absolute right-2 bottom-full pb-0.5 text-[10px] tabular-nums">
                     {hourLabel(h)}
@@ -301,7 +306,10 @@ export function WeekGrid({
             ))}
           </div>
 
-          <div className="relative col-start-2 col-span-7 min-h-0 min-w-0" style={{ height: TOTAL_HEIGHT }}>
+          <div
+            className="relative col-span-7 col-start-2 min-h-0 min-w-0"
+            style={{ height: TOTAL_HEIGHT }}
+          >
             <div className="grid h-full grid-cols-7" style={{ height: TOTAL_HEIGHT }}>
               {days.map((day, i) => {
                 const dateStr = toDateStr(day)

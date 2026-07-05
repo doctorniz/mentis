@@ -47,7 +47,7 @@ export function PdfPageCommentRail({
           return (
             <div
               key={c.id}
-              className="border-border bg-[#fff9db] absolute right-0 left-0 rounded-md border border-[#fab005]/35 shadow-sm"
+              className="border-border absolute right-0 left-0 rounded-md border border-[#fab005]/35 bg-[#fff9db] shadow-sm"
               style={{
                 top,
                 maxWidth: '100%',

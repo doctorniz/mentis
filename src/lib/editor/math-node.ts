@@ -6,11 +6,7 @@ async function loadKatex() {
   return katexModule.default
 }
 
-function renderKatexInto(
-  dom: HTMLElement,
-  latex: string,
-  displayMode: boolean,
-) {
+function renderKatexInto(dom: HTMLElement, latex: string, displayMode: boolean) {
   loadKatex().then((katex) => {
     try {
       katex.render(latex || (displayMode ? '\\square' : '\\square'), dom, {

@@ -32,12 +32,7 @@ const MP3_START_TIMEOUT_MS = 6000
 
 /** Pick the best native MIME type the browser supports. */
 function nativeMimeType(): string {
-  const candidates = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/ogg;codecs=opus',
-    'audio/mp4',
-  ]
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
   for (const t of candidates) {
     if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) return t
   }
@@ -78,7 +73,9 @@ export class AudioRecorder {
   private analyserData: Uint8Array<ArrayBuffer> | null = null
   private opts: Required<AudioRecorderOptions>
   /** Resolve function for the stop() promise — set once, called by onstop. */
-  private stopResolve: ((v: { audioBytes: Uint8Array; durationMs: number; mimeType: string }) => void) | null = null
+  private stopResolve:
+    | ((v: { audioBytes: Uint8Array; durationMs: number; mimeType: string }) => void)
+    | null = null
   private stopReject: ((err: Error) => void) | null = null
 
   constructor(opts: AudioRecorderOptions = {}) {
@@ -124,7 +121,10 @@ export class AudioRecorder {
       await Promise.race([
         // Wait for the WASM worker to signal it's ready
         new Promise<void>((resolve, reject) => {
-          const onStart = () => { cleanup(); resolve() }
+          const onStart = () => {
+            cleanup()
+            resolve()
+          }
           const onError = (e: Event) => {
             cleanup()
             reject(new Error(`MP3 recorder error: ${(e as ErrorEvent).message ?? 'unknown'}`))
@@ -139,10 +139,7 @@ export class AudioRecorder {
         }),
         // Timeout — WASM worker silently hung (common on mobile)
         new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error('MP3 recorder start timeout')),
-            MP3_START_TIMEOUT_MS,
-          )
+          setTimeout(() => reject(new Error('MP3 recorder start timeout')), MP3_START_TIMEOUT_MS),
         ),
       ])
 
@@ -159,7 +156,10 @@ export class AudioRecorder {
       this.recorderMimeType = 'audio/mpeg'
       usedMp3 = true
     } catch (mp3Err) {
-      console.warn('[AudioRecorder] mp3-mediarecorder failed, falling back to native MediaRecorder:', mp3Err)
+      console.warn(
+        '[AudioRecorder] mp3-mediarecorder failed, falling back to native MediaRecorder:',
+        mp3Err,
+      )
 
       // Guard: cancel() may have been called during the 6s MP3 timeout,
       // nulling this.stream. Bail rather than crash the native fallback.
@@ -172,7 +172,10 @@ export class AudioRecorder {
         : new MediaRecorder(stream)
 
       await new Promise<void>((resolve, reject) => {
-        const onStart = () => { cleanup(); resolve() }
+        const onStart = () => {
+          cleanup()
+          resolve()
+        }
         const onError = (e: Event) => {
           cleanup()
           reject(new Error(`Native recorder error: ${(e as ErrorEvent).message ?? 'unknown'}`))
@@ -251,32 +254,34 @@ export class AudioRecorder {
       return { audioBytes, durationMs: elapsed, mimeType }
     }
 
-    return new Promise<{ audioBytes: Uint8Array; durationMs: number; mimeType: string }>((resolve, reject) => {
-      this.stopResolve = resolve
-      this.stopReject = reject
+    return new Promise<{ audioBytes: Uint8Array; durationMs: number; mimeType: string }>(
+      (resolve, reject) => {
+        this.stopResolve = resolve
+        this.stopReject = reject
 
-      const onStop = async () => {
-        rec.removeEventListener('stop', onStop)
-        try {
-          const blob = new Blob(this.chunks, { type: mimeType })
-          const arrayBuffer = await blob.arrayBuffer()
-          const audioBytes = new Uint8Array(arrayBuffer)
+        const onStop = async () => {
+          rec.removeEventListener('stop', onStop)
+          try {
+            const blob = new Blob(this.chunks, { type: mimeType })
+            const arrayBuffer = await blob.arrayBuffer()
+            const audioBytes = new Uint8Array(arrayBuffer)
 
-          this.cleanup()
-          this.updateState('stopped')
-          resolve({ audioBytes, durationMs: elapsed, mimeType })
-        } catch (err) {
-          this.cleanup()
-          reject(err instanceof Error ? err : new Error(String(err)))
-        } finally {
-          this.stopResolve = null
-          this.stopReject = null
+            this.cleanup()
+            this.updateState('stopped')
+            resolve({ audioBytes, durationMs: elapsed, mimeType })
+          } catch (err) {
+            this.cleanup()
+            reject(err instanceof Error ? err : new Error(String(err)))
+          } finally {
+            this.stopResolve = null
+            this.stopReject = null
+          }
         }
-      }
 
-      rec.addEventListener('stop', onStop)
-      rec.stop()
-    })
+        rec.addEventListener('stop', onStop)
+        rec.stop()
+      },
+    )
   }
 
   /** Cancel recording without producing output. */
@@ -286,7 +291,9 @@ export class AudioRecorder {
       if (this.recorder && this.recorder.state !== 'inactive') {
         this.recorder.stop()
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     this.cleanup()
     this.updateState('idle')
   }

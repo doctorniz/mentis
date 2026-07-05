@@ -1,7 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, rectangularSelection } from '@codemirror/view'
+import {
+  EditorView,
+  keymap,
+  lineNumbers,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  drawSelection,
+  rectangularSelection,
+} from '@codemirror/view'
 import { EditorState, type Extension } from '@codemirror/state'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput } from '@codemirror/language'
@@ -192,19 +200,13 @@ export function CodeFileEditor({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
-        <InlineFileTitle
-          path={path}
-          onRename={handleRename}
-        />
-        <span className="text-fg-muted text-xs font-mono">.{ext}</span>
+        <InlineFileTitle path={path} onRename={handleRename} />
+        <span className="text-fg-muted font-mono text-xs">.{ext}</span>
         {isDirty && (
           <span className="bg-accent size-2 shrink-0 rounded-full" title="Unsaved changes" />
         )}
       </div>
-      <div
-        ref={containerRef}
-        className="bg-bg min-h-0 flex-1 overflow-auto"
-      />
+      <div ref={containerRef} className="bg-bg min-h-0 flex-1 overflow-auto" />
       {!loaded && (
         <div className="bg-bg absolute inset-0 flex items-center justify-center">
           <span className="text-fg-muted text-sm">Loading…</span>

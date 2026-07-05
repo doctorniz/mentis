@@ -108,7 +108,9 @@ describe('addSiblingNode', () => {
 
     expect(result.nodes).toHaveLength(3)
     expect(result.edges).toHaveLength(2)
-    expect(result.edges.some((e) => e.source === 'root' && e.target === result.newNodeId)).toBe(true)
+    expect(result.edges.some((e) => e.source === 'root' && e.target === result.newNodeId)).toBe(
+      true,
+    )
   })
 
   it('adds another root-level node when the sibling has no parent', () => {

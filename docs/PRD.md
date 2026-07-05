@@ -1,6 +1,6 @@
 # Mentis — Product Requirements Document
 
-*An app by Marrow Group.*
+_An app by Marrow Group._
 
 ## 1. Vision
 
@@ -12,13 +12,13 @@ Mentis is a cross-platform note-taking application built on a **local-first, mar
 
 ## 2. Core Principles
 
-| Principle | Description |
-|---|---|
-| **File-over-database** | Notes are `.md` files on disk (or synced storage), not rows in a proprietary database. Users can open their vault in any text editor. |
-| **Offline-capable** | The web app works without a connection. Native apps work natively. |
-| **Destructive PDF workflow** | Annotations, highlights, signatures, and drawings are written directly into the PDF file. One file = one source of truth. No sidecar files, no overlay layers. |
-| **PDF as first-class citizen** | Mentis is also a PDF file browser and manager. Import, create, organise, annotate, sign, and export PDFs with the same fluency as markdown notes. |
-| **Progressive complexity** | A new user writes a note in 3 seconds. Power features reveal themselves gradually. |
+| Principle                      | Description                                                                                                                                                    |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **File-over-database**         | Notes are `.md` files on disk (or synced storage), not rows in a proprietary database. Users can open their vault in any text editor.                          |
+| **Offline-capable**            | The web app works without a connection. Native apps work natively.                                                                                             |
+| **Destructive PDF workflow**   | Annotations, highlights, signatures, and drawings are written directly into the PDF file. One file = one source of truth. No sidecar files, no overlay layers. |
+| **PDF as first-class citizen** | Mentis is also a PDF file browser and manager. Import, create, organise, annotate, sign, and export PDFs with the same fluency as markdown notes.              |
+| **Progressive complexity**     | A new user writes a note in 3 seconds. Power features reveal themselves gradually.                                                                             |
 
 ---
 
@@ -66,17 +66,18 @@ All edits written directly into the PDF file on save.
 
 ### 3.4 App Views
 
-| View | Description |
-|---|---|
-| **Vault (browse)** | Grid/list file browser: sort, filter, batch operations, move/delete modals, inbox. |
-| **Vault (tree)** | Folder tree + inline editors for markdown, PDF, and canvas; starred paths; no separate “Notes” nav label. |
-| **Search** | Full-text search across vault. Results grouped by file type with filters. |
-| **Graph** | Force-directed vault graph (notes, PDFs, canvases); wiki-link edges; folder filter; open files from nodes. |
-| **New** | Quick-create launcher (popover): note, file import, drawing; Templates tab in `NewView` where exposed. |
+| View               | Description                                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| **Vault (browse)** | Grid/list file browser: sort, filter, batch operations, move/delete modals, inbox.                         |
+| **Vault (tree)**   | Folder tree + inline editors for markdown, PDF, and canvas; starred paths; no separate “Notes” nav label.  |
+| **Search**         | Full-text search across vault. Results grouped by file type with filters.                                  |
+| **Graph**          | Force-directed vault graph (notes, PDFs, canvases); wiki-link edges; folder filter; open files from nodes. |
+| **New**            | Quick-create launcher (popover): note, file import, drawing; Templates tab in `NewView` where exposed.     |
 
 ### 3.5 Unlimited Canvas
 
 Freeform, infinitely scrollable whiteboard:
+
 - Infinite surface with pan and zoom
 - Freehand drawing with pressure sensitivity
 - Text cards, image embeds, sticky notes
@@ -96,16 +97,16 @@ Freeform, infinitely scrollable whiteboard:
 
 ## 4. Success Metrics (Phase 1)
 
-| Metric | Target |
-|---|---|
-| Time to first note | < 5 seconds from app load |
-| Vault size supported | 10,000+ notes without degradation |
-| PDF open time (50-page doc) | < 2 seconds |
-| PDF save time (50-page annotated doc) | < 3 seconds |
-| PDF browser thumbnail generation | < 500ms per PDF |
-| Lighthouse PWA score | > 90 |
-| Offline functionality | Full read/write without network |
-| Cross-viewer compatibility | Annotations readable in Acrobat, Preview, Chrome |
+| Metric                                | Target                                           |
+| ------------------------------------- | ------------------------------------------------ |
+| Time to first note                    | < 5 seconds from app load                        |
+| Vault size supported                  | 10,000+ notes without degradation                |
+| PDF open time (50-page doc)           | < 2 seconds                                      |
+| PDF save time (50-page annotated doc) | < 3 seconds                                      |
+| PDF browser thumbnail generation      | < 500ms per PDF                                  |
+| Lighthouse PWA score                  | > 90                                             |
+| Offline functionality                 | Full read/write without network                  |
+| Cross-viewer compatibility            | Annotations readable in Acrobat, Preview, Chrome |
 
 ---
 

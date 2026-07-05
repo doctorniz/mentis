@@ -2,11 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { FileEntry, FileStats } from '@/types/files'
 import { FileType } from '@/types/files'
-import {
-  todayDailyNotePath,
-  dailyNoteTitle,
-  openOrCreateDailyNote,
-} from '@/lib/notes/daily-note'
+import { todayDailyNotePath, dailyNoteTitle, openOrCreateDailyNote } from '@/lib/notes/daily-note'
 
 class InMemoryAdapter implements FileSystemAdapter {
   readonly type = 'opfs' as const

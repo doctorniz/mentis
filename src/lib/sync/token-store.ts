@@ -22,10 +22,7 @@ function tokenKey(provider: string, vaultId: string): string {
   return `${provider}:${vaultId}`
 }
 
-export async function getToken(
-  provider: string,
-  vaultId: string,
-): Promise<SyncTokenData | null> {
+export async function getToken(provider: string, vaultId: string): Promise<SyncTokenData | null> {
   const db = await openDb()
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly')
@@ -51,10 +48,7 @@ export async function setToken(
   })
 }
 
-export async function clearToken(
-  provider: string,
-  vaultId: string,
-): Promise<void> {
+export async function clearToken(provider: string, vaultId: string): Promise<void> {
   const db = await openDb()
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite')

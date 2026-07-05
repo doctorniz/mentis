@@ -21,26 +21,26 @@ Items are **logged for review before public launch**. This file is **pre-launch 
 
 ### Product / engineering
 
-| Area | ID | Topic | Notes |
-|------|-----|--------|--------|
-| Vault tree | T2 | Long-term | Image editing tools (Photoshop-like) — roadmap only. |
-| Cross | X1 | Mobile export | Keep web architecture compatible with RN/Capacitor; document in `ARCHITECTURE.md` when chosen. |
-| Chat | AI1 | Embeddings RAG | Vault chat v1 uses MiniSearch (lexical) for retrieval. True embeddings (Transformers.js + local vector store) deferred to tier 2 — better recall on paraphrased questions at the cost of a ~100MB model download. |
-| Chat | AI2 | Canvas content RAG | MiniSearch indexes canvas titles/paths only, not pixel or stroke data. Vault chat will not retrieve drawing content until an OCR/caption pass is added. |
-| Chat | AI3 | Local model download UX | Local (`device`) provider is Gemma 4 E2B only (MediaPipe/OPFS). Status row: while downloading, subtitle must not claim “cached”; Ready uses green tick styling. Requires WebGPU. |
-| Chat | AI4 | Tool calling / writes | Both chat surfaces are read-only — no document edits, file creation, or multi-step agents. Deferred until after vault chat UX settles. |
-| Chat | AI5 | PDF rename → asset-id | Out-of-band OS renames while the app is closed break the PDF→`chatAssetId` mapping in `_marrow/_chats/index.json`. In-app renames are handled. Consider a periodic reconciliation pass. |
-| Search | S5 | DOCX / Code content not indexed | `build-vault-index.ts`'s indexable-file filter covers Markdown, PDF, Canvas, Mindmap, Kanban, Pptx, and Spreadsheet — DOCX and Code files are listed in the tree/graph but their text is not searchable. |
+| Area       | ID  | Topic                           | Notes                                                                                                                                                                                                             |
+| ---------- | --- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vault tree | T2  | Long-term                       | Image editing tools (Photoshop-like) — roadmap only.                                                                                                                                                              |
+| Cross      | X1  | Mobile export                   | Keep web architecture compatible with RN/Capacitor; document in `ARCHITECTURE.md` when chosen.                                                                                                                    |
+| Chat       | AI1 | Embeddings RAG                  | Vault chat v1 uses MiniSearch (lexical) for retrieval. True embeddings (Transformers.js + local vector store) deferred to tier 2 — better recall on paraphrased questions at the cost of a ~100MB model download. |
+| Chat       | AI2 | Canvas content RAG              | MiniSearch indexes canvas titles/paths only, not pixel or stroke data. Vault chat will not retrieve drawing content until an OCR/caption pass is added.                                                           |
+| Chat       | AI3 | Local model download UX         | Local (`device`) provider is Gemma 4 E2B only (MediaPipe/OPFS). Status row: while downloading, subtitle must not claim “cached”; Ready uses green tick styling. Requires WebGPU.                                  |
+| Chat       | AI4 | Tool calling / writes           | Both chat surfaces are read-only — no document edits, file creation, or multi-step agents. Deferred until after vault chat UX settles.                                                                            |
+| Chat       | AI5 | PDF rename → asset-id           | Out-of-band OS renames while the app is closed break the PDF→`chatAssetId` mapping in `_marrow/_chats/index.json`. In-app renames are handled. Consider a periodic reconciliation pass.                           |
+| Search     | S5  | DOCX / Code content not indexed | `build-vault-index.ts`'s indexable-file filter covers Markdown, PDF, Canvas, Mindmap, Kanban, Pptx, and Spreadsheet — DOCX and Code files are listed in the tree/graph but their text is not searchable.          |
 
 ### Addressed in code — confirm in UI
 
-| Area | ID | Notes |
-|------|-----|--------|
-| File browser | F4 | Batch toolbar must not shift grid/list (double-click still opens). |
-| File browser | F6 | Drop-import overlay: drag enter/leave should not stick. |
-| Sync | S2 | (Archive) Nextcloud removed from product; Dropbox OAuth only. |
-| Sync | S3 | Exclude patterns for sync (e.g. `_marrow/snapshots/`) not yet implemented. |
-| Sync | S4 | Conflict toast with "View details" link not yet implemented. |
+| Area         | ID  | Notes                                                                      |
+| ------------ | --- | -------------------------------------------------------------------------- |
+| File browser | F4  | Batch toolbar must not shift grid/list (double-click still opens).         |
+| File browser | F6  | Drop-import overlay: drag enter/leave should not stick.                    |
+| Sync         | S2  | (Archive) Nextcloud removed from product; Dropbox OAuth only.              |
+| Sync         | S3  | Exclude patterns for sync (e.g. `_marrow/snapshots/`) not yet implemented. |
+| Sync         | S4  | Conflict toast with "View details" link not yet implemented.               |
 
 ---
 
@@ -92,6 +92,7 @@ Items are **logged for review before public launch**. This file is **pre-launch 
 - [ ] **Sync — Settings tab** — Settings → Sync: remote folder + poll interval; **Connect Dropbox** / **Disconnect**; no separate “enable sync” toggle. Setup: [`docs/CLOUD_SYNC.md`](./CLOUD_SYNC.md).
 - [ ] **Sync — Dropbox OAuth** — Settings → Connect Dropbox → `/auth/dropbox` (not 404) → `/`; with `provider: dropbox` saved, files push after save without a separate “enable sync” toggle.
 - [ ] **Sync — Dropbox E2E** — Default folder `Mentis/<vault>` under the **app folder** in Dropbox; local edits appear remotely; remote edits pull on poll; last-write-wins on conflict.
+
 ### Done
 
 - [x] **Notes chrome (F8 / M1)** — Sidebar: three icon-only theme toggles (Light / System / Dark). Note mode bar: icon-only Visual / Source; compact export trigger. **Markdown** and **Print** rows have no subtitle hints.
@@ -110,78 +111,78 @@ Canvas follow-ups **C14–C25** and tree **C21/C21b** are closed in code; PDF to
 
 ### Canvas — UX & tools
 
-| ID | Topic | Notes |
-|----|--------|------|
-| C1 | New canvas title | Defer mount until `isNew` clears; `tabIndex={-1}`. |
-| C2 | Toolbar vs tool | `applyFabricToolModeFromStore` after load; path + rAF resync. |
-| C3 | Text discoverability | Hints above dock; `title` on tool buttons. |
-| C4 | Text formatting | `resolveFormattableTextbox`; sticky body formattable. |
-| C5 | Connect (legacy) | Edge IDs, erase line+head; **new** connect removed in C23. |
-| C6 | Erase | Drag-to-erase; frames/edges; padding on thin objects. |
-| C7 | Images | Sync dimensions; `object:modified` snapshots. |
-| C8 | Frames | No create button; legacy frames render. |
-| C9 | Wiki-link | Double-click navigate only. |
-| C10 | Open from tree | `openTab` + store; no lost tabs on mode switch. |
-| C11 | Fabric lifecycle | `isAlive`; guarded async loads. |
-| C12 | Autosave | Interval + blur + flush on rename. |
-| C13 | Undo | Confirmed working. |
-| C14–C17 | Text UX | First-edit, inline styles, strip, font dropdown previews (`canvas-editor.tsx`, `canvas-toolbar.tsx`). |
-| C18 | Rename collision | `vaultPathsPointToSameFile` (`lib/fs/vault-path-equiv.ts`). |
-| C19 | Image auto-select | After toolbar add image. |
-| C20 | Image undo/redo | Resize/move/rotate snapshots. |
-| C22 | Browse header | `config.name` + folder path in `file-browser-view.tsx`. |
-| C23 | Connect removed | Toolbar/hotkeys; legacy edges render. |
-| C24 | Sticky removed | Toolbar; legacy stickies render. |
-| C25 | Partial erase | `splitFabricPath` in `canvas-editor.tsx`. |
+| ID      | Topic                | Notes                                                                                                 |
+| ------- | -------------------- | ----------------------------------------------------------------------------------------------------- |
+| C1      | New canvas title     | Defer mount until `isNew` clears; `tabIndex={-1}`.                                                    |
+| C2      | Toolbar vs tool      | `applyFabricToolModeFromStore` after load; path + rAF resync.                                         |
+| C3      | Text discoverability | Hints above dock; `title` on tool buttons.                                                            |
+| C4      | Text formatting      | `resolveFormattableTextbox`; sticky body formattable.                                                 |
+| C5      | Connect (legacy)     | Edge IDs, erase line+head; **new** connect removed in C23.                                            |
+| C6      | Erase                | Drag-to-erase; frames/edges; padding on thin objects.                                                 |
+| C7      | Images               | Sync dimensions; `object:modified` snapshots.                                                         |
+| C8      | Frames               | No create button; legacy frames render.                                                               |
+| C9      | Wiki-link            | Double-click navigate only.                                                                           |
+| C10     | Open from tree       | `openTab` + store; no lost tabs on mode switch.                                                       |
+| C11     | Fabric lifecycle     | `isAlive`; guarded async loads.                                                                       |
+| C12     | Autosave             | Interval + blur + flush on rename.                                                                    |
+| C13     | Undo                 | Confirmed working.                                                                                    |
+| C14–C17 | Text UX              | First-edit, inline styles, strip, font dropdown previews (`canvas-editor.tsx`, `canvas-toolbar.tsx`). |
+| C18     | Rename collision     | `vaultPathsPointToSameFile` (`lib/fs/vault-path-equiv.ts`).                                           |
+| C19     | Image auto-select    | After toolbar add image.                                                                              |
+| C20     | Image undo/redo      | Resize/move/rotate snapshots.                                                                         |
+| C22     | Browse header        | `config.name` + folder path in `file-browser-view.tsx`.                                               |
+| C23     | Connect removed      | Toolbar/hotkeys; legacy edges render.                                                                 |
+| C24     | Sticky removed       | Toolbar; legacy stickies render.                                                                      |
+| C25     | Partial erase        | `splitFabricPath` in `canvas-editor.tsx`.                                                             |
 
 ### Vault — product
 
-| ID | Topic | Notes |
-|----|--------|------|
-| N2 | Layout labels | Emoji tree/browse; `aria-label` + `title`. |
+| ID  | Topic         | Notes                                      |
+| --- | ------------- | ------------------------------------------ |
+| N2  | Layout labels | Emoji tree/browse; `aria-label` + `title`. |
 
 ### File browser
 
-| ID | Topic | Notes |
-|----|--------|------|
-| F1 | Move | `MoveToFolderDialog`; folder `rename()` in OPFS/FSAPI (`getDirectoryHandle`, `copyDirRecursive` fallback); `FolderRow` `div[role=button]` (no nested `<button>`); `executeMoveToFolder` retargets tabs + toast on error. |
-| F2 | Context menu | `...rest` on card/row; `handleScrollPointerDown` ignores non-descendant targets (portal menus). |
-| F3 | Delete | `ConfirmDialog`. |
-| F5 | Thumbnails | `getImageThumbnail`; grid/list sizes. |
-| F7 | New file flow | Popover + import + blank PDF + `pdfPageStyle`. |
-| F8 | Chrome | Icon-only sidebar theme + note mode bar. |
+| ID  | Topic         | Notes                                                                                                                                                                                                                    |
+| --- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| F1  | Move          | `MoveToFolderDialog`; folder `rename()` in OPFS/FSAPI (`getDirectoryHandle`, `copyDirRecursive` fallback); `FolderRow` `div[role=button]` (no nested `<button>`); `executeMoveToFolder` retargets tabs + toast on error. |
+| F2  | Context menu  | `...rest` on card/row; `handleScrollPointerDown` ignores non-descendant targets (portal menus).                                                                                                                          |
+| F3  | Delete        | `ConfirmDialog`.                                                                                                                                                                                                         |
+| F5  | Thumbnails    | `getImageThumbnail`; grid/list sizes.                                                                                                                                                                                    |
+| F7  | New file flow | Popover + import + blank PDF + `pdfPageStyle`.                                                                                                                                                                           |
+| F8  | Chrome        | Icon-only sidebar theme + note mode bar.                                                                                                                                                                                 |
 
 ### Vault file tree
 
-| ID | Topic | Notes |
-|----|--------|------|
-| T1 | Image files | `ImageEditorView` / `VaultImageView` by type. |
-| C21 | DnD refresh | `refreshToken` on `TreeNode` `readdir` effect. |
-| C21b | Context menu | `TreeContextMenu` on file/folder rows. |
+| ID   | Topic        | Notes                                          |
+| ---- | ------------ | ---------------------------------------------- |
+| T1   | Image files  | `ImageEditorView` / `VaultImageView` by type.  |
+| C21  | DnD refresh  | `refreshToken` on `TreeNode` `readdir` effect. |
+| C21b | Context menu | `TreeContextMenu` on file/folder rows.         |
 
 ### Markdown / notes
 
-| ID | Topic | Notes |
-|----|--------|------|
-| M1 | Print label | **Print** vs export wording. |
-| M2 | Export | Markdown download + print pipeline. |
+| ID  | Topic       | Notes                               |
+| --- | ----------- | ----------------------------------- |
+| M1  | Print label | **Print** vs export wording.        |
+| M2  | Export      | Markdown download + print pipeline. |
 
 ### PDF viewer / editor
 
-| ID | Topic | Notes |
-|----|--------|------|
-| P1 | Outline | Superseded: Outline tab in `PdfSideColumn`. |
-| P2 | Pages / Outline column | Tabbed column; default Pages; auto-collapse ≤1 page; Layers rail. |
-| P12 | Flatten / save | Autosave via `VaultConfig.autoSave`; no separate Save/Flatten in toolbar. |
-| P13 | Save button | Autosave-only (see P12). |
-| P3–P11, P14–P15 | Annotations & UX | Text tool, pen/highlight colours, writer/reader, comments, signature, add page, forms, search, palettes, toolbar undo/thumbnails (`PdfToolbar`, `PdfViewer`, etc.). |
+| ID              | Topic                  | Notes                                                                                                                                                               |
+| --------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1              | Outline                | Superseded: Outline tab in `PdfSideColumn`.                                                                                                                         |
+| P2              | Pages / Outline column | Tabbed column; default Pages; auto-collapse ≤1 page; Layers rail.                                                                                                   |
+| P12             | Flatten / save         | Autosave via `VaultConfig.autoSave`; no separate Save/Flatten in toolbar.                                                                                           |
+| P13             | Save button            | Autosave-only (see P12).                                                                                                                                            |
+| P3–P11, P14–P15 | Annotations & UX       | Text tool, pen/highlight colours, writer/reader, comments, signature, add page, forms, search, palettes, toolbar undo/thumbnails (`PdfToolbar`, `PdfViewer`, etc.). |
 
 ### Sync
 
-| ID | Topic | Notes |
-|----|--------|------|
-| S0 | Cloud sync engine | `SyncManager` + `SyncState` + `ChangeDetector` + `TokenStore`; Dropbox (`lib/sync/providers/dropbox.ts`, OAuth 2 PKCE, app-folder paths, UTF-8-safe `Dropbox-API-Arg`); `SyncProvider` + `useSyncPush`; Settings Sync tab; Vault toolbar manual sync when Dropbox is configured; save hooks. |
-| S1 | OAuth return | `app/auth/dropbox/page.tsx`; `lib/sync/oauth-session.ts` stashes `vaultId` + `remoteRoot` before redirect (token key = `activeVaultPath`). |
+| ID  | Topic             | Notes                                                                                                                                                                                                                                                                                        |
+| --- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S0  | Cloud sync engine | `SyncManager` + `SyncState` + `ChangeDetector` + `TokenStore`; Dropbox (`lib/sync/providers/dropbox.ts`, OAuth 2 PKCE, app-folder paths, UTF-8-safe `Dropbox-API-Arg`); `SyncProvider` + `useSyncPush`; Settings Sync tab; Vault toolbar manual sync when Dropbox is configured; save hooks. |
+| S1  | OAuth return      | `app/auth/dropbox/page.tsx`; `lib/sync/oauth-session.ts` stashes `vaultId` + `remoteRoot` before redirect (token key = `activeVaultPath`).                                                                                                                                                   |
 
 ### Older notes (pre-ID)
 

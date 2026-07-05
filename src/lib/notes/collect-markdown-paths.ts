@@ -3,10 +3,7 @@ import { FileType } from '@/types/files'
 import { isNotesTreeHidden } from '@/lib/notes/tree-filter'
 
 /** Recursive vault scan: all `.md` paths (scoped adapter paths). */
-export async function collectMarkdownPaths(
-  fs: FileSystemAdapter,
-  dir = '',
-): Promise<string[]> {
+export async function collectMarkdownPaths(fs: FileSystemAdapter, dir = ''): Promise<string[]> {
   const entries = await fs.readdir(dir)
   const out: string[] = []
   for (const e of entries) {

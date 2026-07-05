@@ -1,9 +1,5 @@
 import matter from 'gray-matter'
-import type {
-  CalendarEvent,
-  CalendarEventFrontmatter,
-  CalendarEventColor,
-} from '@/types/calendar'
+import type { CalendarEvent, CalendarEventFrontmatter, CalendarEventColor } from '@/types/calendar'
 
 export const CALENDAR_DIR = '_marrow/_calendar'
 
@@ -21,7 +17,7 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
   const bodyWithoutH1 = content.replace(/^#\s+.+\n?/, '').trim()
 
   const location = typeof fm.location === 'string' && fm.location ? fm.location : undefined
-  const url      = typeof fm.url      === 'string' && fm.url      ? fm.url      : undefined
+  const url = typeof fm.url === 'string' && fm.url ? fm.url : undefined
 
   return {
     path,
@@ -33,7 +29,7 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
     allDay: Boolean(fm.allDay),
     color: safeColor(fm.color),
     ...(location ? { location } : {}),
-    ...(url      ? { url }      : {}),
+    ...(url ? { url } : {}),
     created: (fm.created as string) ?? new Date().toISOString(),
     modified: (fm.modified as string) ?? new Date().toISOString(),
   }
@@ -81,9 +77,7 @@ export function defaultEventFrontmatter(
   if (!overrides) return base
   return {
     ...base,
-    ...Object.fromEntries(
-      Object.entries(overrides).filter(([, v]) => v !== undefined),
-    ),
+    ...Object.fromEntries(Object.entries(overrides).filter(([, v]) => v !== undefined)),
   } as CalendarEventFrontmatter
 }
 
@@ -108,13 +102,7 @@ export function parseEventDate(s: string): Date | null {
   const dt = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(s.trim())
   if (!dt) return null
   const [, y, mo, d, h, mi] = dt
-  return new Date(
-    Number(y),
-    Number(mo) - 1,
-    Number(d),
-    h ? Number(h) : 0,
-    mi ? Number(mi) : 0,
-  )
+  return new Date(Number(y), Number(mo) - 1, Number(d), h ? Number(h) : 0, mi ? Number(mi) : 0)
 }
 
 /** Returns `YYYY-MM-DD` portion of the event start */

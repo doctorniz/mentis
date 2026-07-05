@@ -66,9 +66,11 @@ export function PdfPageCanvas({
     rc.height = h
     let cancel = false
     const task = page.render({ canvasContext: ctx, viewport: vp })
-    task.promise.then(() => {
-      if (!cancel) setReady(true)
-    }).catch(() => {})
+    task.promise
+      .then(() => {
+        if (!cancel) setReady(true)
+      })
+      .catch(() => {})
     return () => {
       cancel = true
       task.cancel()
@@ -409,7 +411,9 @@ export function PdfPageCanvas({
     }
 
     fc.on('mouse:down', onClick)
-    return () => { fc.off('mouse:down', onClick) }
+    return () => {
+      fc.off('mouse:down', onClick)
+    }
   }, [activeTool, textColor, pageIndex, zoom, addAnnotation])
 
   /* ------- Comment tool: open dialog via store (see PdfViewer) ------- */
@@ -455,13 +459,27 @@ export function PdfPageCanvas({
     }
 
     fc.on('mouse:down', onClick)
-    return () => { fc.off('mouse:down', onClick) }
+    return () => {
+      fc.off('mouse:down', onClick)
+    }
   }, [activeTool, signatureDataUrl, pageIndex, zoom, addAnnotation])
 
   return (
     <div className="relative" style={{ width: w, height: h }}>
-      <canvas ref={renderRef} className="absolute inset-0" style={{ width: w, height: h }} aria-label="PDF page background" aria-hidden />
-      <canvas ref={fabricRef} className="absolute inset-0" style={{ width: w, height: h }} aria-label="Annotation layer" role="application" />
+      <canvas
+        ref={renderRef}
+        className="absolute inset-0"
+        style={{ width: w, height: h }}
+        aria-label="PDF page background"
+        aria-hidden
+      />
+      <canvas
+        ref={fabricRef}
+        className="absolute inset-0"
+        style={{ width: w, height: h }}
+        aria-label="Annotation layer"
+        role="application"
+      />
     </div>
   )
 }

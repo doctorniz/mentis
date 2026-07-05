@@ -50,7 +50,9 @@ export async function detectEditorTabType(
     const raw = await fs.readTextFile(path)
     const { data } = matter(raw)
     if (data.type === 'kanban') return 'kanban'
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
 
   return 'markdown'
 }
@@ -61,5 +63,10 @@ export function titleFromVaultPath(path: string): string {
   const ft = getFileType(name)
   // Keep the extension visible for code files
   if (ft === FileType.Code) return name
-  return path.replace(/\.[^/.]+$/i, '').split('/').pop() ?? path
+  return (
+    path
+      .replace(/\.[^/.]+$/i, '')
+      .split('/')
+      .pop() ?? path
+  )
 }

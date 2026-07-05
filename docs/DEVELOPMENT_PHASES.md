@@ -130,6 +130,7 @@ How this file is organized:
 ### Phase 1 Exit Criteria
 
 A user can:
+
 - ✅ Create and open a vault
 - ✅ Navigate via Vault (🌳 tree / 🗂️ browse), Search, Graph, and New (popover); open markdown, PDF, canvas, and images from the vault
 - ✅ Write and edit markdown notes with WYSIWYG rendering
@@ -157,11 +158,11 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 
 ### Open items (action required)
 
-| Track | Item | Notes |
-|-------|------|--------|
-| P3 | Framer Motion unused | In `package.json` but no imports — remove dep or integrate |
-| P4 | Note view padding | Tune spacing (px, py, gap) in mode bar, toolbar, title, content |
-| P4 | Save note as template / templates folder | Option to save a note as template; or convention for configurable templates folder (`Settings` already has `templateFolder`) |
+| Track | Item                                     | Notes                                                                                                                        |
+| ----- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| P3    | Framer Motion unused                     | In `package.json` but no imports — remove dep or integrate                                                                   |
+| P4    | Note view padding                        | Tune spacing (px, py, gap) in mode bar, toolbar, title, content                                                              |
+| P4    | Save note as template / templates folder | Option to save a note as template; or convention for configurable templates folder (`Settings` already has `templateFolder`) |
 
 ### Completed archive — P0 — Must Fix Before Any Users
 
@@ -226,21 +227,24 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 ### Completed archive — P4 — UX Overhaul & Missing Features
 
 #### Bugs / Crashes
+
 - [x] **PDF viewer Immer crash**: `store.annotations.splice(0)` mutates frozen Immer state — fixed by using `setDocument()` which resets annotations via `set()`
 - [x] **Tiptap paragraph button no-op**: removed — the paragraph button is unnecessary in the toolbar (plain text is the default state); button and its `Pilcrow` import removed from `note-editor-toolbar.tsx`
 - [x] **Tiptap list rendering**: Tailwind v4 preflight resets `list-style: none` on all lists — added explicit `list-style-type: disc` for `ul` and `list-style-type: decimal` for `ol` in ProseMirror CSS; also added nested `circle`/`square` styles and `display: list-item` on `li`
 - [x] **Tiptap task list formatting error**: TaskItem renders `<label>` + `<div>` inside each `li` — added `flex: 1; min-width: 0` to the `<div>` content wrapper to prevent collapse; styled checkbox with `accent-color`, added checked state strikethrough, fixed `<label>` alignment
 
 #### Architecture / Navigation
+
 - [x] **Unify File Browser + Notes into "Vault" view**: replaced separate "File Browser" and "Notes" sidebar entries with a single **Vault** entry (`ViewMode.Vault`); `VaultView` renders a tab bar — **Preview** (file tree + editor), **Files** (grid/list browser) — plus a **sync-now** icon button when the vault has `sync.provider === 'dropbox'` (calls `triggerFullSync`; disabled until the sync engine is authenticated). Dropbox setup stays under Settings → Sync (`VaultDropboxSyncPanel`). `vaultMode` is persisted per vault path (`ink-vault-layout:<path>`) with legacy fallback `ink-vault-mode`; cross-view navigation targets `ViewMode.Vault` with sub-mode `tree` / `browse`; keyboard shortcut `Ctrl+1` = Vault, `Ctrl+2` = Search, `Ctrl+3` = Graph; `ViewMode.FileBrowser` and `ViewMode.Notes` kept as deprecated aliases that fall through to `VaultView`
 - [x] **File browser move/delete UX**: `MoveToFolderDialog` replaces `prompt()` for move; `ConfirmDialog` replaces `window.confirm` for delete (single + batch)
 - [x] **New button should be a dropdown, not a view**: replaced sidebar "New" nav entry with a `NewFilePopover` (Radix Popover) anchored to a "New" button at the bottom of the nav; step-1 shows Note / PDF / Drawing type cards; step-2 shows name + folder form + create button; `Enter` key submits; after creation, navigates to `ViewMode.Vault` in the correct sub-mode (tree for notes, browse for PDF/drawing); `Ctrl+N` dispatches `ink:open-new-popover` custom event that the popover listens for; `NewView` is kept for the Templates tab (accessible from future settings)
 - [x] **Settings panel**: `SettingsDialog` (Radix Dialog + Tabs) reachable from sidebar "Settings" button and `Ctrl+,`; three tabs — **Vault** (vault name, default new-file folder, template folder), **Editor** (auto-save toggle, save interval, save-on-blur), **Snapshots** (enabled, max per file, retention days); changes buffered locally until "Save changes" is clicked, which calls `saveVaultConfig(vaultFs, draft)` and `updateConfig(draft)` then closes; `VaultConfig` extended with `templateFolder` and `defaultNewFileFolder`; `template-store.ts` functions accept an optional `dir` parameter so the configured folder is respected; `new-file-popover` and `new-view` use `config.defaultNewFileFolder` as the initial folder selection
 
 #### Note Editor
+
 - [x] **Welcome.md not index.md**: `createVault` now writes `Welcome.md` (was `inbox.md`) with frontmatter `title: Welcome` and an `# Welcome` heading
 - [x] **Don't insert Welcome.md into existing vaults**: `createVault` now reads the root directory after initialising the `_marrow` structure; if any non-hidden, non-system files are already present it skips writing `Welcome.md` — only truly empty folders get the welcome note
-- [x] **Title must match filename 1:1**: fixed two related bugs — (1) after rename the loading `useEffect` re-ran with the new path and read the stale frontmatter `title`, reverting the display; fixed by writing the updated frontmatter (with the new title) to the file *before* the filesystem rename so the reload always sees the correct value; (2) invalid characters caused a confusing reverse-rename on the next edit; fixed by adding `sanitizeTitle()` which strips `/ \ : * ? " < > |` and collapsing whitespace — illegal chars are stripped live on `onChange` and the final sanitized value is committed on blur/Enter; `commitTitleRename` now uses `inlineTitleRef` to avoid stale-closure bugs and Escape reverts using `pathRef.current`
+- [x] **Title must match filename 1:1**: fixed two related bugs — (1) after rename the loading `useEffect` re-ran with the new path and read the stale frontmatter `title`, reverting the display; fixed by writing the updated frontmatter (with the new title) to the file _before_ the filesystem rename so the reload always sees the correct value; (2) invalid characters caused a confusing reverse-rename on the next edit; fixed by adding `sanitizeTitle()` which strips `/ \ : * ? " < > |` and collapsing whitespace — illegal chars are stripped live on `onChange` and the final sanitized value is committed on blur/Enter; `commitTitleRename` now uses `inlineTitleRef` to avoid stale-closure bugs and Escape reverts using `pathRef.current`
 
 - [x] **Hide tab bar when only one tab is open**: `EditorTabBar` early-returns `null` when `tabs.length <= 1`
 - [x] **Auto-focus title on new file**: newly created notes, PDFs, and drawings immediately highlight/select the inline title input so the user can rename without extra clicks — notes use `isNew: boolean` on `EditorTab` (cleared after first focus via `clearNew` store action); PDF/canvas use `newFilePath` state in `FileBrowserView` tied to the pending-path transition; `InlineFileTitle` accepts `autoFocus` + `onFocused` props
@@ -248,7 +252,8 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [x] **File tree refresh after new note from popover**: `NewFilePopover` now dispatches `ink:vault-changed` custom DOM event after writing any new file; `NotesViewInner` listens for the event and calls `vaultChanged()` (bumps `treeRefresh` token + refreshes markdown paths), so newly created notes appear in the tree immediately without navigation
 
 #### File Tree / File Browser
-- [x] **Product naming — Mentis**: primary UI and metadata use **Mentis**; landing page tagline *an app by Marrow Group*; `manifest.json` / `layout.tsx` title **Mentis**; sidebar and mobile masthead **Mentis**; `public/icon.svg` brain motif (strokes derived from Lucide *Brain*, ISC); Service Worker `CACHE_NAME` → `mentis-marrow-v1`. **Unchanged on purpose:** npm package name `ink-marrow`, `ink-marrow:*` / `ink-theme` storage keys, IndexedDB `ink-marrow`, PDF `InkMarrow` annotation marker (existing files).
+
+- [x] **Product naming — Mentis**: primary UI and metadata use **Mentis**; landing page tagline _an app by Marrow Group_; `manifest.json` / `layout.tsx` title **Mentis**; sidebar and mobile masthead **Mentis**; `public/icon.svg` brain motif (strokes derived from Lucide _Brain_, ISC); Service Worker `CACHE_NAME` → `mentis-marrow-v1`. **Unchanged on purpose:** npm package name `ink-marrow`, `ink-marrow:*` / `ink-theme` storage keys, IndexedDB `ink-marrow`, PDF `InkMarrow` annotation marker (existing files).
 - [x] **License (BSL 1.1) + AI notice**: root `LICENSE` is **Business Source License 1.1** (Marrow Group, Mentis, production use permitted via Additional Use Grant, Change Date 2030-04-09, Change License MPL 2.0); `package.json` `license` field; README **License** section + **AI assistance** disclaimer (human review, user responsibility for validation).
 - [x] **Drag-and-drop reorder in file tree**: file `TreeNode` items are `draggable` using HTML5 DnD with a custom MIME type `application/x-ink-tree-path`; folder rows are drop targets with a visual ring highlight on `dragOver`; the root tree container is also a drop target (drop there = move to vault root); on drop, `handleMoveFile` calls `vaultFs.rename`, updates the search index, retargets open tabs, and refreshes the tree
 - [x] **Rename notes from file tree**: file nodes now support in-place rename — double-click the name or press `F2` to enter edit mode; the pencil button also triggers it; input auto-focuses with full text selected; `Enter`/blur commits (runs `vaultFs.rename`, updates search index + tabs + selection), `Escape` cancels; invalid filename characters are stripped on commit
@@ -259,6 +264,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [x] **External file drop-to-upload**: dragging files from the OS into the file tree or file browser area now auto-imports them into the vault — drop targets include the tree root (imports to vault root), folder nodes (imports into that folder), the file browser scroll area (imports to current folder), and folder items in both grid/list views; native `Files` drag type detected alongside internal DnD MIME types; shows toast with import count
 
 #### Canvas
+
 - [x] **UI Overhaul**: complete Procreate-inspired redesign — toolbar replaced with floating glassmorphism panels (dark semi-transparent `bg-neutral-900/75 backdrop-blur-xl`); bottom-center tool dock with rounded pill shape; top-right floating action bar (undo/redo, export dropdown, save); color picker popover with 24-color palette grid, hex input, opacity slider, and live brush size preview; clean `Pencil` icon replaces `PenTool`; canvas background changed to white
 - [x] **Canvas default tool should be pencil**: `activeTool` default changed from `'select'` to `'draw'` in both initial state and `reset()` in `useCanvasStore`; default stroke width bumped to 3 for better feel
 - [x] **Canvas drawing improvements**: added `strokeOpacity` (0–1) to store with full UI slider; brush color rendered via `hexToRgba(color, opacity)` for translucent strokes; `PencilBrush.decimate = 2` for smoother curves; fixed critical bug where drawn paths were not tagged with `__nodeId` (erase/delete could orphan strokes); brush size range expanded from 1–20 to 1–50; 24-color palette replaces limited swatch set
@@ -266,6 +272,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [x] **Inline editable title in canvas editor**: the back-bar header now shows an `InlineFileTitle` input (same style as markdown title) instead of a static filename; editing the title renames the `.canvas` file on blur/Enter; illegal characters stripped in real-time
 
 #### PDF Editor
+
 - [x] **New PDF opens in edit view**: added `pendingPdfPath` to `useFileBrowserStore`; `FileBrowserView` watches it and auto-opens `PdfViewer`; `NewFilePopover` sets the pending path after creation and navigates to browse mode
 - [x] **Single-page PDF creation**: `NewFilePopover` now uses `createBlankPdf()` (which creates exactly one A4 page) instead of `PDFDocument.create()` + `insertBlankPage()`; removes the duplicate-page bug with styled (lined/grid/dot) PDFs
 - [x] **All PDFs are A4, size option removed**: page size selector removed from the new-file popover; `createBlankPdf` always uses `size: 'a4'`
@@ -273,16 +280,20 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [x] **Inline editable title in PDF viewer**: the back-bar header shows an `InlineFileTitle` input; editing renames the `.pdf` file with the same logic as markdown/canvas titles
 
 #### New-file Popover Simplification
+
 - [x] **Immediate creation, no second dialog**: clicking Note / Drawing creates the file instantly with a date-based default name and opens the editor (note → tree mode, drawing → canvas editor via `pendingCanvasPath`); clicking PDF shows a one-step page-style picker (blank/lined/grid/dot) then creates and opens; no name/folder form — users rename inline from the editor title
 
 #### Graph
+
 - [x] **Graph click = select, double-click = open**: single click selects a node and highlights its neighbourhood (connected nodes + edges at full opacity, everything else dimmed to 20%); selection ring drawn around the selected node; double-click (within 280 ms) opens the file; clicking empty canvas clears selection; drag-to-move nodes still works without accidentally selecting; legend updated
 - [x] **Graph shows all vault files as distinct nodes**: `GraphView` now walks the vault directly via `vaultFs.readdir` (replaces broken `useFileTreeStore` approach); all `.md`, `.pdf`, and `.canvas` files become nodes regardless of wiki-link count; `GraphNode` has a new `type: 'note' | 'pdf' | 'canvas'` field; canvas draws distinct shapes per type (circle = note, rounded square = PDF, diamond = drawing) with per-type color schemes (slate/blue, red, violet); clicking a PDF node opens `PdfViewer` via `pendingPdfPath`, clicking a canvas node opens the canvas editor via `pendingCanvasPath`, clicking a note opens a markdown tab; toolbar shows per-type counts; legend updated with shape + color key
 
 #### Templates & New Files
+
 - [x] **New files default to root**: newly created notes/PDFs/canvases go to vault root unless a different default folder is configured in settings — implemented via `useDefaultFolder()` hook reading `config.defaultNewFileFolder`
 
 #### Mindmap Editor
+
 - [x] **Mindmap editor (`.mind` files, React Flow)**: interactive node-based mindmap editor powered by `@xyflow/react` v12. `.mind` files are pure JSON (`MindmapFile` v1: `nodes`, `edges`, `viewport`). New mindmaps created via `+New → Mindmap` (teal `GitBranch` icon). Opens inline in Vault view same as canvas/kanban. Title bar with `InlineFileTitle` for inline rename (same pattern as canvas). Node interaction: double-click or Tab/Enter/F2 keyboard shortcuts for inline label editing — no modal/dialog. Tab = add child, Enter = add sibling, Del = delete node+descendants, double-click empty canvas = add disconnected node. Hover "+" handle on each node adds a child. Auto-layout via `lib/mindmap/layout.ts` (simple recursive tree positioning); users can override by dragging. Full undo/redo (50-entry history stack). Auto-save ~3s + blur + unmount flush. File tree icon: `GitBranch` teal. Graph: hexagon shape (teal). Search: indexes all node labels. Mobile: FAB bottom-right for adding nodes; `Controls`/`MiniMap` hidden on mobile; keyboard hints shown on desktop only.
 
 ---
@@ -292,6 +303,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 **Status:** Future work — unchecked items below; Phase 1 web MVP is complete.
 
 ### Week 13–14: Tauri Desktop Shell
+
 - [ ] Tauri v2 project setup wrapping the Next.js frontend
 - [ ] Native file system adapter (TauriAdapter)
 - [ ] System tray / menu bar integration
@@ -300,13 +312,15 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [ ] File association for `.md`, `.pdf`, `.canvas` files
 
 ### Week 15: Templates & Export
+
 - [x] Daily notes: one-tap creation of today's date-titled note
 - [ ] Template management: create, edit, delete templates
 - [ ] Template variables (date, time, title)
 - [x] Export note as PDF (via browser print or pdf-lib)
 - [x] Export note as plain `.md` (download from Export → Markdown)
 
-### Week 16: Graph View *(delivered in Phase 1 web — rows kept as history)*
+### Week 16: Graph View _(delivered in Phase 1 web — rows kept as history)_
+
 - [x] Graph view of note connections via wiki-links
 - [x] Node rendering: one node per note, sized by connection count
 - [x] Edge rendering: lines connecting linked notes
@@ -315,6 +329,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [x] Filter graph by folder or tag
 
 ### Week 17–18: Cloud Sync (Dropbox)
+
 - [x] `RemoteSyncProvider` interface + shared types (`lib/sync/types.ts`)
 - [x] IndexedDB-backed token store (`lib/sync/token-store.ts`)
 - [x] IndexedDB-backed sync manifest / state (`lib/sync/sync-state.ts`)
@@ -334,6 +349,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [ ] Bandwidth-aware large file handling
 
 ### Week 17–18: Marrow Sync (future proprietary sync)
+
 - [ ] Account system (email + passphrase)
 - [ ] CRDT implementation for markdown conflict resolution
 - [ ] E2E encryption for sync data
@@ -348,6 +364,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 **Status:** Future work — unchecked items below.
 
 ### Week 19–21: Mobile Shell
+
 - [ ] Capacitor (or Tauri Mobile) project setup
 - [ ] Touch-optimized UI (larger tap targets, swipe gestures)
 - [ ] Mobile navigation patterns (bottom tabs, slide-over panels)
@@ -355,22 +372,26 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 - [ ] Responsive layout adjustments
 
 ### Week 22: Stylus Support
+
 - [ ] Pressure-sensitive drawing on PDF canvas (Apple Pencil, stylus)
 - [ ] Pressure-sensitive drawing on unlimited canvas
 - [ ] Palm rejection
 - [ ] Tilt-based brush angle (where supported)
 
 ### Week 23: Share & Capture
+
 - [ ] iOS/Android share sheet integration
 - [ ] Capture URLs, images, text into inbox note
 - [ ] Quick capture widget
 
 ### Week 24: PDF OCR
+
 - [ ] Tesseract.js integration for scanned document text extraction
 - [ ] OCR text indexed in MiniSearch for searchability
 - [ ] Option for cloud OCR service for higher accuracy
 
 ### Week 25: Plugin System
+
 - [ ] Plugin API definition
 - [ ] Plugin lifecycle (install, enable, disable, uninstall)
 - [ ] Sandboxed plugin execution
@@ -381,6 +402,7 @@ Issues and gaps from codebase review. **Open** items still need work; **Complete
 User-reported polish and bugs (canvas, PDF, file browser, Vault, mobile export constraints) are logged in **`docs/LAUNCH_DEFERRALS.md`** with IDs (C1, P9, F2, …) for triage before Week 26.
 
 ### Week 26: Launch
+
 - [ ] Public launch polish
 - [ ] Onboarding flow for new users
 - [ ] Marketing site

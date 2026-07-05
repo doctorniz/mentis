@@ -14,9 +14,7 @@ describe('encodeDropboxApiArgHeader', () => {
       expect(header.charCodeAt(i)).toBeLessThanOrEqual(0xff)
     }
     expect(header).not.toBe(JSON.stringify(payload))
-    const roundTrip = new TextDecoder().decode(
-      Uint8Array.from(header, (c) => c.charCodeAt(0)),
-    )
+    const roundTrip = new TextDecoder().decode(Uint8Array.from(header, (c) => c.charCodeAt(0)))
     expect(roundTrip).toBe(JSON.stringify(payload))
   })
 })

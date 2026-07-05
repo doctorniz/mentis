@@ -27,10 +27,7 @@ export async function renameFolder(
 /**
  * Recursively collect all file paths under a directory.
  */
-export async function collectFilePaths(
-  fs: FileSystemAdapter,
-  dirPath: string,
-): Promise<string[]> {
+export async function collectFilePaths(fs: FileSystemAdapter, dirPath: string): Promise<string[]> {
   const result: string[] = []
   const entries = await fs.readdir(dirPath)
   for (const entry of entries) {

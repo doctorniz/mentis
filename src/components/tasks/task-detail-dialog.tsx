@@ -74,7 +74,9 @@ export function TaskDetailDialog({
 
     const fullBody = title
       ? `\n# ${title}\n${body ? `\n${body}` : ''}\n`
-      : body ? `\n${body}\n` : '\n'
+      : body
+        ? `\n${body}\n`
+        : '\n'
 
     await updateTask(vaultFs, task.path, {
       priority,
@@ -149,7 +151,7 @@ export function TaskDetailDialog({
               onChange={(e) => setBody(e.target.value)}
               placeholder="Notes..."
               rows={3}
-              className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+              className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
             />
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -184,7 +186,7 @@ export function TaskDetailDialog({
                   type="date"
                   value={due}
                   onChange={(e) => setDue(e.target.value)}
-                  className="border-border bg-bg-secondary text-fg min-w-0 w-full max-w-full rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                  className="border-border bg-bg-secondary text-fg focus:ring-accent/40 w-full max-w-full min-w-0 rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1"
                 />
               </div>
             </div>
@@ -196,11 +198,13 @@ export function TaskDetailDialog({
                 <select
                   value={list}
                   onChange={(e) => setList(e.target.value)}
-                  className="border-border bg-bg-secondary text-fg min-w-0 w-full max-w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                  className="border-border bg-bg-secondary text-fg focus:ring-accent/40 w-full max-w-full min-w-0 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
                 >
                   <option value="">Inbox</option>
                   {lists.map((l) => (
-                    <option key={l} value={l}>{l}</option>
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -213,15 +217,15 @@ export function TaskDetailDialog({
                   value={tags}
                   onChange={(e) => setTags(e.target.value)}
                   placeholder="work, urgent"
-                  className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 min-w-0 w-full max-w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent/40"
+                  className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 w-full max-w-full min-w-0 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
                 />
               </div>
             </div>
 
             {task.repeat === 'weekly' && task.repeatWeekday != null && (
               <p className="text-fg-secondary text-xs leading-relaxed">
-                Repeats weekly on {WEEKDAY_LABEL[task.repeatWeekday]}. Checking it off moves the due date
-                to the next occurrence; the task stays open.
+                Repeats weekly on {WEEKDAY_LABEL[task.repeatWeekday]}. Checking it off moves the due
+                date to the next occurrence; the task stays open.
               </p>
             )}
 
@@ -229,7 +233,9 @@ export function TaskDetailDialog({
             {!task.parent && (
               <div>
                 <label className="text-fg-secondary mb-1.5 block text-xs font-medium">
-                  Subtasks {children.length > 0 && `(${children.filter((c) => c.status === 'done').length}/${children.length})`}
+                  Subtasks{' '}
+                  {children.length > 0 &&
+                    `(${children.filter((c) => c.status === 'done').length}/${children.length})`}
                 </label>
 
                 <div className="flex flex-col gap-1">
@@ -247,11 +253,23 @@ export function TaskDetailDialog({
                       >
                         {child.status === 'done' && (
                           <svg viewBox="0 0 12 12" className="text-accent-fg size-2.5">
-                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                            <path
+                              d="M2 6l3 3 5-5"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              fill="none"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
                           </svg>
                         )}
                       </button>
-                      <span className={cn('min-w-0 flex-1 truncate text-sm', child.status === 'done' && 'text-fg-muted line-through')}>
+                      <span
+                        className={cn(
+                          'min-w-0 flex-1 truncate text-sm',
+                          child.status === 'done' && 'text-fg-muted line-through',
+                        )}
+                      >
                         {child.title || 'Untitled'}
                       </span>
                       <button
@@ -272,7 +290,10 @@ export function TaskDetailDialog({
                     value={subtaskTitle}
                     onChange={(e) => setSubtaskTitle(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') { e.preventDefault(); void handleAddSubtask() }
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void handleAddSubtask()
+                      }
                     }}
                     placeholder="Add subtask"
                     className="text-fg placeholder:text-fg-muted/40 min-w-0 flex-1 bg-transparent text-sm outline-none"
@@ -294,13 +315,11 @@ export function TaskDetailDialog({
             </button>
             <div className="flex gap-2">
               <Dialog.Close asChild>
-                <Button variant="ghost" size="sm">Cancel</Button>
+                <Button variant="ghost" size="sm">
+                  Cancel
+                </Button>
               </Dialog.Close>
-              <Button
-                size="sm"
-                onClick={() => void handleSave()}
-                disabled={saving}
-              >
+              <Button size="sm" onClick={() => void handleSave()} disabled={saving}>
                 {saving && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
                 Save
               </Button>

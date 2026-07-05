@@ -128,10 +128,20 @@ export function SignaturePadDialog({
             </div>
           ) : (
             <div className="mt-3">
-              <input type="file" accept="image/*" aria-label="Upload signature image" onChange={handleUpload} className="text-sm" />
+              <input
+                type="file"
+                accept="image/*"
+                aria-label="Upload signature image"
+                onChange={handleUpload}
+                className="text-sm"
+              />
               {uploadedUrl && (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={uploadedUrl} alt="Uploaded signature" className="mt-2 max-h-32 rounded border" />
+                <img
+                  src={uploadedUrl}
+                  alt="Uploaded signature"
+                  className="mt-2 max-h-32 rounded border"
+                />
               )}
             </div>
           )}
