@@ -250,8 +250,8 @@ export const MarkdownNoteEditor = forwardRef<
   const rawTextRef = useRef('')
   /** Scroll container of the visual editor (the overflow-y-auto column). */
   const visualScrollRef = useRef<HTMLDivElement | null>(null)
-  /** Scroll container inside MarkdownSourceEditor (CodeMirror host). */
-  const sourceScrollRef = useRef<HTMLDivElement | null>(null)
+  /** CodeMirror's scroller inside MarkdownSourceEditor (`.cm-scroller`). */
+  const sourceScrollRef = useRef<HTMLElement | null>(null)
   /** 0–1 scroll fraction carried across a visual→source mode switch. */
   const modeSwitchScrollFractionRef = useRef<number | null>(null)
   // Only surface one "failed to save" toast per outage — repeated auto-save
@@ -894,7 +894,6 @@ export const MarkdownNoteEditor = forwardRef<
           onInsertVideo={handleInsertVideo}
         />
       )}
-      {!showRawSource && <TableControlsMenu editor={editor} />}
       <div className="relative flex min-h-0 flex-1 flex-col">
         {findOpen && !showRawSource && (
           <FindReplaceBar
@@ -907,8 +906,13 @@ export const MarkdownNoteEditor = forwardRef<
         )}
         <div
           ref={visualScrollRef}
-          className={cn('min-h-0 flex-1', showRawSource ? 'flex flex-col' : 'overflow-y-auto')}
+          data-testid="note-scroll-container"
+          className={cn(
+            'relative min-h-0 flex-1',
+            showRawSource ? 'flex flex-col' : 'overflow-y-auto',
+          )}
         >
+          <TableControlsMenu editor={editor} scrollContainer={visualScrollRef} />
           <div className="px-10 pt-6">
             <input
               ref={titleInputRef}

@@ -25,24 +25,21 @@ export { expect }
 async function seedVault(page: Page) {
   await page.waitForLoadState('domcontentloaded')
 
-  // Wait for the landing page or auto-restored vault
-  const isLanding = await page
-    .locator('form, [data-testid="vault-landing"]')
-    .isVisible()
-    .catch(() => false)
+  // The app is client-rendered: right after domcontentloaded the React
+  // tree may not exist yet, so a bare isVisible() check races the render.
+  // Wait until either the vault landing (fresh state) or the app shell's
+  // sidebar (auto-restored vault) is actually on screen, then branch.
+  const landingForm = page.locator('form').filter({
+    has: page.getByRole('button', { name: /create/i }),
+  })
+  const sidebar = page.locator('[data-testid="main-sidebar"], nav')
+  await expect(landingForm.or(sidebar).first()).toBeVisible({ timeout: 30_000 })
 
-  if (isLanding) {
-    // Fill vault name and create
-    const nameInput = page.locator('input[type="text"]').first()
-    if (await nameInput.isVisible()) {
-      await nameInput.clear()
-      await nameInput.fill(TEST_VAULT_NAME)
-    }
-    // Click the create button
-    const createBtn = page.getByRole('button', { name: /create/i })
-    if (await createBtn.isVisible()) {
-      await createBtn.click()
-    }
+  if (await landingForm.isVisible()) {
+    const nameInput = landingForm.getByRole('textbox')
+    await nameInput.clear()
+    await nameInput.fill(TEST_VAULT_NAME)
+    await landingForm.getByRole('button', { name: /create/i }).click()
   }
 
   // Wait for app shell to be ready (sidebar visible = vault loaded)
@@ -77,21 +74,25 @@ export type ViewName =
   | 'files'
   | 'search'
 
-/** Create a new markdown note via Ctrl+N → Markdown. */
+/** Create a new markdown note via the sidebar's "Note" quick action. */
 export async function createMarkdownNote(page: Page, title?: string) {
-  await page.keyboard.press('Control+n')
-  await page.waitForTimeout(300)
-
-  // Click markdown option in the new file wizard
-  const mdOption = page.getByText(/^Markdown$/i).first()
-  if (await mdOption.isVisible()) {
-    await mdOption.click()
+  const noteBtn = page.getByRole('button', { name: 'Note', exact: true }).first()
+  if (await noteBtn.isVisible().catch(() => false)) {
+    await noteBtn.click()
+  } else {
+    // Fallback: Ctrl+N popover (older layout)
+    await page.keyboard.press('Control+n')
+    await page.waitForTimeout(300)
+    const mdOption = page.getByText(/^(Note|Markdown)$/i).first()
+    if (await mdOption.isVisible()) {
+      await mdOption.click()
+    }
   }
 
-  await page.waitForTimeout(500)
+  // The editor mounts once the new file's tab opens.
+  await page.locator('.tiptap').first().waitFor({ state: 'visible', timeout: 15_000 })
 
   if (title) {
-    // Type in the editor
     const editor = page.locator('.tiptap').first()
     await editor.click()
     await editor.pressSequentially(title)

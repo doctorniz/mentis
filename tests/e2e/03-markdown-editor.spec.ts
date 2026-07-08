@@ -100,14 +100,15 @@ test.describe('Markdown Editor', () => {
       await expect(editor.locator('em', { hasText: 'italic text' })).toBeVisible()
     })
 
-    test('3.2.4 Inline code via Ctrl+`', async ({ vaultPage: page }) => {
+    test('3.2.4 Inline code via Ctrl+E', async ({ vaultPage: page }) => {
+      // Tiptap's Code mark binds Mod-E (there is no Ctrl+` binding).
       const editor = page.locator('.tiptap').first()
       await editor.click()
       await editor.press('Enter')
 
-      await page.keyboard.press('Control+`')
+      await page.keyboard.press('Control+e')
       await page.keyboard.type('inline code')
-      await page.keyboard.press('Control+`')
+      await page.keyboard.press('Control+e')
 
       await expect(editor.locator('code', { hasText: 'inline code' })).toBeVisible()
     })
@@ -260,29 +261,23 @@ test.describe('Markdown Editor', () => {
       await page.keyboard.type('My task item')
       await page.waitForTimeout(300)
 
-      // Task list checkbox should be present (Tiptap renders <input type="checkbox"> or <label>)
-      const checkbox = editor.locator('input[type="checkbox"], [data-checked]').first()
+      // Click the actual checkbox input — a bare `[data-checked]` selector
+      // would match the wrapping <li> first, and clicking the <li> does
+      // not toggle the checkbox.
+      const checkbox = editor.getByRole('checkbox').first()
       await expect(checkbox).toBeVisible()
-
-      // Click the checkbox to toggle it
       await checkbox.click({ force: true })
       await page.waitForTimeout(300)
 
-      // Verify it toggled (checked attr or data-checked="true")
-      const isChecked = await checkbox.isChecked().catch(() => null)
-      if (isChecked !== null) {
-        expect(isChecked).toBe(true)
-      } else {
-        const checkedAttr = await checkbox.getAttribute('data-checked')
-        expect(checkedAttr).toBe('true')
-      }
+      const item = editor.locator('li[data-checked]').first()
+      await expect(item).toHaveAttribute('data-checked', 'true')
     })
   })
 
   // ── 3.7 Source Mode & Export ────────────────────────────────────────
 
   test.describe('3.7 Source Mode & Export', () => {
-    test('3.7.1 Toggle source mode — shows raw .md in textarea', async ({ vaultPage: page }) => {
+    test('3.7.1 Toggle source mode — shows raw .md in CodeMirror', async ({ vaultPage: page }) => {
       const editor = page.locator('.tiptap').first()
       await editor.click()
       await editor.press('Enter')
@@ -294,10 +289,10 @@ test.describe('Markdown Editor', () => {
       await sourceTab.click()
       await page.waitForTimeout(500)
 
-      // A textarea should now be visible
-      const textarea = page.locator('textarea[aria-label="Raw markdown source"]')
-      await expect(textarea).toBeVisible()
-      await expect(textarea).toContainText('Hello world')
+      // The CodeMirror source editor should now be visible
+      const source = page.locator('[aria-label="Raw markdown source"]')
+      await expect(source).toBeVisible()
+      await expect(source.locator('.cm-content')).toContainText('Hello world')
     })
 
     test('3.7.2 Edit in source mode — switch back — changes reflected', async ({
@@ -314,11 +309,12 @@ test.describe('Markdown Editor', () => {
       await sourceTab.click()
       await page.waitForTimeout(500)
 
-      // Edit in the textarea
-      const textarea = page.locator('textarea[aria-label="Raw markdown source"]')
-      await expect(textarea).toBeVisible()
-      const content = await textarea.inputValue()
-      await textarea.fill(content + '\n\n**Bold from source**')
+      // Append to the document in the CodeMirror editor
+      const source = page.locator('[aria-label="Raw markdown source"]')
+      await expect(source).toBeVisible()
+      await source.locator('.cm-content').click()
+      await page.keyboard.press('Control+End')
+      await page.keyboard.type('\n\n**Bold from source**')
       await page.waitForTimeout(300)
 
       // Switch back to visual mode
@@ -343,9 +339,8 @@ test.describe('Markdown Editor', () => {
       await sourceTab.click()
       await page.waitForTimeout(500)
 
-      const textarea = page.locator('textarea[aria-label="Raw markdown source"]')
-      const savedContent = await textarea.inputValue()
-      expect(savedContent).toContain('Round trip test content')
+      const source = page.locator('[aria-label="Raw markdown source"] .cm-content')
+      await expect(source).toContainText('Round trip test content')
 
       // Switch back to visual to trigger a save cycle
       const visualTab = page.locator('button[role="tab"][aria-label="Visual editor"]')
@@ -355,8 +350,7 @@ test.describe('Markdown Editor', () => {
       // Switch to source again to verify content survived the round-trip
       await sourceTab.click()
       await page.waitForTimeout(500)
-      const reloadedContent = await textarea.inputValue()
-      expect(reloadedContent).toContain('Round trip test content')
+      await expect(source).toContainText('Round trip test content')
     })
   })
 

@@ -45,9 +45,14 @@ export const inkSlashCommands = Extension.create({
         items: ({ query }) => filterSlashItems(query),
         render: () => {
           let renderer: ReactRenderer | null = null
+          // Escape dismisses the menu but the Suggestion plugin stays
+          // active until the `/query` text breaks — track dismissal so the
+          // hidden menu doesn't keep capturing Enter/arrow keys.
+          let dismissed = false
 
           return {
             onStart: (props) => {
+              dismissed = false
               renderer = new ReactRenderer(SlashCommandList, {
                 editor: props.editor,
                 props,
@@ -59,6 +64,7 @@ export const inkSlashCommands = Extension.create({
             },
 
             onUpdate(props) {
+              if (dismissed) return
               renderer?.updateProps(props)
               if (renderer?.element) {
                 placeSlashMenu(renderer.element as HTMLElement, props.clientRect)
@@ -66,7 +72,12 @@ export const inkSlashCommands = Extension.create({
             },
 
             onKeyDown({ event }) {
+              if (dismissed) return false
               if (event.key === 'Escape') {
+                dismissed = true
+                if (renderer?.element) {
+                  ;(renderer.element as HTMLElement).style.display = 'none'
+                }
                 return true
               }
               const handler = renderer?.ref as
@@ -80,6 +91,7 @@ export const inkSlashCommands = Extension.create({
             },
 
             onExit() {
+              dismissed = false
               renderer?.element.remove()
               renderer?.destroy()
               renderer = null

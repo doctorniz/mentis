@@ -37,8 +37,12 @@ export function MarkdownSourceEditor({
   className?: string
   /** 0–1 scroll position to restore after mount (from the visual editor's scroll state). */
   initialScrollFraction?: number
-  /** Receives the scrolling element so the parent can capture scroll state on mode switch. */
-  scrollElementRef?: React.MutableRefObject<HTMLDivElement | null>
+  /**
+   * Receives the scrolling element so the parent can capture scroll state
+   * on mode switch. This is CodeMirror's own `.cm-scroller` — the theme
+   * gives the editor `height: 100%`, so the host div never scrolls.
+   */
+  scrollElementRef?: React.MutableRefObject<HTMLElement | null>
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const onChangeRef = useRef(onChange)
@@ -75,16 +79,19 @@ export function MarkdownSourceEditor({
 
     view.focus()
 
+    if (scrollElementRef) scrollElementRef.current = view.scrollDOM
+
     // Restore the visual editor's scroll position proportionally once the
     // document has been measured (rAF: CodeMirror needs a layout pass).
     if (initialScrollFraction != null && initialScrollFraction > 0) {
-      const el = containerRef.current
+      const el = view.scrollDOM
       requestAnimationFrame(() => {
         el.scrollTop = initialScrollFraction * Math.max(0, el.scrollHeight - el.clientHeight)
       })
     }
 
     return () => {
+      if (scrollElementRef) scrollElementRef.current = null
       view.destroy()
     }
     // Mount fresh each time this component mounts (i.e. each Visual→Source
@@ -94,10 +101,7 @@ export function MarkdownSourceEditor({
 
   return (
     <div
-      ref={(el) => {
-        containerRef.current = el
-        if (scrollElementRef) scrollElementRef.current = el
-      }}
+      ref={containerRef}
       role="textbox"
       aria-label="Raw markdown source"
       aria-multiline="true"
