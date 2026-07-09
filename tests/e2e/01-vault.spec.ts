@@ -1,4 +1,22 @@
-import { test, expect, navigateTo, waitForView } from './fixtures'
+import { test, expect, createMarkdownNote } from './fixtures'
+
+/** The Vault file tree (lives in the main content area, not the nav sidebar). */
+function vaultTree(page: import('@playwright/test').Page) {
+  return page.getByRole('tree', { name: 'Vault file tree' })
+}
+
+/**
+ * Rename the currently open note via the inline title input above the
+ * editor (Enter commits; the file on disk is renamed to match).
+ */
+async function renameOpenNote(page: import('@playwright/test').Page, title: string) {
+  const titleInput = page.locator('input[aria-label="Note title"]')
+  await expect(titleInput).toBeVisible({ timeout: 10_000 })
+  await titleInput.click()
+  await titleInput.fill(title)
+  await titleInput.press('Enter')
+  await page.waitForTimeout(1000)
+}
 
 test.describe('1.1 — Vault Creation & Opening', () => {
   test('1.1.1 Create a new vault via OPFS — verify config.json created', async ({
@@ -6,23 +24,18 @@ test.describe('1.1 — Vault Creation & Opening', () => {
   }) => {
     // The fixture already creates a vault via OPFS.
     // Verify the app shell loaded (sidebar/nav visible means vault opened successfully).
-    await expect(page.locator('aside, nav')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('aside, nav').first()).toBeVisible({ timeout: 15_000 })
 
     // Verify config.json was created by checking vault name appears in sidebar
-    await expect(page.locator('text=E2E Test Vault')).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('text=E2E Test Vault').first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('1.1.2 Open an existing OPFS vault — verify files/settings preserved', async ({
     vaultPage: page,
   }) => {
     // Create a note so there's something to verify on re-open
-    await page.keyboard.press('Control+n')
-    await page.waitForTimeout(500)
-    const noteBtn = page.getByText(/^Note$/i).first()
-    if (await noteBtn.isVisible({ timeout: 3000 })) {
-      await noteBtn.click()
-    }
-    await page.waitForTimeout(1500)
+    await createMarkdownNote(page)
+    await renameOpenNote(page, 'Persisted Note')
 
     // Reload — the vault should auto-restore from OPFS
     await page.reload()
@@ -30,30 +43,34 @@ test.describe('1.1 — Vault Creation & Opening', () => {
     await page.waitForSelector('aside, nav', { timeout: 30_000 })
 
     // Vault name should still appear (settings preserved)
-    await expect(page.locator('text=E2E Test Vault')).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('text=E2E Test Vault').first()).toBeVisible({ timeout: 10_000 })
+
+    // The created note should still be in the tree
+    await page.keyboard.press('Control+1')
+    await expect(
+      vaultTree(page).getByRole('button', { name: 'Persisted Note', exact: true }),
+    ).toBeVisible({ timeout: 10_000 })
   })
 
   test('1.1.6 Create vault with unicode characters in name', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('domcontentloaded')
 
-    // If we land on a vault-open state, close it first to reach the landing
-    const landing = page.locator('input[type="text"]').first()
-    const isLanding = await landing.isVisible({ timeout: 5_000 }).catch(() => false)
+    const landingForm = page.locator('form').filter({
+      has: page.getByRole('button', { name: /create/i }),
+    })
+    const isLanding = await landingForm.isVisible({ timeout: 10_000 }).catch(() => false)
 
     if (isLanding) {
       const unicodeName = '日本語テスト 📝 Ñoño'
-      await landing.clear()
-      await landing.fill(unicodeName)
-
-      const createBtn = page.getByRole('button', { name: /create/i })
-      if (await createBtn.isVisible({ timeout: 3000 })) {
-        await createBtn.click()
-      }
+      const nameInput = landingForm.getByRole('textbox')
+      await nameInput.clear()
+      await nameInput.fill(unicodeName)
+      await landingForm.getByRole('button', { name: /create/i }).click()
 
       // App shell should load — vault created successfully
       await page.waitForSelector('aside, nav', { timeout: 30_000 })
-      await expect(page.getByText(unicodeName)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(unicodeName).first()).toBeVisible({ timeout: 10_000 })
     } else {
       test.skip(true, 'Cannot reach landing page to test vault creation')
     }
@@ -65,232 +82,122 @@ test.describe('1.1 — Vault Creation & Opening', () => {
 
 test.describe('1.2 — File CRUD Operations', () => {
   test('1.2.1 Create markdown file — verify appears in tree', async ({ vaultPage: page }) => {
-    // Navigate to Vault view
-    await page.keyboard.press('Control+1')
-    await page.waitForTimeout(800)
+    await createMarkdownNote(page)
+    await renameOpenNote(page, 'My Test Note')
 
-    // Create a new note via Ctrl+N
-    await page.keyboard.press('Control+n')
-    await page.waitForTimeout(500)
-
-    const noteBtn = page.getByText(/^Note$/i).first()
-    await expect(noteBtn).toBeVisible({ timeout: 5000 })
-    await noteBtn.click()
-    await page.waitForTimeout(1500)
-
-    // Type a title in the editor
-    const editor = page.locator('.tiptap, .ProseMirror').first()
-    await expect(editor).toBeVisible({ timeout: 10_000 })
-    await editor.click()
-    await editor.pressSequentially('My Test Note')
-    await page.waitForTimeout(2000) // auto-save
-
-    // Verify the file appears in the tree — look for the title text in the sidebar/tree area
-    const tree = page.locator('aside, [class*="tree"], [class*="sidebar"]')
-    await expect(tree.getByText('My Test Note')).toBeVisible({ timeout: 10_000 })
+    await expect(
+      vaultTree(page).getByRole('button', { name: 'My Test Note', exact: true }),
+    ).toBeVisible({ timeout: 10_000 })
   })
 
   test('1.2.4 Rename file — verify tabs update', async ({ vaultPage: page }) => {
-    await page.keyboard.press('Control+1')
-    await page.waitForTimeout(800)
+    // Two notes: the editor tab bar only renders with 2+ open tabs
+    await createMarkdownNote(page)
+    await createMarkdownNote(page)
+    await renameOpenNote(page, 'Renamed Note')
 
-    // Create a note
-    await page.keyboard.press('Control+n')
-    await page.waitForTimeout(500)
-    const noteBtn = page.getByText(/^Note$/i).first()
-    if (await noteBtn.isVisible({ timeout: 3000 })) await noteBtn.click()
-    await page.waitForTimeout(1500)
+    // Tab bar should show the new name
+    const tabBar = page.locator('[role="tablist"][aria-label="Open notes"]')
+    await expect(tabBar.getByText('Renamed Note')).toBeVisible({ timeout: 5000 })
 
-    const editor = page.locator('.tiptap, .ProseMirror').first()
-    await expect(editor).toBeVisible({ timeout: 10_000 })
-    await editor.click()
-    await editor.pressSequentially('Original Name')
-    await page.waitForTimeout(2000)
-
-    // Right-click the file in the tree to get context menu → Rename
-    const treeItem = page.locator('aside').getByText('Original Name').first()
-    await expect(treeItem).toBeVisible({ timeout: 10_000 })
-    await treeItem.click({ button: 'right' })
-    await page.waitForTimeout(300)
-
-    const renameOption = page.getByText(/rename/i).first()
-    if (await renameOption.isVisible({ timeout: 3000 })) {
-      await renameOption.click()
-      await page.waitForTimeout(300)
-
-      // Fill in new name
-      const renameInput = page
-        .locator('input[aria-label="New note name"], input[type="text"]')
-        .last()
-      await renameInput.clear()
-      await renameInput.fill('Renamed Note')
-
-      // Confirm rename
-      const confirmBtn = page.getByRole('button', { name: /rename|save|confirm|ok/i }).first()
-      if (await confirmBtn.isVisible({ timeout: 2000 })) {
-        await confirmBtn.click()
-      } else {
-        await renameInput.press('Enter')
-      }
-      await page.waitForTimeout(1000)
-
-      // Tab bar should show the new name
-      const tabBar = page.locator('[aria-label="Open notes"], [role="tablist"]')
-      await expect(tabBar.getByText('Renamed Note')).toBeVisible({ timeout: 5000 })
-    }
+    // And so should the tree
+    await expect(
+      vaultTree(page).getByRole('button', { name: 'Renamed Note', exact: true }),
+    ).toBeVisible({ timeout: 10_000 })
   })
 
   test('1.2.5 Rename with case-only change — no false "already exists" error', async ({
     vaultPage: page,
   }) => {
-    await page.keyboard.press('Control+1')
-    await page.waitForTimeout(800)
+    await createMarkdownNote(page)
+    await renameOpenNote(page, 'lowercase note')
 
-    // Create a note
-    await page.keyboard.press('Control+n')
-    await page.waitForTimeout(500)
-    const noteBtn = page.getByText(/^Note$/i).first()
-    if (await noteBtn.isVisible({ timeout: 3000 })) await noteBtn.click()
-    await page.waitForTimeout(1500)
+    // Case-only rename. The app treats old and new path as the same file
+    // (vaultPathsPointToSameFile) and safely no-ops — renaming a file to
+    // its own name with different casing on a case-insensitive FS (Windows
+    // FSAPI) risks self-overwrite. What must NOT happen is a false
+    // "already exists" error.
+    await renameOpenNote(page, 'Lowercase Note')
 
-    const editor = page.locator('.tiptap, .ProseMirror').first()
-    await expect(editor).toBeVisible({ timeout: 10_000 })
-    await editor.click()
-    await editor.pressSequentially('lowercase note')
-    await page.waitForTimeout(2000)
+    const errorToast = page.locator('[role="status"]').filter({ hasText: /already exists/i })
+    await expect(errorToast).not.toBeVisible({ timeout: 2000 })
 
-    // Right-click → Rename
-    const treeItem = page.locator('aside').getByText('lowercase note').first()
-    await expect(treeItem).toBeVisible({ timeout: 10_000 })
-    await treeItem.click({ button: 'right' })
-    await page.waitForTimeout(300)
-
-    const renameOption = page.getByText(/rename/i).first()
-    if (await renameOption.isVisible({ timeout: 3000 })) {
-      await renameOption.click()
-      await page.waitForTimeout(300)
-
-      const renameInput = page
-        .locator('input[aria-label="New note name"], input[type="text"]')
-        .last()
-      await renameInput.clear()
-      await renameInput.fill('Lowercase Note') // case-only change
-
-      const confirmBtn = page.getByRole('button', { name: /rename|save|confirm|ok/i }).first()
-      if (await confirmBtn.isVisible({ timeout: 2000 })) {
-        await confirmBtn.click()
-      } else {
-        await renameInput.press('Enter')
-      }
-      await page.waitForTimeout(1000)
-
-      // No error toast should appear
-      const errorToast = page.locator('[role="status"]').filter({ hasText: /already exists/i })
-      await expect(errorToast).not.toBeVisible({ timeout: 2000 })
-
-      // The new name should be visible
-      await expect(page.locator('aside').getByText('Lowercase Note')).toBeVisible({ timeout: 5000 })
-    }
+    // The note is still intact in the tree (original casing)
+    await expect(
+      vaultTree(page)
+        .getByRole('treeitem')
+        .filter({ hasText: /lowercase note/i }),
+    ).toBeVisible({ timeout: 10_000 })
   })
 
   test('1.2.6 Delete file — verify removed from tree', async ({ vaultPage: page }) => {
-    await page.keyboard.press('Control+1')
-    await page.waitForTimeout(800)
+    await createMarkdownNote(page)
+    await renameOpenNote(page, 'Note To Delete')
 
-    // Create a note to delete
-    await page.keyboard.press('Control+n')
-    await page.waitForTimeout(500)
-    const noteBtn = page.getByText(/^Note$/i).first()
-    if (await noteBtn.isVisible({ timeout: 3000 })) await noteBtn.click()
-    await page.waitForTimeout(1500)
+    const item = vaultTree(page).getByRole('treeitem').filter({ hasText: 'Note To Delete' })
+    await expect(item).toBeVisible({ timeout: 10_000 })
 
-    const editor = page.locator('.tiptap, .ProseMirror').first()
-    await expect(editor).toBeVisible({ timeout: 10_000 })
-    await editor.click()
-    await editor.pressSequentially('Note To Delete')
-    await page.waitForTimeout(2000)
+    // The per-item delete button (revealed on hover)
+    await item.hover()
+    await item.getByRole('button', { name: /^Delete / }).click()
 
-    // Right-click → Delete
-    const treeItem = page.locator('aside').getByText('Note To Delete').first()
-    await expect(treeItem).toBeVisible({ timeout: 10_000 })
-    await treeItem.click({ button: 'right' })
-    await page.waitForTimeout(300)
+    // Confirm in the "Delete note?" dialog. Its button is exactly
+    // "Delete" — tree-row delete buttons include the filename, so the
+    // exact name is unambiguous.
+    await expect(page.getByRole('heading', { name: /delete note/i })).toBeVisible({
+      timeout: 5000,
+    })
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await page.waitForTimeout(1000)
 
-    const deleteOption = page.getByText(/delete/i).first()
-    if (await deleteOption.isVisible({ timeout: 3000 })) {
-      await deleteOption.click()
-      await page.waitForTimeout(300)
-
-      // Confirm deletion if dialog appears
-      const confirmBtn = page.getByRole('button', { name: /delete|confirm|yes/i }).last()
-      if (await confirmBtn.isVisible({ timeout: 2000 })) {
-        await confirmBtn.click()
-      }
-      await page.waitForTimeout(1000)
-
-      // File should no longer appear in tree
-      await expect(page.locator('aside').getByText('Note To Delete')).not.toBeVisible({
-        timeout: 5000,
-      })
-    }
+    // File should no longer appear in tree
+    await expect(
+      vaultTree(page).getByRole('button', { name: 'Note To Delete', exact: true }),
+    ).not.toBeVisible({ timeout: 5000 })
   })
 
   test('1.2.11 Attempt to create file with / in name — rejected gracefully', async ({
     vaultPage: page,
   }) => {
-    await page.keyboard.press('Control+1')
-    await page.waitForTimeout(800)
+    await createMarkdownNote(page)
 
-    // Create a note
-    await page.keyboard.press('Control+n')
-    await page.waitForTimeout(500)
-    const noteBtn = page.getByText(/^Note$/i).first()
-    if (await noteBtn.isVisible({ timeout: 3000 })) await noteBtn.click()
-    await page.waitForTimeout(1500)
+    // The title input strips illegal filename characters as you type
+    const titleInput = page.locator('input[aria-label="Note title"]')
+    await titleInput.click()
+    await titleInput.fill('')
+    await titleInput.pressSequentially('invalid/name')
+    const value = await titleInput.inputValue()
+    expect(value).not.toContain('/')
 
-    const editor = page.locator('.tiptap, .ProseMirror').first()
-    await expect(editor).toBeVisible({ timeout: 10_000 })
-    await editor.click()
-    await editor.pressSequentially('invalid/name')
-    await page.waitForTimeout(2000)
+    await titleInput.press('Enter')
+    await page.waitForTimeout(1000)
 
-    // If there's a rename dialog or the tree shows a sanitized name,
-    // just ensure no crash occurred and the app is still functional
-    await expect(page.locator('aside, nav')).toBeVisible()
+    // No crash — the app is still functional
+    await expect(page.locator('aside, nav').first()).toBeVisible()
   })
 })
 
 test.describe('1.3 — Auto-Save Behavior', () => {
   test('1.3.1 Edit note — wait — verify saved', async ({ vaultPage: page }) => {
-    await page.keyboard.press('Control+1')
-    await page.waitForTimeout(800)
+    await createMarkdownNote(page)
+    await renameOpenNote(page, 'Autosave Note')
 
-    // Create a new note
-    await page.keyboard.press('Control+n')
-    await page.waitForTimeout(500)
-    const noteBtn = page.getByText(/^Note$/i).first()
-    if (await noteBtn.isVisible({ timeout: 3000 })) await noteBtn.click()
-    await page.waitForTimeout(1500)
-
-    const editor = page.locator('.tiptap, .ProseMirror').first()
-    await expect(editor).toBeVisible({ timeout: 10_000 })
+    const editor = page.locator('.tiptap').first()
     await editor.click()
     await editor.pressSequentially('Auto-save content test')
 
     // Wait for auto-save debounce (~750ms + buffer)
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(2500)
 
     // Reload and verify content persisted
     await page.reload()
     await page.waitForLoadState('domcontentloaded')
     await page.waitForSelector('aside, nav', { timeout: 30_000 })
-
-    // Navigate to vault and look for the note
     await page.keyboard.press('Control+1')
     await page.waitForTimeout(1000)
 
-    // The note should appear in the tree (title derived from content)
-    await expect(page.locator('aside').getByText('Auto-save content test')).toBeVisible({
+    await vaultTree(page).getByRole('button', { name: 'Autosave Note', exact: true }).click()
+    await expect(page.locator('.tiptap').first()).toContainText('Auto-save content test', {
       timeout: 10_000,
     })
   })
@@ -298,54 +205,45 @@ test.describe('1.3 — Auto-Save Behavior', () => {
   test('1.3.3 Edit note — switch views — verify immediate save on blur', async ({
     vaultPage: page,
   }) => {
-    await page.keyboard.press('Control+1')
-    await page.waitForTimeout(800)
+    await createMarkdownNote(page)
+    await renameOpenNote(page, 'Blur Note')
 
-    // Create a new note
-    await page.keyboard.press('Control+n')
-    await page.waitForTimeout(500)
-    const noteBtn = page.getByText(/^Note$/i).first()
-    if (await noteBtn.isVisible({ timeout: 3000 })) await noteBtn.click()
-    await page.waitForTimeout(1500)
-
-    const editor = page.locator('.tiptap, .ProseMirror').first()
-    await expect(editor).toBeVisible({ timeout: 10_000 })
+    const editor = page.locator('.tiptap').first()
     await editor.click()
     await editor.pressSequentially('Blur save test')
 
-    // Immediately switch view (triggers blur save)
-    await page.keyboard.press('Control+2') // Switch to Board
+    // Immediately switch view (unmount flush saves the note)
+    await page.keyboard.press('Control+2')
     await page.waitForTimeout(1500)
 
-    // Switch back to Vault
+    // Switch back and reopen the note
     await page.keyboard.press('Control+1')
-    await page.waitForTimeout(1500)
+    await page.waitForTimeout(1000)
+    await vaultTree(page).getByRole('button', { name: 'Blur Note', exact: true }).click()
 
-    // The note should exist in the tree (saved despite no debounce wait)
-    await expect(page.locator('aside').getByText('Blur save test')).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('.tiptap').first()).toContainText('Blur save test', {
+      timeout: 10_000,
+    })
   })
 })
 
 test.describe('1.5 — Vault Structure Integrity', () => {
   test('1.5.1 Verify _marrow/ directory hidden from file tree', async ({ vaultPage: page }) => {
-    // Navigate to Vault view
     await page.keyboard.press('Control+1')
     await page.waitForTimeout(1000)
 
-    // The _marrow folder should NOT be visible in the normal vault tree
-    const marrowInTree = page.locator('aside').getByText('_marrow')
-    await expect(marrowInTree).not.toBeVisible({ timeout: 3000 })
+    // The _marrow folder should NOT be visible in the vault tree
+    await expect(vaultTree(page).getByText('_marrow')).not.toBeVisible({ timeout: 3000 })
   })
 
-  test('1.5.8 Open Files view (Ctrl+7) — verify hidden folders visible', async ({
+  test('1.5.8 Open Files view (Ctrl+5) — verify hidden folders visible', async ({
     vaultPage: page,
   }) => {
     // Navigate to Files view (shows hidden folders)
-    await page.keyboard.press('Control+7')
+    await page.keyboard.press('Control+5')
     await page.waitForTimeout(1500)
 
     // In the Files view (FileBrowserView with showHidden), _marrow should be visible
-    const filesArea = page.locator('main')
-    await expect(filesArea.getByText('_marrow')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('_marrow').first()).toBeVisible({ timeout: 10_000 })
   })
 })

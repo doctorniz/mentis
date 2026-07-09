@@ -207,13 +207,10 @@ test.describe('5.2 Layers', () => {
     await page.waitForTimeout(300)
     await expect(page.getByText('Layer 2')).toBeVisible()
 
-    // Select Layer 1 and delete it
-    await page.getByText('Layer 1').click()
-    await page.waitForTimeout(200)
-
-    const deleteButtons = page.getByTitle('Delete layer')
-    // Click delete for the active layer
-    await deleteButtons.first().click()
+    // Each layer row has its own delete button — target Layer 1's row
+    // (rows render top layer first, so .first() would delete Layer 2).
+    const layer1Row = page.getByText('Layer 1', { exact: true }).locator('xpath=..')
+    await layer1Row.getByTitle('Delete layer').click()
     await page.waitForTimeout(300)
 
     // Layer 1 should be gone, Layer 2 remains

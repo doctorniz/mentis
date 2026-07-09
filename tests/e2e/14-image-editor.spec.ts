@@ -1,4 +1,4 @@
-import { test, expect, navigateTo } from './fixtures'
+import { test, expect, navigateTo, writeVaultFile, openVaultFile } from './fixtures'
 
 /**
  * 1×1 red pixel PNG (smallest valid raster image for testing).
@@ -16,29 +16,12 @@ async function writeImageToVault(
   filename: string,
   b64: string,
 ) {
-  await page.evaluate(
-    async ({ name, data }) => {
-      const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
-      const root = await navigator.storage.getDirectory()
-      const vault = await root.getDirectoryHandle('E2E Test Vault', { create: true })
-      const fh = await vault.getFileHandle(name, { create: true })
-      const w = await fh.createWritable()
-      await w.write(bytes)
-      await w.close()
-    },
-    { name: filename, data: b64 },
-  )
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('ink:vault-changed')))
-  await page.waitForTimeout(1000)
+  await writeVaultFile(page, filename, b64, { base64: true })
 }
 
 async function openFileInVault(page: import('@playwright/test').Page, filename: string) {
-  await navigateTo(page, 'vault')
+  await openVaultFile(page, filename)
   await page.waitForTimeout(500)
-  const stem = filename.replace(/\.[^/.]+$/, '')
-  const treeItem = page.getByText(stem)
-  await treeItem.click()
-  await page.waitForTimeout(1500)
 }
 
 /* ------------------------------------------------------------------ */
@@ -59,15 +42,9 @@ test.describe('15.1 — Image Editing Operations', () => {
     await expect(page.locator('[aria-label="Rotate 90° counter-clockwise"]')).toBeVisible()
 
     // Adjustment sliders (brightness, contrast, saturation via sr-only labels)
-    await expect(
-      page.locator('text=Brightness').or(page.locator('label:has(span:text("Brightness"))')),
-    ).toBeAttached()
-    await expect(
-      page.locator('text=Contrast').or(page.locator('label:has(span:text("Contrast"))')),
-    ).toBeAttached()
-    await expect(
-      page.locator('text=Saturation').or(page.locator('label:has(span:text("Saturation"))')),
-    ).toBeAttached()
+    await expect(page.locator('label').filter({ hasText: 'Brightness' }).first()).toBeAttached()
+    await expect(page.locator('label').filter({ hasText: 'Contrast' }).first()).toBeAttached()
+    await expect(page.locator('label').filter({ hasText: 'Saturation' }).first()).toBeAttached()
   })
 
   test('15.1.1b Open JPEG — ImageEditorView with toolbar', async ({ vaultPage: page }) => {
@@ -232,23 +209,7 @@ test.describe('15.1 — Image Editing Operations', () => {
   test('15.1.9b Open SVG — plain preview, no edit tools', async ({ vaultPage: page }) => {
     const SVG_B64 = btoa('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>')
 
-    await page.evaluate(
-      async ({ name, data }) => {
-        const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
-        const root = await navigator.storage.getDirectory()
-        const vault = await root.getDirectoryHandle('E2E Test Vault', { create: true })
-        const fh = await vault.getFileHandle(name, { create: true })
-        const w = await fh.createWritable()
-        await w.write(bytes)
-        await w.close()
-      },
-      {
-        name: 'icon.svg',
-        data: btoa('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>'),
-      },
-    )
-    await page.evaluate(() => window.dispatchEvent(new CustomEvent('ink:vault-changed')))
-    await page.waitForTimeout(1000)
+    await writeVaultFile(page, 'icon.svg', SVG_B64, { base64: true })
     await openFileInVault(page, 'icon.svg')
 
     // No edit toolbar for SVGs

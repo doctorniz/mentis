@@ -24,8 +24,9 @@ test.describe('13 — AI Chat', () => {
       }
       await page.waitForTimeout(500)
 
-      // Navigate to AI tab in settings
-      const aiTab = page.getByText(/^AI$|^Chat$|^LLM$/i).first()
+      // Navigate to AI tab in settings (scope to the dialog — the nav
+      // sidebar behind the overlay also has a "Chat" label)
+      const aiTab = page.locator('[role="dialog"]').getByRole('tab', { name: 'AI' })
       if (await aiTab.isVisible().catch(() => false)) {
         await aiTab.click()
         await page.waitForTimeout(300)
@@ -147,21 +148,19 @@ test.describe('13 — AI Chat', () => {
       await createMarkdownNote(page, 'Chat Test Note')
       await waitForAutoSave(page)
 
-      // Look for the sparkle/chat button in the editor toolbar
+      // The chat section lives in the editor right column: collapsed it
+      // shows "Expand chat" (or "Open chat" on the collapsed rail)
       const sparkleBtn = page
-        .locator(
-          'button[aria-label*="hat"], button[aria-label*="parkle"], button[aria-label*="AI"], [data-testid="chat-toggle"]',
-        )
+        .locator('button[aria-label="Expand chat"], button[aria-label="Open chat"]')
         .first()
       await expect(sparkleBtn).toBeVisible({ timeout: 10_000 })
       await sparkleBtn.click()
       await page.waitForTimeout(500)
 
-      // Chat panel should open
-      const chatPanel = page
-        .locator('[data-testid="chat-panel"], [class*="chat-panel"], [class*="ChatPanel"]')
-        .first()
-      await expect(chatPanel).toBeVisible({ timeout: 5_000 })
+      // Chat panel open: the collapse control replaces the expand one
+      await expect(page.locator('button[aria-label="Collapse chat"]')).toBeVisible({
+        timeout: 5_000,
+      })
     })
 
     test('14.2.8 Close panel — no data loss', async ({ vaultPage: page }) => {

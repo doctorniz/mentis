@@ -1,11 +1,4 @@
-import {
-  test,
-  expect,
-  navigateTo,
-  waitForView,
-  createMarkdownNote,
-  waitForAutoSave,
-} from './fixtures'
+import { test, expect, waitForAutoSave, writeVaultFile, openVaultFile } from './fixtures'
 
 const KANBAN_MD = `---
 type: kanban
@@ -26,30 +19,11 @@ type: kanban
 `
 
 async function createKanbanFile(page: import('@playwright/test').Page, filename = 'board.md') {
-  await page.evaluate(
-    async ({ name, content }) => {
-      const root = await navigator.storage.getDirectory()
-      const vaultDir = await root.getDirectoryHandle('E2E Test Vault', { create: true })
-      const fileHandle = await vaultDir.getFileHandle(name, { create: true })
-      const writable = await fileHandle.createWritable()
-      await writable.write(content)
-      await writable.close()
-    },
-    { name: filename, content: KANBAN_MD },
-  )
-  // Dispatch vault-changed so the app picks it up
-  await page.evaluate(() => {
-    window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-  })
-  await page.waitForTimeout(1000)
+  await writeVaultFile(page, filename, KANBAN_MD)
 }
 
 async function openFileInVault(page: import('@playwright/test').Page, filename: string) {
-  await navigateTo(page, 'vault')
-  await page.waitForTimeout(500)
-  const treeItem = page.getByText(filename.replace('.md', ''))
-  await treeItem.click()
-  await page.waitForTimeout(1000)
+  await openVaultFile(page, filename)
 }
 
 test.describe('10 — Kanban Board', () => {
@@ -60,11 +34,13 @@ test.describe('10 — Kanban Board', () => {
       await createKanbanFile(page)
       await openFileInVault(page, 'board.md')
 
-      // Should render as a kanban board, not as raw markdown
-      const kanbanBoard = page.locator(
-        '[data-testid="kanban-board"], .kanban-board, [class*="kanban"]',
-      )
-      await expect(kanbanBoard).toBeVisible({ timeout: 10_000 })
+      // Rendered as a board: column headings become h3s with card counts
+      // (raw markdown would show ## text inside an editor instead)
+      await expect(page.getByRole('heading', { name: 'To Do', level: 3 })).toBeVisible({
+        timeout: 10_000,
+      })
+      await expect(page.getByRole('heading', { name: 'In Progress', level: 3 })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Done', level: 3 })).toBeVisible()
     })
 
     test('10.1.2 Columns rendered from ## headings', async ({ vaultPage: page }) => {
@@ -112,15 +88,16 @@ test.describe('10 — Kanban Board', () => {
 
       await page.waitForTimeout(1000)
 
-      // Double-click or click the card to edit
+      // Click the card text to open the inline rename input
       const card = page.getByText('First task')
-      await card.dblclick()
-      await page.waitForTimeout(300)
+      await card.click()
+      const input = page.locator('input[type="text"][value]').or(page.locator('input:focus'))
+      await expect(input.first()).toBeVisible({ timeout: 3_000 })
 
-      // Select all and type new text
+      // Replace the text and COMMIT with Enter (Escape cancels the edit)
       await page.keyboard.press('Control+a')
       await page.keyboard.type('Updated task')
-      await page.keyboard.press('Escape')
+      await page.keyboard.press('Enter')
 
       await waitForAutoSave(page)
 
@@ -134,13 +111,13 @@ test.describe('10 — Kanban Board', () => {
 
       await page.waitForTimeout(1000)
 
-      // Find a checkbox associated with "First task" and toggle it
-      const checkbox = page.locator('input[type="checkbox"]').first()
+      // Kanban cards use a custom checkbox button (role=checkbox)
+      const checkbox = page.getByRole('checkbox', { name: 'Check card' }).first()
       await checkbox.click()
       await waitForAutoSave(page)
 
-      // After toggling, it should be checked
-      await expect(checkbox).toBeChecked()
+      // After toggling, it flips to checked
+      await expect(page.getByRole('checkbox', { name: 'Uncheck card' }).first()).toBeVisible()
     })
 
     test('10.1.9 File remains valid .md after edits', async ({ vaultPage: page }) => {
@@ -149,18 +126,26 @@ test.describe('10 — Kanban Board', () => {
 
       await page.waitForTimeout(1000)
 
-      // Toggle a checkbox to trigger a save
-      const checkbox = page.locator('input[type="checkbox"]').first()
+      // Toggle a card checkbox to trigger a save
+      const checkbox = page.getByRole('checkbox', { name: 'Check card' }).first()
       await checkbox.click()
       await waitForAutoSave(page)
 
       // Read the file back from OPFS and verify it's valid markdown
       const content = await page.evaluate(async () => {
         const root = await navigator.storage.getDirectory()
-        const vaultDir = await root.getDirectoryHandle('E2E Test Vault')
-        const fileHandle = await vaultDir.getFileHandle('board.md')
-        const file = await fileHandle.getFile()
-        return file.text()
+        const vaultsDir = await root.getDirectoryHandle('vaults')
+        const iter = (
+          vaultsDir as unknown as { values(): AsyncIterable<FileSystemHandle> }
+        ).values()
+        for await (const entry of iter) {
+          if (entry.kind === 'directory') {
+            const fileHandle = await (entry as FileSystemDirectoryHandle).getFileHandle('board.md')
+            const file = await fileHandle.getFile()
+            return file.text()
+          }
+        }
+        throw new Error('vault not found')
       })
 
       // Should still have frontmatter

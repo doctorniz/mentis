@@ -1,32 +1,11 @@
-import {
-  test,
-  expect,
-  navigateTo,
-  waitForView,
-  createMarkdownNote,
-  waitForAutoSave,
-} from './fixtures'
+import { test, expect, navigateTo, createMarkdownNote, writeVaultFile } from './fixtures'
 
 async function createNoteViaOPFS(
   page: import('@playwright/test').Page,
   filename: string,
   content: string,
 ) {
-  await page.evaluate(
-    async ({ name, body }) => {
-      const root = await navigator.storage.getDirectory()
-      const vaultDir = await root.getDirectoryHandle('E2E Test Vault', { create: true })
-      const fileHandle = await vaultDir.getFileHandle(name, { create: true })
-      const writable = await fileHandle.createWritable()
-      await writable.write(body)
-      await writable.close()
-    },
-    { name: filename, body: content },
-  )
-  await page.evaluate(() => {
-    window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-  })
-  await page.waitForTimeout(500)
+  await writeVaultFile(page, filename, content)
 }
 
 async function createNoteInSubfolder(
@@ -35,25 +14,18 @@ async function createNoteInSubfolder(
   filename: string,
   content: string,
 ) {
-  await page.evaluate(
-    async ({ folder, name, body }) => {
-      const root = await navigator.storage.getDirectory()
-      const vaultDir = await root.getDirectoryHandle('E2E Test Vault', { create: true })
-      const subDir = await vaultDir.getDirectoryHandle(folder, { create: true })
-      const fileHandle = await subDir.getFileHandle(name, { create: true })
-      const writable = await fileHandle.createWritable()
-      await writable.write(body)
-      await writable.close()
-    },
-    { folder, name: filename, body: content },
-  )
-  await page.evaluate(() => {
-    window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-  })
-  await page.waitForTimeout(500)
+  await writeVaultFile(page, `${folder}/${filename}`, content)
 }
 
 async function openSearchAndQuery(page: import('@playwright/test').Page, query: string) {
+  // Specs seed notes straight into OPFS; the MiniSearch index only does a
+  // full rebuild on vault open (in-app saves update it incrementally).
+  // Reload so the bootstrap rebuild picks the seeded files up.
+  await page.reload()
+  await page.waitForLoadState('domcontentloaded')
+  await page.waitForSelector('nav', { timeout: 30_000 })
+  await page.waitForTimeout(1500) // index rebuild
+
   await navigateTo(page, 'search')
   await page.waitForTimeout(500)
 
@@ -92,7 +64,7 @@ test.describe('11 — Search', () => {
       await openSearchAndQuery(page, 'Quantum')
 
       // Should find the newly created note
-      await expect(page.getByText(/Quantum/)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(/Quantum/).first()).toBeVisible({ timeout: 10_000 })
     })
 
     test('11.1.5 Fuzzy search — "projct" matches "project"', async ({ vaultPage: page }) => {
@@ -106,7 +78,7 @@ test.describe('11 — Search', () => {
       await openSearchAndQuery(page, 'projct')
 
       // Fuzzy matching should find "project"
-      await expect(page.getByText(/[Pp]roject/)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(/[Pp]roject/).first()).toBeVisible({ timeout: 10_000 })
     })
 
     test('11.1.6 Prefix matching — "pro" matches "project"', async ({ vaultPage: page }) => {
@@ -120,7 +92,7 @@ test.describe('11 — Search', () => {
       await openSearchAndQuery(page, 'pro')
 
       // Prefix matching should find "project"
-      await expect(page.getByText(/[Pp]roject/)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(/[Pp]roject/).first()).toBeVisible({ timeout: 10_000 })
     })
   })
 
@@ -151,7 +123,7 @@ test.describe('11 — Search', () => {
       }
 
       // Result should still show markdown file
-      await expect(page.getByText(/Filter Target/)).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByText(/Filter Target/).first()).toBeVisible({ timeout: 5_000 })
     })
 
     test('11.2.3 Folder prefix filter', async ({ vaultPage: page }) => {
@@ -186,7 +158,7 @@ test.describe('11 — Search', () => {
       }
 
       // Should show the file in the research folder
-      await expect(page.getByText(/Deep Learning/)).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByText(/Deep Learning/).first()).toBeVisible({ timeout: 5_000 })
     })
   })
 
@@ -201,7 +173,7 @@ test.describe('11 — Search', () => {
 
       // Search by title
       await openSearchAndQuery(page, 'Astrophysics')
-      await expect(page.getByText(/Astrophysics/)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(/Astrophysics/).first()).toBeVisible({ timeout: 10_000 })
 
       // Clear and search by body content
       const searchInput = page
@@ -211,7 +183,7 @@ test.describe('11 — Search', () => {
       await searchInput.fill('Hawking radiation')
       await page.waitForTimeout(1500)
 
-      await expect(page.getByText(/Hawking|Astrophysics/)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(/Hawking|Astrophysics/).first()).toBeVisible({ timeout: 10_000 })
     })
 
     test('11.3.4 Snippet generation', async ({ vaultPage: page }) => {
@@ -231,7 +203,7 @@ test.describe('11 — Search', () => {
       await expect(resultArea.first()).toBeVisible({ timeout: 10_000 })
 
       // The snippet should contain some surrounding text
-      await expect(page.getByText(/moonlight/)).toBeVisible()
+      await expect(page.getByText(/moonlight/).first()).toBeVisible()
     })
   })
 })

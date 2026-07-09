@@ -37,6 +37,7 @@ import { isNotesTreeEntry, sortTreeEntries } from '@/lib/notes/tree-filter'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { createUntitledNote } from '@/lib/notes/new-note'
 import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
+import { awaitPendingMarkdownSave } from '@/components/notes/markdown-note-editor'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useEditorStore } from '@/stores/editor'
@@ -216,23 +217,28 @@ export function NotesFileTree({
   async function handleDelete() {
     if (!deletePath) return
     try {
+      // Close affected tabs FIRST and wait for their unmount flush-saves.
+      // Removing the file before the flush lets the closing editor write
+      // the note back from memory — a deleted-but-resurrected file.
+      const { tabs, closeTab } = useEditorStore.getState()
+      const affected = tabs.filter(
+        (t) => t.path === deletePath || t.path.startsWith(deletePath + '/'),
+      )
+      for (const tab of affected) closeTab(tab.id)
+      if (affected.length > 0) {
+        // Let React commit the unmount so the flush promise is registered.
+        await new Promise((r) => setTimeout(r, 50))
+        await Promise.all(affected.map((t) => awaitPendingMarkdownSave(t.path)))
+      }
+
       if (deleteIsFolder) {
         const files = await collectFilePaths(vaultFs, deletePath)
         for (const f of files) removeSearchDocument(f)
-        const { tabs, closeTab } = useEditorStore.getState()
-        for (const tab of tabs) {
-          if (tab.path.startsWith(deletePath + '/') || tab.path === deletePath) {
-            closeTab(tab.id)
-          }
-        }
         await vaultFs.removeDir(deletePath)
         toast.success('Folder deleted')
       } else {
         await vaultFs.remove(deletePath)
         removeSearchDocument(deletePath)
-        const tabs = useEditorStore.getState().tabs
-        const tab = tabs.find((t) => t.path === deletePath)
-        if (tab) useEditorStore.getState().closeTab(tab.id)
         toast.success('Note deleted')
       }
       if (selectedPath?.startsWith(deletePath)) setSelectedPath(null)

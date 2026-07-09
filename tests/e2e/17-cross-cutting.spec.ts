@@ -1,32 +1,22 @@
-import { test, expect, navigateTo, createMarkdownNote } from './fixtures'
+import {
+  test,
+  expect,
+  navigateTo,
+  createMarkdownNote,
+  writeVaultFile,
+  openVaultFile,
+} from './fixtures'
 
 async function writeFileToVault(
   page: import('@playwright/test').Page,
   filename: string,
   content: string,
 ) {
-  await page.evaluate(
-    async ({ name, text }) => {
-      const root = await navigator.storage.getDirectory()
-      const vault = await root.getDirectoryHandle('E2E Test Vault', { create: true })
-      const fh = await vault.getFileHandle(name, { create: true })
-      const w = await fh.createWritable()
-      await w.write(text)
-      await w.close()
-    },
-    { name: filename, text: content },
-  )
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('ink:vault-changed')))
-  await page.waitForTimeout(1000)
+  await writeVaultFile(page, filename, content)
 }
 
 async function openFileInVault(page: import('@playwright/test').Page, filename: string) {
-  await navigateTo(page, 'vault')
-  await page.waitForTimeout(500)
-  const stem = filename.replace(/\.[^/.]+$/, '')
-  const treeItem = page.getByText(stem)
-  await treeItem.click()
-  await page.waitForTimeout(1000)
+  await openVaultFile(page, filename)
 }
 
 /* ------------------------------------------------------------------ */
@@ -42,13 +32,14 @@ test.describe('18.1 — Race Conditions', () => {
     await navigateTo(page, 'vault')
     await page.waitForTimeout(800)
 
-    // Open notes rapidly by clicking tree items
+    // Open notes rapidly by clicking tree items (tree shows file stems)
+    const tree = page.getByRole('tree', { name: 'Vault file tree' })
     for (let i = 0; i < 3; i++) {
-      await page.getByText('Note A').first().click()
+      await tree.getByRole('button', { name: 'note-a', exact: true }).click()
       await page.waitForTimeout(200)
-      await page.getByText('Note B').first().click()
+      await tree.getByRole('button', { name: 'note-b', exact: true }).click()
       await page.waitForTimeout(200)
-      await page.getByText('Note C').first().click()
+      await tree.getByRole('button', { name: 'note-c', exact: true }).click()
       await page.waitForTimeout(200)
     }
 
@@ -63,11 +54,11 @@ test.describe('18.1 — Race Conditions', () => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.getByText('Note A').first().click()
+    await tree.getByRole('button', { name: 'note-a', exact: true }).click()
     await page.waitForTimeout(100)
-    await page.getByText('Note B').first().click()
+    await tree.getByRole('button', { name: 'note-b', exact: true }).click()
     await page.waitForTimeout(100)
-    await page.getByText('Note C').first().click()
+    await tree.getByRole('button', { name: 'note-c', exact: true }).click()
     await page.waitForTimeout(1500)
 
     // Filter out non-critical known errors
@@ -238,10 +229,15 @@ test.describe('18.3 — Performance', () => {
 
 test.describe('18.4 — Accessibility', () => {
   test('18.4.1 Keyboard navigation — Tab through controls', async ({ vaultPage: page }) => {
-    await page.keyboard.press('Tab')
-    await page.waitForTimeout(200)
-
-    const focusedTag = await page.evaluate(() => document.activeElement?.tagName ?? '')
+    // In dev, the first Tab may land on Next.js's dev-tools overlay
+    // (<nextjs-portal>) — skip past it; it doesn't exist in production.
+    let focusedTag = ''
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('Tab')
+      await page.waitForTimeout(200)
+      focusedTag = await page.evaluate(() => document.activeElement?.tagName ?? '')
+      if (focusedTag !== 'NEXTJS-PORTAL' && focusedTag !== 'BODY') break
+    }
     expect(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA']).toContain(focusedTag)
 
     // Tab a few more times — focus should keep moving

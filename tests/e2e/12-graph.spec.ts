@@ -1,32 +1,11 @@
-import {
-  test,
-  expect,
-  navigateTo,
-  waitForView,
-  createMarkdownNote,
-  waitForAutoSave,
-} from './fixtures'
+import { test, expect, navigateTo, writeVaultFile } from './fixtures'
 
 async function createNoteViaOPFS(
   page: import('@playwright/test').Page,
   filename: string,
   content: string,
 ) {
-  await page.evaluate(
-    async ({ name, body }) => {
-      const root = await navigator.storage.getDirectory()
-      const vaultDir = await root.getDirectoryHandle('E2E Test Vault', { create: true })
-      const fileHandle = await vaultDir.getFileHandle(name, { create: true })
-      const writable = await fileHandle.createWritable()
-      await writable.write(body)
-      await writable.close()
-    },
-    { name: filename, body: content },
-  )
-  await page.evaluate(() => {
-    window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-  })
-  await page.waitForTimeout(500)
+  await writeVaultFile(page, filename, content)
 }
 
 async function seedGraphNotes(page: import('@playwright/test').Page) {
@@ -119,10 +98,11 @@ test.describe('12 — Graph Visualization', () => {
       const box = await canvas.boundingBox()
       expect(box).not.toBeNull()
 
-      // Pan: click and drag
-      await canvas.click({ position: { x: box!.width / 2, y: box!.height / 2 } })
+      // Pan: drag from a corner region — clicking dead-center can land on
+      // a node, and graph nodes are click-to-open (navigates away).
+      await page.mouse.move(box!.x + 40, box!.y + 40)
       await page.mouse.down()
-      await page.mouse.move(box!.x + box!.width / 2 + 100, box!.y + box!.height / 2 + 100)
+      await page.mouse.move(box!.x + 140, box!.y + 140)
       await page.mouse.up()
       await page.waitForTimeout(300)
 

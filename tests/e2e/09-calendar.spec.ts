@@ -112,11 +112,11 @@ test.describe('9 — Calendar', () => {
       await eventChip.click()
       await page.waitForTimeout(500)
 
-      // Click Delete in the edit dialog
+      // Click Delete in the edit dialog (getByText would also match the
+      // notes textarea containing the event title text)
       dialog = page.locator('[role="dialog"]')
       await expect(dialog).toBeVisible({ timeout: 5_000 })
-      const deleteBtn = dialog.getByText('Delete')
-      await deleteBtn.click()
+      await dialog.getByRole('button', { name: 'Delete' }).click()
       await page.waitForTimeout(1_500)
 
       // Event should be gone

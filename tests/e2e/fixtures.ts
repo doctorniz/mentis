@@ -46,20 +46,50 @@ async function seedVault(page: Page) {
   await page.waitForSelector('[data-testid="main-sidebar"], nav', { timeout: 30_000 })
 }
 
-/** Navigate to a specific view via keyboard shortcut. */
+/**
+ * Navigate to a view the way the current nav actually works:
+ * Ctrl+0 Chat · Ctrl+1 Vault · Ctrl+2 Board · Ctrl+3 Organizer
+ * (Tasks / Lists / Calendar / Reminders sub-tabs) · Ctrl+4 Bookmarks ·
+ * Ctrl+5 Files. Graph opens from inside Vault; Search is Vault's left
+ * search panel (Ctrl+F).
+ */
 export async function navigateTo(page: Page, view: ViewName) {
-  const shortcuts: Record<ViewName, string> = {
-    chat: 'Control+0',
-    vault: 'Control+1',
-    board: 'Control+2',
-    tasks: 'Control+3',
-    bookmarks: 'Control+4',
-    calendar: 'Control+5',
-    graph: 'Control+6',
-    files: 'Control+7',
-    search: 'Control+8',
+  switch (view) {
+    case 'chat':
+      await page.keyboard.press('Control+0')
+      break
+    case 'vault':
+      await page.keyboard.press('Control+1')
+      break
+    case 'board':
+      await page.keyboard.press('Control+2')
+      break
+    case 'tasks':
+      await page.keyboard.press('Control+3')
+      await page.getByRole('button', { name: 'Tasks', exact: true }).first().click()
+      break
+    case 'calendar':
+      await page.keyboard.press('Control+3')
+      await page.getByRole('button', { name: 'Calendar', exact: true }).first().click()
+      break
+    case 'bookmarks':
+      await page.keyboard.press('Control+4')
+      break
+    case 'files':
+      await page.keyboard.press('Control+5')
+      break
+    case 'graph':
+      await page.keyboard.press('Control+1')
+      await page.locator('[aria-label="Open graph"]').first().click()
+      break
+    case 'search':
+      // Search lives in Vault's left panel. Click the tree/rail button
+      // rather than pressing Ctrl+F — with focus inside the note editor,
+      // Ctrl+F opens the in-note find bar instead (by design).
+      await page.keyboard.press('Control+1')
+      await page.locator('button[aria-label="Search vault"]').first().click()
+      break
   }
-  await page.keyboard.press(shortcuts[view])
   await page.waitForTimeout(500)
 }
 
@@ -104,6 +134,71 @@ export async function createMarkdownNote(page: Page, title?: string) {
 /** Open a view and wait for it to stabilize. */
 export async function waitForView(page: Page, view: ViewName) {
   await navigateTo(page, view)
+  await page.waitForTimeout(800)
+}
+
+/**
+ * Open a file from the Vault file tree by its stem (basename without
+ * extension). Scoped to the tree so nav items with similar labels
+ * (e.g. "Board") can't be matched by accident.
+ */
+export async function openVaultFile(page: Page, filename: string) {
+  await navigateTo(page, 'vault')
+  const stem = filename.replace(/\.[^/.]+$/, '')
+  const tree = page.getByRole('tree', { name: 'Vault file tree' })
+  await tree.getByRole('button', { name: stem, exact: true }).first().click()
+  await page.waitForTimeout(1000)
+}
+
+/**
+ * Write a file into the active OPFS vault, creating intermediate folders.
+ *
+ * Vaults live at `vaults/<slug>-<random>` in OPFS — the folder name is NOT
+ * the display name, so specs can't address it statically; this finds the
+ * first (only) vault directory. Dispatches `ink:vault-changed` so the
+ * tree/search/graph pick the file up.
+ *
+ * `content` is UTF-8 text unless `opts.base64` is set (binary payloads:
+ * PDFs, images).
+ */
+export async function writeVaultFile(
+  page: Page,
+  relPath: string,
+  content: string,
+  opts?: { base64?: boolean },
+) {
+  await page.evaluate(
+    async ({ relPath, content, isBase64 }) => {
+      const root = await navigator.storage.getDirectory()
+      const vaultsDir = await root.getDirectoryHandle('vaults')
+      let vaultDir: FileSystemDirectoryHandle | null = null
+      const iter = (vaultsDir as unknown as { values(): AsyncIterable<FileSystemHandle> }).values()
+      for await (const entry of iter) {
+        if (entry.kind === 'directory') {
+          vaultDir = entry as FileSystemDirectoryHandle
+          break
+        }
+      }
+      if (!vaultDir) throw new Error('No vault directory found under vaults/')
+
+      const parts = relPath.split('/')
+      const fileName = parts.pop()!
+      let dir = vaultDir
+      for (const part of parts) {
+        dir = await dir.getDirectoryHandle(part, { create: true })
+      }
+      const fh = await dir.getFileHandle(fileName, { create: true })
+      const writable = await fh.createWritable()
+      if (isBase64) {
+        await writable.write(Uint8Array.from(atob(content), (c) => c.charCodeAt(0)))
+      } else {
+        await writable.write(content)
+      }
+      await writable.close()
+    },
+    { relPath, content, isBase64: opts?.base64 ?? false },
+  )
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('ink:vault-changed')))
   await page.waitForTimeout(800)
 }
 

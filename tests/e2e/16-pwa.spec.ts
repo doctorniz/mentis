@@ -38,6 +38,15 @@ test.describe('17.1 — Offline & Caching', () => {
   })
 
   test('17.1.2 Go offline — app still loads from cache', async ({ vaultPage: page }) => {
+    // Offline caching is only meaningful against a production build — the
+    // dev server's chunks aren't reliably cacheable and the dev overlay
+    // needs a live connection. Detect dev via Next's overlay element.
+    const isDevServer = await page.evaluate(() => Boolean(document.querySelector('nextjs-portal')))
+    if (isDevServer) {
+      test.skip(true, 'Offline caching requires a production build (dev chunks not precachable)')
+      return
+    }
+
     // Wait for the service worker to install and cache resources
     const swRegistered = await page.evaluate(async () => {
       if (!('serviceWorker' in navigator)) return false

@@ -10,7 +10,7 @@ test.describe('8 — Bookmark Manager', () => {
   test.describe('8.1 Bookmark CRUD', () => {
     test('8.1.1 add bookmark by URL — metadata auto-fetched', async ({ vaultPage: page }) => {
       // Click the "+ Bookmark" button in the header
-      const addBtn = page.locator('button', { hasText: 'Bookmark' }).first()
+      const addBtn = page.getByRole('button', { name: 'Bookmark', exact: true })
       await addBtn.click()
       await page.waitForTimeout(500)
 
@@ -46,7 +46,7 @@ test.describe('8 — Bookmark Manager', () => {
 
     test('8.1.3 edit bookmark — update via dialog', async ({ vaultPage: page }) => {
       // First, add a bookmark to edit
-      const addBtn = page.locator('button', { hasText: 'Bookmark' }).first()
+      const addBtn = page.getByRole('button', { name: 'Bookmark', exact: true })
       await addBtn.click()
       await page.waitForTimeout(500)
 
@@ -91,7 +91,7 @@ test.describe('8 — Bookmark Manager', () => {
 
     test('8.1.4 delete bookmark — removed', async ({ vaultPage: page }) => {
       // Add a bookmark first
-      const addBtn = page.locator('button', { hasText: 'Bookmark' }).first()
+      const addBtn = page.getByRole('button', { name: 'Bookmark', exact: true })
       await addBtn.click()
       await page.waitForTimeout(500)
 
@@ -124,7 +124,7 @@ test.describe('8 — Bookmark Manager', () => {
     })
 
     test('8.1.5 unreachable URL — no crash', async ({ vaultPage: page }) => {
-      const addBtn = page.locator('button', { hasText: 'Bookmark' }).first()
+      const addBtn = page.getByRole('button', { name: 'Bookmark', exact: true })
       await addBtn.click()
       await page.waitForTimeout(500)
 
@@ -162,8 +162,9 @@ test.describe('8 — Bookmark Manager', () => {
       await catInput.press('Enter')
       await page.waitForTimeout(1_000)
 
-      // Category should appear in the sidebar
-      await expect(page.getByText('Tech')).toBeVisible({ timeout: 5_000 })
+      // Category is created and opened: sidebar row + main panel heading
+      await expect(page.getByRole('button', { name: /^Tech / })).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByRole('heading', { name: 'Tech' })).toBeVisible()
     })
 
     test('8.2.3 two-panel layout: category sidebar + bookmark list', async ({
@@ -171,13 +172,13 @@ test.describe('8 — Bookmark Manager', () => {
     }) => {
       // The sidebar should show "Categories" heading and "All Bookmarks"
       await expect(page.getByText('Categories')).toBeVisible({ timeout: 5_000 })
-      await expect(page.getByText('All Bookmarks')).toBeVisible()
+      await expect(page.getByRole('button', { name: 'All Bookmarks' })).toBeVisible()
 
       // The main panel should show the bookmarks header
-      await expect(page.locator('h1').filter({ hasText: /All Bookmarks/ })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'All Bookmarks' })).toBeVisible()
 
       // The "+ Bookmark" button should be present in the header
-      const addBtn = page.locator('button', { hasText: 'Bookmark' }).first()
+      const addBtn = page.getByRole('button', { name: 'Bookmark', exact: true })
       await expect(addBtn).toBeVisible()
     })
   })

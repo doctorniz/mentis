@@ -91,7 +91,7 @@ test.describe('6.1 Thought CRUD', () => {
       await expect(card).toBeVisible()
       // Blue cards get blue bg/border classes from thought-card.tsx
       const classes = await card.getAttribute('class')
-      expect(classes).toMatch(/blue/)
+      expect(classes).toMatch(/sky/) // "blue" maps to sky-* classes in thought-card.tsx
     }
   })
 
@@ -116,10 +116,11 @@ test.describe('6.1 Thought CRUD', () => {
     await card.click()
     await page.waitForTimeout(400)
 
-    // Modify the title
+    // Modify the title — click INTO the editor first so keyboard input
+    // lands there (the card click opens edit mode but may not focus it)
     const editingEditor = boardEditor(page)
     await expect(editingEditor).toBeVisible()
-    // Select all text and retype
+    await editingEditor.click()
     await page.keyboard.press('Control+a')
     await page.keyboard.type('# Updated title')
     await page.keyboard.press('Escape')

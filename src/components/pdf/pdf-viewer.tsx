@@ -535,7 +535,10 @@ export function PdfViewer({ path }: { path: string }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    // min-w-0 is load-bearing: without it the flex item's min-content width
+    // (the fixed-size PDF canvas) wins over the pane, and the viewer —
+    // toolbar included — renders underneath the chat right column.
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
       <PdfToolbar
         onSearch={() => setSearchOpen((o) => !o)}
         signatures={signatures}
@@ -617,7 +620,7 @@ export function PdfViewer({ path }: { path: string }) {
           onMerge={handleMerge}
           onExtractPages={handleExtractPages}
         />
-        <div ref={scrollRef} className="bg-bg-tertiary min-h-0 flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="bg-bg-tertiary min-h-0 min-w-0 flex-1 overflow-auto">
           <div className="flex flex-col items-center gap-4 py-4">
             {pages.map((p, i) => {
               const vp = p.getViewport({ scale: zoom })

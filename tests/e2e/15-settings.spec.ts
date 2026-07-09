@@ -63,7 +63,7 @@ test.describe('16.1 — Settings Behavior', () => {
     await page.waitForTimeout(1500)
 
     // The footer should show "Saved" after auto-save completes
-    const footer = dialog.locator('text=Saved').or(dialog.locator('.text-green-500'))
+    const footer = dialog.locator('text=Saved').or(dialog.locator('.text-green-500')).first()
     await expect(footer).toBeVisible({ timeout: 5_000 })
   })
 

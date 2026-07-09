@@ -1,4 +1,4 @@
-import { test, expect, navigateTo } from './fixtures'
+import { test, expect, navigateTo, writeVaultFile } from './fixtures'
 
 /**
  * Minimal valid PDF (1 page, 612×792 pt). Used to seed the vault for tests.
@@ -7,46 +7,13 @@ import { test, expect, navigateTo } from './fixtures'
 const MINIMAL_PDF =
   'JVBERi0xLjAKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSA+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDQgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjE5MgolJUVPRgo='
 
-/**
- * Write a PDF file into the vault via OPFS.
- * Navigates into the first directory under OPFS root (the vault) and creates
- * the file there so the app can discover it.
- */
+/** Write a PDF file into the vault via OPFS (shared fixture helper finds the vault dir). */
 async function seedPdfInVault(
   page: import('@playwright/test').Page,
   fileName: string,
   base64: string = MINIMAL_PDF,
 ) {
-  await page.evaluate(
-    async ({ fileName, base64 }) => {
-      const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
-      const root = await navigator.storage.getDirectory()
-
-      async function findVaultDir(
-        dir: FileSystemDirectoryHandle,
-      ): Promise<FileSystemDirectoryHandle> {
-        for await (const [name, handle] of (dir as any).entries()) {
-          if (handle.kind === 'directory' && name !== '_marrow') {
-            return handle as FileSystemDirectoryHandle
-          }
-        }
-        return dir
-      }
-
-      const vaultDir = (await findVaultDir(root)) ?? root
-      const file = await vaultDir.getFileHandle(fileName, { create: true })
-      const writable = await file.createWritable()
-      await writable.write(bytes)
-      await writable.close()
-    },
-    { fileName, base64 },
-  )
-
-  // Notify the app that vault changed
-  await page.evaluate(() => {
-    window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-  })
-  await page.waitForTimeout(1_000)
+  await writeVaultFile(page, fileName, base64, { base64: true })
 }
 
 /** Open a PDF file from the vault file tree. */
@@ -233,10 +200,9 @@ test.describe('PDF Editor', () => {
         await page.waitForTimeout(500)
       }
 
-      // Find the delete button in the page panel (each page thumbnail has page actions)
-      const deleteBtn = page
-        .locator('button[title="Delete page"], button[aria-label*="Delete"]')
-        .first()
+      // The page panel's delete control (a bare *="Delete" match would hit
+      // the file tree's per-file delete buttons first)
+      const deleteBtn = page.locator('button[aria-label="Delete current page"]')
       if (await deleteBtn.isVisible().catch(() => false)) {
         await deleteBtn.click()
         await page.waitForTimeout(2_000)

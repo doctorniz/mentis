@@ -209,8 +209,10 @@ test.describe('7 — Task Manager', () => {
       await listInput.press('Enter')
       await page.waitForTimeout(1_000)
 
-      // The new list should appear in the sidebar
-      await expect(page.getByText('My Project')).toBeVisible({ timeout: 5_000 })
+      // The new list appears in the sidebar (and opens as the active view)
+      await expect(page.getByRole('button', { name: 'My Project', exact: true })).toBeVisible({
+        timeout: 5_000,
+      })
     })
   })
 

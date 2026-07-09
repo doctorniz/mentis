@@ -91,6 +91,9 @@ export function KanbanCardItem({
       <button
         type="button"
         onClick={() => onToggle(card.id)}
+        role="checkbox"
+        aria-checked={card.checked}
+        aria-label={card.checked ? 'Uncheck card' : 'Check card'}
         className={cn(
           'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border-2 transition-colors',
           card.checked ? 'border-accent bg-accent' : 'border-border-strong hover:border-accent',

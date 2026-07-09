@@ -51,6 +51,15 @@ import { useSyncPush } from '@/contexts/sync-context'
  */
 const pendingMarkdownSaves = new Map<string, Promise<void>>()
 
+/**
+ * Await the in-flight unmount flush-save for `path`, if any. Deleting an
+ * open note must close its tab first and then wait here — otherwise the
+ * unmount save runs after the delete and resurrects the file from memory.
+ */
+export function awaitPendingMarkdownSave(path: string): Promise<void> {
+  return pendingMarkdownSaves.get(path) ?? Promise.resolve()
+}
+
 /** Flatten a FileEntry tree into vault-relative paths (files only, no dirs) */
 function flattenFilePaths(entry: FileEntry | null, depth = 0): string[] {
   if (!entry) return []

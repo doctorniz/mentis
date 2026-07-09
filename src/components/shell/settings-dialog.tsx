@@ -1001,9 +1001,15 @@ export function SettingsDialog({
     updateConfigRef.current = updateConfig
   }, [updateConfig])
 
-  // Reset draft when dialog opens
+  // Reset draft when the dialog OPENS — and only then. Each auto-save
+  // calls updateConfig, which changes `config`'s identity; resetting on
+  // that too would clobber keystrokes typed while a save is in flight
+  // and instantly clear the "Saved" indicator.
+  const wasOpenRef = useRef(false)
   useEffect(() => {
-    if (open && config) {
+    const justOpened = open && !wasOpenRef.current
+    wasOpenRef.current = open
+    if (justOpened && config) {
       isFirstDraft.current = true
       prevDailyFolderRef.current = config.dailyNotesFolder ?? DAILY_NOTES_DIR
       setDraft({ ...DEFAULT_VAULT_CONFIG, ...config })
