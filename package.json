@@ -16,7 +16,8 @@
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "postinstall": "node scripts/copy-mp3-worker.mjs"
+    "postinstall": "node scripts/copy-mp3-worker.mjs",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.0",
@@ -115,6 +116,7 @@
     "postcss": "^8.5.0",
     "prettier": "^3.4.0",
     "prettier-plugin-tailwindcss": "^0.6.0",
+    "serve": "^14.2.6",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
