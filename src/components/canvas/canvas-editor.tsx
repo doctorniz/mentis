@@ -143,6 +143,7 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
   useEffect(() => {
     const signal = { cancelled: false }
     const engine = new CanvasEngine()
+    engine.onExpansionCapped = () => toast.error('Canvas size limit reached')
     engineRef.current = engine
 
     void (async () => {
@@ -312,6 +313,18 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         target?.tagName === 'TEXTAREA' ||
         target?.tagName === 'SELECT'
       ) {
+        return
+      }
+
+      // Escape: abort the stroke being drawn (brush discards the
+      // scratchpad; eraser restores the layer from the pre-stroke
+      // snapshot).
+      if (e.key === 'Escape') {
+        const engine = engineRef.current
+        if (engine?.initialized && engine.strokeEngine.isDrawing) {
+          e.preventDefault()
+          void engine.cancelActiveStroke()
+        }
         return
       }
 

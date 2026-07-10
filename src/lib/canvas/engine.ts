@@ -8,7 +8,9 @@ import {
   DEFAULT_CANVAS_WIDTH,
   DEFAULT_CANVAS_HEIGHT,
   DEFAULT_BACKGROUND,
+  MAX_CANVAS_DIMENSION,
 } from '@/lib/canvas/constants'
+import type { LayerSnapshot } from '@/types/canvas'
 
 /**
  * CanvasEngine — the orchestrator for the PixiJS drawing engine.
@@ -30,6 +32,34 @@ export class CanvasEngine {
   private _width = DEFAULT_CANVAS_WIDTH
   private _height = DEFAULT_CANVAS_HEIGHT
   private _background = DEFAULT_BACKGROUND
+
+  /**
+   * The pre-stroke undo snapshot for the stroke currently being drawn.
+   * Set by the viewport on pointerdown (the GPU readback inside
+   * `snapshotActiveLayer` is synchronous, so the promise always holds
+   * pre-stroke pixels), consumed on pointerup when the stroke's undo
+   * entry is pushed — or by `cancelActiveStroke` to roll an aborted
+   * eraser stroke back.
+   */
+  pendingStrokeSnapshot: Promise<LayerSnapshot | null> | null = null
+
+  /**
+   * Serializes undo pushes across strokes: PNG encodes resolve on their
+   * own schedule, and two quick strokes must land in the undo stack in
+   * draw order or undo would restore the wrong states.
+   */
+  undoPushChain: Promise<void> = Promise.resolve()
+
+  /**
+   * Fired (once per engine) when `expandToFit` refuses to grow further
+   * because the cap was hit. The editor wires this to a toast — the
+   * engine stays framework-free.
+   */
+  onExpansionCapped: (() => void) | null = null
+  private _expansionCapWarned = false
+
+  /** Effective per-axis expansion cap; refined from GPU limits at init. */
+  private _maxDimension = MAX_CANVAS_DIMENSION
   /**
    * Stable id for this canvas's pixel folder under
    * `_marrow/_drawings/<assetId>/`. `null` until the file has been loaded
@@ -101,10 +131,16 @@ export class CanvasEngine {
    * outside the current drawing bounds.
    *
    * Expansion is quantized to 1024-pixel steps so a single stroke near
-   * the edge doesn't produce dozens of tiny grow operations. Calling this
-   * repeatedly with the same out-of-bounds point is cheap — the inner
-   * check in `LayerManager.expandCanvas` short-circuits when the target
-   * dimensions haven't changed.
+   * the edge doesn't produce dozens of tiny grow operations, and clamped
+   * to `min(MAX_CANVAS_DIMENSION, GPU max texture size)` — RenderTextures
+   * beyond the GPU limit are silently blank on WebGL, which would eat
+   * the user's layer pixels on the next expand-copy. Hitting the cap
+   * fires `onExpansionCapped` once so the UI can explain why drawing
+   * stops at the edge.
+   *
+   * Calling this repeatedly with the same out-of-bounds point is cheap —
+   * the inner check in `LayerManager.expandCanvas` short-circuits when
+   * the target dimensions haven't changed.
    *
    * Only positive expansion (right / down) is handled. Negative canvas
    * coordinates are not currently drawable — pan back to the canvas
@@ -115,12 +151,45 @@ export class CanvasEngine {
     if (x < this._width && y < this._height) return
 
     const STEP = 1024
-    const newW = x >= this._width ? Math.ceil((x + 1) / STEP) * STEP : this._width
-    const newH = y >= this._height ? Math.ceil((y + 1) / STEP) * STEP : this._height
+    const max = this._maxDimension
+    let newW = x >= this._width ? Math.ceil((x + 1) / STEP) * STEP : this._width
+    let newH = y >= this._height ? Math.ceil((y + 1) / STEP) * STEP : this._height
+
+    if (newW > max || newH > max) {
+      newW = Math.min(newW, max)
+      newH = Math.min(newH, max)
+      if (!this._expansionCapWarned && (x >= max || y >= max)) {
+        this._expansionCapWarned = true
+        this.onExpansionCapped?.()
+      }
+    }
+    if (newW === this._width && newH === this._height) return
 
     this.layerManager.expandCanvas(newW, newH)
     this._width = this.layerManager.canvasWidth
     this._height = this.layerManager.canvasHeight
+  }
+
+  /**
+   * Abort the stroke currently being drawn (Escape). Brush strokes are
+   * discarded from the scratchpad; eraser strokes have already mutated
+   * the layer, so its pixels are restored from the pre-stroke snapshot
+   * captured on pointerdown.
+   */
+  async cancelActiveStroke(): Promise<void> {
+    if (!this._initialized || !this.strokeEngine.isDrawing) return
+
+    const pixelsMutated = this.strokeEngine.cancelStroke()
+    const pending = this.pendingStrokeSnapshot
+    this.pendingStrokeSnapshot = null
+
+    if (pixelsMutated && pending) {
+      const snapshot = await pending
+      if (snapshot) {
+        await this.layerManager.restoreLayerFromBlob(snapshot.layerId, snapshot.blob)
+      }
+    }
+    this.render()
   }
 
   /**
@@ -148,6 +217,9 @@ export class CanvasEngine {
       // `engine.startTicker()` once the canvas is ready to paint.
       autoStart: false,
     })
+
+    // Refine the expansion cap now that the GPU context exists.
+    this._maxDimension = Math.min(MAX_CANVAS_DIMENSION, readGpuMaxTextureSize(this.app.renderer))
 
     // PixiJS v8 canvas element
     const canvas = this.app.canvas as HTMLCanvasElement
@@ -278,4 +350,24 @@ export class CanvasEngine {
       /* ignore */
     }
   }
+}
+
+/**
+ * Read the GPU's per-axis texture-size limit from the active renderer.
+ * WebGL exposes it via `gl.getParameter`; WebGPU via device limits.
+ * Falls back to 4096 — the guaranteed WebGL2 minimum — when neither
+ * shape is recognizable.
+ */
+function readGpuMaxTextureSize(renderer: unknown): number {
+  const gl = (renderer as { gl?: WebGLRenderingContext }).gl
+  if (gl && typeof gl.getParameter === 'function') {
+    const v = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number
+    if (typeof v === 'number' && v > 0) return v
+  }
+  const gpuDevice = (
+    renderer as { gpu?: { device?: { limits?: { maxTextureDimension2D?: number } } } }
+  ).gpu?.device
+  const dim = gpuDevice?.limits?.maxTextureDimension2D
+  if (typeof dim === 'number' && dim > 0) return dim
+  return 4096
 }

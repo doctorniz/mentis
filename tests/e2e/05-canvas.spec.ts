@@ -259,6 +259,46 @@ test.describe('5.3 Undo / Redo', () => {
     const redoBtn = page.getByTitle('Redo (Ctrl+Shift+Z)')
     await expect(redoBtn).toBeVisible()
   })
+
+  test('5.3.3 Quick tap (dot stroke) gets an undo entry', async ({ vaultPage: page }) => {
+    // Regression: the pre-stroke snapshot used to be captured in a
+    // fire-and-forget async block, so a tap that ended within the same
+    // frame pushed no undo entry at all.
+    const undoBtn = page.getByTitle('Undo (Ctrl+Z)')
+    await expect(undoBtn).toBeDisabled()
+
+    await page.keyboard.press('b')
+    const canvas = canvasLocator(page)
+    const box = await canvas.boundingBox()
+    if (!box) throw new Error('Canvas not visible')
+    // A bare click = pointerdown + pointerup with no movement
+    await page.mouse.click(box.x + 150, box.y + 150)
+
+    await expect(undoBtn).toBeEnabled({ timeout: 5_000 })
+  })
+
+  test('5.3.4 Escape cancels the in-progress stroke without an undo entry', async ({
+    vaultPage: page,
+  }) => {
+    const undoBtn = page.getByTitle('Undo (Ctrl+Z)')
+    await expect(undoBtn).toBeDisabled()
+
+    await page.keyboard.press('b')
+    const canvas = canvasLocator(page)
+    const box = await canvas.boundingBox()
+    if (!box) throw new Error('Canvas not visible')
+
+    // Start a stroke, press Escape mid-drag, then release
+    await page.mouse.move(box.x + 120, box.y + 120)
+    await page.mouse.down()
+    await page.mouse.move(box.x + 200, box.y + 200, { steps: 4 })
+    await page.keyboard.press('Escape')
+    await page.mouse.up()
+    await page.waitForTimeout(500)
+
+    // The aborted stroke must not have produced an undo entry
+    await expect(undoBtn).toBeDisabled()
+  })
 })
 
 /* ================================================================== */

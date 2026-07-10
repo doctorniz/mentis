@@ -44,15 +44,24 @@ export class UndoManager {
   /**
    * Snapshot the active layer before a destructive stroke operation.
    *
+   * The GPU readback happens SYNCHRONOUSLY inside this call — only the
+   * PNG encode is deferred into the returned promise. Callers can
+   * therefore start mutating the layer the moment this returns (the
+   * eraser subtracts alpha from the layer on the very first stamp) and
+   * still get a faithful pre-stroke snapshot.
+   *
    * Stored as a PNG Blob — see `LayerSnapshot` for why we prefer this
    * over a base64 string for undo storage.
    */
-  async snapshotActiveLayer(): Promise<LayerSnapshot | null> {
+  snapshotActiveLayer(): Promise<LayerSnapshot | null> {
     const active = this.layerManager.getActiveLayer()
-    if (!active) return null
-    const blob = await this.layerManager.extractLayerBlob(active.id)
-    if (!blob) return null
-    return { layerId: active.id, blob }
+    if (!active) return Promise.resolve(null)
+    const canvas = this.layerManager.extractLayerCanvas(active.id)
+    if (!canvas) return Promise.resolve(null)
+    const layerId = active.id
+    return new Promise<LayerSnapshot | null>((resolve) => {
+      canvas.toBlob((blob) => resolve(blob ? { layerId, blob } : null), 'image/png')
+    })
   }
 
   /** Push an entry after a destructive operation completes. */

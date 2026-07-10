@@ -146,13 +146,20 @@ export class BrushSystem {
    * Normal brush path — tinted alpha-mask sprites composited with
    * `blendMode = 'normal'` into the scratchpad. Sprite.tint multiplies
    * the white mask by the brush colour so the stamp paints in the
-   * requested hue; Sprite.alpha scales the whole thing by per-stamp
-   * opacity.
+   * requested hue; Sprite.alpha carries per-stamp pressure only.
+   *
+   * The stroke's *opacity setting* is deliberately NOT applied here.
+   * Stamps overlap heavily along a stroke (spacing < diameter), and
+   * per-stamp opacity would accumulate wherever they self-overlap — a
+   * 50 % stroke would darken toward 100 % over its own path. Instead
+   * the scratchpad *sprite* carries the stroke opacity (see
+   * `LayerManager.setScratchpadOpacity`), bounding the whole stroke to
+   * the configured value at both preview and commit time — the
+   * Photoshop opacity-vs-flow model, where pressure acts as flow.
    *
    * The alpha mask itself already encodes the hardness falloff, so
    * there's no post-draw compositing magic (no ` * 0.5`, no concentric
-   * rings). Opacity passed to Pixi is what the user gets — at 100 %
-   * opacity and 100 % pressure the core of the stamp is opaque.
+   * rings).
    */
   private renderBrushStamps(
     stamps: InterpolatedStamp[],
@@ -168,7 +175,7 @@ export class BrushSystem {
       const stamp = stamps[i]
       const radius = (settings.size / 2) * Math.max(0.2, stamp.pressure)
       const diameter = Math.max(1, radius * 2)
-      const alpha = settings.opacity * Math.max(0.1, stamp.pressure)
+      const alpha = Math.max(0.1, stamp.pressure)
 
       const sprite = this.getPooledBrushSprite(i, mask)
       sprite.texture = mask

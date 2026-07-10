@@ -73,14 +73,12 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
         // Auto-expand the canvas if this stroke starts beyond the current bounds.
         engine.expandToFit(canvasPoint.x, canvasPoint.y)
 
-        // Snapshot for undo before drawing
-        void (async () => {
-          const snapshot = await engine.undoManager.snapshotActiveLayer()
-          if (snapshot) {
-            // Store snapshot temporarily — will be pushed on stroke commit
-            ;(engine as CanvasEngineWithSnapshot)._pendingSnapshot = snapshot
-          }
-        })()
+        // Snapshot for undo BEFORE the first stamp. The GPU readback
+        // inside snapshotActiveLayer is synchronous — only the PNG
+        // encode is deferred — so the promise always holds pre-stroke
+        // pixels even though the eraser mutates the layer immediately,
+        // and even for a tap that ends in the same frame.
+        engine.pendingStrokeSnapshot = engine.undoManager.snapshotActiveLayer()
 
         engine.strokeEngine.beginStroke(
           {
@@ -227,20 +225,27 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
         engine.strokeEngine.endStroke()
         engine.render()
 
-        // Push undo entry
-        const snapshot = (engine as CanvasEngineWithSnapshot)._pendingSnapshot
-        if (snapshot) {
-          engine.undoManager.push({
-            kind: 'stroke',
-            snapshots: [snapshot],
-            description: 'Stroke',
+        // Push the undo entry once the snapshot's PNG encode resolves.
+        // Pushes are chained so two quick strokes land in the stack in
+        // draw order even if their encodes finish out of order.
+        const pending = engine.pendingStrokeSnapshot
+        engine.pendingStrokeSnapshot = null
+        if (pending) {
+          engine.undoPushChain = engine.undoPushChain.then(async () => {
+            const snapshot = await pending
+            if (snapshot) {
+              engine.undoManager.push({
+                kind: 'stroke',
+                snapshots: [snapshot],
+                description: 'Stroke',
+              })
+            }
+            const store = useCanvasStore.getState()
+            store.setUndoState(engine.undoManager.canUndo, engine.undoManager.canRedo)
           })
-          ;(engine as CanvasEngineWithSnapshot)._pendingSnapshot = null
         }
 
-        const store = useCanvasStore.getState()
-        store.markDirty()
-        store.setUndoState(engine.undoManager.canUndo, engine.undoManager.canRedo)
+        useCanvasStore.getState().markDirty()
       }
     },
     [engineRef],
@@ -432,9 +437,4 @@ function cursorForTool(
     default:
       return 'crosshair'
   }
-}
-
-// Extend engine type to hold pending snapshot without polluting the class
-interface CanvasEngineWithSnapshot extends CanvasEngine {
-  _pendingSnapshot?: import('@/types/canvas').LayerSnapshot | null
 }

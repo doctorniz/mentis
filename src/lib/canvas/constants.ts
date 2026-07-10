@@ -20,6 +20,16 @@ export const CANVAS_DRAWINGS_DIR = '_marrow/_drawings'
 export const MIN_ZOOM = 0.1
 export const MAX_ZOOM = 10
 
+/**
+ * Hard ceiling for auto-expansion of the canvas (per axis, px).
+ *
+ * The effective cap is `min(MAX_CANVAS_DIMENSION, GPU max texture size)`
+ * — WebGL silently produces blank textures beyond the GPU limit, and even
+ * within it an 8192² RGBA layer already costs ~268 MB of GPU memory, so
+ * growing further is a memory hazard rather than a feature.
+ */
+export const MAX_CANVAS_DIMENSION = 8192
+
 export const MAX_UNDO_ENTRIES = 30
 export const MAX_LAYERS = 12
 

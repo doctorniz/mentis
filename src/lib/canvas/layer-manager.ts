@@ -425,6 +425,22 @@ export class LayerManager {
       clear: true,
     })
     empty.destroy()
+    // Reset the per-stroke opacity so the next stroke starts from a
+    // known state (beginStroke sets it again).
+    this.scratchpadSprite.alpha = 1
+  }
+
+  /**
+   * Set the opacity the in-progress stroke is displayed — and later
+   * committed — at. Stamps render into the scratchpad at full alpha
+   * (pressure only); the stroke's opacity setting is applied here, on
+   * the scratchpad sprite, so overlapping stamps within one stroke
+   * can't self-accumulate past the configured opacity (Photoshop-style
+   * opacity vs. flow). `commitScratchpad` renders this same sprite, so
+   * the committed pixels match the live preview exactly.
+   */
+  setScratchpadOpacity(alpha: number): void {
+    this.scratchpadSprite.alpha = Math.max(0, Math.min(1, alpha))
   }
 
   /* ---- Canvas expansion ---- */
@@ -694,17 +710,29 @@ export class LayerManager {
    * path backs undo (needs small in-memory snapshots). Conflating them
    * would mean every undo snapshot pays the base64 encode cost.
    */
-  async extractLayerBlob(id: string): Promise<Blob | null> {
+  /**
+   * Synchronously read a layer's pixels back into an offscreen canvas.
+   *
+   * The GPU readback (`extract.canvas`) completes before this returns,
+   * so the caller can start mutating the layer immediately afterwards —
+   * critical for pre-stroke undo snapshots, where eraser stamps begin
+   * subtracting from the layer on pointerdown.
+   */
+  extractLayerCanvas(id: string): HTMLCanvasElement | null {
     const layer = this.getLayer(id)
     if (!layer) return null
-    let canvas: HTMLCanvasElement
     try {
-      canvas = this.app.renderer.extract.canvas({
+      return this.app.renderer.extract.canvas({
         target: layer.renderTexture,
       }) as HTMLCanvasElement
     } catch {
       return null
     }
+  }
+
+  async extractLayerBlob(id: string): Promise<Blob | null> {
+    const canvas = this.extractLayerCanvas(id)
+    if (!canvas) return null
     return new Promise<Blob | null>((resolve) => {
       canvas.toBlob((blob) => resolve(blob), 'image/png')
     })

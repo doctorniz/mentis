@@ -69,6 +69,12 @@ export class StrokeEngine {
     const target = this.getStrokeTarget()
     if (!target) return
 
+    if (!isEraser) {
+      // Stroke opacity lives on the scratchpad sprite, not the stamps —
+      // see BrushSystem.renderBrushStamps for why.
+      this.layerManager.setScratchpadOpacity(settings.opacity)
+    }
+
     this.brushSystem.stampAt(point.x, point.y, point.pressure, settings, target, isEraser)
   }
 
@@ -114,18 +120,28 @@ export class StrokeEngine {
     this.onStrokeCommitted?.()
   }
 
-  cancelStroke(): void {
-    if (!this._isDrawing) return
+  /**
+   * Abort the in-progress stroke without committing it.
+   *
+   * Brush strokes only live in the scratchpad until commit, so
+   * discarding the scratchpad fully reverts them. Eraser stamps have
+   * already subtracted alpha from the layer itself and CANNOT be
+   * reverted here — the return value tells the caller the layer was
+   * mutated so it can restore from the pre-stroke undo snapshot (see
+   * `CanvasEngine.cancelActiveStroke`).
+   *
+   * @returns true when layer pixels were already mutated (eraser).
+   */
+  cancelStroke(): boolean {
+    if (!this._isDrawing) return false
     this._isDrawing = false
-    // Only the scratchpad has mid-stroke state to discard. Eraser pixels
-    // already subtracted from the layer cannot be un-subtracted without
-    // an undo snapshot — but cancelStroke is only invoked on tool abort
-    // (e.g. Escape/pointercancel), where committing the partial erase is
-    // acceptable.
-    if (!this._isEraser) {
+
+    const wasEraser = this._isEraser
+    if (!wasEraser) {
       this.layerManager.clearScratchpad()
     }
     this.currentPoints = []
     this._isEraser = false
+    return wasEraser
   }
 }
