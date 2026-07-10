@@ -4,10 +4,44 @@ import type {
   RemoveLayerUndoEntry,
   ReorderLayersUndoEntry,
   LayerSnapshot,
+  SnapshotRegion,
   CanvasLayerData,
 } from '@/types/canvas'
 import type { LayerManager } from '@/lib/canvas/layer-manager'
 import { MAX_UNDO_ENTRIES } from '@/lib/canvas/constants'
+
+/**
+ * Encode a rect of an already-extracted layer canvas into a region
+ * snapshot. Used by the eraser undo path: the full pre-stroke readback
+ * happens on pointerdown (the region isn't known yet), and once the
+ * stroke ends only its dirty rect is cropped + PNG-encoded for storage.
+ * Returns null when the rect doesn't intersect the source canvas.
+ */
+export function encodeCanvasRegionSnapshot(
+  layerId: string,
+  source: HTMLCanvasElement,
+  region: SnapshotRegion,
+): Promise<LayerSnapshot | null> {
+  const x = Math.max(0, region.x)
+  const y = Math.max(0, region.y)
+  const width = Math.min(region.x + region.width, source.width) - x
+  const height = Math.min(region.y + region.height, source.height) - y
+  if (width <= 0 || height <= 0) return Promise.resolve(null)
+
+  const crop = document.createElement('canvas')
+  crop.width = width
+  crop.height = height
+  const ctx = crop.getContext('2d')
+  if (!ctx) return Promise.resolve(null)
+  ctx.drawImage(source, x, y, width, height, 0, 0, width, height)
+
+  return new Promise((resolve) => {
+    crop.toBlob(
+      (blob) => resolve(blob ? { layerId, blob, region: { x, y, width, height } } : null),
+      'image/png',
+    )
+  })
+}
 
 /**
  * Per-layer undo/redo.
@@ -56,11 +90,28 @@ export class UndoManager {
   snapshotActiveLayer(): Promise<LayerSnapshot | null> {
     const active = this.layerManager.getActiveLayer()
     if (!active) return Promise.resolve(null)
-    const canvas = this.layerManager.extractLayerCanvas(active.id)
+    return this.captureSnapshot(active.id)
+  }
+
+  /**
+   * Dirty-region variant of `snapshotActiveLayer` — same synchronous
+   * readback guarantee, but only for the given rect. Used by the brush
+   * undo path at pointerup, where the stroke's bounds are known and the
+   * layer hasn't been mutated yet (the stroke still lives in the
+   * scratchpad until commit).
+   */
+  snapshotActiveLayerRegion(region: SnapshotRegion): Promise<LayerSnapshot | null> {
+    const active = this.layerManager.getActiveLayer()
+    if (!active) return Promise.resolve(null)
+    return this.captureSnapshot(active.id, region)
+  }
+
+  /** Sync readback (optionally region-scoped) + deferred PNG encode. */
+  private captureSnapshot(layerId: string, region?: SnapshotRegion): Promise<LayerSnapshot | null> {
+    const canvas = this.layerManager.extractLayerCanvas(layerId, region)
     if (!canvas) return Promise.resolve(null)
-    const layerId = active.id
     return new Promise<LayerSnapshot | null>((resolve) => {
-      canvas.toBlob((blob) => resolve(blob ? { layerId, blob } : null), 'image/png')
+      canvas.toBlob((blob) => resolve(blob ? { layerId, blob, region } : null), 'image/png')
     })
   }
 
@@ -96,6 +147,27 @@ export class UndoManager {
   clear(): void {
     this.past = []
     this.future = []
+  }
+
+  /**
+   * Hand the stacks over for module-scope retention across editor
+   * unmounts (tab switches destroy the engine and everything in it).
+   * Snapshots are Blobs — off-heap, so a parked stack is cheap to keep.
+   */
+  exportState(): { past: UndoEntry[]; future: UndoEntry[] } {
+    return { past: [...this.past], future: [...this.future] }
+  }
+
+  /**
+   * Restore stacks previously exported for this canvas path. Layer ids
+   * come from the file, so entries stay addressable across mounts. If
+   * the file changed on disk in between (e.g. sync), a restored entry
+   * simply rewrites the pixels it recorded — same semantics as undoing
+   * past an external edit within one session.
+   */
+  importState(state: { past: UndoEntry[]; future: UndoEntry[] }): void {
+    this.past = [...state.past]
+    this.future = [...state.future]
   }
 
   /**
@@ -137,14 +209,20 @@ export class UndoManager {
    * same entry would be a no-op, which is acceptable degradation.
    */
   private async reverseStroke(entry: StrokeUndoEntry): Promise<StrokeUndoEntry> {
+    // Mirror-capture the same rect the snapshot covers — a region entry's
+    // redo only needs the pixels its undo is about to overwrite.
     const mirror: LayerSnapshot[] = []
     for (const snap of entry.snapshots) {
-      const current = await this.layerManager.extractLayerBlob(snap.layerId)
-      if (current) mirror.push({ layerId: snap.layerId, blob: current })
+      const current = await this.captureSnapshot(snap.layerId, snap.region)
+      if (current) mirror.push(current)
     }
 
     for (const snap of entry.snapshots) {
-      await this.layerManager.restoreLayerFromBlob(snap.layerId, snap.blob)
+      if (snap.region) {
+        await this.layerManager.restoreLayerRegionFromBlob(snap.layerId, snap.blob, snap.region)
+      } else {
+        await this.layerManager.restoreLayerFromBlob(snap.layerId, snap.blob)
+      }
     }
 
     return { kind: 'stroke', snapshots: mirror, description: entry.description }

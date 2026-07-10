@@ -4,7 +4,22 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { CanvasEngine } from '@/lib/canvas/engine'
 import { useCanvasStore } from '@/stores/canvas'
 import { hexToRgba, rgbToHex } from '@/lib/canvas/flood-fill'
-import type { CanvasTool, BrushSettings } from '@/types/canvas'
+import { encodeCanvasRegionSnapshot } from '@/lib/canvas/undo-manager'
+import type { CanvasTool, BrushSettings, SnapshotRegion, LayerSnapshot } from '@/types/canvas'
+
+/** Intersect a stroke's (unclamped) dirty rect with the canvas bounds. */
+function clampRegion(
+  bounds: { x: number; y: number; width: number; height: number },
+  canvasW: number,
+  canvasH: number,
+): SnapshotRegion | null {
+  const x = Math.max(0, bounds.x)
+  const y = Math.max(0, bounds.y)
+  const width = Math.min(bounds.x + bounds.width, canvasW) - x
+  const height = Math.min(bounds.y + bounds.height, canvasH) - y
+  if (width <= 0 || height <= 0) return null
+  return { x, y, width, height }
+}
 
 interface CanvasViewportProps {
   engineRef: React.RefObject<CanvasEngine | null>
@@ -73,12 +88,17 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
         // Auto-expand the canvas if this stroke starts beyond the current bounds.
         engine.expandToFit(canvasPoint.x, canvasPoint.y)
 
-        // Snapshot for undo BEFORE the first stamp. The GPU readback
-        // inside snapshotActiveLayer is synchronous — only the PNG
-        // encode is deferred — so the promise always holds pre-stroke
-        // pixels even though the eraser mutates the layer immediately,
-        // and even for a tap that ends in the same frame.
-        engine.pendingStrokeSnapshot = engine.undoManager.snapshotActiveLayer()
+        // Eraser strokes mutate the layer from the very first stamp, so
+        // read the pre-stroke pixels back NOW (synchronously). The raw
+        // canvas is cropped to the stroke's dirty rect at pointerup for
+        // the undo entry, and used as-is by stroke-cancel. Brush strokes
+        // need nothing here — the layer is untouched until commit, so
+        // their undo region is captured at pointerup instead.
+        if (tool === 'eraser') {
+          const layerId = engine.layerManager.activeLayerId
+          const canvas = layerId ? engine.layerManager.extractLayerCanvas(layerId) : null
+          engine.pendingPreStrokeCanvas = layerId && canvas ? { layerId, canvas } : null
+        }
 
         engine.strokeEngine.beginStroke(
           {
@@ -177,7 +197,6 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
 
       if (engine.strokeEngine.isDrawing) {
         const rect = e.currentTarget.getBoundingClientRect()
-        const canvasPoint = engine.viewportController.screenToCanvas(e.clientX, e.clientY, rect)
         const state = useCanvasStore.getState()
         const tool = state.activeTool
         const settings =
@@ -185,21 +204,40 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
             ? { ...state.brushSettings, size: state.eraserSize }
             : state.brushSettings
 
-        // Auto-expand mid-stroke if the pointer crosses the canvas boundary.
-        // expandCanvas preserves scratchpad content so the stroke is seamless.
-        engine.expandToFit(canvasPoint.x, canvasPoint.y)
+        // High-Hz styluses (and 120 Hz screens) deliver multiple samples
+        // per animation frame; the React event only carries the last
+        // one. Feed every coalesced sample into the stroke so fast
+        // handwriting keeps its curvature instead of being straightened
+        // by the frame rate.
+        const native = e.nativeEvent
+        const samples: PointerEvent[] =
+          typeof native.getCoalescedEvents === 'function' && native.getCoalescedEvents().length > 0
+            ? native.getCoalescedEvents()
+            : [native]
 
-        engine.strokeEngine.continueStroke(
-          {
-            x: canvasPoint.x,
-            y: canvasPoint.y,
-            pressure: e.pointerType === 'mouse' ? 1.0 : e.pressure || 0.5,
-            tiltX: e.tiltX,
-            tiltY: e.tiltY,
-            timestamp: e.timeStamp,
-          },
-          settings,
-        )
+        for (const sample of samples) {
+          const canvasPoint = engine.viewportController.screenToCanvas(
+            sample.clientX,
+            sample.clientY,
+            rect,
+          )
+
+          // Auto-expand mid-stroke if the pointer crosses the canvas boundary.
+          // expandCanvas preserves scratchpad content so the stroke is seamless.
+          engine.expandToFit(canvasPoint.x, canvasPoint.y)
+
+          engine.strokeEngine.continueStroke(
+            {
+              x: canvasPoint.x,
+              y: canvasPoint.y,
+              pressure: sample.pointerType === 'mouse' ? 1.0 : sample.pressure || 0.5,
+              tiltX: sample.tiltX,
+              tiltY: sample.tiltY,
+              timestamp: sample.timeStamp,
+            },
+            settings,
+          )
+        }
         engine.render()
       }
     },
@@ -222,17 +260,39 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
       }
 
       if (engine.strokeEngine.isDrawing) {
+        const wasEraser = engine.strokeEngine.isEraserStroke
+        const bounds = engine.strokeEngine.getStrokeBounds()
+
+        // Dirty-region undo capture. Brush: the layer is still pristine
+        // here (the stroke lives in the scratchpad until endStroke), so
+        // read back just the stroke's rect NOW — the readback inside
+        // snapshotActiveLayerRegion is synchronous. Eraser: the layer
+        // was mutated live; crop the pointerdown full-layer readback to
+        // the same rect and encode only that.
+        let pending: Promise<LayerSnapshot | null> | null = null
+        const region = bounds ? clampRegion(bounds, engine.width, engine.height) : null
+        if (!wasEraser && region) {
+          pending = engine.undoManager.snapshotActiveLayerRegion(region)
+        }
+
         engine.strokeEngine.endStroke()
         engine.render()
 
-        // Push the undo entry once the snapshot's PNG encode resolves.
-        // Pushes are chained so two quick strokes land in the stack in
-        // draw order even if their encodes finish out of order.
-        const pending = engine.pendingStrokeSnapshot
-        engine.pendingStrokeSnapshot = null
+        if (wasEraser) {
+          const pre = engine.pendingPreStrokeCanvas
+          engine.pendingPreStrokeCanvas = null
+          if (pre && region) {
+            pending = encodeCanvasRegionSnapshot(pre.layerId, pre.canvas, region)
+          }
+        }
+
+        // Push the undo entry once the PNG encode resolves. Pushes are
+        // chained so two quick strokes land in the stack in draw order
+        // even if their encodes finish out of order.
         if (pending) {
+          const snapshotPromise = pending
           engine.undoPushChain = engine.undoPushChain.then(async () => {
-            const snapshot = await pending
+            const snapshot = await snapshotPromise
             if (snapshot) {
               engine.undoManager.push({
                 kind: 'stroke',

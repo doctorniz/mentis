@@ -38,6 +38,20 @@ interface CanvasEditorProps {
  */
 const pendingCanvasSaves = new Map<string, Promise<void>>()
 
+/**
+ * Undo/redo stacks parked across editor unmounts, keyed by vault path —
+ * switching to another note and back used to wipe the entire history
+ * because the engine (and its UndoManager) is destroyed on unmount.
+ * Snapshots are Blobs (off-heap), so parked stacks are cheap; still,
+ * only the most recent few canvases are retained (LRU) so a long
+ * session can't accumulate unbounded blob storage.
+ */
+const savedUndoStacks = new Map<
+  string,
+  { past: import('@/types/canvas').UndoEntry[]; future: import('@/types/canvas').UndoEntry[] }
+>()
+const MAX_SAVED_UNDO_STACKS = 4
+
 const CANVAS_PANEL_STORAGE_KEY = 'ink-marrow:canvas-panel-width'
 const CANVAS_PANEL_DEFAULT_WIDTH = 260
 const CANVAS_PANEL_MIN_WIDTH = 180
@@ -205,8 +219,19 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
           // Already handled in viewport pointerup
         }
 
+        // Re-attach undo history parked by a previous mount of this path
+        // (tab switches destroy the engine; without this, history dies).
+        const parked = savedUndoStacks.get(path)
+        if (parked) {
+          savedUndoStacks.delete(path)
+          engine.undoManager.importState(parked)
+        }
+
         // Sync store from engine
         syncStoreFromEngine(engine)
+        useCanvasStore
+          .getState()
+          .setUndoState(engine.undoManager.canUndo, engine.undoManager.canRedo)
         setLoading(false)
       } catch (err) {
         console.error('Canvas init failed:', err)
@@ -239,6 +264,18 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
       // are what the async run() below will close over.
       const savePath = pathRef.current
       const shouldFlush = !!(engine.initialized && useCanvasStore.getState().hasUnsavedChanges)
+
+      // Park the undo history so reopening this canvas restores it.
+      // destroy() clears the UndoManager, so export before the async run.
+      if (engine.initialized && (engine.undoManager.canUndo || engine.undoManager.canRedo)) {
+        savedUndoStacks.delete(savePath) // re-set moves the key to the LRU tail
+        savedUndoStacks.set(savePath, engine.undoManager.exportState())
+        while (savedUndoStacks.size > MAX_SAVED_UNDO_STACKS) {
+          const oldest = savedUndoStacks.keys().next().value
+          if (oldest === undefined) break
+          savedUndoStacks.delete(oldest)
+        }
+      }
 
       // Sequence save → destroy so extract.base64 finishes touching the
       // live renderer before app.destroy() tears it down. Previously
@@ -323,7 +360,7 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         const engine = engineRef.current
         if (engine?.initialized && engine.strokeEngine.isDrawing) {
           e.preventDefault()
-          void engine.cancelActiveStroke()
+          engine.cancelActiveStroke()
         }
         return
       }

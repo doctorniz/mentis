@@ -1,5 +1,13 @@
-import { Container, Sprite, RenderTexture, Graphics, Texture, type Application } from 'pixi.js'
-import type { CanvasLayerData, CanvasLayerMeta } from '@/types/canvas'
+import {
+  Container,
+  Sprite,
+  RenderTexture,
+  Graphics,
+  Texture,
+  Rectangle,
+  type Application,
+} from 'pixi.js'
+import type { CanvasLayerData, CanvasLayerMeta, SnapshotRegion } from '@/types/canvas'
 import { DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, MAX_LAYERS } from '@/lib/canvas/constants'
 import { floodFill } from '@/lib/canvas/flood-fill'
 
@@ -620,12 +628,15 @@ export class LayerManager {
       let srcB = 0
       let srcA = 0
       try {
+        // Read back just the clicked pixel — a full-layer extract here
+        // costs a multi-MB GPU readback per layer per click.
         const canvas = this.app.renderer.extract.canvas({
           target: layer.renderTexture,
+          frame: new Rectangle(px, py, 1, 1),
         }) as HTMLCanvasElement
         const ctx = canvas.getContext('2d')
         if (!ctx) continue
-        const data = ctx.getImageData(px, py, 1, 1).data
+        const data = ctx.getImageData(0, 0, 1, 1).data
         srcR = data[0] / 255
         srcG = data[1] / 255
         srcB = data[2] / 255
@@ -717,13 +728,18 @@ export class LayerManager {
    * so the caller can start mutating the layer immediately afterwards —
    * critical for pre-stroke undo snapshots, where eraser stamps begin
    * subtracting from the layer on pointerdown.
+   *
+   * Pass `region` to read back only a rect of the layer (dirty-region
+   * undo snapshots) — the readback and any later encode then cost
+   * proportional to the stroke, not the whole canvas.
    */
-  extractLayerCanvas(id: string): HTMLCanvasElement | null {
+  extractLayerCanvas(id: string, region?: SnapshotRegion): HTMLCanvasElement | null {
     const layer = this.getLayer(id)
     if (!layer) return null
     try {
       return this.app.renderer.extract.canvas({
         target: layer.renderTexture,
+        frame: region ? new Rectangle(region.x, region.y, region.width, region.height) : undefined,
       }) as HTMLCanvasElement
     } catch {
       return null
@@ -772,6 +788,67 @@ export class LayerManager {
       // texture releases it. Calling `bitmap.close()` here would be a
       // double-free. (Pixi v8 takes ownership when the texture is
       // created from an `ImageBitmap` resource.)
+    }
+    layer.lastSavedBase64 = null
+  }
+
+  /**
+   * Restore only a rect of a layer from a region snapshot: the rect's
+   * current alpha is erased first (a `blendMode='erase'` quad), then the
+   * snapshot pixels are drawn at their original offset. Pixels outside
+   * the rect are untouched — the whole point of dirty-region undo.
+   */
+  async restoreLayerRegionFromBlob(id: string, blob: Blob, region: SnapshotRegion): Promise<void> {
+    const layer = this.getLayer(id)
+    if (!layer) return
+
+    const bitmap = await createImageBitmap(blob)
+    const texture = Texture.from({ resource: bitmap, label: `restore-region-${id}` })
+    const container = new Container()
+
+    const eraseRect = new Graphics()
+      .rect(region.x, region.y, region.width, region.height)
+      .fill({ color: 0xffffff })
+    eraseRect.blendMode = 'erase'
+    container.addChild(eraseRect)
+
+    const sprite = new Sprite(texture)
+    sprite.position.set(region.x, region.y)
+    container.addChild(sprite)
+
+    try {
+      this.app.renderer.render({
+        container,
+        target: layer.renderTexture,
+        clear: false,
+      })
+    } finally {
+      container.destroy({ children: true })
+      texture.destroy()
+    }
+    layer.lastSavedBase64 = null
+  }
+
+  /**
+   * Restore a layer's full pixels from an already-decoded canvas — no
+   * PNG decode round-trip. Used by stroke-cancel, where the pre-stroke
+   * readback canvas is still at hand.
+   */
+  restoreLayerFromCanvas(id: string, canvas: HTMLCanvasElement): void {
+    const layer = this.getLayer(id)
+    if (!layer) return
+
+    const texture = Texture.from(canvas)
+    const sprite = new Sprite(texture)
+    try {
+      this.app.renderer.render({
+        container: sprite,
+        target: layer.renderTexture,
+        clear: true,
+      })
+    } finally {
+      sprite.destroy()
+      texture.destroy(true)
     }
     layer.lastSavedBase64 = null
   }

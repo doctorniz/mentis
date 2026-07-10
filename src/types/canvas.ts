@@ -128,9 +128,25 @@ export interface StrokePoint {
  * Disk format (`CanvasLayerData.imageData`) stays base64 — see BUG-13 for
  * the plan to replace that with sibling PNG files.
  */
+/** Rect (canvas-space px) a dirty-region snapshot covers. */
+export interface SnapshotRegion {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export interface LayerSnapshot {
   layerId: string
   blob: Blob
+  /**
+   * When present, `blob` holds only this rect of the layer and restore
+   * erases + redraws just that rect. Absent = full-layer snapshot
+   * (fill, and other whole-layer operations). Dirty-region snapshots
+   * keep a 1-px dot from costing a multi-MB full-layer PNG encode on a
+   * grown canvas.
+   */
+  region?: SnapshotRegion
 }
 
 /**

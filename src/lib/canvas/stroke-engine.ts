@@ -33,6 +33,12 @@ export class StrokeEngine {
   private _isDrawing = false
   private _isEraser = false
 
+  /** Dirty-rect accumulator for the in-progress stroke (canvas-space). */
+  private boundsMinX = Infinity
+  private boundsMinY = Infinity
+  private boundsMaxX = -Infinity
+  private boundsMaxY = -Infinity
+
   /** Called when a stroke is committed to the layer. */
   onStrokeCommitted: (() => void) | null = null
 
@@ -43,6 +49,43 @@ export class StrokeEngine {
 
   get isDrawing(): boolean {
     return this._isDrawing
+  }
+
+  get isEraserStroke(): boolean {
+    return this._isDrawing && this._isEraser
+  }
+
+  /**
+   * Bounding box of everything the in-progress (or just-ended) stroke
+   * may have touched, padded by the brush radius plus a small safety
+   * margin. Unclamped — callers intersect it with the canvas rect.
+   * Null when no points were tracked.
+   */
+  getStrokeBounds(): { x: number; y: number; width: number; height: number } | null {
+    if (this.boundsMinX === Infinity) return null
+    return {
+      x: Math.floor(this.boundsMinX),
+      y: Math.floor(this.boundsMinY),
+      width: Math.ceil(this.boundsMaxX - this.boundsMinX),
+      height: Math.ceil(this.boundsMaxY - this.boundsMinY),
+    }
+  }
+
+  private trackPoint(point: StrokePoint, settings: BrushSettings): void {
+    // Full radius regardless of pressure/hardness — soft masks bleed to
+    // the edge of the stamp quad; +4 covers antialiasing.
+    const pad = settings.size / 2 + 4
+    this.boundsMinX = Math.min(this.boundsMinX, point.x - pad)
+    this.boundsMinY = Math.min(this.boundsMinY, point.y - pad)
+    this.boundsMaxX = Math.max(this.boundsMaxX, point.x + pad)
+    this.boundsMaxY = Math.max(this.boundsMaxY, point.y + pad)
+  }
+
+  private resetBounds(): void {
+    this.boundsMinX = Infinity
+    this.boundsMinY = Infinity
+    this.boundsMaxX = -Infinity
+    this.boundsMaxY = -Infinity
   }
 
   /**
@@ -65,6 +108,8 @@ export class StrokeEngine {
     this._isDrawing = true
     this._isEraser = isEraser
     this.currentPoints = [point]
+    this.resetBounds()
+    this.trackPoint(point, settings)
 
     const target = this.getStrokeTarget()
     if (!target) return
@@ -82,6 +127,7 @@ export class StrokeEngine {
     if (!this._isDrawing) return
 
     this.currentPoints.push(point)
+    this.trackPoint(point, settings)
 
     // Interpolate the last few points and render stamps.
     // We use the last 4 points for Catmull-Rom context.

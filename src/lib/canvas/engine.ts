@@ -10,7 +10,6 @@ import {
   DEFAULT_BACKGROUND,
   MAX_CANVAS_DIMENSION,
 } from '@/lib/canvas/constants'
-import type { LayerSnapshot } from '@/types/canvas'
 
 /**
  * CanvasEngine — the orchestrator for the PixiJS drawing engine.
@@ -34,14 +33,15 @@ export class CanvasEngine {
   private _background = DEFAULT_BACKGROUND
 
   /**
-   * The pre-stroke undo snapshot for the stroke currently being drawn.
-   * Set by the viewport on pointerdown (the GPU readback inside
-   * `snapshotActiveLayer` is synchronous, so the promise always holds
-   * pre-stroke pixels), consumed on pointerup when the stroke's undo
-   * entry is pushed — or by `cancelActiveStroke` to roll an aborted
-   * eraser stroke back.
+   * Pre-stroke pixels of the active layer, captured on pointerdown for
+   * ERASER strokes only (they mutate the layer from the first stamp;
+   * brush strokes live in the scratchpad until commit, so their undo
+   * region is read at pointerup instead — no per-stroke-start readback).
+   * Kept as a raw canvas, not a PNG: pointerup crops it to the stroke's
+   * dirty rect before encoding, and stroke-cancel restores from it with
+   * no decode round-trip.
    */
-  pendingStrokeSnapshot: Promise<LayerSnapshot | null> | null = null
+  pendingPreStrokeCanvas: { layerId: string; canvas: HTMLCanvasElement } | null = null
 
   /**
    * Serializes undo pushes across strokes: PNG encodes resolve on their
@@ -173,21 +173,18 @@ export class CanvasEngine {
   /**
    * Abort the stroke currently being drawn (Escape). Brush strokes are
    * discarded from the scratchpad; eraser strokes have already mutated
-   * the layer, so its pixels are restored from the pre-stroke snapshot
-   * captured on pointerdown.
+   * the layer, so its pixels are restored from the pre-stroke readback
+   * captured on pointerdown — no PNG decode involved.
    */
-  async cancelActiveStroke(): Promise<void> {
+  cancelActiveStroke(): void {
     if (!this._initialized || !this.strokeEngine.isDrawing) return
 
     const pixelsMutated = this.strokeEngine.cancelStroke()
-    const pending = this.pendingStrokeSnapshot
-    this.pendingStrokeSnapshot = null
+    const pre = this.pendingPreStrokeCanvas
+    this.pendingPreStrokeCanvas = null
 
-    if (pixelsMutated && pending) {
-      const snapshot = await pending
-      if (snapshot) {
-        await this.layerManager.restoreLayerFromBlob(snapshot.layerId, snapshot.blob)
-      }
+    if (pixelsMutated && pre) {
+      this.layerManager.restoreLayerFromCanvas(pre.layerId, pre.canvas)
     }
     this.render()
   }

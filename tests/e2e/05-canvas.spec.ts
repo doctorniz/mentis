@@ -277,6 +277,25 @@ test.describe('5.3 Undo / Redo', () => {
     await expect(undoBtn).toBeEnabled({ timeout: 5_000 })
   })
 
+  test('5.3.5 Undo history survives a tab switch', async ({ vaultPage: page }) => {
+    const undoBtn = page.getByTitle('Undo (Ctrl+Z)')
+
+    await page.keyboard.press('b')
+    await drawStroke(page, { x: 120, y: 120 }, { x: 260, y: 260 })
+    await expect(undoBtn).toBeEnabled({ timeout: 5_000 })
+    await page.waitForTimeout(500)
+
+    // Switch away (unmounts + destroys the engine) and back
+    await page.keyboard.press('Control+2')
+    await page.waitForTimeout(1500)
+    await page.keyboard.press('Control+1')
+    await expect(page.getByText('Loading canvas…')).toBeHidden({ timeout: 15_000 })
+    await page.waitForTimeout(800)
+
+    // The parked undo stack is re-attached — the stroke is still undoable
+    await expect(page.getByTitle('Undo (Ctrl+Z)')).toBeEnabled({ timeout: 5_000 })
+  })
+
   test('5.3.4 Escape cancels the in-progress stroke without an undo entry', async ({
     vaultPage: page,
   }) => {
