@@ -1,4 +1,5 @@
-import { test, expect, type Page } from './fixtures'
+import type { Page } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 /**
  * Mobile-native flows, run ONLY by the `mobile` Playwright project
