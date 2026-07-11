@@ -27,10 +27,17 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: ['**/20-mobile.spec.ts'],
     },
     {
+      // Real phone profile (Pixel 5: touch, mobile UA, 393×851). Runs the
+      // dedicated mobile spec only — the rest of the suite is written
+      // against desktop affordances (Ctrl shortcuts, static sidebars);
+      // its responsive coverage lives in 19-responsive.spec.ts via
+      // per-test viewport resizes.
       name: 'mobile',
       use: { ...devices['Pixel 5'] },
+      testMatch: ['**/20-mobile.spec.ts'],
     },
   ],
 

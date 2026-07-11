@@ -220,7 +220,10 @@ export function MobileNavMasthead({
     ]
 
   return (
-    <header className="border-border bg-bg flex shrink-0 items-center gap-2 border-b px-2 py-2 md:hidden">
+    <header
+      data-testid="mobile-masthead"
+      className="border-border bg-bg flex shrink-0 items-center gap-2 border-b px-2 py-2 md:hidden"
+    >
       <Dialog.Root open={open} onOpenChange={handleOpenChange}>
         <Dialog.Trigger asChild>
           <Button

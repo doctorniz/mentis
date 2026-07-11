@@ -27,13 +27,20 @@ async function seedVault(page: Page) {
 
   // The app is client-rendered: right after domcontentloaded the React
   // tree may not exist yet, so a bare isVisible() check races the render.
-  // Wait until either the vault landing (fresh state) or the app shell's
-  // sidebar (auto-restored vault) is actually on screen, then branch.
+  // Wait until either the vault landing (fresh state) or the app shell
+  // (auto-restored vault) is actually on screen, then branch. On mobile
+  // viewports the nav sidebar is display:none — the masthead is the
+  // ready signal instead.
+  // `:visible` matters: on mobile the desktop nav is display:none but
+  // still in the DOM, and a bare comma-selector wait would latch onto
+  // that first (hidden) match and hang.
+  const SHELL_SELECTOR =
+    '[data-testid="main-sidebar"]:visible, nav:visible, [data-testid="mobile-masthead"]:visible'
   const landingForm = page.locator('form').filter({
     has: page.getByRole('button', { name: /create/i }),
   })
-  const sidebar = page.locator('[data-testid="main-sidebar"], nav')
-  await expect(landingForm.or(sidebar).first()).toBeVisible({ timeout: 30_000 })
+  const shell = page.locator(SHELL_SELECTOR)
+  await expect(landingForm.or(shell).first()).toBeVisible({ timeout: 30_000 })
 
   if (await landingForm.isVisible()) {
     const nameInput = landingForm.getByRole('textbox')
@@ -42,8 +49,8 @@ async function seedVault(page: Page) {
     await landingForm.getByRole('button', { name: /create/i }).click()
   }
 
-  // Wait for app shell to be ready (sidebar visible = vault loaded)
-  await page.waitForSelector('[data-testid="main-sidebar"], nav', { timeout: 30_000 })
+  // Wait for app shell to be ready (nav sidebar on desktop, masthead on mobile)
+  await page.waitForSelector(SHELL_SELECTOR, { timeout: 30_000 })
 }
 
 /**

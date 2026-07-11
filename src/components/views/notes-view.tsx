@@ -417,6 +417,15 @@ function NotesViewInner() {
     else setNotesTreeExpanded(true)
   }, [isMobileTree, isCanvasTab, isCanvasTreeNarrow, isWideEditorTab, isWideEditorNarrow])
 
+  // On mobile, opening a file from the tree drawer must close the drawer —
+  // it otherwise stays covering the editor the user just navigated to.
+  // (The tree opens tabs internally, so this keys off the active tab id.)
+  const activeTabIdForDrawer = activeTab?.id
+  useEffect(() => {
+    if (isMobileTree) setNotesTreeExpanded(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTabIdForDrawer])
+
   // Auto-collapse nav sidebar for canvas tabs at ≤1050px. Restores when
   // the tab changes away from canvas or the viewport widens again.
   useEffect(() => {

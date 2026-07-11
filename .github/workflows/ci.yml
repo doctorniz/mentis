@@ -55,7 +55,8 @@ jobs:
       # (playwright.config.ts switches from `pnpm dev` on CI).
       - run: pnpm build
 
-      - run: pnpm exec playwright test --project=chromium
+      # Both projects: the full chromium suite + the Pixel 5 mobile spec
+      - run: pnpm exec playwright test
 
       - uses: actions/upload-artifact@v4
         if: failure()
