@@ -93,6 +93,12 @@ export interface BrushSettings {
   hardness: number // 0–1
   spacing: number // 0.05–1.0 (fraction of brush diameter)
   color: string // hex
+  /**
+   * Stabilizer strength, 0–1 (optional — older stored settings lack it).
+   * 0 = raw input; higher values EMA-smooth the pointer to iron out
+   * hand jitter at the cost of the stroke trailing the cursor.
+   */
+  smoothing?: number
 }
 
 /** A single point in a stroke, captured from PointerEvent. */
@@ -163,7 +169,11 @@ export interface LayerSnapshot {
  * New kinds (add-layer, etc.) should follow the same pattern rather than
  * overloading `stroke`, so each undo path stays narrow and type-checked.
  */
-export type UndoEntry = StrokeUndoEntry | RemoveLayerUndoEntry | ReorderLayersUndoEntry
+export type UndoEntry =
+  | StrokeUndoEntry
+  | RemoveLayerUndoEntry
+  | ReorderLayersUndoEntry
+  | MergeLayersUndoEntry
 
 export interface StrokeUndoEntry {
   kind: 'stroke'
@@ -189,4 +199,24 @@ export interface ReorderLayersUndoEntry {
   before: string[]
   /** Stack order (bottom → top) after the reorder. */
   after: string[]
+}
+
+/**
+ * Merge-down: the source layer's pixels were composited onto the layer
+ * below and the source removed. Undo re-creates the source at its old
+ * index and restores the target's pre-merge pixels.
+ */
+export interface MergeLayersUndoEntry {
+  kind: 'merge-layers'
+  description: string
+  /** Full record of the removed (merged-away) source layer. */
+  sourceLayerData: CanvasLayerData
+  /** 0-based stack index the source occupied (bottom → top). */
+  sourceIndex: number
+  /** Whether the source was the active layer. */
+  sourceWasActive: boolean
+  /** Layer the pixels were merged into (the one below the source). */
+  targetLayerId: string
+  /** Target's pixels BEFORE the merge. */
+  targetSnapshot: Blob
 }

@@ -39,6 +39,13 @@ export class StrokeEngine {
   private boundsMaxX = -Infinity
   private boundsMaxY = -Infinity
 
+  /**
+   * Where the previous stroke ended (canvas-space). Shift+click begins
+   * the next stroke with a straight connecting line from here — the
+   * Photoshop convention for ruled lines.
+   */
+  private _lastStrokeEnd: StrokePoint | null = null
+
   /** Called when a stroke is committed to the layer. */
   onStrokeCommitted: (() => void) | null = null
 
@@ -101,7 +108,12 @@ export class StrokeEngine {
     return this.layerManager.getScratchpadRT()
   }
 
-  beginStroke(point: StrokePoint, settings: BrushSettings, isEraser: boolean): void {
+  beginStroke(
+    point: StrokePoint,
+    settings: BrushSettings,
+    isEraser: boolean,
+    connectToLast = false,
+  ): void {
     const active = this.layerManager.getActiveLayer()
     if (!active || active.locked) return
 
@@ -120,11 +132,35 @@ export class StrokeEngine {
       this.layerManager.setScratchpadOpacity(settings.opacity)
     }
 
+    // Shift+click: rule a straight line from the previous stroke's end.
+    if (connectToLast && this._lastStrokeEnd) {
+      const from = this._lastStrokeEnd
+      this.trackPoint(from, settings)
+      const spacingPx = Math.max(1, settings.size * settings.spacing)
+      const stamps = interpolateStroke([from, point], spacingPx)
+      this.brushSystem.renderStamps(stamps, settings, target, isEraser)
+      return
+    }
+
     this.brushSystem.stampAt(point.x, point.y, point.pressure, settings, target, isEraser)
   }
 
   continueStroke(point: StrokePoint, settings: BrushSettings): void {
     if (!this._isDrawing) return
+
+    // Optional stabilizer: exponential moving average toward the raw
+    // pointer position. Higher smoothing = the stroke trails the cursor
+    // more, ironing out hand jitter.
+    const smoothing = settings.smoothing ?? 0
+    if (smoothing > 0 && this.currentPoints.length > 0) {
+      const prev = this.currentPoints[this.currentPoints.length - 1]
+      const follow = 1 - 0.85 * Math.min(1, smoothing)
+      point = {
+        ...point,
+        x: prev.x + (point.x - prev.x) * follow,
+        y: prev.y + (point.y - prev.y) * follow,
+      }
+    }
 
     this.currentPoints.push(point)
     this.trackPoint(point, settings)
@@ -151,6 +187,8 @@ export class StrokeEngine {
   endStroke(): void {
     if (!this._isDrawing) return
     this._isDrawing = false
+
+    this._lastStrokeEnd = this.currentPoints[this.currentPoints.length - 1] ?? null
 
     if (!this._isEraser) {
       // Normal strokes: commit the accumulated scratchpad to the active

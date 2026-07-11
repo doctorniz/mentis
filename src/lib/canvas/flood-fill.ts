@@ -15,14 +15,19 @@
  *   filling. The explicit number-stack also avoids object allocations
  *   per seed.
  *
- * - We match the *target* colour (the RGBA at the clicked pixel)
- *   exactly. No tolerance — a tolerance slider can be layered on top
- *   by changing `matches()` to a distance check.
+ * - Colour matching accepts a per-channel `tolerance` (0 = exact).
+ *   Filling next to soft/antialiased strokes with exact matching left
+ *   an unfilled halo; tolerance + the 1px edge expansion below are the
+ *   standard fix. A `painted` bitmask keeps the walk terminating even
+ *   when the fill colour itself falls within tolerance of the target.
  *
  * - If the fill colour is byte-for-byte identical to the target we
- *   return early. Otherwise the "paint every matching pixel" loop
- *   would never terminate on a seed that's already been painted,
- *   because post-paint the pixel still "matches" the new target.
+ *   return early — repainting identical pixels would only produce a
+ *   useless undo entry.
+ *
+ * - After the fill, every painted pixel bleeds 1px into unpainted
+ *   neighbours (8-way), covering the antialiased fringe that sits just
+ *   outside tolerance.
  *
  * The pixel buffer is mutated in place.
  */
@@ -36,6 +41,7 @@ export function floodFill(
   fillG: number,
   fillB: number,
   fillA: number,
+  tolerance = 0,
 ): boolean {
   if (startX < 0 || startX >= width || startY < 0 || startY >= height) return false
 
@@ -50,14 +56,22 @@ export function floodFill(
   // No-op: clicking on a pixel that already matches the fill colour.
   if (tR === fillR && tG === fillG && tB === fillB && tA === fillA) return false
 
+  /** 1 where the fill has painted; indexed by pixel (not byte). */
+  const painted = new Uint8Array(width * height)
+
   const matches = (i: number): boolean =>
-    pixels[i] === tR && pixels[i + 1] === tG && pixels[i + 2] === tB && pixels[i + 3] === tA
+    painted[i >> 2] === 0 &&
+    Math.abs(pixels[i] - tR) <= tolerance &&
+    Math.abs(pixels[i + 1] - tG) <= tolerance &&
+    Math.abs(pixels[i + 2] - tB) <= tolerance &&
+    Math.abs(pixels[i + 3] - tA) <= tolerance
 
   const paint = (i: number): void => {
     pixels[i] = fillR
     pixels[i + 1] = fillG
     pixels[i + 2] = fillB
     pixels[i + 3] = fillA
+    painted[i >> 2] = 1
   }
 
   // Stack of [x, y] seeds, stored as flat numbers to avoid allocation.
@@ -105,6 +119,27 @@ export function floodFill(
       }
     }
   }
+
+  // 1px edge expansion: paint the unfilled 8-neighbours of every filled
+  // pixel so the antialiased fringe of adjacent soft strokes doesn't
+  // survive as a halo. Collected first, painted after — expanding while
+  // scanning would cascade.
+  const fringe: number[] = []
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (painted[y * width + x] === 0) continue
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue
+          const nx = x + dx
+          const ny = y + dy
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
+          if (painted[ny * width + nx] === 0) fringe.push(idx(nx, ny))
+        }
+      }
+    }
+  }
+  for (const i of fringe) paint(i)
 
   return true
 }

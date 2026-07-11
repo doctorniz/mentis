@@ -3,6 +3,7 @@ import type {
   StrokeUndoEntry,
   RemoveLayerUndoEntry,
   ReorderLayersUndoEntry,
+  MergeLayersUndoEntry,
   LayerSnapshot,
   SnapshotRegion,
   CanvasLayerData,
@@ -185,6 +186,8 @@ export class UndoManager {
         return this.reverseRemoveLayer(entry)
       case 'reorder-layers':
         return this.reverseReorder(entry)
+      case 'merge-layers':
+        return this.reverseMergeLayers(entry)
       default: {
         const _exhaustive: never = entry
         void _exhaustive
@@ -277,6 +280,44 @@ export class UndoManager {
       layerData: fresh ?? entry.layerData,
       index: entry.index,
       wasActive: entry.wasActive,
+    }
+  }
+
+  /**
+   * merge-layers reversal, mirroring remove-layer's two directions:
+   *
+   * A. Undoing a merge = the source layer is gone and the target holds
+   *    the merged pixels. Restore the target's pre-merge snapshot and
+   *    re-create the source at its old index.
+   *
+   * B. Redoing a merge = the source exists again. Capture fresh
+   *    pre-merge state (target pixels + source data) for the mirror,
+   *    then re-merge.
+   */
+  private async reverseMergeLayers(
+    entry: MergeLayersUndoEntry,
+  ): Promise<MergeLayersUndoEntry | null> {
+    const sourceExists = this.layerManager.getLayer(entry.sourceLayerData.id)
+
+    if (!sourceExists) {
+      // Direction A: un-merge.
+      await this.layerManager.restoreLayerFromBlob(entry.targetLayerId, entry.targetSnapshot)
+      await this.layerManager.insertLayerFromData(entry.sourceLayerData, entry.sourceIndex)
+      if (entry.sourceWasActive) {
+        this.layerManager.setActiveLayer(entry.sourceLayerData.id)
+      }
+      return { ...entry }
+    }
+
+    // Direction B: re-merge with freshly captured pre-merge state.
+    const freshTarget = await this.layerManager.extractLayerBlob(entry.targetLayerId)
+    const freshSource = await this.layerManager.captureLayerData(entry.sourceLayerData.id)
+    this.layerManager.mergeLayerDown(entry.sourceLayerData.id)
+
+    return {
+      ...entry,
+      sourceLayerData: freshSource ?? entry.sourceLayerData,
+      targetSnapshot: freshTarget ?? entry.targetSnapshot,
     }
   }
 

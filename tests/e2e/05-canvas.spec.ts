@@ -217,6 +217,36 @@ test.describe('5.2 Layers', () => {
     await expect(page.getByText('Layer 1')).toBeHidden()
     await expect(page.getByText('Layer 2')).toBeVisible()
   })
+
+  test('5.2.7 Merge down, undo, and flatten', async ({ vaultPage: page }) => {
+    await page.getByTitle('Add layer').click()
+    await expect(page.getByText('Layer 2')).toBeVisible()
+
+    // Merge the active (top) layer into Layer 1
+    await page.getByTitle('Merge down').click()
+    await expect(page.getByText('Layer 2')).toBeHidden()
+    await expect(page.getByText('Layer 1')).toBeVisible()
+
+    // Undo re-creates the merged-away layer
+    await page.keyboard.press('Control+z')
+    await expect(page.getByText('Layer 2')).toBeVisible({ timeout: 5_000 })
+
+    // Flatten collapses the whole stack to one layer
+    await page.getByTitle('Add layer').click()
+    await expect(page.getByText('Layer 3')).toBeVisible()
+    await page.getByTitle('Flatten').click()
+    await expect(page.getByText('Layer 3')).toBeHidden()
+    await expect(page.getByText('Layer 2')).toBeHidden()
+    await expect(page.getByText('Layer 1')).toBeVisible()
+  })
+
+  test('5.2.8 Clear layer pushes an undo entry', async ({ vaultPage: page }) => {
+    const undoBtn = page.getByTitle('Undo (Ctrl+Z)')
+    await expect(undoBtn).toBeDisabled()
+
+    await page.getByTitle('Clear layer').click()
+    await expect(undoBtn).toBeEnabled({ timeout: 5_000 })
+  })
 })
 
 /* ================================================================== */
@@ -317,6 +347,39 @@ test.describe('5.3 Undo / Redo', () => {
 
     // The aborted stroke must not have produced an undo entry
     await expect(undoBtn).toBeDisabled()
+  })
+})
+
+/* ================================================================== */
+/*  5.7  Zoom controls                                                */
+/* ================================================================== */
+
+test.describe('5.7 Zoom controls', () => {
+  test.beforeEach(async ({ vaultPage: page }) => {
+    await navigateTo(page, 'vault')
+    await createCanvas(page)
+  })
+
+  test('5.7.1 Zoom cluster: in / out / fit / reset drive the readout', async ({
+    vaultPage: page,
+  }) => {
+    const readout = page.getByRole('button', { name: 'Reset zoom to 100%' })
+    await expect(readout).toHaveText('100%')
+
+    await page.getByRole('button', { name: 'Zoom in' }).click()
+    await expect(readout).toHaveText('125%')
+
+    await page.getByRole('button', { name: 'Zoom out' }).click()
+    await expect(readout).toHaveText('100%')
+
+    // Fit shrinks a 2048px canvas well below 100% in any test viewport
+    await page.getByRole('button', { name: 'Fit canvas to view' }).click()
+    const fitText = (await readout.textContent()) ?? ''
+    expect(parseInt(fitText, 10)).toBeLessThan(100)
+
+    // Percentage button resets to exactly 100%
+    await readout.click()
+    await expect(readout).toHaveText('100%')
   })
 })
 

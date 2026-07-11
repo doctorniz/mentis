@@ -127,6 +127,34 @@ test.describe('20 — Mobile (Pixel 5)', () => {
     await expect(drawer).toBeHidden()
   })
 
+  test('20.7 Pinch gesture zooms the canvas', async ({ vaultPage: page }) => {
+    // Create a canvas through the masthead New menu
+    await openMastheadMenu(page)
+    await page.getByRole('dialog').getByRole('button', { name: 'New', exact: true }).tap()
+    await page.getByRole('dialog').getByRole('button', { name: 'Canvas', exact: true }).tap()
+    await expect(page.getByText('Loading canvas…')).toBeHidden({ timeout: 15_000 })
+    await page.waitForTimeout(800)
+
+    const readout = page.getByRole('button', { name: 'Reset zoom to 100%' })
+    await expect(readout).toHaveText('100%')
+
+    // Synthesize a real two-finger pinch-out over the drawing surface
+    const surface = page.locator('canvas').first()
+    const box = await surface.boundingBox()
+    if (!box) throw new Error('Canvas not visible')
+    const client = await page.context().newCDPSession(page)
+    await client.send('Input.synthesizePinchGesture', {
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+      scaleFactor: 2,
+      relativeSpeed: 400,
+    })
+    await page.waitForTimeout(500)
+
+    const zoomed = parseInt((await readout.textContent()) ?? '100', 10)
+    expect(zoomed).toBeGreaterThan(100)
+  })
+
   test('20.6 Calendar defaults to day view on a phone', async ({ vaultPage: page }) => {
     await mastheadNavigate(page, 'Organizer')
     await page.getByRole('button', { name: 'Calendar', exact: true }).tap()

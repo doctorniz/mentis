@@ -8,7 +8,12 @@ import {
   type Application,
 } from 'pixi.js'
 import type { CanvasLayerData, CanvasLayerMeta, SnapshotRegion } from '@/types/canvas'
-import { DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, MAX_LAYERS } from '@/lib/canvas/constants'
+import {
+  DEFAULT_CANVAS_WIDTH,
+  DEFAULT_CANVAS_HEIGHT,
+  MAX_LAYERS,
+  FILL_TOLERANCE,
+} from '@/lib/canvas/constants'
 import { floodFill } from '@/lib/canvas/flood-fill'
 
 /* ------------------------------------------------------------------ */
@@ -241,6 +246,51 @@ export class LayerManager {
     dest.visible = src.visible
     this.syncVisuals()
     return newId
+  }
+
+  /**
+   * Composite a layer's pixels onto the layer directly below it
+   * (respecting the source's opacity and blend mode) and remove the
+   * source. Returns the target layer's id, or null when the source is
+   * the bottom layer / missing. Callers handle undo — capture the
+   * target's pixels and the source's full data BEFORE calling.
+   */
+  mergeLayerDown(id: string): string | null {
+    const index = this.layers.findIndex((l) => l.id === id)
+    if (index <= 0) return null
+    const source = this.layers[index]
+    const target = this.layers[index - 1]
+
+    const sprite = new Sprite(source.renderTexture)
+    sprite.alpha = source.opacity
+    // Pixi's Sprite.blendMode typing is a string union; stored modes come
+    // from the validated BLEND_MODES list.
+    sprite.blendMode = source.blendMode as Sprite['blendMode']
+    this.app.renderer.render({
+      container: sprite,
+      target: target.renderTexture,
+      clear: false,
+    })
+    sprite.destroy()
+    target.lastSavedBase64 = null
+
+    this.removeLayer(source.id)
+    this.setActiveLayer(target.id)
+    return target.id
+  }
+
+  /** Erase every pixel on a layer. Callers snapshot for undo first. */
+  clearLayer(id: string): void {
+    const layer = this.getLayer(id)
+    if (!layer) return
+    const empty = new Container()
+    this.app.renderer.render({
+      container: empty,
+      target: layer.renderTexture,
+      clear: true,
+    })
+    empty.destroy()
+    layer.lastSavedBase64 = null
   }
 
   renameLayer(id: string, name: string): void {
@@ -557,7 +607,7 @@ export class LayerManager {
     const h = extracted.height
     const imgData = ctx.getImageData(0, 0, w, h)
 
-    const filled = floodFill(imgData.data, w, h, px, py, r, g, b, a)
+    const filled = floodFill(imgData.data, w, h, px, py, r, g, b, a, FILL_TOLERANCE)
     if (!filled) return false
 
     ctx.putImageData(imgData, 0, 0)

@@ -3,15 +3,18 @@
 import { useCallback, useState } from 'react'
 import * as Slider from '@radix-ui/react-slider'
 import {
+  ArrowDownToLine,
+  Combine,
+  Copy,
   Eye,
   EyeOff,
+  GripVertical,
   Lock,
-  Unlock,
+  PaintbrushVertical,
   PanelRightClose,
   Plus,
   Trash2,
-  Copy,
-  GripVertical,
+  Unlock,
 } from 'lucide-react'
 import { useCanvasStore } from '@/stores/canvas'
 import { toast } from '@/stores/toast'
@@ -164,6 +167,127 @@ export function CanvasPropertiesPanel({ engineRef, onCollapse }: CanvasPropertie
     engine.layerManager.duplicateLayer(id)
     syncLayersToStore()
     useCanvasStore.getState().markDirty()
+  }
+
+  function afterLayerOp(engine: NonNullable<typeof engineRef.current>) {
+    engine.render()
+    syncLayersToStore()
+    const store = useCanvasStore.getState()
+    store.markDirty()
+    store.setUndoState(engine.undoManager.canUndo, engine.undoManager.canRedo)
+  }
+
+  /**
+   * Merge one layer onto the one below. Same undo-safety contract as
+   * delete: capture everything needed for reversal BEFORE mutating, and
+   * abort if the capture fails.
+   */
+  async function mergeDown(
+    engine: NonNullable<typeof engineRef.current>,
+    id: string,
+  ): Promise<boolean> {
+    const layers = engine.layerManager.getAllLayers()
+    const index = layers.findIndex((l) => l.id === id)
+    if (index <= 0) return false
+    const target = layers[index - 1]
+
+    const wasActive = engine.layerManager.activeLayerId === id
+    const [sourceLayerData, targetSnapshot] = await Promise.all([
+      engine.layerManager.captureLayerData(id),
+      engine.layerManager.extractLayerBlob(target.id),
+    ])
+    if (!sourceLayerData || !targetSnapshot) {
+      toast.error('Could not snapshot layers for undo — merge aborted')
+      return false
+    }
+
+    const mergedInto = engine.layerManager.mergeLayerDown(id)
+    if (!mergedInto) return false
+
+    engine.undoManager.push({
+      kind: 'merge-layers',
+      description: `Merge ${sourceLayerData.name} down`,
+      sourceLayerData,
+      sourceIndex: index,
+      sourceWasActive: wasActive,
+      targetLayerId: mergedInto,
+      targetSnapshot,
+    })
+    return true
+  }
+
+  function handleMergeDown() {
+    const engine = engineRef.current
+    if (!engine?.initialized) return
+    const id = engine.layerManager.activeLayerId
+    if (!id) return
+
+    void (async () => {
+      try {
+        if (await mergeDown(engine, id)) afterLayerOp(engine)
+      } catch (err) {
+        console.error('Merge down failed:', err)
+        toast.error('Failed to merge layer')
+      }
+    })()
+  }
+
+  /** Flatten = merge the top layer down until one remains (N undo steps). */
+  function handleFlatten() {
+    const engine = engineRef.current
+    if (!engine?.initialized) return
+
+    void (async () => {
+      try {
+        let merged = false
+        while (engine.layerManager.getAllLayers().length > 1) {
+          const layers = engine.layerManager.getAllLayers()
+          const top = layers[layers.length - 1]
+          if (!(await mergeDown(engine, top.id))) break
+          merged = true
+        }
+        if (merged) afterLayerOp(engine)
+      } catch (err) {
+        console.error('Flatten failed:', err)
+        toast.error('Failed to flatten layers')
+      }
+    })()
+  }
+
+  function handleClearLayer() {
+    const engine = engineRef.current
+    if (!engine?.initialized) return
+    const id = engine.layerManager.activeLayerId
+    if (!id) return
+
+    void (async () => {
+      try {
+        // Full-layer snapshot BEFORE clearing (sync readback inside)
+        const canvas = engine.layerManager.extractLayerCanvas(id)
+        if (!canvas) {
+          toast.error('Could not snapshot layer for undo — clear aborted')
+          return
+        }
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob((b) => resolve(b), 'image/png'),
+        )
+        if (!blob) {
+          toast.error('Could not snapshot layer for undo — clear aborted')
+          return
+        }
+
+        engine.layerManager.clearLayer(id)
+        engine.undoManager.push({
+          kind: 'stroke',
+          description: 'Clear layer',
+          snapshots: [{ layerId: id, blob }],
+        })
+        afterLayerOp(engine)
+      } catch (err) {
+        console.error('Clear layer failed:', err)
+        toast.error('Failed to clear layer')
+      }
+    })()
   }
 
   function handleSelectLayer(id: string) {
@@ -501,20 +625,79 @@ export function CanvasPropertiesPanel({ engineRef, onCollapse }: CanvasPropertie
           </section>
         )}
 
+        {/* ---- Smoothing (stabilizer) ---- */}
+        {showHardness && (
+          <section>
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-fg-secondary text-xs font-semibold tracking-wider uppercase">
+                Smoothing
+              </h3>
+              <span className="text-fg-muted text-xs">
+                {Math.round((brushSettings.smoothing ?? 0) * 100)}%
+              </span>
+            </div>
+            <Slider.Root
+              min={0}
+              max={100}
+              step={1}
+              value={[Math.round((brushSettings.smoothing ?? 0) * 100)]}
+              onValueChange={([v]) => setBrushSettings({ smoothing: v / 100 })}
+              className="relative flex h-5 w-full items-center"
+            >
+              <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
+                <Slider.Range className="bg-accent absolute h-full rounded-full" />
+              </Slider.Track>
+              <Slider.Thumb className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none" />
+            </Slider.Root>
+          </section>
+        )}
+
         {/* ---- Layers ---- */}
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-fg-secondary text-xs font-semibold tracking-wider uppercase">
               Layers
             </h3>
-            <button
-              type="button"
-              onClick={handleAddLayer}
-              title="Add layer"
-              className="text-fg-secondary hover:text-fg rounded p-0.5"
-            >
-              <Plus className="size-3.5" />
-            </button>
+            {/* Actions on the ACTIVE layer + add */}
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={handleMergeDown}
+                title="Merge down"
+                aria-label="Merge active layer down"
+                disabled={layers.length <= 1 || layers[0]?.id === activeLayerId}
+                className="text-fg-secondary hover:text-fg rounded p-0.5 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <ArrowDownToLine className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleFlatten}
+                title="Flatten"
+                aria-label="Flatten all layers"
+                disabled={layers.length <= 1}
+                className="text-fg-secondary hover:text-fg rounded p-0.5 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <Combine className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleClearLayer}
+                title="Clear layer"
+                aria-label="Clear active layer"
+                className="text-fg-secondary hover:text-fg rounded p-0.5"
+              >
+                <PaintbrushVertical className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleAddLayer}
+                title="Add layer"
+                className="text-fg-secondary hover:text-fg rounded p-0.5"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </div>
           </div>
           <div
             className="flex flex-col gap-0.5"

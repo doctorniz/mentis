@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { Maximize, ZoomIn, ZoomOut } from 'lucide-react'
 import type { CanvasEngine } from '@/lib/canvas/engine'
 import { useCanvasStore } from '@/stores/canvas'
 import { hexToRgba, rgbToHex } from '@/lib/canvas/flood-fill'
@@ -38,8 +39,25 @@ interface CanvasViewportProps {
  * the tool changes — otherwise the inline `style.cursor` is frozen at
  * first-mount value. See BUG-06.
  */
+/** Live positions of the touch pointers involved in a pinch gesture. */
+interface GestureState {
+  lastDist: number
+  lastMidX: number
+  lastMidY: number
+}
+
 export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps) {
   const activePointerRef = useRef<number | null>(null)
+
+  /** All currently-down touch pointers (id → client coords). */
+  const touchPointsRef = useRef(new Map<number, { x: number; y: number }>())
+  /** Non-null while a two-finger pinch/pan gesture is in progress. */
+  const gestureRef = useRef<GestureState | null>(null)
+  /**
+   * Set when a gesture starts; drawing stays suppressed until every
+   * finger lifts, so the surviving finger of a pinch can't paint.
+   */
+  const suppressDrawingRef = useRef(false)
 
   // Reactive selectors — these drive the cursor style below.
   const activeTool = useCanvasStore((s) => s.activeTool)
@@ -54,9 +72,49 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
     [layers, activeLayerId],
   )
 
+  // CSS cursors cap at 128px in most browsers; past that we hide the
+  // circle from the cursor itself and track the pointer with an HTML
+  // ring overlay instead, which can be any size.
+  const overlayDia = useMemo(() => {
+    if (activeTool !== 'brush' && activeTool !== 'eraser') return 0
+    if (activeLayerLocked) return 0
+    const size = activeTool === 'eraser' ? eraserSize : brushSettings.size
+    const dia = Math.round(size * zoom)
+    return dia > MAX_CURSOR_PX ? dia : 0
+  }, [activeTool, activeLayerLocked, brushSettings.size, eraserSize, zoom])
+
+  const cursorOverlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const host = containerRef.current
+    const ring = cursorOverlayRef.current
+    if (!host || !ring || overlayDia === 0) return
+
+    const move = (e: PointerEvent) => {
+      const rect = host.getBoundingClientRect()
+      ring.style.display = 'block'
+      ring.style.transform = `translate(${e.clientX - rect.left - overlayDia / 2}px, ${
+        e.clientY - rect.top - overlayDia / 2
+      }px)`
+    }
+    const hide = () => {
+      ring.style.display = 'none'
+    }
+    host.addEventListener('pointermove', move)
+    host.addEventListener('pointerleave', hide)
+    return () => {
+      host.removeEventListener('pointermove', move)
+      host.removeEventListener('pointerleave', hide)
+      hide()
+    }
+  }, [containerRef, overlayDia])
+
   const cursor = useMemo(
-    () => cursorForTool(activeTool, activeLayerLocked, brushSettings, eraserSize, zoom),
-    [activeTool, activeLayerLocked, brushSettings, eraserSize, zoom],
+    () =>
+      overlayDia > 0
+        ? 'crosshair'
+        : cursorForTool(activeTool, activeLayerLocked, brushSettings, eraserSize, zoom),
+    [overlayDia, activeTool, activeLayerLocked, brushSettings, eraserSize, zoom],
   )
 
   const onPointerDown = useCallback(
@@ -66,6 +124,30 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
 
       const el = e.currentTarget
       el.setPointerCapture(e.pointerId)
+
+      // ---- Two-finger pinch-zoom / pan (touch only) ----
+      if (e.pointerType === 'touch') {
+        touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+        if (touchPointsRef.current.size === 2) {
+          // Second finger landed: this is a gesture, not a stroke. Abort
+          // anything the first finger started and suppress drawing until
+          // all fingers lift.
+          suppressDrawingRef.current = true
+          if (engine.strokeEngine.isDrawing) engine.cancelActiveStroke()
+          if (engine.viewportController.isPanning) engine.viewportController.endPan()
+
+          const [a, b] = [...touchPointsRef.current.values()]
+          gestureRef.current = {
+            lastDist: Math.hypot(b.x - a.x, b.y - a.y),
+            lastMidX: (a.x + b.x) / 2,
+            lastMidY: (a.y + b.y) / 2,
+          }
+          return
+        }
+        if (suppressDrawingRef.current) return
+      }
+
       activePointerRef.current = e.pointerId
 
       const tool = useCanvasStore.getState().activeTool
@@ -115,6 +197,8 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
           },
           settings,
           tool === 'eraser',
+          // Shift+click rules a straight line from the last stroke's end
+          e.shiftKey,
         )
         engine.render()
       }
@@ -186,6 +270,39 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
     (e: React.PointerEvent<HTMLDivElement>) => {
       const engine = engineRef.current
       if (!engine?.initialized) return
+
+      // ---- Pinch gesture: zoom at midpoint + two-finger pan ----
+      if (e.pointerType === 'touch' && touchPointsRef.current.has(e.pointerId)) {
+        touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+        const gesture = gestureRef.current
+        if (gesture && touchPointsRef.current.size >= 2) {
+          const [a, b] = [...touchPointsRef.current.values()]
+          const dist = Math.hypot(b.x - a.x, b.y - a.y)
+          const midX = (a.x + b.x) / 2
+          const midY = (a.y + b.y) / 2
+          const rect = e.currentTarget.getBoundingClientRect()
+
+          if (gesture.lastDist > 0 && dist > 0) {
+            engine.viewportController.zoomByFactorAtPoint(
+              dist / gesture.lastDist,
+              midX - rect.left,
+              midY - rect.top,
+            )
+          }
+          engine.viewportController.panBy(midX - gesture.lastMidX, midY - gesture.lastMidY)
+
+          gesture.lastDist = dist
+          gesture.lastMidX = midX
+          gesture.lastMidY = midY
+
+          useCanvasStore.getState().setViewport(engine.viewportController.state)
+          engine.render()
+          return
+        }
+        if (suppressDrawingRef.current) return
+      }
+
       if (activePointerRef.current !== e.pointerId) return
 
       if (engine.viewportController.isPanning) {
@@ -250,7 +367,21 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
       if (!engine?.initialized) return
 
       const el = e.currentTarget
-      el.releasePointerCapture(e.pointerId)
+      try {
+        el.releasePointerCapture(e.pointerId)
+      } catch {
+        /* pointer may already be released */
+      }
+
+      // ---- Gesture bookkeeping ----
+      if (e.pointerType === 'touch') {
+        touchPointsRef.current.delete(e.pointerId)
+        if (touchPointsRef.current.size < 2) gestureRef.current = null
+        if (touchPointsRef.current.size === 0) suppressDrawingRef.current = false
+        if (suppressDrawingRef.current) return
+      }
+
+      if (activePointerRef.current !== e.pointerId) return
       activePointerRef.current = null
 
       if (engine.viewportController.isPanning) {
@@ -353,16 +484,117 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
   }, [])
 
   return (
-    <div
-      ref={containerRef}
-      className="relative min-h-0 flex-1 overflow-hidden bg-neutral-100 dark:bg-neutral-900"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onContextMenu={onContextMenu}
-      style={{ touchAction: 'none', cursor }}
-    />
+    // Wrapper owns the overlay; the inner div is the Pixi host. They must
+    // stay separate elements — Pixi appends its <canvas> imperatively into
+    // the host, and React children mixed into the same node risk
+    // removeChild crashes on unmount.
+    <div className="relative min-h-0 flex-1 overflow-hidden bg-neutral-100 dark:bg-neutral-900">
+      <div
+        ref={containerRef}
+        className="absolute inset-0"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onContextMenu={onContextMenu}
+        style={{ touchAction: 'none', cursor }}
+      />
+      {overlayDia > 0 && (
+        <div
+          ref={cursorOverlayRef}
+          aria-hidden
+          className="pointer-events-none absolute top-0 left-0 z-10 hidden rounded-full"
+          style={{
+            width: overlayDia,
+            height: overlayDia,
+            border: '1.5px solid rgba(0,0,0,0.55)',
+            outline: '1.5px solid rgba(255,255,255,0.9)',
+          }}
+        />
+      )}
+      <ZoomControls engineRef={engineRef} containerRef={containerRef} zoom={zoom} />
+    </div>
+  )
+}
+
+/**
+ * Floating zoom cluster (bottom-right): out / percentage / in / fit.
+ * Clicking the percentage resets to 100%. A sibling of the Pixi host,
+ * so its clicks never reach the drawing pointer handlers.
+ */
+function ZoomControls({
+  engineRef,
+  containerRef,
+  zoom,
+}: {
+  engineRef: React.RefObject<CanvasEngine | null>
+  containerRef: React.RefObject<HTMLDivElement | null>
+  zoom: number
+}) {
+  function apply(fn: (engine: CanvasEngine, viewW: number, viewH: number) => void) {
+    const engine = engineRef.current
+    const el = containerRef.current
+    if (!engine?.initialized || !el) return
+    const rect = el.getBoundingClientRect()
+    fn(engine, rect.width, rect.height)
+    useCanvasStore.getState().setViewport(engine.viewportController.state)
+    engine.render()
+  }
+
+  const btnCls =
+    'text-fg-secondary hover:bg-bg-hover hover:text-fg flex size-7 items-center justify-center rounded-md transition-colors'
+
+  return (
+    <div className="border-border bg-bg absolute right-3 bottom-3 z-10 flex items-center gap-0.5 rounded-lg border p-1 shadow-md">
+      <button
+        type="button"
+        title="Zoom out"
+        aria-label="Zoom out"
+        className={btnCls}
+        onClick={() =>
+          apply((engine, w, h) =>
+            engine.viewportController.setZoom(engine.viewportController.state.zoom / 1.25, w, h),
+          )
+        }
+      >
+        <ZoomOut className="size-3.5" aria-hidden />
+      </button>
+      <button
+        type="button"
+        title="Reset to 100%"
+        aria-label="Reset zoom to 100%"
+        className="text-fg-secondary hover:bg-bg-hover hover:text-fg min-w-12 rounded-md px-1 py-1 text-center text-xs tabular-nums transition-colors"
+        onClick={() => apply((engine, w, h) => engine.viewportController.setZoom(1, w, h))}
+      >
+        {Math.round(zoom * 100)}%
+      </button>
+      <button
+        type="button"
+        title="Zoom in"
+        aria-label="Zoom in"
+        className={btnCls}
+        onClick={() =>
+          apply((engine, w, h) =>
+            engine.viewportController.setZoom(engine.viewportController.state.zoom * 1.25, w, h),
+          )
+        }
+      >
+        <ZoomIn className="size-3.5" aria-hidden />
+      </button>
+      <button
+        type="button"
+        title="Fit canvas"
+        aria-label="Fit canvas to view"
+        className={btnCls}
+        onClick={() =>
+          apply((engine, w, h) =>
+            engine.viewportController.fitToView(engine.width, engine.height, w, h),
+          )
+        }
+      >
+        <Maximize className="size-3.5" aria-hidden />
+      </button>
+    </div>
   )
 }
 

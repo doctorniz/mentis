@@ -102,6 +102,35 @@ export class ViewportController {
     this.applyTransform()
   }
 
+  /**
+   * Multiply the zoom by an exact factor, keeping the pivot fixed on
+   * screen. The pinch gesture needs a ratio (current finger distance /
+   * previous distance), not the wheel-style additive delta of
+   * `zoomAtPoint`.
+   */
+  zoomByFactorAtPoint(factor: number, pivotX: number, pivotY: number): void {
+    const oldZoom = this._state.zoom
+    const newZoom = clampZoom(oldZoom * factor)
+    if (newZoom === oldZoom) return
+
+    const scale = newZoom / oldZoom
+    this._state.x = pivotX - (pivotX - this._state.x) * scale
+    this._state.y = pivotY - (pivotY - this._state.y) * scale
+    this._state.zoom = newZoom
+    this.applyTransform()
+  }
+
+  /** Fit the whole canvas into the view with a small margin, centered. */
+  fitToView(canvasW: number, canvasH: number, viewW: number, viewH: number): void {
+    if (canvasW <= 0 || canvasH <= 0 || viewW <= 0 || viewH <= 0) return
+    const PAD = 24
+    const zoom = clampZoom(Math.min((viewW - PAD * 2) / canvasW, (viewH - PAD * 2) / canvasH))
+    this._state.zoom = zoom
+    this._state.x = (viewW - canvasW * zoom) / 2
+    this._state.y = (viewH - canvasH * zoom) / 2
+    this.applyTransform()
+  }
+
   /* ---- Transform ---- */
 
   private applyTransform(): void {

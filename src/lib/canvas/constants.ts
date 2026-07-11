@@ -33,6 +33,13 @@ export const MAX_CANVAS_DIMENSION = 8192
 export const MAX_UNDO_ENTRIES = 30
 export const MAX_LAYERS = 12
 
+/**
+ * Per-channel colour tolerance for the fill tool. Exact matching (0)
+ * leaves an unfilled halo next to any antialiased stroke edge; 24 covers
+ * typical soft-brush fringes without bleeding through hard boundaries.
+ */
+export const FILL_TOLERANCE = 24
+
 export const AUTO_SAVE_DELAY_MS = 3_000
 
 export const DEFAULT_BRUSH: BrushSettings = {
@@ -41,6 +48,7 @@ export const DEFAULT_BRUSH: BrushSettings = {
   hardness: 0.8,
   spacing: 0.15,
   color: '#212529',
+  smoothing: 0,
 }
 
 export const DEFAULT_VIEWPORT: ViewportState = { x: 0, y: 0, zoom: 1 }
