@@ -48,7 +48,8 @@ export function PdfSideColumn({
 }: PdfSideColumnProps) {
   if (!expanded) {
     return (
-      <div className="border-border bg-bg-secondary flex w-9 shrink-0 flex-col items-center border-r py-2">
+      // w-10 matches every other collapsed rail (vault tree, chat, right column)
+      <div className="border-border bg-bg-secondary flex w-10 shrink-0 flex-col items-center border-r py-2">
         <button
           type="button"
           title="Show side panel"

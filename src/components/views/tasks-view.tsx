@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CheckSquare, Download, Loader2, Menu, Trash2 } from 'lucide-react'
+import { CheckSquare, Download, Loader2, Trash2 } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { buildTaskTree, isDueToday, isDueThisWeek } from '@/lib/tasks'
 import { exportTasksAsIcs } from '@/lib/tasks/ical'
@@ -10,8 +10,8 @@ import { TaskListSidebar } from '@/components/tasks/task-list-sidebar'
 import { TaskRow } from '@/components/tasks/task-row'
 import { QuickAddBar } from '@/components/tasks/quick-add-bar'
 import { TaskDetailDialog } from '@/components/tasks/task-detail-dialog'
+import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import type { TaskItem } from '@/types/tasks'
-import { cn } from '@/utils/cn'
 
 function downloadFile(content: string, filename: string, mime: string) {
   const blob = new Blob([content], { type: mime })
@@ -94,34 +94,24 @@ export function TasksView() {
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
-      {/* Mobile backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/40 sm:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar — fixed overlay on mobile, static on sm+ */}
-      <div
-        className={cn(
-          'fixed inset-y-0 left-0 z-30 transition-transform duration-200 sm:static sm:z-auto sm:translate-x-0 sm:transition-none',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0',
-        )}
-      >
+      {/* Sidebar — static on md+, MobileDrawer below (app-wide policy) */}
+      <div className="hidden md:block">
         <TaskListSidebar onNavigate={handleNavClick} />
       </div>
+      <MobileDrawer open={sidebarOpen} onOpenChange={setSidebarOpen} title="Task lists">
+        <TaskListSidebar onNavigate={handleNavClick} className="w-full border-r-0" />
+      </MobileDrawer>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Header */}
-        <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-2.5 sm:px-4">
+        <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-2.5 md:px-4">
           <button
             type="button"
             onClick={() => setSidebarOpen((o) => !o)}
-            className="text-fg-muted hover:text-fg -ml-0.5 shrink-0 rounded-lg p-1.5 transition-colors sm:hidden"
-            aria-label="Open navigation"
+            className="text-fg-muted hover:text-fg -ml-0.5 shrink-0 rounded-lg p-1.5 transition-colors md:hidden"
+            aria-label="Open task lists"
           >
-            <Menu className="size-4" />
+            <CheckSquare className="size-4" />
           </button>
           <h1 className="text-fg flex-1 text-sm font-semibold">{heading}</h1>
           <div className="flex items-center gap-1">
@@ -133,7 +123,7 @@ export function TasksView() {
                 title="Clear completed tasks"
               >
                 <Trash2 className="size-3.5" />
-                <span className="hidden sm:inline">Clear done ({doneCount})</span>
+                <span className="hidden md:inline">Clear done ({doneCount})</span>
               </button>
             )}
             <button
@@ -168,7 +158,7 @@ export function TasksView() {
               </p>
             </div>
           ) : (
-            <div className="px-2 py-1 sm:px-4">
+            <div className="px-2 py-1 md:px-4">
               {filtered.map((task) => (
                 <TaskRow key={task.path} item={task} onEdit={handleEdit} />
               ))}

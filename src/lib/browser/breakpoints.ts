@@ -1,4 +1,14 @@
-/** Matches Tailwind `md` (768px): phones and narrow tablets. */
+/**
+ * Matches Tailwind `md` (768px): phones and narrow tablets.
+ *
+ * POLICY: this is the app's single mobile breakpoint. ALL mobile layout
+ * switches key off it — the main sidebar/masthead swap, and every
+ * view-level sub-sidebar collapsing into a `MobileDrawer`
+ * (`components/ui/mobile-drawer.tsx`). Never branch mobile behavior on
+ * `sm` (640px) or an ad-hoc width: between two breakpoints the app ends
+ * up half-mobile (masthead shown, but a view still rendering its
+ * desktop sidebar).
+ */
 export const MOBILE_NAV_MEDIA_QUERY = '(max-width: 767px)'
 
 /**

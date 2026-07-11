@@ -9,6 +9,7 @@ import { useVaultStore } from '@/stores/vault'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
+import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { CalendarGrid } from '@/components/calendar/calendar-grid'
 import { WeekGrid } from '@/components/calendar/week-grid'
 import { DayGrid } from '@/components/calendar/day-grid'
@@ -97,10 +98,13 @@ export function CalendarView() {
   const dailyFolder = config?.dailyNotesFolder ?? DAILY_NOTES_DIR
   const [dailyNoteDates, setDailyNoteDates] = useState<Set<string>>(new Set())
 
-  // Persisted view mode (default: week)
+  // Persisted view mode. Default: week on desktop, day below the mobile
+  // breakpoint — seven crushed columns are unreadable on a phone.
   const [viewMode, setViewModeState] = useState<CalendarViewMode>(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(LS_KEY) : null
-    return (saved as CalendarViewMode | null) ?? 'week'
+    if (typeof window === 'undefined') return 'week'
+    const saved = localStorage.getItem(LS_KEY)
+    if (saved === 'day' || saved === 'week' || saved === 'month') return saved
+    return window.matchMedia(MOBILE_NAV_MEDIA_QUERY).matches ? 'day' : 'week'
   })
 
   const setViewMode = (m: CalendarViewMode) => {
@@ -202,10 +206,10 @@ export function CalendarView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Toolbar */}
-      <div className="border-border bg-bg-secondary flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2.5">
+      {/* Toolbar — wraps on narrow screens instead of overflowing */}
+      <div className="border-border bg-bg-secondary flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b px-3 py-2.5 md:px-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-fg min-w-[12rem] text-sm font-semibold tabular-nums">
+          <h1 className="text-fg text-sm font-semibold tabular-nums md:min-w-[12rem]">
             {formatHeading(viewMode, refDate)}
           </h1>
           <button

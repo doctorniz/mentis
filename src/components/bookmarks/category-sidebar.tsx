@@ -6,7 +6,15 @@ import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useBookmarksStore } from '@/stores/bookmarks'
 import { cn } from '@/utils/cn'
 
-export function CategorySidebar() {
+export function CategorySidebar({
+  onNavigate,
+  className,
+}: {
+  /** Called after a category is picked (closes the mobile drawer). */
+  onNavigate?: () => void
+  /** Merged onto the root (e.g. `w-full` inside a MobileDrawer). */
+  className?: string
+}) {
   const { vaultFs } = useVaultSession()
   const items = useBookmarksStore((s) => s.items)
   const categories = useBookmarksStore((s) => s.categories)
@@ -47,7 +55,7 @@ export function CategorySidebar() {
   )
 
   return (
-    <div className="flex h-full w-48 shrink-0 flex-col overflow-y-auto">
+    <div className={cn('flex h-full w-48 shrink-0 flex-col overflow-y-auto', className)}>
       <div className="px-3 pt-3 pb-2">
         <h2 className="text-fg-muted text-[10px] font-semibold tracking-wider uppercase">
           Categories
@@ -57,7 +65,10 @@ export function CategorySidebar() {
       <nav className="flex flex-1 flex-col gap-0.5 px-2">
         <button
           type="button"
-          onClick={() => setActiveCategory(null)}
+          onClick={() => {
+            setActiveCategory(null)
+            onNavigate?.()
+          }}
           className={cn(
             'flex items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs transition-colors',
             activeCategory === null
@@ -73,7 +84,10 @@ export function CategorySidebar() {
           <button
             key={cat}
             type="button"
-            onClick={() => setActiveCategory(cat)}
+            onClick={() => {
+              setActiveCategory(cat)
+              onNavigate?.()
+            }}
             className={cn(
               'group flex items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs transition-colors',
               activeCategory === cat

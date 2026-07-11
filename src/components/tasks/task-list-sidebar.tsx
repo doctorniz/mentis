@@ -25,7 +25,14 @@ function listColor(index: number) {
   return LIST_COLORS[index % LIST_COLORS.length]
 }
 
-export function TaskListSidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function TaskListSidebar({
+  onNavigate,
+  className,
+}: {
+  onNavigate?: () => void
+  /** Merged onto the root (e.g. `w-full border-r-0` inside a MobileDrawer). */
+  className?: string
+}) {
   const { vaultFs } = useVaultSession()
   const items = useTasksStore((s) => s.items)
   const lists = useTasksStore((s) => s.lists)
@@ -117,7 +124,12 @@ export function TaskListSidebar({ onNavigate }: { onNavigate?: () => void }) {
   ]
 
   return (
-    <div className="border-border bg-bg flex h-full w-[220px] shrink-0 flex-col border-r">
+    <div
+      className={cn(
+        'border-border bg-bg flex h-full w-[220px] shrink-0 flex-col border-r',
+        className,
+      )}
+    >
       {/* Smart filters */}
       <div className="flex flex-col gap-0.5 p-2 pt-3">
         {smartFilters.map(({ filter, label, icon: Icon, count, iconClass }) => (

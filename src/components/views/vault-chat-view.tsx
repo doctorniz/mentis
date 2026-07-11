@@ -1,17 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import * as Dialog from '@radix-ui/react-dialog'
 import {
   Copy,
   Download,
   Loader2,
-  Menu,
   MessageSquare,
   PanelLeftClose,
   Plus,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Star,
   Trash2,
 } from 'lucide-react'
@@ -20,6 +19,7 @@ import {
   VaultChatComposer,
   type VaultChatComposerHandle,
 } from '@/components/chat/vault-chat-composer'
+import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import { VaultChatMessage } from '@/components/chat/vault-chat-message'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { saveVaultChatUpload } from '@/lib/chat/chat-io'
@@ -654,7 +654,8 @@ export function VaultChatView() {
                 className="text-fg-secondary hover:bg-bg-hover flex size-9 items-center justify-center rounded-lg"
                 aria-label="Open chat list"
               >
-                <Menu className="size-5" />
+                {/* Section icon (matches the Chat nav entry), not a hamburger */}
+                <Sparkles className="size-5" />
               </button>
             </div>
 
@@ -813,34 +814,25 @@ export function VaultChatView() {
         )}
       </section>
 
-      <Dialog.Root open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-[210] bg-black/40 md:hidden" />
-          <Dialog.Content
-            className="border-border bg-bg fixed top-0 left-0 z-[211] flex h-full w-[min(100vw-2rem,320px)] flex-col border-r shadow-xl outline-none md:hidden"
-            aria-describedby={undefined}
-          >
-            <Dialog.Title className="sr-only">Chat list</Dialog.Title>
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <ChatThreadsSidebarBody
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                threadsAll={threads}
-                activeThreadId={activeThreadId}
-                isStreaming={isStreaming}
-                onNewChat={handleNewThread}
-                onSelect={(id) => {
-                  selectThread(id)
-                  setMobileSidebarOpen(false)
-                }}
-                onDelete={(id) => void handleDeleteThread(id)}
-                onToggleFavourite={(id) => void handleToggleFavourite(id)}
-                onRequestCollapse={() => setMobileSidebarOpen(false)}
-              />
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <MobileDrawer open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen} title="Chat list">
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <ChatThreadsSidebarBody
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            threadsAll={threads}
+            activeThreadId={activeThreadId}
+            isStreaming={isStreaming}
+            onNewChat={handleNewThread}
+            onSelect={(id) => {
+              selectThread(id)
+              setMobileSidebarOpen(false)
+            }}
+            onDelete={(id) => void handleDeleteThread(id)}
+            onToggleFavourite={(id) => void handleToggleFavourite(id)}
+            onRequestCollapse={() => setMobileSidebarOpen(false)}
+          />
+        </div>
+      </MobileDrawer>
     </div>
   )
 }

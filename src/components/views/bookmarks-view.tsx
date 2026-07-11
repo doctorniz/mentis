@@ -6,6 +6,7 @@ import { useVaultSession } from '@/contexts/vault-fs-context'
 import { BookmarkCard } from '@/components/bookmarks/bookmark-card'
 import { AddBookmarkDialog } from '@/components/bookmarks/add-bookmark-dialog'
 import { CategorySidebar } from '@/components/bookmarks/category-sidebar'
+import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import { useBookmarksStore } from '@/stores/bookmarks'
 import type { BookmarkItem } from '@/types/bookmarks'
 
@@ -18,6 +19,7 @@ export function BookmarksView() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editItem, setEditItem] = useState<BookmarkItem | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     void loadBookmarks(vaultFs)
@@ -40,12 +42,28 @@ export function BookmarksView() {
 
   return (
     <div className="flex h-full min-h-0 w-full">
-      <CategorySidebar />
+      {/* Categories — static on md+, MobileDrawer below (app-wide policy) */}
+      <div className="hidden md:block">
+        <CategorySidebar />
+      </div>
+      <MobileDrawer open={sidebarOpen} onOpenChange={setSidebarOpen} title="Bookmark categories">
+        <CategorySidebar onNavigate={() => setSidebarOpen(false)} className="w-full" />
+      </MobileDrawer>
 
-      <div className="border-border flex min-h-0 flex-1 flex-col border-l">
+      <div className="border-border flex min-h-0 flex-1 flex-col md:border-l">
         {/* Header */}
-        <div className="border-border bg-bg-secondary flex shrink-0 items-center justify-between border-b px-4 py-2.5">
-          <h1 className="text-fg text-sm font-semibold">{activeCategory ?? 'All Bookmarks'}</h1>
+        <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-2.5 md:px-4">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((o) => !o)}
+            className="text-fg-muted hover:text-fg -ml-0.5 shrink-0 rounded-lg p-1.5 transition-colors md:hidden"
+            aria-label="Open categories"
+          >
+            <Bookmark className="size-4" />
+          </button>
+          <h1 className="text-fg flex-1 text-sm font-semibold">
+            {activeCategory ?? 'All Bookmarks'}
+          </h1>
           <button
             type="button"
             onClick={handleAdd}

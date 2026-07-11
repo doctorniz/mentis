@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Editor as TiptapEditor } from '@tiptap/core'
-import { FileText, Folder, GitFork, Search } from 'lucide-react'
+import { FileText, GitFork, Search, Vault } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { NotesWorkspaceProvider, useNotesWorkspace } from '@/contexts/notes-workspace-context'
@@ -17,6 +17,7 @@ import { ChatPanel } from '@/components/chat/chat-panel'
 import { EditorRightColumn } from '@/components/notes/editor-right-column'
 import { BacklinksSection } from '@/components/notes/backlinks-section'
 import { OutlineSection } from '@/components/notes/outline-section'
+import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import { ensureChatAssetIdForPath } from '@/lib/chat/asset-index'
 import { PdfViewer } from '@/components/pdf/pdf-viewer'
 import { CanvasEditor } from '@/components/canvas/canvas-editor'
@@ -518,7 +519,8 @@ function NotesViewInner() {
             aria-label="Open vault tree"
             title="Vault"
           >
-            <Folder className="size-5" aria-hidden />
+            {/* Section icon (matches the Vault nav entry), not a hamburger */}
+            <Vault className="size-5" aria-hidden />
           </Button>
           <Button
             type="button"
@@ -557,31 +559,29 @@ function NotesViewInner() {
           <NotesFileTree {...treeProps} />
         ))}
 
-      {isMobileTree && notesTreeExpanded && (
-        <>
-          <button
-            type="button"
-            className="absolute inset-0 z-[15] bg-black/20"
-            aria-label="Close vault tree"
-            onClick={() => {
+      {isMobileTree && (
+        <MobileDrawer
+          open={notesTreeExpanded}
+          onOpenChange={(open) => {
+            if (!open) {
               manualTreeToggleRef.current = true
               setNotesTreeExpanded(false)
-            }}
-          />
-          <div className="border-border bg-bg absolute top-0 left-0 z-20 flex h-full w-[min(100%,280px)] max-w-[min(100vw-2rem,280px)] flex-col border-r shadow-lg">
-            {leftPanel === 'search' ? (
-              <VaultLeftSearch
-                onClose={() => setLeftPanel('tree')}
-                rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
-              />
-            ) : (
-              <NotesFileTree
-                {...treeProps}
-                rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
-              />
-            )}
-          </div>
-        </>
+            }
+          }}
+          title="Vault files"
+        >
+          {leftPanel === 'search' ? (
+            <VaultLeftSearch
+              onClose={() => setLeftPanel('tree')}
+              rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
+            />
+          ) : (
+            <NotesFileTree
+              {...treeProps}
+              rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
+            />
+          )}
+        </MobileDrawer>
       )}
 
       <div className="bg-bg flex min-h-0 min-w-0 flex-1 flex-col">

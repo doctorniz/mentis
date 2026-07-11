@@ -13,8 +13,14 @@ const TOTAL_HEIGHT = HOUR_HEIGHT * 24
 const GUTTER_WIDTH = 48 // px for the time labels column
 const SCROLL_TO_HOUR = 7 // scroll to 7am on mount
 
-/** Same template for header rows + hourly body so borders line up across the week. */
-const GRID_TRACKS = `${GUTTER_WIDTH}px repeat(7, minmax(0, 1fr))` as const
+/**
+ * Same template for header rows + hourly body so borders line up across
+ * the week. Each day column refuses to shrink below 110px — on narrow
+ * screens the scroll container (overflow-auto) pans horizontally instead
+ * of crushing seven columns into unreadable slivers; the sticky header
+ * lives inside the same container so it pans in lockstep.
+ */
+const GRID_TRACKS = `${GUTTER_WIDTH}px repeat(7, minmax(110px, 1fr))` as const
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 
@@ -197,7 +203,7 @@ export function WeekGrid({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div
         ref={scrollRef}
-        className="border-border bg-bg min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
+        className="border-border bg-bg min-h-0 flex-1 overflow-auto [scrollbar-gutter:stable]"
       >
         <div className="bg-bg border-border sticky top-0 z-30 border-b">
           <div className="border-border grid" style={{ gridTemplateColumns: GRID_TRACKS }}>

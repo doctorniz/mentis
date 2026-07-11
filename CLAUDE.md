@@ -212,7 +212,7 @@ Nav order (sidebar): **Chat** (Ctrl+0) → **Vault** (Ctrl+1) → **Board** (Ctr
 - **Chat** (`ViewMode.VaultChat`) = full-viewport whole-vault chat; see "Chat" section above.
 - **Vault** (`ViewMode.Vault`) = file tree + editor (markdown, PDF, canvas, image).
 - **Files** (`ViewMode.Files`) = `FileBrowserView` with `showHidden=true`; power-user raw view.
-- **Mobile (≤767px)**: `MobileNavMasthead` with hamburger → left sheet. `MOBILE_NAV_MEDIA_QUERY` in `lib/browser/breakpoints.ts`.
+- **Mobile (≤767px)**: `MobileNavMasthead` with hamburger → left sheet. `MOBILE_NAV_MEDIA_QUERY` in `lib/browser/breakpoints.ts` is the app's SINGLE mobile breakpoint — never branch mobile layout on `sm` or ad-hoc widths. Every view-level sub-sidebar (vault tree, task lists, bookmark categories, chat threads) collapses below `md` into the shared `MobileDrawer` (`components/ui/mobile-drawer.tsx`, Radix Dialog: focus trap, Escape, z-[210/211]); the drawer's trigger button shows the **section's own nav icon** (Vault, CheckSquare, Bookmark, Sparkles) — the hamburger is reserved for the app-level masthead. Collapsed rails are uniformly `w-10`. Calendar defaults to day view on mobile and the week grid pans horizontally (`minmax(110px,1fr)` columns) instead of crushing.
 
 ### Search
 
