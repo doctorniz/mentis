@@ -161,6 +161,15 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
     engine.onExpansionCapped = () => toast.error('Canvas size limit reached')
     engineRef.current = engine
 
+    // E2E test hook: specs set `window.__mentisTest = {}` BEFORE opening
+    // a canvas; the engine registers itself there so tests can assert on
+    // actual layer pixels (Pixi renders to WebGL — screenshots can't).
+    // Real sessions never set the marker, so this stays inert.
+    const testHooks = (
+      window as unknown as { __mentisTest?: { canvasEngine?: CanvasEngine | null } }
+    ).__mentisTest
+    if (testHooks) testHooks.canvasEngine = engine
+
     void (async () => {
       try {
         // If a previous mount of this same path is still flushing to
@@ -242,6 +251,8 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
 
     return () => {
       signal.cancelled = true
+
+      if (testHooks && testHooks.canvasEngine === engine) testHooks.canvasEngine = null
 
       // Stop the Pixi ticker SYNCHRONOUSLY before any async work begins.
       // The cleanup kicks off an async `run()` below and returns immediately.

@@ -262,9 +262,11 @@ Audio files (MP3/WAV/M4A/AAC/FLAC/WMA) open as `EditorTab` type `audio`. `AudioP
 - Default Vitest environment is `node`, not jsdom
 - Use `@vitest-environment happy-dom` docblock for component tests that need DOM
 - **Never use jsdom** — canvas bindings fail on Windows (no Cairo) and most CI
-- 21 test files under `tests/` (~260 tests)
+- 33 test files under `tests/` (~340 tests) — check `tests/*.test.ts` before naming files; this list drifts
 
-Key suites: `search.test.ts`, `markdown.test.ts`, `markdown-bridge.test.ts`, `pdf-annotation-writer.test.ts`, `pdf-operations.test.ts`, `fs-adapter.test.ts`, `graph.test.ts`, `canvas-undo.test.ts`, `canvas.test.ts`, `daily-note.test.ts`, `folder-ops.test.ts`, `image-edit-pipeline.test.ts`.
+Key suites: `search.test.ts`, `markdown.test.ts`, `markdown-bridge.test.ts`, `pdf-annotation-writer.test.ts`, `pdf-operations.test.ts`, `fs-adapter.test.ts`, `graph.test.ts`, `flood-fill.test.ts`, `daily-note.test.ts`, `folder-ops.test.ts`, `image-edit-pipeline.test.ts`. (There are NO `canvas.test.ts` / `canvas-undo.test.ts` unit suites — canvas behavior is covered by Playwright.)
+
+E2E specs live in `tests/e2e/` (Playwright, `pnpm test:e2e`). `21-canvas-selection.spec.ts` makes **pixel-level** canvas assertions: it sets `window.__mentisTest = {}` before opening a canvas, the editor registers the live engine there, and helpers read layer pixels via `extractLayerCanvas`. Use that hook for any new canvas test that needs to see actual pixels — WebGL screenshots can't.
 
 ## Key Gotchas
 
