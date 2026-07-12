@@ -8,6 +8,7 @@ import { useCanvasStore } from '@/stores/canvas'
 import { useEditorStore } from '@/stores/editor'
 import { useAutoSave } from '@/hooks/use-auto-save'
 import { CanvasEngine } from '@/lib/canvas/engine'
+import { hasSelectionClipboard, computePasteRect } from '@/lib/canvas/selection'
 import { readCanvasFile, writeCanvasFile } from '@/lib/canvas/canvas-file-io'
 import { toast } from '@/stores/toast'
 import { CanvasViewport } from '@/components/canvas/canvas-viewport'
@@ -391,6 +392,16 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         return
       }
 
+      // Delete/Backspace: erase the selected pixels (with undo)
+      if (!mod && (e.key === 'Delete' || e.key === 'Backspace')) {
+        const engine = engineRef.current
+        if (engine?.initialized && engine.selectionTool.rect && !engine.selectionTool.isMoving) {
+          e.preventDefault()
+          deleteSelectionWithUndo(engine)
+        }
+        return
+      }
+
       // Tool shortcuts (no modifier)
       if (!mod && !e.shiftKey) {
         const toolMap: Record<string, CanvasTool> = {
@@ -435,6 +446,45 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
       if (mod && e.key.toLowerCase() === 's') {
         e.preventDefault()
         void handleSave()
+        return
+      }
+
+      // Ctrl+A: select the whole canvas (switches to the Select tool)
+      if (mod && !e.shiftKey && e.key.toLowerCase() === 'a') {
+        const engine = engineRef.current
+        if (engine?.initialized) {
+          e.preventDefault()
+          useCanvasStore.getState().setActiveTool('select')
+          engine.selectionTool.selectAll(
+            engine.width,
+            engine.height,
+            engine.viewportController.state.zoom,
+          )
+          engine.render()
+        }
+        return
+      }
+
+      // Ctrl+C / Ctrl+X: copy (cut) the selection to the canvas
+      // clipboard. Without a selection the event passes through so
+      // ordinary text copy elsewhere keeps working.
+      if (mod && !e.shiftKey && (e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'x')) {
+        const engine = engineRef.current
+        if (engine?.initialized && engine.selectionTool.rect && !engine.selectionTool.isMoving) {
+          e.preventDefault()
+          const copied = engine.selectionTool.copySelection()
+          if (copied && e.key.toLowerCase() === 'x') deleteSelectionWithUndo(engine)
+        }
+        return
+      }
+
+      // Ctrl+V: paste the canvas clipboard as a new selection
+      if (mod && !e.shiftKey && e.key.toLowerCase() === 'v') {
+        const engine = engineRef.current
+        if (engine?.initialized && hasSelectionClipboard()) {
+          e.preventDefault()
+          pasteClipboardWithUndo(engine)
+        }
         return
       }
 
@@ -573,6 +623,70 @@ function applyUndoRedoSideEffects(engine: CanvasEngine): void {
   store.setActiveLayerId(engine.layerManager.activeLayerId)
   store.markDirty()
   store.setUndoState(engine.undoManager.canUndo, engine.undoManager.canRedo)
+}
+
+/**
+ * Erase the selected pixels with a region-scoped undo entry. The
+ * snapshot's GPU readback is synchronous, so it faithfully captures the
+ * pre-delete pixels even though the erase follows immediately.
+ */
+function deleteSelectionWithUndo(engine: CanvasEngine): void {
+  const rect = engine.selectionTool.rect
+  const active = engine.layerManager.getActiveLayer()
+  if (!rect || engine.selectionTool.isMoving || !active || active.locked) return
+
+  const pending = engine.undoManager.snapshotActiveLayerRegion(rect)
+  if (!engine.selectionTool.eraseSelection()) return
+  engine.render()
+
+  engine.undoPushChain = engine.undoPushChain.then(async () => {
+    const snapshot = await pending
+    if (snapshot) {
+      engine.undoManager.push({
+        kind: 'stroke',
+        snapshots: [snapshot],
+        description: 'Delete selection',
+      })
+    }
+    const store = useCanvasStore.getState()
+    store.setUndoState(engine.undoManager.canUndo, engine.undoManager.canRedo)
+  })
+  useCanvasStore.getState().markDirty()
+}
+
+/**
+ * Stamp the canvas clipboard onto the active layer at its source
+ * position (pulled inside the canvas if it would overhang), select the
+ * pasted rect, and switch to the Select tool so the paste can be moved
+ * immediately. Undo covers the destination rect.
+ */
+function pasteClipboardWithUndo(engine: CanvasEngine): void {
+  if (engine.selectionTool.isMoving) return
+  const dest = computePasteRect(engine.width, engine.height)
+  const active = engine.layerManager.getActiveLayer()
+  if (!dest || !active || active.locked) return
+
+  // Switch tool BEFORE mutating selection state — the viewport clears
+  // the selection whenever the active tool is not 'select'.
+  useCanvasStore.getState().setActiveTool('select')
+
+  const pending = engine.undoManager.snapshotActiveLayerRegion(dest)
+  if (!engine.selectionTool.pasteAt(dest, engine.viewportController.state.zoom)) return
+  engine.render()
+
+  engine.undoPushChain = engine.undoPushChain.then(async () => {
+    const snapshot = await pending
+    if (snapshot) {
+      engine.undoManager.push({
+        kind: 'stroke',
+        snapshots: [snapshot],
+        description: 'Paste',
+      })
+    }
+    const store = useCanvasStore.getState()
+    store.setUndoState(engine.undoManager.canUndo, engine.undoManager.canRedo)
+  })
+  useCanvasStore.getState().markDirty()
 }
 
 async function flushSave(

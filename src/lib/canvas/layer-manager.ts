@@ -814,6 +814,33 @@ export class LayerManager {
     }
   }
 
+  /**
+   * Erase a rect of a layer to transparent. The erase quad must be a
+   * CHILD of a detached container — blend modes on the root of a
+   * standalone render are ignored and the quad would paint opaque white.
+   */
+  eraseLayerRegion(id: string, region: SnapshotRegion): void {
+    const layer = this.getLayer(id)
+    if (!layer) return
+
+    const container = new Container()
+    const quad = new Graphics()
+      .rect(region.x, region.y, region.width, region.height)
+      .fill({ color: 0xffffff })
+    quad.blendMode = 'erase'
+    container.addChild(quad)
+    try {
+      this.app.renderer.render({
+        container,
+        target: layer.renderTexture,
+        clear: false,
+      })
+    } finally {
+      container.destroy({ children: true })
+    }
+    layer.lastSavedBase64 = null
+  }
+
   async extractLayerBlob(id: string): Promise<Blob | null> {
     const canvas = this.extractLayerCanvas(id)
     if (!canvas) return null

@@ -7,6 +7,41 @@ import type { SnapshotRegion } from '@/types/canvas'
 export type SelectionRect = SnapshotRegion
 
 /**
+ * Copy/paste clipboard for selection pixels. Module scope, not
+ * per-tool: it survives engine teardown (tab switches destroy the
+ * whole engine) and lets pixels travel between canvases. Holds a
+ * plain HTMLCanvasElement — GPU textures are minted fresh per paste
+ * because a texture would die with its renderer.
+ */
+let selectionClipboard: {
+  canvas: HTMLCanvasElement
+  /** Source rect the pixels came from — paste lands there by default. */
+  rect: SelectionRect
+} | null = null
+
+export function hasSelectionClipboard(): boolean {
+  return selectionClipboard !== null
+}
+
+/**
+ * Where a paste would land on a canvas of the given size: the source
+ * position, pulled inside the canvas if it would overhang (oversized
+ * clipboards clip to the canvas). Null when the clipboard is empty.
+ */
+export function computePasteRect(canvasW: number, canvasH: number): SelectionRect | null {
+  if (!selectionClipboard) return null
+  const { rect } = selectionClipboard
+  const width = Math.min(rect.width, canvasW)
+  const height = Math.min(rect.height, canvasH)
+  return {
+    x: Math.max(0, Math.min(rect.x, canvasW - width)),
+    y: Math.max(0, Math.min(rect.y, canvasH - height)),
+    width,
+    height,
+  }
+}
+
+/**
  * Rectangular marquee selection + move for the active layer.
  *
  * Lifecycle is deliberately short-lived: a move FLOATS the selected
@@ -120,23 +155,8 @@ export class SelectionTool {
     // Keep the marquee outline above the floating pixels
     this.overlayContainer.setChildIndex(this.overlay, this.overlayContainer.children.length - 1)
 
-    // Erase the source region from the layer. The erase quad must be a
-    // CHILD of a detached container — blend modes on the root of a
-    // standalone render are ignored and the quad paints opaque white
-    // instead (same structure as restoreLayerRegionFromBlob).
-    const eraseContainer = new Container()
-    const eraseRect = new Graphics()
-      .rect(rect.x, rect.y, rect.width, rect.height)
-      .fill({ color: 0xffffff })
-    eraseRect.blendMode = 'erase'
-    eraseContainer.addChild(eraseRect)
-    this.app.renderer.render({
-      container: eraseContainer,
-      target: active.renderTexture,
-      clear: false,
-    })
-    eraseContainer.destroy({ children: true })
-    active.lastSavedBase64 = null
+    // Erase the source region from the layer
+    this.layerManager.eraseLayerRegion(active.id, rect)
 
     this.floating = {
       sprite,
@@ -208,6 +228,66 @@ export class SelectionTool {
     this.floating = null
     this._rect = { ...f.sourceRect }
     this.redraw(zoom)
+  }
+
+  /* ---- Select all / delete / copy / paste ---- */
+
+  /** Select the whole canvas (cancelling any in-flight move first). */
+  selectAll(canvasW: number, canvasH: number, zoom: number): void {
+    if (this.floating) this.cancelMove(zoom)
+    this.marqueeStart = null
+    this._rect = { x: 0, y: 0, width: canvasW, height: canvasH }
+    this.redraw(zoom)
+  }
+
+  /**
+   * Copy the selected pixels of the active layer to the module
+   * clipboard. Non-destructive — no undo entry needed. Reads through
+   * layer lock (copying is not a mutation).
+   */
+  copySelection(): boolean {
+    const rect = this._rect
+    const active = this.layerManager.getActiveLayer()
+    if (!rect || !active || this.floating) return false
+    const canvas = this.layerManager.extractLayerCanvas(active.id, rect)
+    if (!canvas) return false
+    selectionClipboard = { canvas, rect: { ...rect } }
+    return true
+  }
+
+  /**
+   * Erase the selected region from the active layer. Returns the rect
+   * that was erased, or null when there is nothing to erase (no
+   * selection / locked / mid-move). The caller owns the undo entry —
+   * it must snapshot the rect BEFORE calling this.
+   */
+  eraseSelection(): SelectionRect | null {
+    const rect = this._rect
+    const active = this.layerManager.getActiveLayer()
+    if (!rect || !active || active.locked || this.floating) return null
+    this.layerManager.eraseLayerRegion(active.id, rect)
+    return rect
+  }
+
+  /**
+   * Stamp the clipboard pixels onto the active layer at `dest` (from
+   * `computePasteRect`) and select them, so the paste can be moved
+   * immediately. The caller owns the undo entry — it must snapshot
+   * `dest` BEFORE calling this.
+   */
+  pasteAt(dest: SelectionRect, zoom: number): boolean {
+    const active = this.layerManager.getActiveLayer()
+    if (!selectionClipboard || !active || active.locked || this.floating) return false
+
+    const texture = Texture.from(selectionClipboard.canvas)
+    this.stampTexture(texture, dest.x, dest.y, active.renderTexture)
+    texture.destroy(true) // Cache.set(resource) self-removes on destroy
+    active.lastSavedBase64 = null
+
+    this.marqueeStart = null
+    this._rect = { ...dest }
+    this.redraw(zoom)
+    return true
   }
 
   /* ---- Shared ---- */
