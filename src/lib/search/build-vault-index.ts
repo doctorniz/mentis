@@ -1,6 +1,6 @@
 import type { FileSystemAdapter } from '@/lib/fs'
 import type { FileEntry } from '@/types/files'
-import { FileType } from '@/types/files'
+import { FileType, getFileType } from '@/types/files'
 import { isNotesTreeHidden } from '@/lib/notes/tree-filter'
 import { extractTags, parseNote } from '@/lib/markdown'
 import { loadPdfjs } from '@/lib/pdf/pdfjs-loader'
@@ -52,7 +52,9 @@ async function collectIndexableFiles(
       e.type === FileType.Mindmap ||
       e.type === FileType.Kanban ||
       e.type === FileType.Pptx ||
-      e.type === FileType.Spreadsheet
+      e.type === FileType.Spreadsheet ||
+      e.type === FileType.Docx ||
+      e.type === FileType.Code
     ) {
       acc.push(e)
     }
@@ -93,6 +95,42 @@ async function extractPptxText(data: Uint8Array): Promise<string> {
       if (slideText.trim()) {
         chunks.push(slideText.trim())
         len += slideText.length
+      }
+    }
+    return chunks.join('\n')
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Extract text from a DOCX file by parsing the Open XML document body.
+ * Same lightweight approach as `extractPptxText`: JSZip + regex over
+ * `<w:t>` text runs, with `</w:p>` paragraph ends becoming newlines —
+ * no need to pull the full DOCX editor bundle into the index builder.
+ * Exported for tests.
+ */
+export async function extractDocxText(data: Uint8Array): Promise<string> {
+  try {
+    const JSZip = (await import('jszip')).default
+    const zip = await JSZip.loadAsync(data)
+    const docXml = zip.files['word/document.xml']
+    if (!docXml) return ''
+    const xml = await docXml.async('text')
+
+    const paragraphs = xml.split(/<\/w:p>/)
+    const chunks: string[] = []
+    let len = 0
+    for (const para of paragraphs) {
+      if (len >= CONTENT_CAP) break
+      const textRuns = para.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g) ?? []
+      const text = textRuns
+        .map((tag) => tag.replace(/<[^>]+>/g, ''))
+        .join('')
+        .trim()
+      if (text) {
+        chunks.push(text)
+        len += text.length
       }
     }
     return chunks.join('\n')
@@ -281,6 +319,49 @@ async function fileTypeToDocument(
     }
   }
 
+  if (entry.type === FileType.Docx) {
+    let content = ''
+    try {
+      const data = await fs.readFile(path)
+      content = await extractDocxText(data)
+      if (content.length > CONTENT_CAP) content = content.slice(0, CONTENT_CAP)
+    } catch {
+      /* use empty */
+    }
+    return {
+      id: path,
+      path,
+      title: titleFromPath(path),
+      fileType: 'docx',
+      content,
+      tags: '',
+      tagCsv: '',
+      modifiedAt,
+    }
+  }
+
+  if (entry.type === FileType.Code) {
+    let content = ''
+    try {
+      content = await fs.readTextFile(path)
+      if (content.length > CONTENT_CAP) content = content.slice(0, CONTENT_CAP)
+    } catch {
+      /* use empty */
+    }
+    return {
+      id: path,
+      path,
+      // Keep the extension in the title — `notes.ts` and `notes.py` must
+      // stay distinguishable in results (titleFromPath would strip it).
+      title: path.split('/').pop() ?? path,
+      fileType: 'code',
+      content,
+      tags: '',
+      tagCsv: '',
+      modifiedAt,
+    }
+  }
+
   return null
 }
 
@@ -299,7 +380,6 @@ export async function rebuildVaultSearchIndex(fs: FileSystemAdapter): Promise<vo
 /** Incremental update for one file path after save. Routes by extension. */
 export async function reindexFilePath(fs: FileSystemAdapter, path: string): Promise<void> {
   const name = path.split('/').pop() ?? path
-  const { getFileType } = await import('@/types/files')
   const type = getFileType(name)
   const entry: FileEntry = { name, path, type, isDirectory: false }
   const doc = await fileTypeToDocument(fs, entry)
@@ -311,12 +391,18 @@ export async function reindexMarkdownPath(fs: FileSystemAdapter, path: string): 
   return reindexFilePath(fs, path)
 }
 
-/** Returns true for text-based file types that should be reindexed after rename/save. */
+/**
+ * True for text-based file types that are cheap to reindex after a
+ * rename/move/save. Binary types (PDF, PPTX, XLSX, DOCX) are deliberately
+ * excluded — their extraction is heavy, so they refresh on vault open or
+ * a manual index rebuild instead.
+ */
 export function isIndexableTextPath(path: string): boolean {
+  const type = getFileType(path.split('/').pop() ?? path)
   return (
-    path.endsWith('.md') ||
-    path.endsWith('.markdown') ||
-    path.endsWith('.kanban') ||
-    path.endsWith('.mind')
+    type === FileType.Markdown ||
+    type === FileType.Kanban ||
+    type === FileType.Mindmap ||
+    type === FileType.Code
   )
 }

@@ -26,7 +26,7 @@ import { getSearchIndex } from '@/lib/search'
 import { parseNote } from '@/lib/markdown'
 import { loadPdfjs } from '@/lib/pdf/pdfjs-loader'
 import type { FileSystemAdapter } from '@/lib/fs'
-import type { SearchIndexDocument } from '@/types/search'
+import type { SearchDocFileType, SearchIndexDocument } from '@/types/search'
 import type { ChatSettings } from '@/types/chat'
 
 /** Default number of matches to pull in per query. */
@@ -41,7 +41,7 @@ const MIN_EXCERPT_CHARS = 400
 export interface VaultRagHit {
   path: string
   title: string
-  type: 'markdown' | 'pdf' | 'canvas' | 'mindmap' | 'kanban' | 'spreadsheet' | 'pptx'
+  type: SearchDocFileType
   score: number
   excerpt: string
 }
@@ -61,7 +61,7 @@ interface RawHit {
   id: string
   path: string
   title: string
-  type: 'markdown' | 'pdf' | 'canvas' | 'mindmap' | 'kanban' | 'spreadsheet' | 'pptx'
+  type: SearchDocFileType
   score: number
   content: string
   queryTerms: string[]
@@ -161,6 +161,9 @@ async function rehydrateIfEmpty(hit: RawHit, vaultFs: FileSystemAdapter): Promis
     if (hit.type === 'markdown') {
       const raw = await vaultFs.readTextFile(hit.path)
       return parseNote(hit.path, raw).content ?? ''
+    }
+    if (hit.type === 'code') {
+      return await vaultFs.readTextFile(hit.path)
     }
     if (hit.type === 'pdf') {
       const bytes = await vaultFs.readFile(hit.path)

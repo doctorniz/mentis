@@ -216,7 +216,7 @@ Nav order (sidebar): **Chat** (Ctrl+0) → **Vault** (Ctrl+1) → **Board** (Ctr
 
 ### Search
 
-MiniSearch index built on vault open, stored in `_marrow/search-index.json`. Incrementally updated on save/rename. Indexes markdown title/body, PDF text (via `extractPdfText` from PDF.js), and canvas/PDF titles/paths. Supports fuzzy matching, `#tag` filters, date range, folder prefix, file type filters.
+MiniSearch index built on vault open, stored in `_marrow/search-index.json`. Incrementally updated on save/rename for cheap text types (markdown, kanban, mindmap, code — see `isIndexableTextPath`); binary types (PDF, PPTX, XLSX, DOCX) re-extract on vault open or manual rebuild only. Indexed content: markdown title/body/tags, PDF text (PDF.js), PPTX slide text + DOCX body text (JSZip + Open-XML regex — `extractPptxText` / `extractDocxText`), spreadsheet cells, mindmap labels, kanban cards, **code/plain-text file bodies** (capped 14k chars; titles keep their extension so `a.ts`/`a.py` stay distinct), canvas titles/paths. Supports fuzzy matching, `#tag` filters, date range, folder prefix, file type filters. **The live search surface is the Vault left-column panel** (`vault-left-search.tsx`); `views/search-view.tsx` is dormant — `ViewMode.Search` redirects to Vault in `view-router.tsx`.
 
 ### Graph
 

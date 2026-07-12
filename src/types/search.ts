@@ -1,8 +1,20 @@
+/** Every file type the search index can hold. */
+export type SearchDocFileType =
+  | 'markdown'
+  | 'pdf'
+  | 'canvas'
+  | 'mindmap'
+  | 'kanban'
+  | 'pptx'
+  | 'spreadsheet'
+  | 'docx'
+  | 'code'
+
 export interface SearchResult {
   id: string
   path: string
   title: string
-  type: 'markdown' | 'pdf' | 'canvas' | 'mindmap' | 'kanban' | 'pptx' | 'spreadsheet'
+  type: SearchDocFileType
   score: number
   /** Legacy shape; kept for compatibility. */
   matches: SearchMatch[]
@@ -18,7 +30,7 @@ export interface SearchMatch {
 }
 
 export interface SearchFilters {
-  fileType?: ('markdown' | 'pdf' | 'canvas' | 'mindmap' | 'kanban' | 'pptx' | 'spreadsheet')[]
+  fileType?: SearchDocFileType[]
   /** Path prefix (e.g. `Journal` or `Journal/2026`). */
   folder?: string
   /** All listed tags must be present on the document. */
@@ -34,7 +46,7 @@ export interface SearchIndexDocument {
   id: string
   path: string
   title: string
-  fileType: 'markdown' | 'pdf' | 'canvas' | 'mindmap' | 'kanban' | 'pptx' | 'spreadsheet'
+  fileType: SearchDocFileType
   content: string
   /** Space-separated tags for the indexed `tags` field. */
   tags: string

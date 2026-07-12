@@ -1,7 +1,19 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { FileText, FileType, LayoutGrid, Search, X } from 'lucide-react'
+import {
+  FileCode2,
+  FileText,
+  FileType,
+  FileType2,
+  GitBranch,
+  LayoutGrid,
+  Presentation,
+  Search,
+  SquareKanban,
+  Table2,
+  X,
+} from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { searchVault } from '@/lib/search/index'
 import { parseSearchQuery } from '@/lib/search/parse-query'
@@ -14,6 +26,12 @@ const TYPE_ICONS: Record<string, typeof FileText> = {
   markdown: FileText,
   pdf: FileType,
   canvas: LayoutGrid,
+  mindmap: GitBranch,
+  kanban: SquareKanban,
+  pptx: Presentation,
+  spreadsheet: Table2,
+  docx: FileType2,
+  code: FileCode2,
 }
 
 interface VaultLeftSearchProps {

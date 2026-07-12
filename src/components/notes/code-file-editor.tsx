@@ -22,6 +22,7 @@ import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { toast } from '@/stores/toast'
 import { languageFromExtension, extFromPath } from '@/lib/code/language-support'
 import { inkEditorTheme, inkHighlightStyle } from '@/lib/code/codemirror-theme'
+import { reindexFilePath } from '@/lib/search/build-vault-index'
 
 export function CodeFileEditor({
   tabId,
@@ -52,6 +53,7 @@ export function CodeFileEditor({
       const encoder = new TextEncoder()
       await vaultFs.writeFile(pathRef.current, encoder.encode(text))
       markDirty(tabId, false)
+      void reindexFilePath(vaultFs, pathRef.current)
       window.dispatchEvent(new CustomEvent('ink:vault-changed'))
     } catch (e) {
       console.error('Code file save failed', e)

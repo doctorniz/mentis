@@ -2,19 +2,44 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { FileText, FileType, LayoutGrid, Search } from 'lucide-react'
+import {
+  FileCode2,
+  FileText,
+  FileType,
+  FileType2,
+  GitBranch,
+  LayoutGrid,
+  Presentation,
+  Search,
+  SquareKanban,
+  Table2,
+} from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { searchVault } from '@/lib/search/index'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import { rebuildVaultSearchIndex } from '@/lib/search/build-vault-index'
-import type { SearchFilters, SearchResult } from '@/types/search'
+import type { SearchDocFileType, SearchFilters, SearchResult } from '@/types/search'
 import { Button } from '@/components/ui/button'
 import { useUiStore } from '@/stores/ui'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { ViewMode } from '@/types/vault'
 
-const ALL_TYPES = ['markdown', 'pdf', 'canvas'] as const
+/** Display order of result groups. Must cover every indexed type. */
+const GROUP_ORDER = [
+  'markdown',
+  'pdf',
+  'canvas',
+  'mindmap',
+  'kanban',
+  'pptx',
+  'spreadsheet',
+  'docx',
+  'code',
+] as const
+
+/** Types behind the single "Files" filter checkbox. */
+const FILE_TYPES: SearchDocFileType[] = ['mindmap', 'kanban', 'pptx', 'spreadsheet', 'docx', 'code']
 
 function hasExtraFilters(f: SearchFilters): boolean {
   return Boolean(
@@ -22,12 +47,13 @@ function hasExtraFilters(f: SearchFilters): boolean {
     f.tags?.length ||
     f.dateRange?.from ||
     f.dateRange?.to ||
-    (f.fileType !== undefined && f.fileType.length < ALL_TYPES.length),
+    f.fileType !== undefined,
   )
 }
 
 function groupByType(results: SearchResult[]): Record<string, SearchResult[]> {
-  const g: Record<string, SearchResult[]> = { markdown: [], pdf: [], canvas: [] }
+  const g: Record<string, SearchResult[]> = {}
+  for (const t of GROUP_ORDER) g[t] = []
   for (const r of results) {
     g[r.type]?.push(r)
   }
@@ -41,6 +67,7 @@ export function SearchView() {
   const [includeMd, setIncludeMd] = useState(true)
   const [includePdf, setIncludePdf] = useState(true)
   const [includeCanvas, setIncludeCanvas] = useState(true)
+  const [includeFiles, setIncludeFiles] = useState(true)
   const [folderPrefix, setFolderPrefix] = useState('')
   const [extraTags, setExtraTags] = useState('')
   const [dateFrom, setDateFrom] = useState('')
@@ -58,7 +85,9 @@ export function SearchView() {
     if (includeMd) types.push('markdown')
     if (includePdf) types.push('pdf')
     if (includeCanvas) types.push('canvas')
-    const fileType = types.length === 0 ? [] : types.length === ALL_TYPES.length ? undefined : types
+    if (includeFiles) types.push(...FILE_TYPES)
+    const allChecked = includeMd && includePdf && includeCanvas && includeFiles
+    const fileType = types.length === 0 ? [] : allChecked ? undefined : types
     const tagStr = extraTags
       .split(/[,\s]+/)
       .map((x) => x.replace(/^#/, '').trim().toLowerCase())
@@ -70,7 +99,7 @@ export function SearchView() {
       dateRange:
         dateFrom || dateTo ? { from: dateFrom || undefined, to: dateTo || undefined } : undefined,
     }
-  }, [includeMd, includePdf, includeCanvas, folderPrefix, extraTags, dateFrom, dateTo])
+  }, [includeMd, includePdf, includeCanvas, includeFiles, folderPrefix, extraTags, dateFrom, dateTo])
 
   useEffect(() => {
     const { text, hashTags } = parseSearchQuery(debounced)
@@ -173,6 +202,15 @@ export function SearchView() {
               />
               Canvas
             </label>
+            <label className="text-fg-secondary flex cursor-pointer items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                checked={includeFiles}
+                onChange={(e) => setIncludeFiles(e.target.checked)}
+                className="accent-accent"
+              />
+              Files
+            </label>
           </fieldset>
           <label className="flex min-w-[140px] flex-1 flex-col gap-1 text-xs">
             <span className="text-fg-muted">Folder prefix</span>
@@ -239,11 +277,27 @@ type FlatRow =
   | { kind: 'header'; type: string; label: string; count: number }
   | { kind: 'item'; result: SearchResult }
 
-const TYPE_LABELS: Record<string, string> = { markdown: 'Notes', pdf: 'PDFs', canvas: 'Canvases' }
+const TYPE_LABELS: Record<string, string> = {
+  markdown: 'Notes',
+  pdf: 'PDFs',
+  canvas: 'Canvases',
+  mindmap: 'Mindmaps',
+  kanban: 'Kanban',
+  pptx: 'Presentations',
+  spreadsheet: 'Spreadsheets',
+  docx: 'Documents',
+  code: 'Code',
+}
 const TYPE_ICONS: Record<string, typeof FileText> = {
   markdown: FileText,
   pdf: FileType,
   canvas: LayoutGrid,
+  mindmap: GitBranch,
+  kanban: SquareKanban,
+  pptx: Presentation,
+  spreadsheet: Table2,
+  docx: FileType2,
+  code: FileCode2,
 }
 
 function SearchResultsList({
@@ -263,7 +317,7 @@ function SearchResultsList({
 
   const flatRows = useMemo<FlatRow[]>(() => {
     const rows: FlatRow[] = []
-    for (const type of ['markdown', 'pdf', 'canvas'] as const) {
+    for (const type of GROUP_ORDER) {
       const list = grouped[type]
       if (!list?.length) continue
       rows.push({ kind: 'header', type, label: TYPE_LABELS[type]!, count: list.length })

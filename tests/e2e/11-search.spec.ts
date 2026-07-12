@@ -206,4 +206,47 @@ test.describe('11 — Search', () => {
       await expect(page.getByText(/moonlight/).first()).toBeVisible()
     })
   })
+
+  test.describe('11.6 Code & DOCX content indexing (S5)', () => {
+    test('11.6.1 Code file body is searchable from the vault search panel', async ({
+      vaultPage: page,
+    }) => {
+      await writeVaultFile(
+        page,
+        'snippets/parse-util.ts',
+        'export function zorbulateWidget(input: string): string {\n  return input.trim()\n}\n',
+      )
+      await page.waitForTimeout(1000)
+
+      await openSearchAndQuery(page, 'zorbulateWidget')
+
+      // Result title keeps its extension; the body snippet is highlighted
+      await expect(page.getByText('parse-util.ts').first()).toBeVisible({ timeout: 10_000 })
+      await expect(page.locator('mark').filter({ hasText: 'zorbulateWidget' })).toBeVisible()
+    })
+
+    test('11.6.2 DOCX body text is searchable from the vault search panel', async ({
+      vaultPage: page,
+    }) => {
+      // Build a real minimal .docx (ZIP with word/document.xml) in Node
+      // and seed it into the vault as binary.
+      const JSZip = (await import('jszip')).default
+      const zip = new JSZip()
+      zip.file(
+        'word/document.xml',
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+          `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
+          `<w:body><w:p><w:r><w:t>The flumoxicated quarterly report</w:t></w:r></w:p></w:body>` +
+          `</w:document>`,
+      )
+      const base64 = await zip.generateAsync({ type: 'base64' })
+      await writeVaultFile(page, 'reports/q3-summary.docx', base64, { base64: true })
+      await page.waitForTimeout(1000)
+
+      await openSearchAndQuery(page, 'flumoxicated')
+
+      await expect(page.getByText('q3-summary').first()).toBeVisible({ timeout: 10_000 })
+      await expect(page.locator('mark').filter({ hasText: 'flumoxicated' })).toBeVisible()
+    })
+  })
 })
