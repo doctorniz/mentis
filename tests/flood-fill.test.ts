@@ -88,4 +88,29 @@ describe('floodFill', () => {
     const px = buffer(4, 4, [255, 0, 0, 255])
     expect(floodFill(px, 4, 4, 1, 1, 255, 0, 0, 255, 24)).toBe(false)
   })
+
+  it('bounds constrain the fill to exactly the given rect', () => {
+    const px = buffer(16, 16, [0, 0, 0, 0])
+    const ok = floodFill(px, 16, 16, 5, 5, 255, 0, 0, 255, 24, { x: 4, y: 4, width: 6, height: 5 })
+    expect(ok).toBe(true)
+    // Every pixel inside the rect painted…
+    expect(pixelAt(px, 16, 4, 4)).toEqual([255, 0, 0, 255])
+    expect(pixelAt(px, 16, 9, 8)).toEqual([255, 0, 0, 255])
+    // …and nothing outside it, including the fringe expansion.
+    expect(pixelAt(px, 16, 3, 4)).toEqual([0, 0, 0, 0])
+    expect(pixelAt(px, 16, 10, 8)).toEqual([0, 0, 0, 0])
+    expect(pixelAt(px, 16, 4, 3)).toEqual([0, 0, 0, 0])
+    expect(pixelAt(px, 16, 9, 9)).toEqual([0, 0, 0, 0])
+    // Exact painted count = rect area
+    let painted = 0
+    for (let i = 0; i < px.length; i += 4) if (px[i + 3] === 255) painted++
+    expect(painted).toBe(6 * 5)
+  })
+
+  it('refuses a seed outside the bounds', () => {
+    const px = buffer(16, 16, [0, 0, 0, 0])
+    const ok = floodFill(px, 16, 16, 1, 1, 255, 0, 0, 255, 24, { x: 4, y: 4, width: 6, height: 5 })
+    expect(ok).toBe(false)
+    expect(pixelAt(px, 16, 1, 1)).toEqual([0, 0, 0, 0])
+  })
 })

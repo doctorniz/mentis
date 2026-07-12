@@ -1,5 +1,5 @@
-import { Container, Sprite, Texture, type Application, type RenderTexture } from 'pixi.js'
-import type { BrushSettings } from '@/types/canvas'
+import { Container, Graphics, Sprite, Texture, type Application, type RenderTexture } from 'pixi.js'
+import type { BrushSettings, SnapshotRegion } from '@/types/canvas'
 import type { InterpolatedStamp } from '@/lib/canvas/math'
 
 /**
@@ -55,10 +55,20 @@ export class BrushSystem {
   private brushSpritePool: Sprite[] = []
   private brushBatchContainer: Container
 
+  /**
+   * Active-selection constraint for ERASER strokes: their stamps render
+   * straight into the layer RT (no scratchpad), so each batch render is
+   * clipped here with a rect mask. Brush strokes are clipped at the
+   * scratchpad instead — see `LayerManager.setStrokeClip`.
+   */
+  private clipMask: Graphics | null = null
+  private clipWrapper: Container
+
   constructor(app: Application) {
     this.app = app
     this.eraserBatchContainer = new Container()
     this.brushBatchContainer = new Container()
+    this.clipWrapper = new Container()
     this.eraserMaskTexture = createCircleMaskTexture()
     // Seed with a full-hardness mask; `renderBrushStamps` will rebuild
     // at the configured hardness on first use if it differs.
@@ -121,15 +131,45 @@ export class BrushSystem {
       this.eraserBatchContainer.addChild(sprite)
     }
 
-    this.app.renderer.render({
-      container: this.eraserBatchContainer,
-      target,
-      clear: false,
-    })
+    if (this.clipMask) {
+      // Clip the batch to the selection: mask on a CHILD of a detached
+      // wrapper (root-level masks are ignored in standalone renders).
+      this.clipWrapper.addChild(this.clipMask, this.eraserBatchContainer)
+      this.eraserBatchContainer.mask = this.clipMask
+      this.app.renderer.render({
+        container: this.clipWrapper,
+        target,
+        clear: false,
+      })
+      this.eraserBatchContainer.mask = null
+      this.clipWrapper.removeChildren()
+    } else {
+      this.app.renderer.render({
+        container: this.eraserBatchContainer,
+        target,
+        clear: false,
+      })
+    }
 
     // Leave sprites in the pool but unparent them so they aren't
     // re-rendered on the next main-pass tick.
     this.eraserBatchContainer.removeChildren()
+  }
+
+  /**
+   * Set (or clear) the selection constraint for eraser stamp batches.
+   * Called by the viewport at stroke start with the live selection rect.
+   */
+  setClipRect(region: SnapshotRegion | null): void {
+    if (this.clipMask) {
+      this.clipMask.destroy()
+      this.clipMask = null
+    }
+    if (region) {
+      this.clipMask = new Graphics()
+        .rect(region.x, region.y, region.width, region.height)
+        .fill({ color: 0xffffff })
+    }
   }
 
   private getPooledEraserSprite(index: number): Sprite {
@@ -243,6 +283,9 @@ export class BrushSystem {
     this.eraserSpritePool = []
     for (const sprite of this.brushSpritePool) sprite.destroy()
     this.brushSpritePool = []
+    this.clipMask?.destroy()
+    this.clipMask = null
+    this.clipWrapper.destroy()
     this.eraserBatchContainer.destroy()
     this.brushBatchContainer.destroy()
     this.eraserMaskTexture.destroy(true)

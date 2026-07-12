@@ -73,6 +73,24 @@ async function layerStats(page: Page): Promise<LayerStats> {
   })
 }
 
+/** Non-transparent pixel count within a rect of the active layer. */
+async function regionPx(
+  page: Page,
+  region: { x: number; y: number; width: number; height: number },
+): Promise<number> {
+  return page.evaluate((r) => {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const eng = (window as any).__mentisTest?.canvasEngine
+    const layer = eng.layerManager.getActiveLayer()
+    const canvas = eng.layerManager.extractLayerCanvas(layer.id, r)
+    const ctx = canvas.getContext('2d')
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+    let n = 0
+    for (let i = 3; i < data.length; i += 4) if (data[i] > 8) n++
+    return n
+  }, region)
+}
+
 async function selectionState(page: Page) {
   return page.evaluate(() => {
     /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -407,6 +425,88 @@ test.describe('5.8 Selection', () => {
     expect(await cursorAt(225, 225)).toBe('move') // inside the marquee
     expect(await cursorAt(420, 60)).toBe('crosshair') // outside it
     expect(await cursorAt(225, 225)).toBe('move') // and back
+  })
+
+  test('5.8.11 selection persists across tool switch and clips the brush', async ({
+    vaultPage: page,
+  }) => {
+    await page.keyboard.press('m')
+    await dragCanvas(page, 100, 100, 250, 250)
+
+    await page.keyboard.press('b')
+    await page.waitForTimeout(300)
+    // The selection must survive the tool switch — it's the constraint.
+    expect((await selectionState(page)).rect).toEqual({ x: 100, y: 100, width: 150, height: 150 })
+
+    // Stroke crossing the selection boundary: only the inside paints.
+    await dragCanvas(page, 150, 150, 350, 350)
+    await page.waitForTimeout(400)
+    const after = await layerStats(page)
+    expect(after.px).toBeGreaterThan(0)
+    expect(after.bbox!.maxX).toBeLessThanOrEqual(250)
+    expect(after.bbox!.maxY).toBeLessThanOrEqual(250)
+    expect(after.bbox!.minX).toBeGreaterThanOrEqual(100)
+  })
+
+  test('5.8.12 eraser only erases inside the selection', async ({ vaultPage: page }) => {
+    await page.keyboard.press('b')
+    await dragCanvas(page, 150, 150, 300, 300)
+    await page.waitForTimeout(400)
+    const before = await layerStats(page)
+
+    await page.keyboard.press('m')
+    await dragCanvas(page, 100, 100, 225, 225) // covers the stroke's top half
+
+    await page.keyboard.press('e')
+    for (let i = 0; i < 5; i++) await page.keyboard.press(']') // widen the eraser
+    await dragCanvas(page, 150, 150, 300, 300) // erase along the whole stroke
+    await page.waitForTimeout(400)
+
+    const after = await layerStats(page)
+    // Inside the selection: gone. Outside: untouched. The mask edge has
+    // a few px of anti-aliased feather at the boundary (Pixi renders the
+    // rect mask through the stencil path, not scissor), so the bbox
+    // check allows a small band; the interior check is exact.
+    expect(after.px).toBeGreaterThan(0)
+    expect(after.px).toBeLessThan(before.px)
+    expect(after.bbox!.minX).toBeGreaterThanOrEqual(218)
+    expect(after.bbox!.minY).toBeGreaterThanOrEqual(218)
+    expect(after.bbox!.maxX).toBe(before.bbox!.maxX)
+    // Deep inside the selection the stroke is fully erased.
+    expect(await regionPx(page, { x: 140, y: 140, width: 70, height: 70 })).toBe(0)
+
+    // The clipped erase still undoes cleanly.
+    await page.keyboard.press('Control+z')
+    await page.waitForTimeout(600)
+    const undone = await layerStats(page)
+    expect(undone.px).toBe(before.px)
+    expect(undone.bbox).toEqual(before.bbox)
+  })
+
+  test('5.8.13 fill is bounded by the selection, exactly', async ({ vaultPage: page }) => {
+    await page.keyboard.press('m')
+    await dragCanvas(page, 120, 140, 320, 290) // 200 × 150 rect
+
+    await page.keyboard.press('g')
+    const [fx, fy] = await canvasToScreen(page, 200, 200)
+    await page.mouse.click(fx, fy) // inside the selection
+    await page.waitForTimeout(600)
+
+    const filled = await layerStats(page)
+    // Empty canvas + bounded flood = the rect area, to the pixel.
+    expect(filled.px).toBe(200 * 150)
+    expect(filled.bbox).toEqual({ minX: 120, minY: 140, maxX: 319, maxY: 289 })
+
+    // Clicking OUTSIDE the selection is refused outright.
+    const [ox, oy] = await canvasToScreen(page, 400, 400)
+    await page.mouse.click(ox, oy)
+    await page.waitForTimeout(600)
+    expect((await layerStats(page)).px).toBe(200 * 150)
+
+    // Region-scoped fill undo restores the empty layer.
+    await page.keyboard.press('Control+z')
+    await page.waitForTimeout(600)
+    expect((await layerStats(page)).px).toBe(0)
   })
 
   test('5.8.8 eyedropper samples the clicked pixel, not (0,0) (regression)', async ({

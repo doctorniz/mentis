@@ -42,8 +42,17 @@ export function floodFill(
   fillB: number,
   fillA: number,
   tolerance = 0,
+  bounds?: { x: number; y: number; width: number; height: number },
 ): boolean {
-  if (startX < 0 || startX >= width || startY < 0 || startY >= height) return false
+  // Optional constraint rect (an active selection): pixels outside it
+  // are treated as un-fillable boundary — the walk, the seed, and the
+  // fringe expansion all stop at its edges.
+  const bx0 = bounds ? Math.max(0, Math.floor(bounds.x)) : 0
+  const by0 = bounds ? Math.max(0, Math.floor(bounds.y)) : 0
+  const bx1 = bounds ? Math.min(width, Math.floor(bounds.x + bounds.width)) : width
+  const by1 = bounds ? Math.min(height, Math.floor(bounds.y + bounds.height)) : height
+
+  if (startX < bx0 || startX >= bx1 || startY < by0 || startY >= by1) return false
 
   const idx = (x: number, y: number) => (y * width + x) * 4
 
@@ -86,7 +95,7 @@ export function floodFill(
     // of an earlier run pushed it before reaching it in that run); in
     // that case `matches` fails at x and we skip the row.
     let xl = x
-    while (xl >= 0 && matches(idx(xl, y))) xl--
+    while (xl >= bx0 && matches(idx(xl, y))) xl--
     xl++
     if (xl > x) continue // seed was already painted
 
@@ -95,10 +104,10 @@ export function floodFill(
     let spanAbove = false
     let spanBelow = false
 
-    for (let xr = xl; xr < width && matches(idx(xr, y)); xr++) {
+    for (let xr = xl; xr < bx1 && matches(idx(xr, y)); xr++) {
       paint(idx(xr, y))
 
-      if (y > 0) {
+      if (y > by0) {
         const aboveMatch = matches(idx(xr, y - 1))
         if (!spanAbove && aboveMatch) {
           stack.push(xr, y - 1)
@@ -108,7 +117,7 @@ export function floodFill(
         }
       }
 
-      if (y < height - 1) {
+      if (y < by1 - 1) {
         const belowMatch = matches(idx(xr, y + 1))
         if (!spanBelow && belowMatch) {
           stack.push(xr, y + 1)
@@ -125,15 +134,15 @@ export function floodFill(
   // survive as a halo. Collected first, painted after — expanding while
   // scanning would cascade.
   const fringe: number[] = []
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
+  for (let y = by0; y < by1; y++) {
+    for (let x = bx0; x < bx1; x++) {
       if (painted[y * width + x] === 0) continue
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
           if (dx === 0 && dy === 0) continue
           const nx = x + dx
           const ny = y + dy
-          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
+          if (nx < bx0 || nx >= bx1 || ny < by0 || ny >= by1) continue
           if (painted[ny * width + nx] === 0) fringe.push(idx(nx, ny))
         }
       }

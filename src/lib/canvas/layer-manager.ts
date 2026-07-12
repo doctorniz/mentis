@@ -65,6 +65,15 @@ export class LayerManager {
   private scratchpadSprite: Sprite
   private scratchpadRT: RenderTexture
 
+  /**
+   * Active-selection constraint for brush strokes: masks the scratchpad
+   * both live (preview) and at commit, so paint outside the selection
+   * never reaches the layer. Set per stroke by the viewport; null = no
+   * constraint. The Graphics doubles as the preview mask object.
+   */
+  private strokeClip: SnapshotRegion | null = null
+  private strokeClipMask: Graphics | null = null
+
   private _canvasWidth: number
   private _canvasHeight: number
 
@@ -464,13 +473,63 @@ export class LayerManager {
 
     this.scratchpadSprite.blendMode = 'normal'
 
-    this.app.renderer.render({
-      container: this.scratchpadSprite,
-      target: active.renderTexture,
-      clear: false,
-    })
+    if (this.strokeClip) {
+      // Masked commit: a detached wrapper (masks/blends on the root of a
+      // standalone render are ignored) holding a temp sprite of the same
+      // RT at the same stroke opacity, clipped to the selection rect.
+      const clip = this.strokeClip
+      const wrapper = new Container()
+      const maskG = new Graphics()
+        .rect(clip.x, clip.y, clip.width, clip.height)
+        .fill({ color: 0xffffff })
+      const temp = new Sprite(this.scratchpadRT)
+      temp.alpha = this.scratchpadSprite.alpha
+      temp.mask = maskG
+      wrapper.addChild(maskG, temp)
+      try {
+        this.app.renderer.render({
+          container: wrapper,
+          target: active.renderTexture,
+          clear: false,
+        })
+      } finally {
+        wrapper.destroy({ children: true })
+      }
+    } else {
+      this.app.renderer.render({
+        container: this.scratchpadSprite,
+        target: active.renderTexture,
+        clear: false,
+      })
+    }
 
     this.clearScratchpad()
+  }
+
+  /**
+   * Set (or clear) the selection constraint for the CURRENT brush
+   * stroke. Applies a live mask to the scratchpad preview sprite and
+   * makes the next `commitScratchpad` clip to the same rect. Called by
+   * the viewport at stroke start; eraser strokes use
+   * `BrushSystem.setClipRect` instead (they bypass the scratchpad).
+   */
+  setStrokeClip(region: SnapshotRegion | null): void {
+    this.strokeClip = region ? { ...region } : null
+
+    if (this.strokeClipMask) {
+      this.scratchpadSprite.mask = null
+      this.scratchpadContainer.removeChild(this.strokeClipMask)
+      this.strokeClipMask.destroy()
+      this.strokeClipMask = null
+    }
+    if (region) {
+      const g = new Graphics()
+        .rect(region.x, region.y, region.width, region.height)
+        .fill({ color: 0xffffff })
+      this.scratchpadContainer.addChild(g)
+      this.scratchpadSprite.mask = g
+      this.strokeClipMask = g
+    }
   }
 
   clearScratchpad(): void {
@@ -577,6 +636,7 @@ export class LayerManager {
     g: number,
     b: number,
     a: number,
+    bounds?: SnapshotRegion,
   ): Promise<boolean> {
     const layer = this.getLayer(id)
     if (!layer) return false
@@ -606,7 +666,7 @@ export class LayerManager {
     const h = extracted.height
     const imgData = ctx.getImageData(0, 0, w, h)
 
-    const filled = floodFill(imgData.data, w, h, px, py, r, g, b, a, FILL_TOLERANCE)
+    const filled = floodFill(imgData.data, w, h, px, py, r, g, b, a, FILL_TOLERANCE, bounds)
     if (!filled) return false
 
     ctx.putImageData(imgData, 0, 0)

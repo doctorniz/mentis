@@ -122,14 +122,22 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
     engine.render()
   }, [zoom, engineRef])
 
-  // A selection only means something to the select tool — switching
-  // tools drops it (cancelling any in-flight move back to its source).
+  // The selection PERSISTS across tool switches — it constrains brush,
+  // eraser, and fill (Photoshop-style). Switching away from Select only
+  // settles transient state: a pending float commits (so no half-moved
+  // layer outlives the tool) and an in-progress marquee finalizes.
   useEffect(() => {
     const engine = engineRef.current
     if (!engine?.initialized || activeTool === 'select') return
     setHoverInSelection(false)
-    engine.pendingSelectionCapture = null
-    engine.selectionTool.clearSelection(engine.viewportController.state.zoom)
+    if (engine.selectionTool.isMoving) commitSelectionMove(engine)
+    if (engine.selectionTool.isMarqueeing) {
+      engine.selectionTool.endMarquee(
+        engine.width,
+        engine.height,
+        engine.viewportController.state.zoom,
+      )
+    }
     engine.render()
   }, [activeTool, engineRef])
 
@@ -151,8 +159,14 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
           // all fingers lift.
           suppressDrawingRef.current = true
           if (engine.strokeEngine.isDrawing) engine.cancelActiveStroke()
-          if (engine.selectionTool.isMoving || engine.selectionTool.isMarqueeing) {
+          // Abort selection gestures: a mid-drag move returns its pixels
+          // to the source (keeping the selection); a mid-drag marquee is
+          // dropped (it was never finalized).
+          if (engine.selectionTool.isMoving) {
             engine.pendingSelectionCapture = null
+            engine.selectionTool.cancelMove(engine.viewportController.state.zoom)
+            engine.render()
+          } else if (engine.selectionTool.isMarqueeing) {
             engine.selectionTool.clearSelection(engine.viewportController.state.zoom)
             engine.render()
           }
@@ -213,6 +227,14 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
         // Auto-expand the canvas if this stroke starts beyond the current bounds.
         engine.expandToFit(canvasPoint.x, canvasPoint.y)
 
+        // An active selection constrains painting: brush strokes clip at
+        // the scratchpad (preview + commit), eraser stamp batches clip at
+        // render time. Set (or clear) both per stroke so neither goes
+        // stale when the selection changes between strokes.
+        const clip = engine.selectionTool.rect
+        engine.layerManager.setStrokeClip(tool === 'brush' ? clip : null)
+        engine.brushSystem.setClipRect(tool === 'eraser' ? clip : null)
+
         // Eraser strokes mutate the layer from the very first stamp, so
         // read the pre-stroke pixels back NOW (synchronously). The raw
         // canvas is cropped to the stroke's dirty rect at pointerup for
@@ -253,12 +275,21 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
         const layerId = engine.layerManager.activeLayerId
         if (!layerId) return
 
+        // An active selection bounds the fill (and lets the undo entry
+        // be region-scoped). A selection pushed fully off-canvas clamps
+        // to nothing — the fill is refused rather than run unbounded.
+        const sel = engine.selectionTool.rect
+        const fillBounds = sel ? clampRegion(sel, engine.width, engine.height) : null
+        if (sel && !fillBounds) return
+
         // Snapshot + fill + push undo, sequenced. The snapshot must
         // complete *before* the fill mutates the RT, otherwise we'd
         // capture the post-fill state and undo would be a no-op.
         void (async () => {
           try {
-            const snapshot = await engine.undoManager.snapshotActiveLayer()
+            const snapshot = fillBounds
+              ? await engine.undoManager.snapshotActiveLayerRegion(fillBounds)
+              : await engine.undoManager.snapshotActiveLayer()
             const ok = await engine.layerManager.floodFillLayer(
               layerId,
               canvasPoint.x,
@@ -267,6 +298,7 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
               g,
               b,
               a,
+              fillBounds ?? undefined,
             )
             if (!ok) return
             engine.render()
