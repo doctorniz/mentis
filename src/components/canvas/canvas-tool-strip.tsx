@@ -11,6 +11,7 @@ import {
   Redo,
 } from 'lucide-react'
 import { useCanvasStore } from '@/stores/canvas'
+import { commitSelectionMove } from '@/components/canvas/selection-ops'
 import type { CanvasTool } from '@/types/canvas'
 import type { CanvasEngine } from '@/lib/canvas/engine'
 import { cn } from '@/utils/cn'
@@ -37,6 +38,7 @@ export function CanvasToolStrip({ engineRef }: CanvasToolStripProps) {
   async function handleUndo() {
     const engine = engineRef.current
     if (!engine?.initialized) return
+    if (engine.selectionTool.isMoving) commitSelectionMove(engine)
     const ok = await engine.undoManager.undo()
     if (ok) {
       engine.render()
@@ -49,6 +51,7 @@ export function CanvasToolStrip({ engineRef }: CanvasToolStripProps) {
   async function handleRedo() {
     const engine = engineRef.current
     if (!engine?.initialized) return
+    if (engine.selectionTool.isMoving) commitSelectionMove(engine)
     const ok = await engine.undoManager.redo()
     if (ok) {
       engine.render()

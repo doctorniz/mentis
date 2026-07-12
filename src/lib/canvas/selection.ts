@@ -178,6 +178,17 @@ export class SelectionTool {
     this.redraw(zoom)
   }
 
+  /** Shift the float by a relative delta (arrow-key nudging). */
+  nudgeFloat(dx: number, dy: number, zoom: number): void {
+    const f = this.floating
+    if (!f || !this._rect) return
+    const nx = this._rect.x + dx
+    const ny = this._rect.y + dy
+    f.sprite.position.set(nx, ny)
+    this._rect = { ...this._rect, x: nx, y: ny }
+    this.redraw(zoom)
+  }
+
   /**
    * Commit the float: render the sprite into the active layer at its
    * current position. Returns the source and destination rects so the

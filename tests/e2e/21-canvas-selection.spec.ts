@@ -350,6 +350,65 @@ test.describe('5.8 Selection', () => {
     expect(after.bbox!.minY - before.bbox!.minY).toBe(rect.y - marquee.y)
   })
 
+  test('5.8.9 arrow keys nudge the selection; one undo entry per burst', async ({
+    vaultPage: page,
+  }) => {
+    await page.keyboard.press('b')
+    await dragCanvas(page, 150, 150, 300, 300)
+    await page.waitForTimeout(400)
+    const before = await layerStats(page)
+    const { undoDepth } = await selectionState(page)
+
+    await page.keyboard.press('m')
+    await dragCanvas(page, 100, 100, 350, 350)
+
+    // Burst: 3× right (1px each) + 1× Shift+Down (10px)
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Shift+ArrowDown')
+    // Mid-burst the pixels are floating (layer shows the hole)…
+    expect((await layerStats(page)).px).toBe(0)
+    // …and the debounced commit lands them after the pause.
+    await page.waitForTimeout(900)
+
+    const after = await layerStats(page)
+    expect(after.px).toBe(before.px)
+    expect(after.bbox).toEqual({
+      minX: before.bbox!.minX + 3,
+      minY: before.bbox!.minY + 10,
+      maxX: before.bbox!.maxX + 3,
+      maxY: before.bbox!.maxY + 10,
+    })
+    // The whole burst is ONE undo entry…
+    expect((await selectionState(page)).undoDepth).toBe(undoDepth + 1)
+    // …and undoing it restores the original pixels exactly.
+    await page.keyboard.press('Control+z')
+    await page.waitForTimeout(600)
+    const undone = await layerStats(page)
+    expect(undone.px).toBe(before.px)
+    expect(undone.bbox).toEqual(before.bbox)
+  })
+
+  test('5.8.10 cursor shows move over the selection, crosshair elsewhere', async ({
+    vaultPage: page,
+  }) => {
+    await page.keyboard.press('m')
+    await dragCanvas(page, 100, 100, 350, 350)
+
+    const host = canvasLocator(page).locator('..')
+    const cursorAt = async (cx: number, cy: number) => {
+      const [sx, sy] = await canvasToScreen(page, cx, cy)
+      await page.mouse.move(sx, sy)
+      await page.waitForTimeout(150)
+      return host.evaluate((el) => getComputedStyle(el).cursor)
+    }
+
+    expect(await cursorAt(225, 225)).toBe('move') // inside the marquee
+    expect(await cursorAt(420, 60)).toBe('crosshair') // outside it
+    expect(await cursorAt(225, 225)).toBe('move') // and back
+  })
+
   test('5.8.8 eyedropper samples the clicked pixel, not (0,0) (regression)', async ({
     vaultPage: page,
   }) => {

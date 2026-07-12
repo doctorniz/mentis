@@ -46,6 +46,16 @@ export class CanvasEngine {
   pendingPreStrokeCanvas: { layerId: string; canvas: HTMLCanvasElement } | null = null
 
   /**
+   * Pre-float full-layer readback for the in-flight selection move —
+   * captured just before `selectionTool.beginMove` erases the source
+   * region, cropped to the source∪dest union at commit for the undo
+   * entry. Lives on the engine (not a component ref) because a move can
+   * be driven by pointer drag (viewport) OR arrow-key nudge (editor),
+   * and whichever surface commits needs the capture.
+   */
+  pendingSelectionCapture: { layerId: string; canvas: HTMLCanvasElement } | null = null
+
+  /**
    * Serializes undo pushes across strokes: PNG encodes resolve on their
    * own schedule, and two quick strokes must land in the undo stack in
    * draw order or undo would restore the wrong states.

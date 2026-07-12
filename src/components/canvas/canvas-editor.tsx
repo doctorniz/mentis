@@ -9,6 +9,10 @@ import { useEditorStore } from '@/stores/editor'
 import { useAutoSave } from '@/hooks/use-auto-save'
 import { CanvasEngine } from '@/lib/canvas/engine'
 import { hasSelectionClipboard, computePasteRect } from '@/lib/canvas/selection'
+import {
+  captureSelectionMoveStart,
+  commitSelectionMove,
+} from '@/components/canvas/selection-ops'
 import { readCanvasFile, writeCanvasFile } from '@/lib/canvas/canvas-file-io'
 import { toast } from '@/stores/toast'
 import { CanvasViewport } from '@/components/canvas/canvas-viewport'
@@ -53,6 +57,16 @@ const savedUndoStacks = new Map<
 >()
 const MAX_SAVED_UNDO_STACKS = 4
 
+/** Canvas-space delta per arrow key (multiplied by 1 or 10 for Shift). */
+const ARROW_DELTAS: Record<string, [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+}
+/** Quiet period after the last arrow press before the float commits. */
+const NUDGE_COMMIT_DELAY_MS = 500
+
 const CANVAS_PANEL_STORAGE_KEY = 'ink-marrow:canvas-panel-width'
 const CANVAS_PANEL_DEFAULT_WIDTH = 260
 const CANVAS_PANEL_MIN_WIDTH = 180
@@ -68,6 +82,9 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
   const containerRef = useRef<HTMLDivElement | null>(null)
   const pathRef = useRef(path)
   pathRef.current = path
+
+  /** Debounce handle for committing an arrow-key nudge float. */
+  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [loading, setLoading] = useState(true)
 
@@ -392,6 +409,7 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
             engine.cancelActiveStroke()
           } else if (engine.selectionTool.isMoving) {
             e.preventDefault()
+            engine.pendingSelectionCapture = null
             engine.selectionTool.cancelMove(engine.viewportController.state.zoom)
             engine.render()
           } else if (engine.selectionTool.rect || engine.selectionTool.isMarqueeing) {
@@ -409,6 +427,43 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         if (engine?.initialized && engine.selectionTool.rect && !engine.selectionTool.isMoving) {
           e.preventDefault()
           deleteSelectionWithUndo(engine)
+        }
+        return
+      }
+
+      // Arrow keys: nudge the selection's pixels by 1px (Shift = 10px).
+      // The first press floats the selection; the float commits — one
+      // undo entry per burst — after a short pause without presses.
+      if (!mod && e.key in ARROW_DELTAS) {
+        const engine = engineRef.current
+        const sel = engine?.initialized ? engine.selectionTool : null
+        if (engine && sel?.rect && !sel.isMarqueeing) {
+          e.preventDefault()
+          const [ax, ay] = ARROW_DELTAS[e.key]
+          const step = e.shiftKey ? 10 : 1
+          const zoom = engine.viewportController.state.zoom
+
+          if (!sel.isMoving) {
+            const layer = engine.layerManager.getActiveLayer()
+            if (!layer || layer.locked) return
+            if (!captureSelectionMoveStart(engine)) return
+            // Grab at the rect origin — keyboard moves are relative, so
+            // the grab point only anchors updateMove (unused here).
+            if (!sel.beginMove(sel.rect.x, sel.rect.y)) {
+              engine.pendingSelectionCapture = null
+              return
+            }
+          }
+          sel.nudgeFloat(ax * step, ay * step, zoom)
+          engine.render()
+
+          if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current)
+          nudgeTimerRef.current = setTimeout(() => {
+            nudgeTimerRef.current = null
+            if (engine.initialized && engine.selectionTool.isMoving) {
+              commitSelectionMove(engine)
+            }
+          }, NUDGE_COMMIT_DELAY_MS)
         }
         return
       }
@@ -453,9 +508,12 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         }
       }
 
-      // Ctrl+S: save
+      // Ctrl+S: save (landing any pending nudge float first — handleSave
+      // deliberately skips while a move is in flight)
       if (mod && e.key.toLowerCase() === 's') {
         e.preventDefault()
+        const engine = engineRef.current
+        if (engine?.initialized && engine.selectionTool.isMoving) commitSelectionMove(engine)
         void handleSave()
         return
       }
@@ -499,11 +557,13 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         return
       }
 
-      // Ctrl+Z: undo
+      // Ctrl+Z: undo (a pending nudge float commits first, so the undo
+      // applies to the nudge rather than racing it)
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'z') {
         e.preventDefault()
         const engine = engineRef.current
         if (!engine?.initialized) return
+        if (engine.selectionTool.isMoving) commitSelectionMove(engine)
         void (async () => {
           const ok = await engine.undoManager.undo()
           if (ok) applyUndoRedoSideEffects(engine)
@@ -516,6 +576,7 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         e.preventDefault()
         const engine = engineRef.current
         if (!engine?.initialized) return
+        if (engine.selectionTool.isMoving) commitSelectionMove(engine)
         void (async () => {
           const ok = await engine.undoManager.redo()
           if (ok) applyUndoRedoSideEffects(engine)
