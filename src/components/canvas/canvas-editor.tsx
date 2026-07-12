@@ -259,6 +259,17 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         }
       }
 
+      // Unmounting mid-selection-move would flush a layer with a hole in
+      // it (the floating pixels live in an overlay sprite, not the
+      // layer). Put them back at their source before deciding to flush.
+      if (engine.initialized && engine.selectionTool.isMoving) {
+        try {
+          engine.selectionTool.cancelMove(engine.viewportController.state.zoom)
+        } catch {
+          /* best-effort */
+        }
+      }
+
       // Capture everything we need into locals NOW — the store is about
       // to be reset and engineRef.current will be nulled. These locals
       // are what the async run() below will close over.
@@ -317,6 +328,10 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
   const handleSave = useCallback(async () => {
     const engine = engineRef.current
     if (!engine?.initialized) return
+    // Mid-move the layer has a hole where the floating pixels came from;
+    // skip this tick — the canvas stays dirty, so the next interval (or
+    // the unmount flush, which cancels the move first) picks it up.
+    if (engine.selectionTool.isMoving) return
     try {
       await writeCanvasFile(engine, vaultFs, pathRef.current)
       useCanvasStore.getState().markSaved()
@@ -355,12 +370,23 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
 
       // Escape: abort the stroke being drawn (brush discards the
       // scratchpad; eraser restores the layer from the pre-stroke
-      // snapshot).
+      // snapshot). With no stroke active: cancel an in-flight selection
+      // move (pixels return to their source), else drop the selection.
       if (e.key === 'Escape') {
         const engine = engineRef.current
-        if (engine?.initialized && engine.strokeEngine.isDrawing) {
-          e.preventDefault()
-          engine.cancelActiveStroke()
+        if (engine?.initialized) {
+          if (engine.strokeEngine.isDrawing) {
+            e.preventDefault()
+            engine.cancelActiveStroke()
+          } else if (engine.selectionTool.isMoving) {
+            e.preventDefault()
+            engine.selectionTool.cancelMove(engine.viewportController.state.zoom)
+            engine.render()
+          } else if (engine.selectionTool.rect || engine.selectionTool.isMarqueeing) {
+            e.preventDefault()
+            engine.selectionTool.clearSelection(engine.viewportController.state.zoom)
+            engine.render()
+          }
         }
         return
       }
@@ -368,6 +394,7 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
       // Tool shortcuts (no modifier)
       if (!mod && !e.shiftKey) {
         const toolMap: Record<string, CanvasTool> = {
+          m: 'select',
           b: 'brush',
           e: 'eraser',
           h: 'pan',

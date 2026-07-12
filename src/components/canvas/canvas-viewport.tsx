@@ -8,6 +8,18 @@ import { hexToRgba, rgbToHex } from '@/lib/canvas/flood-fill'
 import { encodeCanvasRegionSnapshot } from '@/lib/canvas/undo-manager'
 import type { CanvasTool, BrushSettings, SnapshotRegion, LayerSnapshot } from '@/types/canvas'
 
+/** Smallest rect containing both rects. */
+function unionRect(a: SnapshotRegion, b: SnapshotRegion): SnapshotRegion {
+  const x = Math.min(a.x, b.x)
+  const y = Math.min(a.y, b.y)
+  return {
+    x,
+    y,
+    width: Math.max(a.x + a.width, b.x + b.width) - x,
+    height: Math.max(a.y + a.height, b.y + b.height) - y,
+  }
+}
+
 /** Intersect a stroke's (unclamped) dirty rect with the canvas bounds. */
 function clampRegion(
   bounds: { x: number; y: number; width: number; height: number },
@@ -48,6 +60,14 @@ interface GestureState {
 
 export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps) {
   const activePointerRef = useRef<number | null>(null)
+
+  /**
+   * Full-layer readback captured just before a selection move floats the
+   * pixels (same pattern as the eraser's pre-stroke readback) — cropped
+   * to the source∪dest union at commit for the undo entry. Discarded if
+   * the move is cancelled (cancelMove restores the layer itself).
+   */
+  const preMoveCanvasRef = useRef<{ layerId: string; canvas: HTMLCanvasElement } | null>(null)
 
   /** All currently-down touch pointers (id → client coords). */
   const touchPointsRef = useRef(new Map<number, { x: number; y: number }>())
@@ -117,6 +137,25 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
     [overlayDia, activeTool, activeLayerLocked, brushSettings, eraserSize, zoom],
   )
 
+  // The marquee outline is stroked at 1px-on-screen; re-stroke it when
+  // the zoom changes (wheel, pinch, or zoom buttons).
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!engine?.initialized) return
+    engine.selectionTool.redraw(zoom)
+    engine.render()
+  }, [zoom, engineRef])
+
+  // A selection only means something to the select tool — switching
+  // tools drops it (cancelling any in-flight move back to its source).
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!engine?.initialized || activeTool === 'select') return
+    preMoveCanvasRef.current = null
+    engine.selectionTool.clearSelection(engine.viewportController.state.zoom)
+    engine.render()
+  }, [activeTool, engineRef])
+
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const engine = engineRef.current
@@ -135,6 +174,11 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
           // all fingers lift.
           suppressDrawingRef.current = true
           if (engine.strokeEngine.isDrawing) engine.cancelActiveStroke()
+          if (engine.selectionTool.isMoving || engine.selectionTool.isMarqueeing) {
+            preMoveCanvasRef.current = null
+            engine.selectionTool.clearSelection(engine.viewportController.state.zoom)
+            engine.render()
+          }
           if (engine.viewportController.isPanning) engine.viewportController.endPan()
 
           const [a, b] = [...touchPointsRef.current.values()]
@@ -156,6 +200,27 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
       if (tool === 'pan' || e.button === 1 || (e.altKey && tool !== 'eyedropper')) {
         // Pan with middle click, alt+click, or pan tool
         engine.viewportController.beginPan(e.clientX, e.clientY)
+        return
+      }
+
+      if (tool === 'select') {
+        const canvasPoint = engine.viewportController.screenToCanvas(e.clientX, e.clientY, rect)
+        const sel = engine.selectionTool
+        // Click inside the existing selection drags it; anywhere else
+        // starts a fresh marquee (dropping the old selection).
+        if (sel.rect && sel.contains(canvasPoint.x, canvasPoint.y)) {
+          // Read the full layer back BEFORE beginMove erases the source
+          // region — this canvas backs the undo entry at commit.
+          const layerId = engine.layerManager.activeLayerId
+          const canvas = layerId ? engine.layerManager.extractLayerCanvas(layerId) : null
+          if (layerId && canvas && sel.beginMove(canvasPoint.x, canvasPoint.y)) {
+            preMoveCanvasRef.current = { layerId, canvas }
+            engine.render()
+            return
+          }
+        }
+        sel.beginMarquee(canvasPoint.x, canvasPoint.y)
+        engine.render()
         return
       }
 
@@ -312,6 +377,20 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
         return
       }
 
+      const sel = engine.selectionTool
+      if (sel.isMarqueeing || sel.isMoving) {
+        const rect = e.currentTarget.getBoundingClientRect()
+        const canvasPoint = engine.viewportController.screenToCanvas(e.clientX, e.clientY, rect)
+        const zoom = engine.viewportController.state.zoom
+        if (sel.isMoving) {
+          sel.updateMove(canvasPoint.x, canvasPoint.y, zoom)
+        } else {
+          sel.updateMarquee(canvasPoint.x, canvasPoint.y, zoom)
+        }
+        engine.render()
+        return
+      }
+
       if (engine.strokeEngine.isDrawing) {
         const rect = e.currentTarget.getBoundingClientRect()
         const state = useCanvasStore.getState()
@@ -389,6 +468,50 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
         useCanvasStore.getState().setViewport(engine.viewportController.state)
         return
       }
+
+      const sel = engine.selectionTool
+      if (sel.isMarqueeing) {
+        sel.endMarquee(engine.width, engine.height, engine.viewportController.state.zoom)
+        engine.render()
+        return
+      }
+
+      if (sel.isMoving) {
+        const pre = preMoveCanvasRef.current
+        preMoveCanvasRef.current = null
+        const moved = sel.commitMove(engine.viewportController.state.zoom)
+        engine.render()
+
+        if (moved && pre) {
+          // Undo covers everything the move touched: the hole left at the
+          // source plus the pixels stamped at the destination.
+          const union = clampRegion(
+            unionRect(moved.sourceRect, moved.destRect),
+            engine.width,
+            engine.height,
+          )
+          if (union) {
+            const pending = encodeCanvasRegionSnapshot(pre.layerId, pre.canvas, union)
+            engine.undoPushChain = engine.undoPushChain.then(async () => {
+              const snapshot = await pending
+              if (snapshot) {
+                engine.undoManager.push({
+                  kind: 'stroke',
+                  snapshots: [snapshot],
+                  description: 'Move selection',
+                })
+              }
+              const store = useCanvasStore.getState()
+              store.setUndoState(engine.undoManager.canUndo, engine.undoManager.canRedo)
+            })
+          }
+          useCanvasStore.getState().markDirty()
+        }
+        return
+      }
+
+      // A move cancelled mid-drag (Escape) leaves the readback behind.
+      preMoveCanvasRef.current = null
 
       if (engine.strokeEngine.isDrawing) {
         const wasEraser = engine.strokeEngine.isEraserStroke
@@ -716,6 +839,9 @@ function cursorForTool(
   zoom: number,
 ): string {
   if (tool === 'pan') return 'grab'
+  // Marquee selection on a locked layer is fine (non-mutating); only the
+  // move itself is blocked, inside SelectionTool.beginMove.
+  if (tool === 'select') return 'crosshair'
   if (locked) return 'not-allowed'
   switch (tool) {
     case 'brush':

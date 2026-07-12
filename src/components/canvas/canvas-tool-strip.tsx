@@ -1,6 +1,15 @@
 'use client'
 
-import { Paintbrush, Eraser, Hand, Pipette, PaintBucket, Undo2, Redo } from 'lucide-react'
+import {
+  Paintbrush,
+  Eraser,
+  Hand,
+  Pipette,
+  PaintBucket,
+  SquareDashed,
+  Undo2,
+  Redo,
+} from 'lucide-react'
 import { useCanvasStore } from '@/stores/canvas'
 import type { CanvasTool } from '@/types/canvas'
 import type { CanvasEngine } from '@/lib/canvas/engine'
@@ -11,6 +20,7 @@ interface CanvasToolStripProps {
 }
 
 const TOOLS: { id: CanvasTool; icon: typeof Paintbrush; label: string; shortcut: string }[] = [
+  { id: 'select', icon: SquareDashed, label: 'Select', shortcut: 'M' },
   { id: 'brush', icon: Paintbrush, label: 'Brush', shortcut: 'B' },
   { id: 'eraser', icon: Eraser, label: 'Eraser', shortcut: 'E' },
   { id: 'pan', icon: Hand, label: 'Pan', shortcut: 'H' },

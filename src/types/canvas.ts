@@ -85,7 +85,7 @@ export interface CanvasFile {
 /*  Tool & brush types                                                 */
 /* ------------------------------------------------------------------ */
 
-export type CanvasTool = 'brush' | 'eraser' | 'pan' | 'eyedropper' | 'fill'
+export type CanvasTool = 'select' | 'brush' | 'eraser' | 'pan' | 'eyedropper' | 'fill'
 
 export interface BrushSettings {
   size: number // 1–200

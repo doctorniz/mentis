@@ -4,6 +4,7 @@ import { StrokeEngine } from '@/lib/canvas/stroke-engine'
 import { BrushSystem } from '@/lib/canvas/brush-system'
 import { ViewportController } from '@/lib/canvas/viewport-controller'
 import { UndoManager } from '@/lib/canvas/undo-manager'
+import { SelectionTool } from '@/lib/canvas/selection'
 import {
   DEFAULT_CANVAS_WIDTH,
   DEFAULT_CANVAS_HEIGHT,
@@ -25,6 +26,7 @@ export class CanvasEngine {
   brushSystem!: BrushSystem
   viewportController!: ViewportController
   undoManager!: UndoManager
+  selectionTool!: SelectionTool
 
   private viewport!: Container
   private _initialized = false
@@ -233,9 +235,12 @@ export class CanvasEngine {
     canvas.style.cursor = 'inherit'
     container.appendChild(canvas)
 
-    // Root viewport container (pan/zoom applies here)
+    // Root viewport container (pan/zoom applies here). sortableChildren
+    // lets the selection overlay stay above layers added later via its
+    // zIndex instead of manual re-raising after every layer op.
     this.viewport = new Container()
     this.viewport.label = 'viewport'
+    this.viewport.sortableChildren = true
     this.app.stage.addChild(this.viewport)
 
     // Subsystems
@@ -244,6 +249,7 @@ export class CanvasEngine {
     this.strokeEngine = new StrokeEngine(this.layerManager, this.brushSystem)
     this.viewportController = new ViewportController(this.viewport)
     this.undoManager = new UndoManager(this.layerManager)
+    this.selectionTool = new SelectionTool(this.app, this.layerManager, this.viewport)
 
     this._initialized = true
 
@@ -338,6 +344,7 @@ export class CanvasEngine {
     }
 
     this.undoManager.clear()
+    this.selectionTool.destroy()
     this.brushSystem.destroy()
     this.layerManager.destroy()
 
