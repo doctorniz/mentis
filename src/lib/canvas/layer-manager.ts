@@ -4,7 +4,6 @@ import {
   RenderTexture,
   Graphics,
   Texture,
-  Rectangle,
   type Application,
 } from 'pixi.js'
 import type { CanvasLayerData, CanvasLayerMeta, SnapshotRegion } from '@/types/canvas'
@@ -679,11 +678,12 @@ export class LayerManager {
       let srcA = 0
       try {
         // Read back just the clicked pixel — a full-layer extract here
-        // costs a multi-MB GPU readback per layer per click.
-        const canvas = this.app.renderer.extract.canvas({
-          target: layer.renderTexture,
-          frame: new Rectangle(px, py, 1, 1),
-        }) as HTMLCanvasElement
+        // costs a multi-MB GPU readback per layer per click. Must go
+        // through extractLayerCanvas: extract.canvas ignores `frame`
+        // for Texture targets, which used to make this sample pixel
+        // (0,0) of the layer instead of the clicked point.
+        const canvas = this.extractLayerCanvas(layer.id, { x: px, y: py, width: 1, height: 1 })
+        if (!canvas) continue
         const ctx = canvas.getContext('2d')
         if (!ctx) continue
         const data = ctx.getImageData(0, 0, 1, 1).data
@@ -787,10 +787,28 @@ export class LayerManager {
     const layer = this.getLayer(id)
     if (!layer) return null
     try {
-      return this.app.renderer.extract.canvas({
-        target: layer.renderTexture,
-        frame: region ? new Rectangle(region.x, region.y, region.width, region.height) : undefined,
-      }) as HTMLCanvasElement
+      if (!region) {
+        return this.app.renderer.extract.canvas({
+          target: layer.renderTexture,
+        }) as HTMLCanvasElement
+      }
+      // extract.canvas SILENTLY IGNORES `frame` when the target is a
+      // Texture (Pixi v8 goes straight to generateCanvas(texture)), so a
+      // frame-based extract returns the full layer with content at
+      // absolute coords — every region consumer would then restore
+      // shifted by +region origin. Crop on the GPU instead: render the
+      // layer into a region-sized temp RT offset back to the origin,
+      // and read that back.
+      const temp = RenderTexture.create({ width: region.width, height: region.height })
+      const sprite = new Sprite(layer.renderTexture)
+      sprite.position.set(-region.x, -region.y)
+      try {
+        this.app.renderer.render({ container: sprite, target: temp, clear: true })
+        return this.app.renderer.extract.canvas({ target: temp }) as HTMLCanvasElement
+      } finally {
+        sprite.destroy()
+        temp.destroy(true)
+      }
     } catch {
       return null
     }
