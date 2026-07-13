@@ -3,7 +3,7 @@ import type { RemoteSyncProvider, RemoteFileEntry, SyncManifestEntry, SyncStatus
 import { SyncState } from './sync-state'
 import { detectLocalChanges, hashBytes } from './change-detector'
 import { buildSyncExcludeMatcher } from './excludes'
-import { resolveSyncConflict } from './conflicts'
+import { resolveSyncConflict, decideRemoteUpdate, decideRemoteDelete } from './conflicts'
 
 export type SyncStatusListener = (status: SyncStatus, message?: string) => void
 
@@ -226,6 +226,7 @@ export class SyncManager {
 
   async pull(): Promise<void> {
     this.setStatus('syncing', 'Pulling remote changes…')
+    this.announcedConflicts.clear()
     try {
       const cursor = await this.state.getCursor()
 
@@ -258,15 +259,43 @@ export class SyncManager {
       if (remote.isDirectory || this.isExcluded(remote.path)) continue
       const manifestEntry = await this.state.getEntry(remote.path)
 
-      if (!manifestEntry || manifestEntry.remoteHash !== remote.hash) {
+      const decision = decideRemoteUpdate({
+        manifestEntry,
+        localHash: await this.currentLocalHash(remote.path),
+        remoteHash: remote.hash,
+        remoteModifiedAt: remote.modifiedAt,
+      })
+
+      if (decision.isTrueConflict) {
+        this.announceConflict(remote.path, decision.action === 'pull' ? 'remote' : 'local')
+      }
+
+      if (decision.action === 'pull') {
         await this.pullFile(remote.path, remote)
+      } else if (decision.action === 'push-local') {
+        // Unpushed local edit (or same-path local create) wins — re-assert
+        // it instead of clobbering. The upload also realigns the manifest.
+        await this.pushFileInternal(remote.path)
       }
     }
 
     for (const path of deleted) {
       if (this.isExcluded(path)) continue
-      const exists = await this.fs.exists(path)
-      if (exists) {
+      const manifestEntry = await this.state.getEntry(path)
+      const localExists = await this.fs.exists(path)
+      const action = decideRemoteDelete({
+        manifestEntry,
+        localExists,
+        localHash: localExists ? await this.currentLocalHash(path) : null,
+      })
+
+      if (action === 'push-local') {
+        // Local edit wins over remote delete (full sync's re-upload rule).
+        await this.pushFileInternal(path)
+        continue
+      }
+      if (action === 'keep-local') continue
+      if (action === 'delete-local') {
         try {
           await this.fs.remove(path)
         } catch {
@@ -275,6 +304,21 @@ export class SyncManager {
       }
       await this.state.removeEntry(path)
     }
+  }
+
+  /** SHA-256 of the local file's current bytes; null when missing/unreadable. */
+  private async currentLocalHash(path: string): Promise<string | null> {
+    try {
+      return await hashBytes(await this.fs.readFile(path))
+    } catch {
+      return null
+    }
+  }
+
+  private announceConflict(path: string, winner: 'local' | 'remote'): void {
+    if (this.announcedConflicts.has(path)) return
+    this.announcedConflicts.add(path)
+    for (const fn of this.conflictListeners) fn({ path, winner })
   }
 
   private async pullFile(path: string, remote: RemoteFileEntry): Promise<void> {
@@ -320,12 +364,7 @@ export class SyncManager {
     })
 
     // Surface TRUE conflicts (both sides changed → one side discarded).
-    if (decision.isTrueConflict && !this.announcedConflicts.has(path)) {
-      this.announcedConflicts.add(path)
-      for (const fn of this.conflictListeners) {
-        fn({ path, winner: decision.winner })
-      }
-    }
+    if (decision.isTrueConflict) this.announceConflict(path, decision.winner)
 
     return decision.winner
   }
