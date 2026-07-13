@@ -5,6 +5,14 @@ export interface VaultSyncConfig {
   /** Polling interval in ms (default 30 000) */
   pollIntervalMs: number
   lastSyncedAt?: string
+  /**
+   * Extra vault-relative paths sync ignores in both directions, merged
+   * with the built-in defaults (`_marrow/snapshots`,
+   * `_marrow/search-index.json`). A pattern matches the exact path or
+   * anything under it as a folder. No Settings UI yet — edit
+   * `_marrow/config.json` directly.
+   */
+  excludePaths?: string[]
 }
 
 export interface VaultConfig {

@@ -22,6 +22,12 @@ If it is missing, **Connect Dropbox** in Settings will alert.
 
 After OAuth, the app opens **`/auth/dropbox`** (`src/app/auth/dropbox/page.tsx`), exchanges `code` for tokens, returns to `/`. Static hosting must serve the SPA for `/auth/dropbox` (see `docs/DEPLOYMENT.md`).
 
+## Excluded paths
+
+Sync never touches (in either direction): `_marrow/snapshots` (pre-edit PDF backups — heavy, per-device) and `_marrow/search-index.json` (rebuilt on every vault open). Copies of these already on Dropbox from before the exclude feature stay there untouched — delete them in Dropbox if you want the space back.
+
+Extra excludes per vault: add `"excludePaths": ["some/folder", "big-file.mp4"]` to the `sync` section of `_marrow/config.json`. A pattern matches the exact path or anything under it as a folder. There is no Settings UI for this yet.
+
 ## Related
 
 - Architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)

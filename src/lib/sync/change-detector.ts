@@ -13,12 +13,17 @@ export async function hashBytes(data: Uint8Array): Promise<string> {
   return hex.join('')
 }
 
-async function walkDir(fs: FileSystemAdapter, dir: string): Promise<string[]> {
+async function walkDir(
+  fs: FileSystemAdapter,
+  dir: string,
+  isExcluded: (path: string) => boolean,
+): Promise<string[]> {
   const entries = await fs.readdir(dir)
   const paths: string[] = []
   for (const entry of entries) {
+    if (isExcluded(entry.path)) continue
     if (entry.isDirectory) {
-      const children = await walkDir(fs, entry.path)
+      const children = await walkDir(fs, entry.path, isExcluded)
       paths.push(...children)
     } else {
       paths.push(entry.path)
@@ -30,12 +35,16 @@ async function walkDir(fs: FileSystemAdapter, dir: string): Promise<string[]> {
 export async function detectLocalChanges(
   fs: FileSystemAdapter,
   state: SyncState,
+  isExcluded: (path: string) => boolean = () => false,
 ): Promise<LocalChangeSet> {
-  const allPaths = await walkDir(fs, '')
+  const allPaths = await walkDir(fs, '', isExcluded)
   const manifest = await state.getAllEntries()
 
   const manifestMap = new Map<string, SyncManifestEntry>()
   for (const entry of manifest) {
+    // Stale manifest rows for now-excluded paths must not surface as
+    // local deletes — sync treats excluded paths as invisible.
+    if (isExcluded(entry.path)) continue
     manifestMap.set(entry.path, entry)
   }
 
@@ -57,7 +66,7 @@ export async function detectLocalChanges(
   }
 
   const deleted: string[] = []
-  for (const entry of manifest) {
+  for (const entry of manifestMap.values()) {
     if (!seenPaths.has(entry.path)) {
       deleted.push(entry.path)
     }

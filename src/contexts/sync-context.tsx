@@ -46,6 +46,11 @@ export function SyncProvider({
   const [canManualSync, setCanManualSync] = useState(false)
   const prevStatusRef = useRef<SyncStatus>('idle')
 
+  // Primitive dependency key: excludePaths is a fresh array identity on
+  // every config save; keying on the joined string avoids re-creating
+  // the manager (and re-running fullSync) for unrelated config edits.
+  const excludePathsKey = syncConfig?.excludePaths?.join('\n') ?? ''
+
   useEffect(() => {
     setCanManualSync(false)
     if (syncConfig?.provider !== 'dropbox') {
@@ -72,7 +77,13 @@ export function SyncProvider({
         if (!authenticated || cancelled) return
 
         const { SyncManager } = await import('@/lib/sync/sync-manager')
-        const mgr = new SyncManager(provider, vaultFs, vaultId, syncConfig.pollIntervalMs)
+        const mgr = new SyncManager(
+          provider,
+          vaultFs,
+          vaultId,
+          syncConfig.pollIntervalMs,
+          excludePathsKey ? excludePathsKey.split('\n') : undefined,
+        )
 
         mgr.onStatusChange((s, msg) => {
           if (!cancelled) {
@@ -111,6 +122,7 @@ export function SyncProvider({
     syncConfig?.provider,
     syncConfig?.remotePath,
     syncConfig?.pollIntervalMs,
+    excludePathsKey,
     vaultFs,
     vaultId,
     vaultLabel,

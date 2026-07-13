@@ -224,7 +224,7 @@ Interactive force-directed visualization. `buildNoteGraph` scans all vault files
 
 ### Sync (optional)
 
-Provider: **Dropbox** (OAuth 2 PKCE; Full Dropbox scoped; absolute paths like `/Apps/Mentis/<vault>`). OAuth return `src/app/auth/dropbox/`. Tokens in IndexedDB keyed per vault path (`vaultId` = active vault path). Settings → Sync configures Dropbox; the Vault toolbar shows a **sync-now** control when `sync.provider === 'dropbox'`. `SyncManager` runs `fullSync` on vault open, `pushFile` after saves, `pull` on poll interval. Change detection via SHA-256 manifest. Conflict resolution: last-write-wins by `modifiedAt`. Env: `NEXT_PUBLIC_DROPBOX_CLIENT_ID` in `.env.local`. See `docs/CLOUD_SYNC.md`.
+Provider: **Dropbox** (OAuth 2 PKCE; Full Dropbox scoped; absolute paths like `/Apps/Mentis/<vault>`). OAuth return `src/app/auth/dropbox/`. Tokens in IndexedDB keyed per vault path (`vaultId` = active vault path). Settings → Sync configures Dropbox; the Vault toolbar shows a **sync-now** control when `sync.provider === 'dropbox'`. `SyncManager` runs `fullSync` on vault open, `pushFile` after saves, `pull` on poll interval. Change detection via SHA-256 manifest. Conflict resolution: last-write-wins by `modifiedAt`. **Excludes** (`lib/sync/excludes.ts`): `_marrow/snapshots` and `_marrow/search-index.json` are invisible to sync in both directions (never pushed/pulled/deleted remotely; stale manifest rows purge without touching the remote copy — pre-existing remote copies stay as inert junk). Extra patterns via `VaultConfig.sync.excludePaths` (config.json only, no UI). Env: `NEXT_PUBLIC_DROPBOX_CLIENT_ID` in `.env.local`. See `docs/CLOUD_SYNC.md`.
 
 ### Image Files
 

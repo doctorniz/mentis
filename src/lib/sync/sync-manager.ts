@@ -2,6 +2,7 @@ import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { RemoteSyncProvider, RemoteFileEntry, SyncManifestEntry, SyncStatus } from './types'
 import { SyncState } from './sync-state'
 import { detectLocalChanges, hashBytes } from './change-detector'
+import { buildSyncExcludeMatcher } from './excludes'
 
 export type SyncStatusListener = (status: SyncStatus, message?: string) => void
 
@@ -10,14 +11,22 @@ export class SyncManager {
   private pollTimer: ReturnType<typeof setInterval> | null = null
   private listeners = new Set<SyncStatusListener>()
   private _status: SyncStatus = 'idle'
+  /**
+   * Excluded paths are invisible to sync in BOTH directions: skipped by
+   * the local scan and the push path, ignored in remote listings/deltas,
+   * and their stale manifest rows are purged without a remote delete.
+   */
+  private isExcluded: (path: string) => boolean
 
   constructor(
     private provider: RemoteSyncProvider,
     private fs: FileSystemAdapter,
     private vaultId: string,
     private pollIntervalMs: number = 30_000,
+    excludePaths?: string[],
   ) {
     this.state = new SyncState(vaultId)
+    this.isExcluded = buildSyncExcludeMatcher(excludePaths)
   }
 
   get status(): SyncStatus {
@@ -41,22 +50,28 @@ export class SyncManager {
     try {
       await this.provider.prepareRemoteRoot?.()
 
-      const localChanges = await detectLocalChanges(this.fs, this.state)
+      const localChanges = await detectLocalChanges(this.fs, this.state, this.isExcluded)
       const manifestMap = new Map<string, SyncManifestEntry>()
       for (const e of await this.state.getAllEntries()) {
+        // Purge stale rows for excluded paths (e.g. snapshots synced
+        // before excludes existed) WITHOUT touching the remote copy.
+        if (this.isExcluded(e.path)) {
+          await this.state.removeEntry(e.path)
+          continue
+        }
         manifestMap.set(e.path, e)
       }
 
-      // Collect all remote files
+      // Collect all remote files (excluded paths stay invisible)
       const remoteMap = new Map<string, RemoteFileEntry>()
       let result = await this.provider.listFiles()
       for (const e of result.entries) {
-        if (!e.isDirectory) remoteMap.set(e.path, e)
+        if (!e.isDirectory && !this.isExcluded(e.path)) remoteMap.set(e.path, e)
       }
       while (result.hasMore && result.cursor) {
         result = await this.provider.listFiles(result.cursor)
         for (const e of result.entries) {
-          if (!e.isDirectory) remoteMap.set(e.path, e)
+          if (!e.isDirectory && !this.isExcluded(e.path)) remoteMap.set(e.path, e)
         }
       }
       if (result.cursor) {
@@ -149,6 +164,7 @@ export class SyncManager {
   // --------------- Push single file (after save) ---------------
 
   async pushFile(path: string): Promise<void> {
+    if (this.isExcluded(path)) return
     this.setStatus('syncing', `Pushing ${path}…`)
     try {
       await this.pushFileInternal(path)
@@ -219,7 +235,7 @@ export class SyncManager {
 
   private async applyRemoteChanges(entries: RemoteFileEntry[], deleted: string[]): Promise<void> {
     for (const remote of entries) {
-      if (remote.isDirectory) continue
+      if (remote.isDirectory || this.isExcluded(remote.path)) continue
       const manifestEntry = await this.state.getEntry(remote.path)
 
       if (!manifestEntry || manifestEntry.remoteHash !== remote.hash) {
@@ -228,6 +244,7 @@ export class SyncManager {
     }
 
     for (const path of deleted) {
+      if (this.isExcluded(path)) continue
       const exists = await this.fs.exists(path)
       if (exists) {
         try {
