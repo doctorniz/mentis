@@ -37,9 +37,10 @@ test.describe('7 — Task Manager', () => {
       const input = page.getByPlaceholder('Add a task...')
       await input.fill('Weekly standup every monday')
 
-      // Weekly repeat token should appear in preview
-      await expect(page.getByText(/Weekly/)).toBeVisible({ timeout: 3_000 })
-      await expect(page.getByText(/Monday/)).toBeVisible()
+      // The parse-preview chip reads "Weekly · Monday". Match the combined
+      // chip text — a bare /Monday/ collides with the sidebar's daily-note
+      // button ("Monday, July 13") whenever the suite runs on a Monday.
+      await expect(page.getByText('Weekly · Monday')).toBeVisible({ timeout: 3_000 })
 
       await input.press('Enter')
       await page.waitForTimeout(1_000)

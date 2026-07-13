@@ -91,6 +91,45 @@ async function regionPx(
   }, region)
 }
 
+/**
+ * Undo/redo restores are async (PNG decode + RT render), so a fixed
+ * post-keypress wait flakes under CI load. Poll until the FULL layer
+ * state (count + bbox) settles at the expected value — polling the
+ * count alone is a trap: a move-undo translates pixels without changing
+ * their count, so a px-only poll passes before the restore lands.
+ *
+ * Comparison is tolerance-aware: under CI's parallel software-GL load
+ * the restore round-trip can drift anti-aliased fringe pixels across
+ * the alpha threshold (±1–2 px on a bbox edge, a handful of px in the
+ * count). The regressions these tests guard against are orders of
+ * magnitude larger (+100 px offsets, whole-stroke count inflation), so
+ * a small tolerance loses no signal.
+ */
+const PX_TOLERANCE = 16
+const BBOX_TOLERANCE = 2
+
+async function waitForLayer(page: Page, expected: LayerStats): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const s = await layerStats(page)
+        const pxOk = Math.abs(s.px - expected.px) <= PX_TOLERANCE
+        const bboxOk =
+          expected.bbox === null || s.bbox === null
+            ? expected.bbox === s.bbox
+            : Math.abs(s.bbox.minX - expected.bbox.minX) <= BBOX_TOLERANCE &&
+              Math.abs(s.bbox.minY - expected.bbox.minY) <= BBOX_TOLERANCE &&
+              Math.abs(s.bbox.maxX - expected.bbox.maxX) <= BBOX_TOLERANCE &&
+              Math.abs(s.bbox.maxY - expected.bbox.maxY) <= BBOX_TOLERANCE
+        // On success return a marker; on mismatch return the observed
+        // state so a timeout's error message shows what we last saw.
+        return pxOk && bboxOk ? 'match' : JSON.stringify({ got: s, want: expected })
+      },
+      { timeout: 10_000 },
+    )
+    .toBe('match')
+}
+
 async function selectionState(page: Page) {
   return page.evaluate(() => {
     /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -196,16 +235,11 @@ test.describe('5.8 Selection', () => {
     expect(moved.px).toBe(original.px)
 
     await page.keyboard.press('Control+z')
-    await page.waitForTimeout(600)
-    const undone = await layerStats(page)
-    expect(undone.px).toBe(original.px) // duplicated content would inflate this
-    expect(undone.bbox).toEqual(original.bbox)
+    // Duplicated content (the old extract-frame bug) would inflate px.
+    await waitForLayer(page, original)
 
     await page.keyboard.press('Control+Shift+z')
-    await page.waitForTimeout(600)
-    const redone = await layerStats(page)
-    expect(redone.px).toBe(moved.px)
-    expect(redone.bbox).toEqual(moved.bbox)
+    await waitForLayer(page, moved)
   })
 
   test('5.8.3 Delete erases only the marquee region; undo restores', async ({
@@ -227,10 +261,7 @@ test.describe('5.8 Selection', () => {
     expect(after.bbox!.minY).toBeGreaterThanOrEqual(225) // cut exactly at the marquee edge
 
     await page.keyboard.press('Control+z')
-    await page.waitForTimeout(600)
-    const restored = await layerStats(page)
-    expect(restored.px).toBe(before.px)
-    expect(restored.bbox).toEqual(before.bbox)
+    await waitForLayer(page, before)
   })
 
   test('5.8.4 cut / paste round-trip; paste is immediately movable', async ({
@@ -402,10 +433,7 @@ test.describe('5.8 Selection', () => {
     expect((await selectionState(page)).undoDepth).toBe(undoDepth + 1)
     // …and undoing it restores the original pixels exactly.
     await page.keyboard.press('Control+z')
-    await page.waitForTimeout(600)
-    const undone = await layerStats(page)
-    expect(undone.px).toBe(before.px)
-    expect(undone.bbox).toEqual(before.bbox)
+    await waitForLayer(page, before)
   })
 
   test('5.8.10 cursor shows move over the selection, crosshair elsewhere', async ({
@@ -477,10 +505,7 @@ test.describe('5.8 Selection', () => {
 
     // The clipped erase still undoes cleanly.
     await page.keyboard.press('Control+z')
-    await page.waitForTimeout(600)
-    const undone = await layerStats(page)
-    expect(undone.px).toBe(before.px)
-    expect(undone.bbox).toEqual(before.bbox)
+    await waitForLayer(page, before)
   })
 
   test('5.8.13 fill is bounded by the selection, exactly', async ({ vaultPage: page }) => {
@@ -505,8 +530,7 @@ test.describe('5.8 Selection', () => {
 
     // Region-scoped fill undo restores the empty layer.
     await page.keyboard.press('Control+z')
-    await page.waitForTimeout(600)
-    expect((await layerStats(page)).px).toBe(0)
+    await waitForLayer(page, { px: 0, bbox: null })
   })
 
   test('5.8.8 eyedropper samples the clicked pixel, not (0,0) (regression)', async ({
