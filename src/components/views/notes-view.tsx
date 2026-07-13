@@ -18,7 +18,7 @@ import { EditorRightColumn } from '@/components/notes/editor-right-column'
 import { BacklinksSection } from '@/components/notes/backlinks-section'
 import { OutlineSection } from '@/components/notes/outline-section'
 import { MobileDrawer } from '@/components/ui/mobile-drawer'
-import { ensureChatAssetIdForPath } from '@/lib/chat/asset-index'
+import { ensureChatAssetIdForPath, movePdfChatAssetId } from '@/lib/chat/asset-index'
 import { PdfViewer } from '@/components/pdf/pdf-viewer'
 import { CanvasEditor } from '@/components/canvas/canvas-editor'
 import { KanbanEditor } from '@/components/kanban/kanban-editor'
@@ -221,6 +221,12 @@ function NotesViewInner() {
       await vaultFs.rename(oldPath, newPath)
       removeSearchDocument(oldPath)
       if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
+      // PDFs keep their chatAssetId in a path-keyed index — migrate the
+      // entry so chat threads follow the rename. (Renames that miss this
+      // are healed later by fingerprint reconciliation.)
+      if (newPath.toLowerCase().endsWith('.pdf')) {
+        await movePdfChatAssetId(vaultFs, oldPath, newPath).catch(() => undefined)
+      }
       retargetTabPath(tabId, newPath, stemFromVaultPath(newPath))
       setSelectedPath(newPath)
       vaultChanged()
