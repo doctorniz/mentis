@@ -17,7 +17,8 @@
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "postinstall": "node scripts/copy-mp3-worker.mjs",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "qa": "node scripts/qa-checklist-server.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.0",

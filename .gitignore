@@ -46,3 +46,5 @@ next-env.d.ts
 # misc
 *.pem
 .claude/
+# hands-on QA checklist progress (pnpm qa)
+.qa-checklist-state.json

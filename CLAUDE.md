@@ -14,6 +14,7 @@ pnpm typecheck        # TypeScript type check
 pnpm test             # Vitest (all tests)
 pnpm test:ui          # Vitest UI
 pnpm test:e2e         # Playwright E2E
+pnpm qa               # Dev-only hands-on QA checklist server (port 4599, LAN-shared; scripts/qa-checklist-*.mjs)
 ```
 
 To run a single test file: `pnpm test tests/search.test.ts`

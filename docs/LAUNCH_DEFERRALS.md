@@ -51,6 +51,8 @@ Items are **logged for review before public launch**. This file is **pre-launch 
 
 **Format:** `- [ ]` = to run; `- [x]` = verified (keep a short date when useful).
 
+**Hands-on passes:** run `pnpm qa` — a dev-only checklist server (Desktop / Mobile / Future tabs, pass/fail/skip + notes, findings export) curated from this queue. It binds to the LAN so a phone can drive the Mobile tab; progress is shared and survives restarts (`.qa-checklist-state.json`, git-ignored). Keep `scripts/qa-checklist-data.mjs` in sync when this queue gains hands-on items.
+
 ### To do
 
 - [ ] **Chat — PDF rename reconciliation (AI5)** (2026-07-13, unit-tested: `tests/chat-asset-index.test.ts` — v1 migration, fingerprint mint/refresh, unique-dangling adoption, copy/ambiguous/edited refusals, move preservation) — hands-on worth doing with a real vault: open ✨ chat on a PDF, send a message, close the app, rename the PDF in the OS file browser, reopen, open chat on the renamed PDF → the old thread should reappear; verify `_marrow/_chats/index.json` shows schemaVersion 2 with `size`/`hash` fields.
