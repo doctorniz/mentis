@@ -44,6 +44,16 @@ interface CanvasEditorProps {
 const pendingCanvasSaves = new Map<string, Promise<void>>()
 
 /**
+ * Await every in-flight unmount flush. Vault maintenance (the drawings
+ * orphan reaper) must not scan while a canvas is mid-save — PNGs are
+ * written before the JSON, so a half-flushed canvas can make a brand-new
+ * layer's PNG look stale.
+ */
+export async function awaitPendingCanvasSaves(): Promise<void> {
+  await Promise.allSettled([...pendingCanvasSaves.values()])
+}
+
+/**
  * Undo/redo stacks parked across editor unmounts, keyed by vault path —
  * switching to another note and back used to wipe the entire history
  * because the engine (and its UndoManager) is destroyed on unmount.

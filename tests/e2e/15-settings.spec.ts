@@ -1,4 +1,4 @@
-import { test, expect, navigateTo } from './fixtures'
+import { test, expect, navigateTo, writeVaultFile } from './fixtures'
 
 const SETTINGS_TAB_LABELS = ['Vault', 'Editor', 'Snapshots', 'Sync', 'AI', 'Calendar'] as const
 
@@ -199,5 +199,94 @@ test.describe('16.1 — Settings Behavior', () => {
       // The active tab should have the accent styling
       await expect(tab).toHaveClass(/border-accent|text-accent/, { timeout: 3_000 })
     }
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/*  16.5 — Drawing cleanup (canvas orphan reaper)                      */
+/* ------------------------------------------------------------------ */
+
+const PNG_B64 = 'iVBORw0KGgo=' // PNG magic bytes — content is never decoded
+
+/** Check whether a vault-relative file exists in OPFS. */
+async function vaultFileExists(
+  page: import('@playwright/test').Page,
+  relPath: string,
+): Promise<boolean> {
+  return page.evaluate(async (rel) => {
+    const root = await navigator.storage.getDirectory()
+    const vaultsDir = await root.getDirectoryHandle('vaults')
+    let vaultDir: FileSystemDirectoryHandle | null = null
+    const iter = (vaultsDir as unknown as { values(): AsyncIterable<FileSystemHandle> }).values()
+    for await (const entry of iter) {
+      if (entry.kind === 'directory') {
+        vaultDir = entry as FileSystemDirectoryHandle
+        break
+      }
+    }
+    if (!vaultDir) return false
+    const parts = rel.split('/')
+    const fileName = parts.pop()!
+    let dir = vaultDir
+    try {
+      for (const part of parts) dir = await dir.getDirectoryHandle(part)
+      await dir.getFileHandle(fileName)
+      return true
+    } catch {
+      return false
+    }
+  }, relPath)
+}
+
+test.describe('16.5 — Drawing cleanup', () => {
+  test('16.5.1 removes orphans, keeps live data, second run is clean', async ({
+    vaultPage: page,
+  }) => {
+    // Live canvas: v5 JSON referencing layer l1 (plus a stale l2.png),
+    // an orphan drawings folder, and an ownerless v4 .assets leftover.
+    await writeVaultFile(
+      page,
+      'sketch.canvas',
+      JSON.stringify({ version: 5, assetId: 'live-e2e', layers: [{ id: 'l1', name: 'Layer 1' }] }),
+    )
+    await writeVaultFile(page, '_marrow/_drawings/live-e2e/l1.png', PNG_B64, { base64: true })
+    await writeVaultFile(page, '_marrow/_drawings/live-e2e/l2.png', PNG_B64, { base64: true })
+    await writeVaultFile(page, '_marrow/_drawings/orphan-e2e/z.png', PNG_B64, { base64: true })
+    await writeVaultFile(page, 'deleted.canvas.assets/x.png', PNG_B64, { base64: true })
+
+    await openSettings(page)
+    const dialog = page.locator('[role="dialog"]')
+    await dialog.locator('button:has-text("Clean up")').click()
+
+    // orphan folder + stale l2.png + v4 leftover = 3 items
+    await expect(page.getByText('Removed 3 unused drawing items')).toBeVisible({
+      timeout: 10_000,
+    })
+
+    expect(await vaultFileExists(page, '_marrow/_drawings/live-e2e/l1.png')).toBe(true)
+    expect(await vaultFileExists(page, '_marrow/_drawings/live-e2e/l2.png')).toBe(false)
+    expect(await vaultFileExists(page, '_marrow/_drawings/orphan-e2e/z.png')).toBe(false)
+    expect(await vaultFileExists(page, 'deleted.canvas.assets/x.png')).toBe(false)
+
+    // Idempotent: a second run finds nothing.
+    await dialog.locator('button:has-text("Clean up")').click()
+    await expect(page.getByText('Nothing to clean')).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('16.5.2 refuses while a canvas tab is open', async ({ vaultPage: page }) => {
+    await navigateTo(page, 'vault')
+    await page.keyboard.press('Control+n')
+    await page.waitForTimeout(400)
+    await page
+      .getByRole('button', { name: 'Canvas' })
+      .or(page.getByRole('menuitem', { name: 'Canvas' }))
+      .first()
+      .click()
+    await expect(page.getByText('Loading canvas…')).toBeHidden({ timeout: 15_000 })
+    await page.waitForTimeout(500)
+
+    await openSettings(page)
+    await page.locator('[role="dialog"]').locator('button:has-text("Clean up")').click()
+    await expect(page.getByText('Close canvas tabs first')).toBeVisible({ timeout: 10_000 })
   })
 })
