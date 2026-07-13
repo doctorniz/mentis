@@ -13,6 +13,7 @@ import type { SyncStatus } from '@/lib/sync/types'
 import type { SyncManager } from '@/lib/sync/sync-manager'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { VaultSyncConfig } from '@/types/vault'
+import { toast } from '@/stores/toast'
 
 interface SyncContextValue {
   status: SyncStatus
@@ -84,6 +85,19 @@ export function SyncProvider({
           syncConfig.pollIntervalMs,
           excludePathsKey ? excludePathsKey.split('\n') : undefined,
         )
+
+        // True conflicts (both sides edited; one version discarded by
+        // last-write-wins) surface as a toast — silent data replacement
+        // is worse than a noisy one.
+        mgr.onConflict(({ path, winner }) => {
+          if (cancelled) return
+          const name = path.split('/').pop() ?? path
+          toast.info(
+            winner === 'remote'
+              ? `Sync conflict: ${name} — kept the newer remote version`
+              : `Sync conflict: ${name} — kept this device's version`,
+          )
+        })
 
         mgr.onStatusChange((s, msg) => {
           if (!cancelled) {

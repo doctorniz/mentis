@@ -3,13 +3,26 @@ import type { RemoteSyncProvider, RemoteFileEntry, SyncManifestEntry, SyncStatus
 import { SyncState } from './sync-state'
 import { detectLocalChanges, hashBytes } from './change-detector'
 import { buildSyncExcludeMatcher } from './excludes'
+import { resolveSyncConflict } from './conflicts'
 
 export type SyncStatusListener = (status: SyncStatus, message?: string) => void
+
+/** A true conflict: both sides changed and one side's edits were discarded. */
+export interface SyncConflict {
+  path: string
+  winner: 'local' | 'remote'
+}
+
+export type SyncConflictListener = (conflict: SyncConflict) => void
 
 export class SyncManager {
   private state: SyncState
   private pollTimer: ReturnType<typeof setInterval> | null = null
   private listeners = new Set<SyncStatusListener>()
+  private conflictListeners = new Set<SyncConflictListener>()
+  /** Paths already announced this fullSync — the push and pull loops can
+   *  both evaluate the same conflicting path; the user hears about it once. */
+  private announcedConflicts = new Set<string>()
   private _status: SyncStatus = 'idle'
   /**
    * Excluded paths are invisible to sync in BOTH directions: skipped by
@@ -38,6 +51,12 @@ export class SyncManager {
     return () => this.listeners.delete(listener)
   }
 
+  /** Notified once per file per sync run when a TRUE conflict resolves. */
+  onConflict(listener: SyncConflictListener): () => void {
+    this.conflictListeners.add(listener)
+    return () => this.conflictListeners.delete(listener)
+  }
+
   private setStatus(status: SyncStatus, message?: string) {
     this._status = status
     for (const fn of this.listeners) fn(status, message)
@@ -47,6 +66,7 @@ export class SyncManager {
 
   async fullSync(): Promise<void> {
     this.setStatus('syncing', 'Starting full sync…')
+    this.announcedConflicts.clear()
     try {
       await this.provider.prepareRemoteRoot?.()
 
@@ -291,22 +311,23 @@ export class SyncManager {
     remote: RemoteFileEntry,
     manifestEntry: SyncManifestEntry | undefined,
   ): 'local' | 'remote' {
-    // If we have no prior sync record, local is considered "created" — local wins
-    if (!manifestEntry) return 'local'
+    const decision = resolveSyncConflict({
+      isLocallyChanged:
+        localChanges.modified.includes(path) || localChanges.created.includes(path),
+      remoteHash: remote.hash,
+      remoteModifiedAt: remote.modifiedAt,
+      manifestEntry,
+    })
 
-    // If remote hash hasn't changed but local has, local wins
-    if (manifestEntry.remoteHash === remote.hash) return 'local'
+    // Surface TRUE conflicts (both sides changed → one side discarded).
+    if (decision.isTrueConflict && !this.announcedConflicts.has(path)) {
+      this.announcedConflicts.add(path)
+      for (const fn of this.conflictListeners) {
+        fn({ path, winner: decision.winner })
+      }
+    }
 
-    // If local hash hasn't changed but remote has, remote wins
-    const isLocalChanged =
-      localChanges.modified.includes(path) || localChanges.created.includes(path)
-    if (!isLocalChanged) return 'remote'
-
-    // Both changed: last-write-wins by modifiedAt; tie goes to remote
-    const remoteTime = new Date(remote.modifiedAt).getTime()
-    const lastSync = new Date(manifestEntry.lastSyncedAt).getTime()
-    if (remoteTime > lastSync) return 'remote'
-    return 'local'
+    return decision.winner
   }
 
   // --------------- Polling ---------------
