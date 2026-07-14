@@ -8,7 +8,7 @@
     "dev": "next dev --turbopack",
     "dev:webpack": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "serve out -l 3000 -L",
     "lint": "next lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm dev              # Next.js dev server (Turbopack)
 pnpm dev:webpack      # Fallback if Turbopack fails
 pnpm build            # Static export SPA
+pnpm start            # Serve the static export from out/ (run build first; `next start` is incompatible with output: export)
 pnpm lint             # ESLint
 pnpm format           # Prettier
 pnpm typecheck        # TypeScript type check
