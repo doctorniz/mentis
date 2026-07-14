@@ -6,63 +6,56 @@ Local-first markdown notes, PDF editor, and unlimited canvas.
 
 ## What is Mentis?
 
-Mentis is a cross-platform note-taking application built on a **local-first, markdown-file architecture**. Every note is a `.md` file, every asset lives alongside it, and you always own your data. Mentis is also a **full-featured PDF editor**: annotate, highlight, sign, and manage PDFs as first-class citizens — all edits written directly into the file.
+Mentis is a local-first personal knowledge base built on a **plain-file architecture**. Every document is a file in a folder you own — markdown notes, PDFs, drawings, spreadsheets — with no database and no lock-in. It runs entirely in the browser, works offline, and optionally syncs via Dropbox.
 
 ## Features
 
-- **Markdown Notes** — WYSIWYG editing with Tiptap, wiki-links, slash commands, backlinks, frontmatter, tags, templates
-- **PDF Editor** — View, annotate, highlight, draw, sign, text boxes, comments, page panel (reorder, merge, extract selection), form filling, auto-save (default 5s, Settings), snapshots, page-op undo/redo
-- **Unlimited Canvas** — Infinite whiteboard with freehand drawing, text cards, sticky notes, connectors, frames, wiki-link cards, export to PNG/PDF, auto-save
-- **Vault** — One sidebar entry: 🌳 tree (folder tree + editors) and 🗂️ browse (grid/list with thumbnails, import, sort, filter, batch move/delete modals, context menu)
-- **Image preview & edit** — Open PNG/JPEG/WebP from the vault tree: rotate, trim edges (crop), brightness/contrast/saturation, save in place
-- **Full-Text Search** — Instant search across all notes, PDFs, and canvases with MiniSearch, tag support, filters, snippets
-- **Offline-First PWA** — Works entirely in the browser, installable, Service Worker caching
-- **Keyboard Shortcuts** — Full shortcut system with help dialog (Ctrl+Shift+?)
+- **Markdown Notes** — WYSIWYG editing (Tiptap) with Source mode, wiki-links, backlinks, slash commands, tables, KaTeX math, find/replace, outline, templates, image embed/resize
+- **PDF Editor** — Annotate, highlight, draw, sign, comment; page reorder/merge/extract; form filling; find-in-document; edits written destructively into the file with pre-edit snapshots
+- **Drawing Canvas** — Layered raster drawing (PixiJS/WebGL): pressure-sensitive brushes, eraser, fill, eyedropper, rectangular selection with move/nudge/clipboard, selection-constrained painting, blend modes, PNG/PDF export
+- **Office & code files** — Edit `.docx`, `.pptx`, `.xlsx`/`.csv`, and source/plain-text files inline; mindmaps (`.mind`) and markdown-based kanban boards
+- **Organizer** — Tasks (CalDAV-shaped, natural-language quick-add, recurrence, `.ics` export), calendar (day/week/month), quick-capture Board (text/image/voice with Whisper transcription), web bookmarks
+- **AI Chat** — Bring-your-own-LLM chat grounded in the open document or the whole vault (MiniSearch RAG, cited sources); OpenRouter / OpenAI / Anthropic / Gemini / Ollama, or fully local Gemma over WebGPU
+- **Full-Text Search** — Instant fuzzy search across every file type's content, with tags, folder, date, and type filters
+- **Graph** — Force-directed wiki-link graph across all file types
+- **Sync (optional)** — Dropbox with SHA-256 change detection, exclude patterns, and conflict notifications
+- **Offline-First PWA** — Installable, Service Worker caching, mobile layout with touch drawing
 
 ## Architecture
 
 ```
 src/
-├── app/              # Next.js App Router (layout, page, globals.css)
-├── components/
-│   ├── shell/        # AppShell, sidebar, view router, shortcuts dialog
-│   ├── views/        # VaultView (tree + browse), SearchView, NewView, …
-│   ├── notes/        # Markdown editor, file tree, tabs, toolbar, wiki-links, backlinks
-│   ├── pdf/          # PDF viewer, annotations, page panel, forms, signatures
-│   ├── canvas/       # Infinite canvas editor + toolbar
-│   ├── file-browser/ # Grid/list cards, context menu, batch ops, import
-│   ├── search/       # Search index bootstrap
-│   └── ui/           # Shared primitives (Button)
-├── contexts/         # VaultFsProvider, NotesWorkspaceProvider
-├── lib/
-│   ├── fs/           # FileSystemAdapter + OPFS + FSAPI (showDirectoryPicker) adapters
-│   ├── vault/        # Vault lifecycle (create, discover, config)
-│   ├── editor/       # Tiptap extensions, slash/wiki, markdown bridge
-│   ├── markdown/     # gray-matter parsing, wiki-link/tag extraction
-│   ├── notes/        # Tree filtering, new-note paths, template store, backlinks
-│   ├── pdf/          # pdfjs-loader, annotations, page ops, signatures, thumbnails
-│   ├── search/       # MiniSearch index, build, query, snippets
-│   ├── canvas/       # Canvas JSON serialization
-│   ├── file-browser/ # File collection, sort, filter
-│   └── snapshot/     # PDF snapshot management
-├── stores/           # Zustand stores (vault, ui, editor, pdf, canvas, search, file-tree, file-browser)
+├── app/              # Next.js App Router shell (layout, page, Dropbox OAuth return)
+├── components/       # React UI by domain: shell, views, notes, pdf, canvas, board,
+│                     # tasks, calendar, bookmarks, kanban, mindmap, pptx, chat,
+│                     # file-browser, graph, audio, ui
+├── contexts/         # VaultFsContext, NotesWorkspaceContext, SyncContext
+├── hooks/            # use-auto-save
+├── lib/              # Framework-free logic: fs, vault, editor, markdown, notes, pdf,
+│                     # canvas, search, sync, chat, board, tasks, calendar, bookmarks,
+│                     # kanban, mindmap, spreadsheet, code, audio, graph, snapshot, browser
+├── stores/           # Zustand+Immer stores, one per domain
 ├── types/            # TypeScript type definitions
 └── utils/            # cn.ts (clsx + tailwind-merge)
 ```
 
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full picture.
+
 ## Tech Stack
 
-| Layer       | Technology                                                              |
-| ----------- | ----------------------------------------------------------------------- |
-| Framework   | Next.js 15 (App Router, static export)                                  |
-| UI          | React 19, Tailwind CSS 4, Radix UI, Lucide icons                        |
-| Editor      | Tiptap (ProseMirror) + marked + turndown + gray-matter                  |
-| PDF         | PDF.js (render), pdf-lib (write), Fabric.js (annotations)               |
-| Canvas      | Fabric.js (infinite surface)                                            |
-| Search      | MiniSearch                                                              |
-| State       | Zustand + Immer                                                         |
-| File System | OPFS (all browsers); File System Access API on Chromium (“open folder”) |
-| Offline     | Service Worker (stale-while-revalidate), PWA manifest                   |
+| Layer       | Technology                                                                        |
+| ----------- | --------------------------------------------------------------------------------- |
+| Framework   | Next.js 15 (App Router, static export)                                            |
+| UI          | React 19, Tailwind CSS 4, Radix UI, Lucide icons                                  |
+| Notes       | Tiptap (ProseMirror) + marked + turndown + gray-matter; CodeMirror 6 (source/code) |
+| PDF         | PDF.js (render), pdf-lib (write), Fabric.js (annotation overlay)                  |
+| Canvas      | PixiJS v8 (WebGL, layered raster)                                                 |
+| Office      | @eigenpal/docx-js-editor, slidecanvas (PPTX), SheetJS + jspreadsheet-ce           |
+| AI          | Provider SSE clients; MediaPipe LLM (local Gemma); transformers.js (Whisper)      |
+| Search      | MiniSearch                                                                        |
+| State       | Zustand + Immer                                                                   |
+| File System | OPFS (all browsers); File System Access API on Chromium (“open folder”)           |
+| Offline     | Service Worker (stale-while-revalidate), PWA manifest                             |
 
 ## Getting Started
 

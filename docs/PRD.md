@@ -74,18 +74,18 @@ All edits written directly into the PDF file on save.
 | **Graph**          | Force-directed vault graph (notes, PDFs, canvases); wiki-link edges; folder filter; open files from nodes. |
 | **New**            | Quick-create launcher (popover): note, file import, drawing; Templates tab in `NewView` where exposed.     |
 
-### 3.5 Unlimited Canvas
+### 3.5 Drawing Canvas
 
-Freeform, infinitely scrollable whiteboard:
+Layered raster drawing surface (Photoshop/Procreate direction — the original whiteboard concept was retired in favor of drawing):
 
-- Infinite surface with pan and zoom
-- Freehand drawing with pressure sensitivity
-- Text cards, image embeds, sticky notes
-- Connectors between objects
-- Sections/frames for grouping
-- Export to PDF/PNG
-- Saved as `.canvas` JSON file
-- Cross-linking via `[[wiki-links]]`
+- Infinite pan/zoom surface, auto-expanding canvas
+- Pressure-sensitive brushes with hardness/opacity/stabilizer; eraser, fill, eyedropper
+- Layers with opacity, visibility, lock, blend modes; merge/flatten
+- Rectangular selection: move, nudge, delete, copy/cut/paste, select-all; selection constrains painting
+- Undo/redo with dirty-region snapshots; history survives tab switches
+- Touch: pinch-zoom, two-finger pan, gesture-safe stroke handling
+- Export to PNG/PDF
+- Saved as `.canvas` metadata JSON + per-layer PNGs under `_marrow/_drawings/`
 
 ### 3.6 Cross-Platform Sync (Phase 2+)
 

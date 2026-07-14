@@ -1,16 +1,16 @@
-# Mentis — Code Conventions
+﻿# Mentis â€” Code Conventions
 
 ## License
 
 | Item                             | Detail                                                                                                                                                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Full text**                    | Root [`LICENSE`](../LICENSE) — **Business Source License 1.1** (MariaDB-style parameters + terms).                                                                                                                      |
+| **Full text**                    | Root [`LICENSE`](../LICENSE) â€” **Business Source License 1.1** (MariaDB-style parameters + terms).                                                                                                                      |
 | **Licensor / work**              | **Marrow Group** / **Mentis** (this repository).                                                                                                                                                                        |
-| **Additional Use Grant**         | Production use for **any purpose** (see `LICENSE` — adjust only with legal review).                                                                                                                                     |
+| **Additional Use Grant**         | Production use for **any purpose** (see `LICENSE` â€” adjust only with legal review).                                                                                                                                     |
 | **Change Date / Change License** | **2030-04-09** / **MPL 2.0** (edit in `LICENSE` if policy changes).                                                                                                                                                     |
 | **`package.json`**               | `"license": "SEE LICENSE IN LICENSE"`.                                                                                                                                                                                  |
-| **README**                       | **AI assistance** section — tooling disclosure; **License** section — pointer to BSL; neither replaces `LICENSE`.                                                                                                       |
-| **Docs**                         | [`ARCHITECTURE.md`](./ARCHITECTURE.md) §10, [`TECH_STACK.md`](./TECH_STACK.md) (footer), [`PRD.md`](./PRD.md) §6, [`DEPLOYMENT.md`](./DEPLOYMENT.md) (static hosting / headers), this file, [`CURSOR.md`](./CURSOR.md). |
+| **README**                       | **AI assistance** section â€” tooling disclosure; **License** section â€” pointer to BSL; neither replaces `LICENSE`.                                                                                                       |
+| **Docs**                         | [`ARCHITECTURE.md`](./ARCHITECTURE.md) Â§10, [`TECH_STACK.md`](./TECH_STACK.md) (footer), [`PRD.md`](./PRD.md) Â§6, [`DEPLOYMENT.md`](./DEPLOYMENT.md) (static hosting / headers), this file, [`CURSOR.md`](./CURSOR.md). |
 
 Third-party npm packages remain under their respective licenses.
 
@@ -18,100 +18,33 @@ Third-party npm packages remain under their respective licenses.
 
 ```
 ink-marrow/
-├── docs/                       # Project documentation (10 markdown files)
-├── tests/                      # Vitest unit tests (261 tests, default env node; happy-dom per file where needed)
-│   ├── assets.test.ts          # static asset paths / PWA entries
-│   ├── canvas-undo.test.ts     # canvas undo stack behaviour
-│   ├── canvas.test.ts          # createEmptyCanvas, serialize/deserialize, nodes/edges
-│   ├── daily-note.test.ts      # daily note path + openOrCreate helpers
-│   ├── download-file.test.ts   # download helper
-│   ├── editor-tab-from-path.test.ts
-│   ├── export-pdf.test.ts      # print/export HTML helpers
-│   ├── file-utils.test.ts      # getFileType, isHiddenPath, Result helpers
-│   ├── folder-ops.test.ts      # renameFolder, collectFilePaths
-│   ├── fs-adapter.test.ts      # InMemoryAdapter contract
-│   ├── graph.test.ts           # wiki graph build/resolve
-│   ├── image-edit-pipeline.test.ts # vault image rotate/adjust/crop helpers
-│   ├── markdown-bridge.test.ts # Tiptap ↔ MD (happy-dom)
-│   ├── markdown.test.ts        # parseNote, wiki-links, tags, resolveWikiLinkPath
-│   ├── pdf-annotation-writer.test.ts # writeAnnotationsIntoPdf /Text + strip
-│   ├── pdf-operations.test.ts  # createBlankPdf, page ops, forms helpers
-│   ├── pdf-search-text.test.ts # in-PDF text search helper
-│   ├── pdf-store-colors.test.ts # pdf store colour keys
-│   ├── search.test.ts          # parseSearchQuery, buildSnippet, index, filters
-│   ├── snapshot.test.ts        # snapshot helpers
-│   └── toast.test.ts           # toast store
-├── public/                     # PWA: manifest.json, icon.svg, sw.js
+├── docs/                  # Project documentation (see README's doc index)
+├── tests/                 # Vitest unit tests (default env: node; happy-dom per file where needed)
+│   └── e2e/               # Playwright specs (chromium + Pixel-5 mobile projects) + fixtures
+├── public/                # PWA: manifest, icons, sw.js, MP3 worker + vmsg.wasm
+├── scripts/               # copy-mp3-worker (postinstall), qa-checklist server (pnpm qa)
 ├── src/
-│   ├── app/                    # Next.js App Router (single route, client-side views)
-│   │   ├── layout.tsx          # Root layout (PWA meta, SW registration)
-│   │   ├── page.tsx            # Home → AppRoot
-│   │   └── globals.css         # Tailwind v4 @theme tokens, light/dark palettes, ProseMirror styles
-│   │
-│   ├── components/
-│   │   ├── shell/              # AppShell, MainSidebar, ViewRouter, KeyboardShortcutsDialog, ErrorBoundary, NewFilePopover, SettingsDialog
-│   │   ├── views/              # VaultView, SearchView, GraphView, NewView (+ NotesView/FileBrowserView as vault sub-panes)
-│   │   ├── notes/              # MarkdownNoteEditor, file tree, tabs, toolbar, slash/wiki, backlinks, rename
-│   │   ├── pdf/                # PdfViewer, toolbar, outline, per-page Fabric canvas, page panel, signature pad, form dialog
-│   │   ├── canvas/             # CanvasEditor + CanvasToolbar (Fabric.js: draw, text, sticky, connect, frames, wiki-links, export)
-│   │   ├── graph/              # GraphCanvas (force-directed Canvas 2D renderer)
-│   │   ├── file-browser/       # FbFileCard/Row, context menu, batch bar, import zone
-│   │   ├── search/             # VaultSearchBootstrap
-│   │   └── ui/                 # Button, Toaster (shared primitives)
-│   │
-│   ├── contexts/               # React context providers
-│   │   ├── vault-fs-context.tsx     # Vault FS adapters, path, config
-│   │   └── notes-workspace-context.tsx  # Markdown paths for wiki-link + backlinks
-│   │
-│   ├── hooks/                  # Reusable React hooks
-│   │   ├── use-auto-save.ts         # Debounced auto-save for editors
-│   │   └── use-keyboard-shortcuts.ts # Global keyboard shortcut registration
-│   │
-│   ├── lib/                    # Core business logic (non-React)
-│   │   ├── fs/                 # FileSystemAdapter interface, OpfsAdapter, FsapiAdapter, scoped adapter
-│   │   ├── vault/              # Vault lifecycle (create, discover, config, session)
-│   │   ├── editor/             # Tiptap extensions, slash/wiki, markdown ↔ JSON bridge, vault-image, pdf-embed
-│   │   ├── markdown/           # gray-matter parsing, wiki-link/tag extraction
-│   │   ├── notes/              # Tree filtering, new-note paths, daily-note, folder-ops, assets, export-pdf, template store, backlinks
-│   │   ├── pdf/                # pdfjs-loader, annotation R/W, page ops, signatures, thumbnails
-│   │   ├── search/             # MiniSearch index, build, query, snippets, parse-query
-│   │   ├── canvas/             # Canvas JSON serialization (nodes, edges, frames), undo-stack
-│   │   ├── graph/              # Graph data model: build-graph (nodes from notes, edges from wiki-links, folder filter)
-│   │   ├── file-browser/       # File collection, sort, filter helpers
-│   │   ├── snapshot/           # PDF snapshot management
-│   │   └── keyboard-shortcuts.ts  # Global shortcut definitions + formatter
-│   │
-│   ├── stores/                 # Zustand + Immer stores
-│   │   ├── vault.ts            # Active vault session
-│   │   ├── ui.ts               # View mode, sidebar, theme
-│   │   ├── file-tree.ts        # File tree, selection, starred
-│   │   ├── editor.ts           # Tabs, active tab, recent files
-│   │   ├── pdf.ts              # PDF state, annotations, tools
-│   │   ├── canvas.ts           # Canvas state, tools, dirty flag
-│   │   ├── search.ts           # Search query, results, filters
-│   │   ├── file-browser.ts     # Browser view mode, sort, multi-select
-│   │   └── toast.ts            # Toast notifications (info/success/error/warning)
-│   │
-│   ├── types/                  # Shared TypeScript types
-│   │   ├── vault.ts            # VaultConfig, ViewMode, well-known dirs
-│   │   ├── files.ts            # FileEntry, FileType, FileStats
-│   │   ├── editor.ts           # EditorTab, NoteFrontmatter
-│   │   ├── pdf.ts              # Annotations, tools, signatures
-│   │   ├── canvas.ts           # CanvasFile, nodes, edges, frames
-│   │   ├── search.ts           # SearchResult, SearchFilters, SearchIndexDocument
-│   │   └── file-browser.ts     # FbViewMode, FbFileItem, sorts/filters
-│   │
-│   └── utils/                  # cn.ts (clsx + tailwind-merge)
-│
-├── .cursor/rules/              # Cursor AI rules (.mdc files)
-├── next.config.ts              # Static export; canvas stub alias; hosting headers → docs/DEPLOYMENT.md
-├── postcss.config.mjs          # @tailwindcss/postcss (no tailwind.config file — v4)
-├── tsconfig.json               # strict, ES2022, @/* paths
-├── .npmrc                      # pnpm hoist-pattern for Turbopack
-├── package.json                # Dependencies and scripts
-├── pnpm-lock.yaml
-└── README.md
+│   ├── app/               # Next.js App Router shell (layout, page, auth/dropbox return)
+│   ├── components/        # React UI by domain: shell, views, notes, pdf, canvas, board,
+│   │                      # tasks, calendar, bookmarks, kanban, mindmap, pptx, chat,
+│   │                      # file-browser, graph, search, audio, ui
+│   ├── contexts/          # vault-fs, notes-workspace, sync providers
+│   ├── hooks/             # use-auto-save
+│   ├── lib/               # Framework-free logic, one folder per domain (fs, vault, editor,
+│   │                      # markdown, notes, pdf, canvas, search, sync, chat, board, tasks,
+│   │                      # calendar, bookmarks, kanban, mindmap, spreadsheet, code, audio,
+│   │                      # graph, snapshot, file-browser, browser)
+│   ├── stores/            # Zustand + Immer stores, one per domain
+│   ├── types/             # Shared TypeScript types
+│   └── utils/             # cn.ts (clsx + tailwind-merge)
+├── .cursor/rules/         # Cursor AI rules (.mdc)
+├── .github/workflows/     # CI (typecheck, lint, unit, build, e2e)
+├── next.config.ts         # Static export; server-side stubs for browser-only libs
+├── playwright.config.ts   # E2E: dev server locally, static export on CI
+└── CLAUDE.md              # AI working notes — the most detailed, most current module reference
 ```
+
+The root CLAUDE.md is kept current with every change and is the best per-module reference; this file covers the stable conventions.
 
 ## Naming Conventions
 
@@ -144,11 +77,11 @@ ink-marrow/
 
 ### Accessibility (HTML)
 
-- Never nest interactive elements (`<button>` inside `<button>`, etc.). For tab UIs with a close control, use a focusable `<div role="tab">` (with `tabIndex` and keyboard activation) and keep actions like “close” as separate `<button>`s.
+- Never nest interactive elements (`<button>` inside `<button>`, etc.). For tab UIs with a close control, use a focusable `<div role="tab">` (with `tabIndex` and keyboard activation) and keep actions like â€œcloseâ€ as separate `<button>`s.
 
 ### Notes editor & vault rename
 
-- After a file rename, `MarkdownNoteEditor`’s `useEffect` cleanup still closes over the **previous** `path`. Flushing save with that path **recreates** the old file (duplicate next to the new one). Skip the flush when `pathRef.current !== path` (tab path already retargeted).
+- After a file rename, `MarkdownNoteEditor`â€™s `useEffect` cleanup still closes over the **previous** `path`. Flushing save with that path **recreates** the old file (duplicate next to the new one). Skip the flush when `pathRef.current !== path` (tab path already retargeted).
 
 ### Component File Structure
 
@@ -217,7 +150,7 @@ export const useVaultStore = create<VaultState>()(
 )
 ```
 
-**Immer + collections:** Do not put `Set` or `Map` in Zustand state when using the `immer` middleware unless you call `enableMapSet()` at app init. Prefer `Record<string, true>` (or string arrays) for set-like data—see `file-tree`, `pdf`, and `canvas` stores.
+**Immer + collections:** Do not put `Set` or `Map` in Zustand state when using the `immer` middleware unless you call `enableMapSet()` at app init. Prefer `Record<string, true>` (or string arrays) for set-like dataâ€”see `file-tree`, `pdf`, and `canvas` stores.
 
 ## Import Aliases
 
@@ -237,12 +170,12 @@ Always use `@/` path aliases for imports within `src/`. Never use relative paths
 - Component variants defined with `class-variance-authority` (CVA).
 - No CSS modules or styled-components.
 - Dark mode via Tailwind v4 `@variant dark` (class-based): `.dark` on `<html>` toggles CSS custom properties. Anti-flash inline script in `layout.tsx` reads `localStorage('ink-theme')` before paint. Three-state toggle (Light / System / Dark) in sidebar. `useUiStore.setTheme()` persists choice and syncs the class.
-- **Settings / forms:** avoid a second line of explanatory “hint” text under every label unless it prevents a real mistake. AI guidance: `.cursor/rules/ui-copy.mdc`.
+- **Settings / forms:** avoid a second line of explanatory â€œhintâ€ text under every label unless it prevents a real mistake. AI guidance: `.cursor/rules/ui-copy.mdc`.
 
 ## Error Handling
 
 - File system operations are wrapped in try/catch and return `Result<T, Error>` types where possible.
-- User-facing errors are shown via toast notifications — import `toast` from `@/stores/toast` and call `toast.error(msg)`, `toast.warning(msg)`, `toast.success(msg)`, or `toast.info(msg)`. The `<Toaster>` component is mounted in `app-root.tsx`.
+- User-facing errors are shown via toast notifications â€” import `toast` from `@/stores/toast` and call `toast.error(msg)`, `toast.warning(msg)`, `toast.success(msg)`, or `toast.info(msg)`. The `<Toaster>` component is mounted in `app-root.tsx`.
 - Always keep the `console.error` alongside the toast so developers see full stack traces.
 - Critical errors (vault corruption, write failures) show modal dialogs with recovery options (`ErrorBoundary`).
 
@@ -258,11 +191,11 @@ Always use `@/` path aliases for imports within `src/`. Never use relative paths
 
 ### Branch Names
 
-- `feat/description` — new feature
-- `fix/description` — bug fix
-- `refactor/description` — code restructuring
-- `docs/description` — documentation
-- `chore/description` — tooling, deps, config
+- `feat/description` â€” new feature
+- `fix/description` â€” bug fix
+- `refactor/description` â€” code restructuring
+- `docs/description` â€” documentation
+- `chore/description` â€” tooling, deps, config
 
 ### Commit Messages
 
@@ -287,5 +220,5 @@ docs(readme): add development setup instructions
 ## Cursor & AI assistant
 
 - Project rules live in **`.cursor/rules/`** (`.mdc` files). See **`docs/CURSOR.md`** for the current list and purpose.
-- When using Cursor Agent on this repo, the default expectation is: greet with **Assalamualaikum** on substantive help, and **update `docs/`** (and `README.md` when needed) at the end of runs that change behavior, architecture, or dependencies—then summarize which doc files changed in the final reply.
-- For **UX or user-visible behavior** changes, also refresh **`docs/LAUNCH_DEFERRALS.md` → _Manual verification queue_ → _To do_** (and move verified rows to **Done**); repeat that checklist in the closeout under **Manual verification** so a human can smoke-test in the app.
+- When using Cursor Agent on this repo, the default expectation is: greet with **Assalamualaikum** on substantive help, and **update `docs/`** (and `README.md` when needed) at the end of runs that change behavior, architecture, or dependenciesâ€”then summarize which doc files changed in the final reply.
+- For **UX or user-visible behavior** changes, also refresh **`docs/LAUNCH_DEFERRALS.md` â†’ _Manual verification queue_ â†’ _To do_** (and move verified rows to **Done**); repeat that checklist in the closeout under **Manual verification** so a human can smoke-test in the app.

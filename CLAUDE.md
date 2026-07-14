@@ -37,7 +37,7 @@ Components + Stores  ←→  lib/ (business logic)  ←→  FileSystemAdapter
 - **`src/lib/`** — Framework-free business logic: `fs/`, `vault/`, `editor/`, `markdown/`, `pdf/`, `search/`, `canvas/`, `board/`, `tasks/`, `bookmarks/`, `kanban/`, `calendar/`, `graph/`, `snapshot/`, `sync/`, `browser/`
 - **`src/types/`** — TypeScript type definitions
 - **`src/contexts/`** — `VaultFsContext` (active adapter + config), `NotesWorkspaceContext` (wiki-link paths), `SyncContext` (Dropbox sync push)
-- **`src/hooks/`** — `use-auto-save.ts` (debounced save), `use-keyboard-shortcuts.ts` (global shortcuts)
+- **`src/hooks/`** — `use-auto-save.ts` (debounced save)
 
 ### File System Abstraction
 
@@ -161,7 +161,7 @@ File tree icon: `GitBranch` (lucide), teal. Graph shows mindmap nodes as teal he
 
 `.xlsx` / `.xls` / `.csv` (also reads `.xlsm` / `.xlsb` / `.ods` / `.tsv`) open in `components/notes/spreadsheet-editor.tsx`, a grid powered by `jspreadsheet-ce` (lazy-loaded alongside `jsuites` and their CSS via dynamic `import()`). SheetJS (`xlsx`) bridges file bytes ↔ an in-memory `SpreadsheetWorkbook` model (`lib/spreadsheet/types.ts`): `{ sheets: [{ name, data: CellData[][], colWidths, merges }], activeSheetIndex }`. `lib/spreadsheet/xlsx-io.ts` handles `readXlsxFile` / `writeSpreadsheetFile` (format-aware via `bookTypeFromPath`, so a `.csv` stays `.csv` on save instead of silently becoming `.xlsx`) and `extractXlsxText` for search indexing (cell values flattened to CSV per sheet, capped at 14k chars).
 
-Multi-sheet UI: sheet tabs with add/delete/switch; switching syncs the currently-mounted grid back into the workbook model first (`syncGridToWorkbook`) so in-progress edits on the sheet you're leaving aren't lost. Auto-save debounced 750ms, same pattern as markdown/DOCX. Download button re-serves the raw on-disk bytes with a format-correct MIME type. New spreadsheets: `createUntitledSpreadsheet` allocates `untitled.xlsx` / `untitled-1.xlsx` etc. at vault root.
+Multi-sheet UI: sheet tabs with add/delete/switch; switching syncs the currently-mounted grid back into the workbook model first (`syncGridToWorkbook`) so in-progress edits on the sheet you're leaving aren't lost. Auto-save debounced 750ms, same pattern as markdown/DOCX. Download button re-serves the raw on-disk bytes with a format-correct MIME type. New spreadsheets are created by `use-new-file-actions.ts` via `createBlankXlsx` (`lib/spreadsheet/xlsx-io.ts`), named `Spreadsheet YYYY-MM-DD.xlsx`.
 
 File tree icon: `Table2` (lucide), green. Graph shows spreadsheet nodes as sharp rects (tabular files). Search indexes cell text.
 
@@ -218,7 +218,7 @@ Nav order (sidebar): **Chat** (Ctrl+0) → **Vault** (Ctrl+1) → **Board** (Ctr
 
 ### Search
 
-MiniSearch index built on vault open, stored in `_marrow/search-index.json`. Incrementally updated on save/rename for cheap text types (markdown, kanban, mindmap, code — see `isIndexableTextPath`); binary types (PDF, PPTX, XLSX, DOCX) re-extract on vault open or manual rebuild only. Indexed content: markdown title/body/tags, PDF text (PDF.js), PPTX slide text + DOCX body text (JSZip + Open-XML regex — `extractPptxText` / `extractDocxText`), spreadsheet cells, mindmap labels, kanban cards, **code/plain-text file bodies** (capped 14k chars; titles keep their extension so `a.ts`/`a.py` stay distinct), canvas titles/paths. Supports fuzzy matching, `#tag` filters, date range, folder prefix, file type filters. **The live search surface is the Vault left-column panel** (`vault-left-search.tsx`); `views/search-view.tsx` is dormant — `ViewMode.Search` redirects to Vault in `view-router.tsx`.
+MiniSearch index built on vault open, stored in `_marrow/search-index.json`. Incrementally updated on save/rename for cheap text types (markdown, kanban, mindmap, code — see `isIndexableTextPath`); binary types (PDF, PPTX, XLSX, DOCX) re-extract on vault open or manual rebuild only. Indexed content: markdown title/body/tags, PDF text (PDF.js), PPTX slide text + DOCX body text (JSZip + Open-XML regex — `extractPptxText` / `extractDocxText`), spreadsheet cells, mindmap labels, kanban cards, **code/plain-text file bodies** (capped 14k chars; titles keep their extension so `a.ts`/`a.py` stay distinct), canvas titles/paths. Supports fuzzy matching, `#tag` filters, date range, folder prefix, file type filters. **The search UI is the Vault left-column panel** (`vault-left-search.tsx`); the legacy full-page search view was removed — `ViewMode.Search` redirects to Vault in `view-router.tsx`.
 
 ### Graph
 

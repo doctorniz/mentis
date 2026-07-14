@@ -42,7 +42,7 @@ function fileTypeForPath(
 
 /**
  * Shared creation actions for new files (note, drawing, PDF, import).
- * Used by both the desktop `NewFilePopover` and the mobile inline accordion.
+ * Used by the sidebar "New" menu and the mobile inline accordion.
  *
  * Each action navigates to the Vault tree view and dispatches `ink:vault-changed`.
  * The caller supplies an `onDone` callback (e.g. close popover / close drawer).
@@ -53,9 +53,10 @@ export function useNewFileActions(onDone: () => void) {
   const pdfPageStyle = usePdfPageStyle()
   const [busy, setBusy] = useState(false)
 
-  function defaultDir(): string {
-    return !defaultFolder || defaultFolder === '/' ? '' : defaultFolder
-  }
+  const defaultDir = useCallback(
+    (): string => (!defaultFolder || defaultFolder === '/' ? '' : defaultFolder),
+    [defaultFolder],
+  )
 
   const createNote = useCallback(async () => {
     if (busy) return
@@ -83,8 +84,7 @@ export function useNewFileActions(onDone: () => void) {
     } finally {
       setBusy(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vaultFs, busy, onDone])
+  }, [vaultFs, busy, onDone, defaultDir])
 
   const createDrawing = useCallback(async () => {
     if (busy) return
@@ -117,8 +117,7 @@ export function useNewFileActions(onDone: () => void) {
     } finally {
       setBusy(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vaultFs, busy, onDone])
+  }, [vaultFs, busy, onDone, defaultDir])
 
   const createPdf = useCallback(async () => {
     if (busy) return
@@ -152,8 +151,7 @@ export function useNewFileActions(onDone: () => void) {
     } finally {
       setBusy(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vaultFs, busy, pdfPageStyle, onDone])
+  }, [vaultFs, busy, pdfPageStyle, onDone, defaultDir])
 
   const importFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -203,9 +201,8 @@ export function useNewFileActions(onDone: () => void) {
       } finally {
         setBusy(false)
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [vaultFs, onDone],
+    [vaultFs, onDone, defaultDir],
   )
 
   const createKanban = useCallback(async () => {
@@ -239,8 +236,7 @@ export function useNewFileActions(onDone: () => void) {
     } finally {
       setBusy(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vaultFs, busy, onDone])
+  }, [vaultFs, busy, onDone, defaultDir])
 
   const createSpreadsheet = useCallback(async () => {
     if (busy) return
@@ -274,8 +270,7 @@ export function useNewFileActions(onDone: () => void) {
     } finally {
       setBusy(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vaultFs, busy, onDone])
+  }, [vaultFs, busy, onDone, defaultDir])
 
   const createThought = useCallback(async () => {
     if (busy) return
@@ -321,8 +316,7 @@ export function useNewFileActions(onDone: () => void) {
     } finally {
       setBusy(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vaultFs, busy, onDone])
+  }, [vaultFs, busy, onDone, defaultDir])
 
   return {
     createNote,

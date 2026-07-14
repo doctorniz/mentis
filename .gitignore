@@ -48,3 +48,6 @@ next-env.d.ts
 .claude/
 # hands-on QA checklist progress (pnpm qa)
 .qa-checklist-state.json
+
+# cursor debug logs
+.cursor/*.log
