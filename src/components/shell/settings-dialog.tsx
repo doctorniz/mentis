@@ -29,6 +29,7 @@ import {
 } from '@/lib/chat/device-model-store'
 import { DEFAULT_CHAT_SETTINGS, type ChatProviderId, type ChatSettings } from '@/types/chat'
 import { reapCanvasOrphans } from '@/lib/canvas/orphan-reaper'
+import { reapSnapshots } from '@/lib/snapshot'
 import { awaitPendingCanvasSaves } from '@/components/canvas/canvas-editor'
 import { useEditorStore } from '@/stores/editor'
 import { toast } from '@/stores/toast'
@@ -240,10 +241,11 @@ function VaultTab({
 }
 
 /**
- * "Clean up drawing data" — removes orphaned canvas pixel folders,
- * stale layer PNGs, and v4 `.canvas.assets` leftovers. Refuses while a
- * canvas tab is open and waits out in-flight unmount flushes so the
- * reaper never scans a half-saved canvas.
+ * "Clean up" — removes dead weight left behind by deleted files:
+ * orphaned canvas pixel folders, stale layer PNGs, v4 `.canvas.assets`
+ * leftovers, and PDF snapshots whose owner is gone or over the retention
+ * cap. Refuses while a canvas tab is open and waits out in-flight unmount
+ * flushes so the canvas reaper never scans a half-saved canvas.
  */
 function DrawingCleanupRow() {
   const { vaultFs } = useVaultSession()
@@ -258,18 +260,22 @@ function DrawingCleanupRow() {
     setBusy(true)
     try {
       await awaitPendingCanvasSaves()
-      const report = await reapCanvasOrphans(vaultFs)
+      const canvas = await reapCanvasOrphans(vaultFs)
+      const snapConfig = useVaultStore.getState().config?.snapshots ?? DEFAULT_VAULT_CONFIG.snapshots
+      const snaps = await reapSnapshots(vaultFs, snapConfig)
       const removed =
-        report.deletedDrawingFolders.length +
-        report.deletedLayerPngs.length +
-        report.deletedV4AssetFolders.length
+        canvas.deletedDrawingFolders.length +
+        canvas.deletedLayerPngs.length +
+        canvas.deletedV4AssetFolders.length +
+        snaps.deletedOrphans.length +
+        snaps.deletedPruned.length
       toast.success(
         removed === 0
           ? 'Nothing to clean'
-          : `Removed ${removed} unused drawing ${removed === 1 ? 'item' : 'items'}`,
+          : `Removed ${removed} unused ${removed === 1 ? 'item' : 'items'}`,
       )
     } catch (err) {
-      console.error('Drawing cleanup failed:', err)
+      console.error('Cleanup failed:', err)
       toast.error('Cleanup failed — nothing was removed')
     } finally {
       setBusy(false)
@@ -278,8 +284,8 @@ function DrawingCleanupRow() {
 
   return (
     <Row
-      label="Drawing data"
-      hint="Removes pixel files left behind by deleted canvases and layers."
+      label="Unused data"
+      hint="Removes drawing pixels and PDF snapshots left behind by deleted files."
     >
       <button
         type="button"

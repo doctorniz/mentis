@@ -68,11 +68,13 @@ export const checklist = {
       items: [
         {
           id: 'cleanup-real-vault',
-          title: 'Drawing-data cleanup on your real vault',
+          title: 'Unused-data cleanup on your real vault (drawings + PDF snapshots)',
           steps: [
+            'Edit a PDF (creates a _marrow/snapshots/ backup), then delete that PDF',
             'Close all canvas tabs, open Settings → Vault → Maintenance',
             'Click "Clean up" — note the toast count',
             'Reopen a few canvases: every layer renders (nothing live was reaped)',
+            'The deleted PDF\'s snapshots are gone; snapshots of PDFs you kept remain',
             'Click again: "Nothing to clean"',
           ],
         },

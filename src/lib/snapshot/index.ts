@@ -92,34 +92,135 @@ export async function deleteSnapshot(fs: FileSystemAdapter, snapshotPath: string
   await fs.remove(snapshotPath)
 }
 
-export async function pruneSnapshots(fs: FileSystemAdapter, config: SnapshotConfig): Promise<void> {
-  const allSnapshots = await listSnapshots(fs)
-
+function groupByOriginal(snapshots: SnapshotInfo[]): Map<string, SnapshotInfo[]> {
   const byFile = new Map<string, SnapshotInfo[]>()
-  for (const snap of allSnapshots) {
+  for (const snap of snapshots) {
     const existing = byFile.get(snap.originalFile) ?? []
     existing.push(snap)
     byFile.set(snap.originalFile, existing)
   }
+  return byFile
+}
 
-  const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - config.retentionDays)
+/**
+ * From one file's snapshots, pick those to delete: any beyond `maxPerFile`
+ * (keeping the newest) or older than `retentionDays`. `snapshots` need not
+ * be pre-sorted. An unparsable timestamp is treated as not-expired so a
+ * snapshot we cannot date is never deleted on age grounds.
+ */
+function selectPrunable(snapshots: SnapshotInfo[], config: SnapshotConfig): SnapshotInfo[] {
+  const sorted = [...snapshots].sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - config.retentionDays)
+
+  const doomed: SnapshotInfo[] = []
+  for (let i = 0; i < sorted.length; i++) {
+    const snap = sorted[i]
+    const isOverLimit = i >= config.maxPerFile
+    const parsed = parseSnapshotTimestamp(snap.timestamp)
+    const isExpired = parsed !== null && parsed < cutoff
+    if (isOverLimit || isExpired) doomed.push(snap)
+  }
+  return doomed
+}
+
+export async function pruneSnapshots(fs: FileSystemAdapter, config: SnapshotConfig): Promise<void> {
+  const byFile = groupByOriginal(await listSnapshots(fs))
 
   for (const [, snapshots] of byFile) {
-    const sorted = snapshots.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-
-    for (let i = 0; i < sorted.length; i++) {
-      const snap = sorted[i]
-      const isOverLimit = i >= config.maxPerFile
-      const isExpired = new Date(snap.timestamp) < cutoffDate
-
-      if (isOverLimit || isExpired) {
-        try {
-          await fs.remove(snap.path)
-        } catch {
-          // Non-fatal — snapshot may already be deleted
-        }
+    for (const snap of selectPrunable(snapshots, config)) {
+      try {
+        await fs.remove(snap.path)
+      } catch {
+        // Non-fatal — snapshot may already be deleted
       }
     }
   }
+}
+
+const PDF_EXT = '.pdf'
+
+/**
+ * Recursively collect the basenames of every live `.pdf` in the vault.
+ * `_marrow` is skipped: it holds no user PDFs, and descending would count
+ * the snapshots themselves (which are `.pdf`) as their own owners.
+ */
+async function collectPdfBasenames(fs: FileSystemAdapter, dir: string, acc: Set<string>): Promise<void> {
+  for (const entry of await fs.readdir(dir)) {
+    if (entry.name.startsWith('_marrow')) continue
+    if (entry.isDirectory) {
+      await collectPdfBasenames(fs, entry.path, acc)
+    } else if (entry.name.endsWith(PDF_EXT)) {
+      acc.add(entry.name)
+    }
+  }
+}
+
+export interface SnapshotReapReport {
+  /** Snapshot files found in `_marrow/snapshots`. */
+  scannedSnapshots: number
+  /** Removed snapshots whose owner PDF no longer exists anywhere in the vault. */
+  deletedOrphans: string[]
+  /** Removed snapshots of LIVE owners that exceeded maxPerFile / retentionDays. */
+  deletedPruned: string[]
+}
+
+/**
+ * Full-vault snapshot sweep for the Settings → Maintenance cleanup.
+ *
+ * Two kinds of dead weight accumulate in `_marrow/snapshots` (see the V1
+ * deferral):
+ *
+ *   1. Orphans — snapshots of a PDF that has since been deleted. A snapshot
+ *      only records its owner's basename, so it is an orphan iff NO `.pdf`
+ *      with that basename exists anywhere in the vault.
+ *   2. Overflow — snapshots of a still-live owner beyond `maxPerFile` or
+ *      older than `retentionDays` (the per-edit `pruneSnapshots` also caps
+ *      these, but only for files edited this session).
+ *
+ * SAFETY — the live-PDF scan happens fully before any deletion, so a
+ * `readdir` failure propagates and deletes nothing (a snapshot must never
+ * look orphaned because we failed to enumerate its owner). Individual
+ * removals fail soft (the file may already be gone).
+ */
+export async function reapSnapshots(
+  fs: FileSystemAdapter,
+  config: SnapshotConfig,
+): Promise<SnapshotReapReport> {
+  const livePdfs = new Set<string>()
+  await collectPdfBasenames(fs, '', livePdfs)
+
+  const byFile = groupByOriginal(await listSnapshots(fs))
+  let scanned = 0
+  const report: SnapshotReapReport = { scannedSnapshots: 0, deletedOrphans: [], deletedPruned: [] }
+
+  for (const [originalFile, snapshots] of byFile) {
+    scanned += snapshots.length
+
+    if (!livePdfs.has(originalFile)) {
+      // Owner is gone — every snapshot in this group is an orphan.
+      for (const snap of snapshots) {
+        try {
+          await fs.remove(snap.path)
+          report.deletedOrphans.push(snap.path)
+        } catch {
+          // Non-fatal — snapshot may already be deleted.
+        }
+      }
+      continue
+    }
+
+    for (const snap of selectPrunable(snapshots, config)) {
+      try {
+        await fs.remove(snap.path)
+        report.deletedPruned.push(snap.path)
+      } catch {
+        // Non-fatal.
+      }
+    }
+  }
+
+  report.scannedSnapshots = scanned
+  return report
 }
