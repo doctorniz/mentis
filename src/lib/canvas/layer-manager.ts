@@ -496,11 +496,25 @@ export class LayerManager {
         wrapper.destroy({ children: true })
       }
     } else {
-      this.app.renderer.render({
-        container: this.scratchpadSprite,
-        target: active.renderTexture,
-        clear: false,
-      })
+      // Commit through a DETACHED temp sprite, NOT `this.scratchpadSprite`.
+      // The scratchpad sprite is a child of the viewport container, so it
+      // carries the live pan/zoom world transform; rendering it standalone
+      // bakes that transform into the layer and the committed stroke lands
+      // at `canvasPoint * zoom + pan` instead of its true canvas position
+      // (invisible at zoom 1 / pan 0, badly offset otherwise). A fresh
+      // sprite of the same RT renders at raw canvas coords — same fix the
+      // masked branch above already uses.
+      const temp = new Sprite(this.scratchpadRT)
+      temp.alpha = this.scratchpadSprite.alpha
+      try {
+        this.app.renderer.render({
+          container: temp,
+          target: active.renderTexture,
+          clear: false,
+        })
+      } finally {
+        temp.destroy()
+      }
     }
 
     this.clearScratchpad()

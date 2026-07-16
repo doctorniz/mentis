@@ -558,3 +558,88 @@ test.describe('5.8 Selection', () => {
     expect(samples.offStroke.b).toBe(255)
   })
 })
+
+/* ================================================================== */
+/*  5.9  Brush commit under zoom / pan                                */
+/* ================================================================== */
+
+/**
+ * Regression: `commitScratchpad` used to render the scene-attached
+ * scratchpad sprite, so the committed stroke inherited the viewport
+ * pan/zoom world transform and landed at `canvasPoint * zoom + pan`
+ * instead of its true canvas position. Invisible at zoom 1 / pan 0 (the
+ * transform is identity — which is why every other test missed it), but
+ * badly offset from the cursor at any other view. A tab switch "fixed"
+ * it only because the remount reset the viewport to zoom 1.
+ *
+ * The check: under a non-identity viewport, a brush stroke drawn at the
+ * canvas element's centre must commit at the canvas coordinate the engine
+ * maps that screen point to — NOT the transformed coordinate.
+ */
+test.describe('5.9 Brush commit under zoom/pan', () => {
+  test.beforeEach(async ({ vaultPage: page }) => {
+    await navigateTo(page, 'vault')
+    await createCanvasWithHooks(page)
+  })
+
+  test('5.9.1 stroke commits under the cursor when zoomed/panned', async ({
+    vaultPage: page,
+  }) => {
+    // Zoom out twice -> zoom ~0.64 with a non-zero pan (setZoom recentres).
+    await page.locator('button[aria-label="Zoom out"]').click()
+    await page.locator('button[aria-label="Zoom out"]').click()
+    await page.waitForTimeout(200)
+
+    const vp = await page.evaluate(
+      () =>
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        (window as any).__mentisTest.canvasEngine.viewportController.state as {
+          x: number
+          y: number
+          zoom: number
+        },
+    )
+    expect(vp.zoom).toBeLessThan(0.99) // sanity: view really is transformed
+
+    const box = await canvasLocator(page).boundingBox()
+    if (!box) throw new Error('canvas not visible')
+    // Draw OFF the zoom pivot (the view centre). setZoom keeps the pivot
+    // fixed, so a stroke at the exact centre commits to the same place with
+    // or without the bug — only an off-centre point exposes the transform
+    // offset. Right-of / above-centre stays on the (larger-than-element)
+    // canvas at this zoom.
+    const sx = Math.round(box.x + box.width * 0.72)
+    const sy = Math.round(box.y + box.height * 0.3)
+
+    // The canvas coordinate the engine maps the cursor to == where the
+    // committed pixels MUST land.
+    const expected = await page.evaluate(
+      ({ sx, sy }) => {
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const eng = (window as any).__mentisTest.canvasEngine
+        const el = document.querySelector('[class*="overflow-hidden"] canvas')!
+        const r = el.getBoundingClientRect()
+        return eng.viewportController.screenToCanvas(sx, sy, r) as { x: number; y: number }
+      },
+      { sx, sy },
+    )
+
+    await page.keyboard.press('b')
+    await page.mouse.move(sx - 12, sy)
+    await page.mouse.down()
+    await page.mouse.move(sx + 12, sy, { steps: 5 })
+    await page.mouse.up()
+    await page.waitForTimeout(400)
+
+    const s = await layerStats(page)
+    expect(s.px).toBeGreaterThan(0)
+    const cx = (s.bbox!.minX + s.bbox!.maxX) / 2
+    const cy = (s.bbox!.minY + s.bbox!.maxY) / 2
+
+    // Committed centre must match the cursor's canvas coord. The pre-fix
+    // bug offset this by hundreds of px (expected*zoom+pan), so a modest
+    // tolerance cleanly discriminates.
+    expect(Math.abs(cx - expected.x)).toBeLessThan(20)
+    expect(Math.abs(cy - expected.y)).toBeLessThan(20)
+  })
+})

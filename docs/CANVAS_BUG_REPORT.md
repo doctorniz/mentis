@@ -356,6 +356,25 @@ React attaches synthetic wheel events with `passive: true` and that cannot be ov
 
 ---
 
+### BUG-19 — Brush strokes commit offset from the cursor when zoomed/panned
+
+**Status:** ✅ Resolved
+**Fix location:** `src/lib/canvas/layer-manager.ts` (`commitScratchpad`, non-clip branch)
+
+**Symptom**
+With the viewport at any zoom ≠ 1 or pan ≠ 0 (e.g. after "Fit canvas" or zooming out to see the whole canvas), a brush stroke's live preview tracked the cursor correctly, but on pointerup the committed pixels jumped to the wrong place — offset by roughly the viewport translation, scaled by the zoom. Switching tabs "fixed" it because the remount reset the viewport to zoom 1 / pan 0, where the offset is zero. Reported as: _"draw outside the canvas and try to draw on the canvas, the pixel drawn does not match my cursor."_
+
+**Root cause**
+`commitScratchpad`'s non-selection branch composited the stroke by rendering `this.scratchpadSprite` directly into the active layer's RenderTexture. That sprite is a child of the viewport container, so it carries the live pan/zoom **world transform** — and a standalone `renderer.render({ container })` applies that transform, baking `canvasPoint * zoom + pan` into the layer instead of the raw canvas coordinate. This is the exact "scene-attached display object in a standalone render" trap documented in CLAUDE.md's Pixi gotchas. It was invisible at zoom 1 / pan 0 (identity transform) — which is why every prior pixel test, all run at zoom 1, missed it. The selection-clipped branch immediately above was already correct: it renders a **detached** `new Sprite(this.scratchpadRT)`.
+
+**Fix**
+Commit through a detached temp sprite of the scratchpad RT (mirroring the clipped branch), carrying the same stroke opacity, so the composite happens at raw canvas coordinates regardless of the viewport transform.
+
+**Regression test**
+`tests/e2e/21-canvas-selection.spec.ts` 5.9.1 zooms out (non-identity viewport), draws a brush stroke **off the zoom pivot** (a centre-of-view stroke commits identically with or without the bug, since setZoom keeps the pivot fixed), and asserts the committed pixels land at the engine's `screenToCanvas` coordinate. Verified to fail on the pre-fix code and pass after.
+
+---
+
 ## Post-fix Storage Refactor (v4 → v5)
 
 After the 18-bug fix pass, the sidecar PNG storage was refactored once more based on user direction: _"save the pngs in a folder `_drawings` which lives in `_marrow` so that they are hidden in the vault. Note that rename of the file does NOT rename the folder as well."_
@@ -453,6 +472,10 @@ Walk through these in a browser with a fresh vault to confirm the fixes end-to-e
 - [ ] **Save + reload (BUG-11)** — Draw something, wait past the 3 s autosave interval, reload the page. Vault reopens with the stroke intact.
 - [ ] **Draw-then-close race (BUG-11)** — Draw something, then _immediately_ switch tabs / close the editor (before 3 s autosave fires). Reopen the file — stroke is there. (Without the fix this lost the in-flight change.)
 - [ ] **Rapid reopen (BUG-11)** — Open canvas A, draw, switch to canvas B, immediately switch back to A. A shows the latest pixels. (Validates `pendingCanvasSaves` hand-off.)
+
+### Drawing under zoom / pan
+
+- [ ] **Stroke commits under the cursor when zoomed (BUG-19)** — Zoom out (or click "Fit canvas") so the whole canvas and its grey margin are visible, then draw a brush stroke somewhere off-centre. On pointerup the committed ink stays exactly where you drew it — it does not jump. Repeat while panned. (Pre-fix the stroke jumped by roughly the pan offset; a tab switch masked it by resetting the view to 100%.) Automated: `tests/e2e/21-canvas-selection.spec.ts` 5.9.1.
 
 ### v5 storage (post-fix refactor)
 
