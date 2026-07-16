@@ -614,7 +614,7 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
 
       <div ref={layoutRef} className="relative flex min-h-0 flex-1">
         {!loading && <CanvasToolStrip engineRef={engineRef} />}
-        <CanvasViewport engineRef={engineRef} containerRef={containerRef} />
+        <CanvasViewport engineRef={engineRef} containerRef={containerRef} ready={!loading} />
 
         {!loading && (
           <>

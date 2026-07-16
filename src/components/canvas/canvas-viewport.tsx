@@ -16,6 +16,8 @@ import type { CanvasTool, BrushSettings, LayerSnapshot } from '@/types/canvas'
 interface CanvasViewportProps {
   engineRef: React.RefObject<CanvasEngine | null>
   containerRef: React.RefObject<HTMLDivElement | null>
+  /** True once the engine has initialized + loaded — gates backdrop wiring. */
+  ready: boolean
 }
 
 /**
@@ -37,8 +39,18 @@ interface GestureState {
   lastMidY: number
 }
 
-export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps) {
+export function CanvasViewport({ engineRef, containerRef, ready }: CanvasViewportProps) {
   const activePointerRef = useRef<number | null>(null)
+
+  /**
+   * The white "paper" backdrop. Drawn as a DOM element behind the
+   * transparent Pixi canvas (NOT in the Pixi scene — a full-canvas
+   * backdrop sprite there stalled the GPU readback that undo snapshots
+   * depend on). Positioned imperatively in lockstep with the Pixi
+   * viewport transform via `viewportController.onTransform`, so it never
+   * lags the layers and never triggers a React re-render on pan/zoom.
+   */
+  const paperRef = useRef<HTMLDivElement>(null)
 
   /**
    * True while the pointer is over the selection rect (select tool only)
@@ -121,6 +133,34 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
     engine.selectionTool.redraw(zoom)
     engine.render()
   }, [zoom, engineRef])
+
+  // Position the DOM "paper" backdrop to match the canvas bounds under the
+  // live viewport transform. Wired once the engine is ready to two engine
+  // hooks: `onTransform` (pan/zoom, fires synchronously with the Pixi
+  // transform) and `onCanvasResized` (load / auto-expansion). Reads dims +
+  // state straight off the engine each call, so both hooks can share it.
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!ready || !engine?.initialized) return
+
+    const paint = () => {
+      const paper = paperRef.current
+      if (!paper) return
+      const { x, y, zoom: z } = engine.viewportController.state
+      paper.style.width = `${engine.width}px`
+      paper.style.height = `${engine.height}px`
+      paper.style.transform = `translate(${x}px, ${y}px) scale(${z})`
+      paper.style.background = engine.background
+    }
+
+    paint()
+    engine.viewportController.onTransform = paint
+    engine.onCanvasResized = paint
+    return () => {
+      if (engine.viewportController) engine.viewportController.onTransform = null
+      engine.onCanvasResized = null
+    }
+  }, [ready, engineRef])
 
   // The selection PERSISTS across tool switches — it constrains brush,
   // eraser, and fill (Photoshop-style). Switching away from Select only
@@ -602,7 +642,18 @@ export function CanvasViewport({ engineRef, containerRef }: CanvasViewportProps)
     // stay separate elements — Pixi appends its <canvas> imperatively into
     // the host, and React children mixed into the same node risk
     // removeChild crashes on unmount.
-    <div className="relative min-h-0 flex-1 overflow-hidden bg-neutral-100 dark:bg-neutral-900">
+    // The wrapper background is the MAT (area outside the canvas). The Pixi
+    // renderer is transparent, so this + the paper below show through. The
+    // paper is a sibling BEHIND the Pixi host — never a child of it (Pixi
+    // appends its <canvas> into the host and mixing React children there
+    // risks removeChild crashes on unmount).
+    <div className="relative min-h-0 flex-1 overflow-hidden bg-[#c6cacf] dark:bg-[#161719]">
+      <div
+        ref={paperRef}
+        aria-hidden
+        className="pointer-events-none absolute top-0 left-0 origin-top-left shadow-sm"
+        style={{ width: 0, height: 0, background: '#ffffff' }}
+      />
       <div
         ref={containerRef}
         className="absolute inset-0"

@@ -448,6 +448,11 @@ Walk through these in a browser with a fresh vault to confirm the fixes end-to-e
 
 - [ ] **HSL modes labeled (BUG-16)** — Open any layer's Blend Mode dropdown. HSL modes (luminosity / color / saturation) are inside an `<optgroup>` labeled _"HSL (may fall back to Normal)"_. Standard modes are ungrouped.
 
+### Canvas backdrop (mat + paper)
+
+- [ ] **Mat + paper** — Open a canvas and click "Fit". The drawable area is a white sheet on a grey mat; the sheet has a subtle shadow. Toggle Light/Dark — the mat follows the theme (grey ↔ near-black), the sheet stays white. Draw right up to the sheet edge, pan and zoom — the sheet stays glued to the layers (no lag/drift), and auto-expansion (draw off the right/bottom edge) grows the sheet with the canvas.
+- [ ] **Backdrop doesn't touch pixels** — Bounded fill inside a selection, region undo/redo, and eyedropper all still work instantly (the backdrop is DOM-only; regression-guarded by `tests/e2e/21-canvas-selection.spec.ts`).
+
 ### Persistence / lifecycle
 
 - [ ] **Save + reload (BUG-11)** — Draw something, wait past the 3 s autosave interval, reload the page. Vault reopens with the stroke intact.

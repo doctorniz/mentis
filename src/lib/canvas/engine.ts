@@ -35,6 +35,14 @@ export class CanvasEngine {
   private _background = DEFAULT_BACKGROUND
 
   /**
+   * Fired when the canvas dimensions change (load / auto-expansion) so the
+   * DOM "paper" backdrop (drawn behind the transparent Pixi canvas by
+   * CanvasViewport) can resize to match. The transform itself is tracked
+   * separately via `viewportController.onTransform`.
+   */
+  onCanvasResized: (() => void) | null = null
+
+  /**
    * Pre-stroke pixels of the active layer, captured on pointerdown for
    * ERASER strokes only (they mutate the layer from the first stamp;
    * brush strokes live in the scratchpad until commit, so their undo
@@ -112,6 +120,7 @@ export class CanvasEngine {
 
   set background(color: string) {
     this._background = color
+    this.onCanvasResized?.()
   }
 
   get assetId(): string | null {
@@ -135,6 +144,7 @@ export class CanvasEngine {
     // after init), propagate so loadLayers uses the right RT size.
     if (this._initialized) {
       this.layerManager.setCanvasDimensions(w, h)
+      this.onCanvasResized?.()
     }
   }
 
@@ -180,6 +190,7 @@ export class CanvasEngine {
     this.layerManager.expandCanvas(newW, newH)
     this._width = this.layerManager.canvasWidth
     this._height = this.layerManager.canvasHeight
+    this.onCanvasResized?.()
   }
 
   /**
@@ -211,7 +222,14 @@ export class CanvasEngine {
     this.app = new Application()
     await this.app.init({
       resizeTo: container,
-      background: this._background,
+      // Transparent renderer: the mat (area outside the canvas) and the
+      // white "paper" are drawn as DOM elements BEHIND this canvas by
+      // CanvasViewport. Keeping them out of the Pixi scene entirely is
+      // deliberate — a full-canvas backdrop sprite in the viewport stalled
+      // the GPU readback that region-scoped undo snapshots depend on
+      // (canvas.toBlob went from ~0ms to ~1s). The DOM backdrop can't touch
+      // the render pipeline, so extracts stay fast.
+      backgroundAlpha: 0,
       antialias: true,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
@@ -346,6 +364,7 @@ export class CanvasEngine {
       this.resizeObserver = null
     }
     this.hostContainer = null
+    this.onCanvasResized = null
 
     try {
       this.app.ticker?.stop()

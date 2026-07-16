@@ -15,6 +15,13 @@ export class ViewportController {
   private _panStart = { x: 0, y: 0 }
   private _panStartState = { x: 0, y: 0 }
 
+  /**
+   * Fired synchronously on every pan/zoom, right after the Pixi transform
+   * is applied. CanvasViewport uses it to move the DOM "paper" backdrop in
+   * lockstep with the layers (no React re-render, no frame of lag).
+   */
+  onTransform: ((state: ViewportState) => void) | null = null
+
   constructor(root: Container) {
     this.root = root
   }
@@ -136,6 +143,7 @@ export class ViewportController {
   private applyTransform(): void {
     this.root.position.set(this._state.x, this._state.y)
     this.root.scale.set(this._state.zoom)
+    this.onTransform?.(this._state)
   }
 }
 
