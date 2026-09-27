@@ -142,6 +142,24 @@ async function selectionState(page: Page) {
   })
 }
 
+/**
+ * Wait until every queued history operation — stroke pushes (PNG encode),
+ * fills, undo/redo — has finished. Fixed sleeps flake under CI's parallel
+ * software-GL load, where an encode can outlast them. The engine replaces
+ * `undoPushChain` on each enqueue, so keep awaiting until it stops changing.
+ */
+async function settleHistory(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const eng = (window as any).__mentisTest?.canvasEngine
+    for (;;) {
+      const chain = eng.undoPushChain
+      await chain
+      if (eng.undoPushChain === chain) return
+    }
+  })
+}
+
 /** Map canvas-space coords to page coords through the live viewport. */
 async function canvasToScreen(page: Page, cx: number, cy: number): Promise<[number, number]> {
   const box = await canvasLocator(page).boundingBox()
@@ -298,7 +316,7 @@ test.describe('5.8 Selection', () => {
   }) => {
     await page.keyboard.press('b')
     await dragCanvas(page, 150, 150, 300, 300)
-    await page.waitForTimeout(400)
+    await settleHistory(page) // the stroke's own entry must land before the baseline
     const before = await layerStats(page)
     const { undoDepth } = await selectionState(page)
 
@@ -313,7 +331,7 @@ test.describe('5.8 Selection', () => {
     expect((await layerStats(page)).px).toBe(0) // whole stroke is floating
     await page.keyboard.press('Escape')
     await page.mouse.up()
-    await page.waitForTimeout(400)
+    await settleHistory(page) // a wrongly queued entry would land here and fail below
 
     const after = await layerStats(page)
     expect(after.px).toBe(before.px)
@@ -515,7 +533,7 @@ test.describe('5.8 Selection', () => {
     await page.keyboard.press('g')
     const [fx, fy] = await canvasToScreen(page, 200, 200)
     await page.mouse.click(fx, fy) // inside the selection
-    await page.waitForTimeout(600)
+    await settleHistory(page)
 
     const filled = await layerStats(page)
     // Empty canvas + bounded flood = the rect area, to the pixel.
@@ -525,7 +543,7 @@ test.describe('5.8 Selection', () => {
     // Clicking OUTSIDE the selection is refused outright.
     const [ox, oy] = await canvasToScreen(page, 400, 400)
     await page.mouse.click(ox, oy)
-    await page.waitForTimeout(600)
+    await settleHistory(page)
     expect((await layerStats(page)).px).toBe(200 * 150)
 
     // Region-scoped fill undo restores the empty layer.

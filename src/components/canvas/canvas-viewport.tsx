@@ -325,7 +325,12 @@ export function CanvasViewport({ engineRef, containerRef, ready }: CanvasViewpor
         // Snapshot + fill + push undo, sequenced. The snapshot must
         // complete *before* the fill mutates the RT, otherwise we'd
         // capture the post-fill state and undo would be a no-op.
-        void (async () => {
+        //
+        // Runs on undoPushChain like every other history push, so it lands
+        // after any stroke push still encoding, and a Ctrl+Z pressed during
+        // the fill waits for it (engine.runHistory) instead of undoing the
+        // entry before it.
+        engine.undoPushChain = engine.undoPushChain.then(async () => {
           try {
             const snapshot = fillBounds
               ? await engine.undoManager.snapshotActiveLayerRegion(fillBounds)
@@ -355,7 +360,7 @@ export function CanvasViewport({ engineRef, containerRef, ready }: CanvasViewpor
           } catch (err) {
             console.error('Fill failed:', err)
           }
-        })()
+        })
         return
       }
 

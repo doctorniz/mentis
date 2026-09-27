@@ -71,6 +71,28 @@ export class CanvasEngine {
   undoPushChain: Promise<void> = Promise.resolve()
 
   /**
+   * Undo or redo, queued behind every history push still in flight.
+   *
+   * A push resolves only once its PNG snapshot has encoded, which on a busy
+   * machine can land after the user has already pressed Ctrl+Z. Undoing
+   * immediately would pop the entry *before* the one the user just made —
+   * e.g. undoing a selection move would instead restore the previous
+   * stroke's region, erasing live pixels. Queuing on the same chain keeps
+   * pushes, undos and redos in the order the user performed them, and stops
+   * two rapid undos from interleaving their async restores.
+   */
+  runHistory(direction: 'undo' | 'redo'): Promise<boolean> {
+    const result = this.undoPushChain.then(() =>
+      direction === 'undo' ? this.undoManager.undo() : this.undoManager.redo(),
+    )
+    this.undoPushChain = result.then(
+      () => undefined,
+      () => undefined,
+    )
+    return result
+  }
+
+  /**
    * Fired (once per engine) when `expandToFit` refuses to grow further
    * because the cap was hit. The editor wires this to a toast — the
    * engine stays framework-free.

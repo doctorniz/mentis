@@ -39,7 +39,7 @@ export function CanvasToolStrip({ engineRef }: CanvasToolStripProps) {
     const engine = engineRef.current
     if (!engine?.initialized) return
     if (engine.selectionTool.isMoving) commitSelectionMove(engine)
-    const ok = await engine.undoManager.undo()
+    const ok = await engine.runHistory('undo')
     if (ok) {
       engine.render()
       const store = useCanvasStore.getState()
@@ -52,7 +52,7 @@ export function CanvasToolStrip({ engineRef }: CanvasToolStripProps) {
     const engine = engineRef.current
     if (!engine?.initialized) return
     if (engine.selectionTool.isMoving) commitSelectionMove(engine)
-    const ok = await engine.undoManager.redo()
+    const ok = await engine.runHistory('redo')
     if (ok) {
       engine.render()
       const store = useCanvasStore.getState()

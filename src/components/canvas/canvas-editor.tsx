@@ -575,7 +575,7 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         if (!engine?.initialized) return
         if (engine.selectionTool.isMoving) commitSelectionMove(engine)
         void (async () => {
-          const ok = await engine.undoManager.undo()
+          const ok = await engine.runHistory('undo')
           if (ok) applyUndoRedoSideEffects(engine)
         })()
         return
@@ -588,7 +588,7 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         if (!engine?.initialized) return
         if (engine.selectionTool.isMoving) commitSelectionMove(engine)
         void (async () => {
-          const ok = await engine.undoManager.redo()
+          const ok = await engine.runHistory('redo')
           if (ok) applyUndoRedoSideEffects(engine)
         })()
         return
