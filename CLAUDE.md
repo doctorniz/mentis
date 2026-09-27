@@ -1,317 +1,99 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Commands
-
-```bash
-pnpm dev              # Next.js dev server (Turbopack)
-pnpm dev:webpack      # Fallback if Turbopack fails
-pnpm build            # Static export SPA
-pnpm start            # Serve the static export from out/ (run build first; `next start` is incompatible with output: export)
-pnpm lint             # ESLint
-pnpm format           # Prettier
-pnpm typecheck        # TypeScript type check
-pnpm test             # Vitest (all tests)
-pnpm test:ui          # Vitest UI
-pnpm test:e2e         # Playwright E2E
-pnpm qa               # Dev-only hands-on QA checklist server (port 4599, LAN-shared; scripts/qa-checklist-*.mjs)
-```
-
-To run a single test file: `pnpm test tests/search.test.ts`
-
-**Requirements:** Node.js 20+, pnpm 9.15.0. Use `pnpm`, never `npm` or `yarn`.
-
-## Architecture
-
-**Mentis by Marrow** is a local-first, offline-capable PWA for note-taking and PDF management. Every note is a file the user owns — markdown (`.md`), PDF, or canvas (`.canvas` JSON). There is no database; the vault directory _is_ the data store. Licensed under **BSL 1.1** (see root `LICENSE`).
-
-### Layer Overview
-
-```
-Components + Stores  ←→  lib/ (business logic)  ←→  FileSystemAdapter
-```
-
-- **`src/components/`** — React UI, organized by domain (`notes/`, `pdf/`, `canvas/`, `board/`, `tasks/`, `bookmarks/`, `kanban/`, `calendar/`, `shell/`, `views/`, `file-browser/`, `graph/`, `search/`, `ui/`)
-- **`src/stores/`** — Zustand + Immer stores, one per domain (`vault`, `editor`, `pdf`, `canvas`, `board`, `tasks`, `bookmarks`, `calendar`, `search`, `file-tree`, `file-browser`, `ui`, `toast`)
-- **`src/lib/`** — Framework-free business logic: `fs/`, `vault/`, `editor/`, `markdown/`, `pdf/`, `search/`, `canvas/`, `board/`, `tasks/`, `bookmarks/`, `kanban/`, `calendar/`, `graph/`, `snapshot/`, `sync/`, `browser/`
-- **`src/types/`** — TypeScript type definitions
-- **`src/contexts/`** — `VaultFsContext` (active adapter + config), `NotesWorkspaceContext` (wiki-link paths), `SyncContext` (Dropbox sync push)
-- **`src/hooks/`** — `use-auto-save.ts` (debounced save)
-
-### File System Abstraction
-
-All file I/O goes through `FileSystemAdapter` (`src/lib/fs/`). Never call browser storage APIs directly.
-
-- **`OpfsAdapter`** — Origin Private File System (all browsers, fallback)
-- **`FsapiAdapter`** — File System Access API via `showDirectoryPicker()` (Chromium only). Handle persisted in IndexedDB; `queryPermission` restores on reload.
-- **`ScopedAdapter`** — wraps another adapter with a root path prefix; `vaultFs` is always scoped to vault root
-
-Access via `useVaultFsContext()` which exposes both `rootFs` (vault discovery) and `vaultFs` (scoped to active vault).
-
-### Vault Structure
-
-```
-my-vault/
-├── _marrow/          # App metadata — hidden from file tree
-│   ├── config.json
-│   ├── search-index.json
-│   ├── snapshots/    # Pre-edit PDF backups
-│   ├── signatures/
-│   ├── templates/
-│   ├── _drawings/    # Canvas pixel folders, keyed by assetId (one per .canvas)
-│   ├── _board/       # Board thoughts — hidden from tree/browser/search
-│   │   └── _assets/  # Board image attachments
-│   ├── _bookmarks/   # Web bookmarks — hidden from tree/browser/search
-│   │   └── <category>/  # Category subfolders
-│   ├── _tasks/       # Tasks and lists — hidden from tree/browser/search
-│   │   └── <list>/   # List subfolders
-│   └── _calendar/    # Events — hidden from tree/browser/search; visible in Files
-├── _inbox/           # PDF import zone — visible in UI
-└── **/_assets/       # Per-folder assets — hidden; shown inline in notes
-```
-
-### State Management
-
-Zustand + Immer throughout. Pattern:
-
-```typescript
-const useMyStore = create<MyState>()(
-  immer((set, get) => ({
-    value: null,
-    setValue: (v) =>
-      set((state) => {
-        state.value = v
-      }),
-  })),
-)
-```
-
-**Do not use `Set` or `Map` in Zustand/Immer stores** unless `enableMapSet()` is called. Use `Record<string, true>` or arrays instead.
-
-### Three Editors
-
-**Markdown** — Tiptap (ProseMirror). Wiki-links `[[note]]` are inline nodes via `[[` autocomplete (Suggestion). Slash commands (including Image / Video / Template via `slash-dialog-bridge.ts`). KaTeX for math (`$...$` inline, `$$...$$` display). Tables, task lists, code blocks with syntax highlighting (lowlight). Auto-save debounced ~750ms via `useAutoSave`. Source mode toggle — full `.md` in a CodeMirror 6 editor (`markdown-source-editor.tsx`); proportional scroll position is preserved across the Visual↔Source toggle. In-note find/replace: Ctrl+F opens `FindReplaceBar` (visual mode; the `FindReplace` ProseMirror plugin in `lib/editor/find-replace.ts` owns match state/decorations) — source mode uses CodeMirror's own search panel; the global Ctrl+F vault-search shortcut yields via `e.defaultPrevented`. Table editing via a floating `TableControlsMenu` bubble (add/delete row/column, header toggle, delete table). Word count + reading time in the mode bar (`lib/notes/word-count.ts`). Headings outline panel (`OutlineSection`) in the editor right column reads the live editor doc, click-to-scroll. Images: drag-and-drop into `_assets/`, drag-handle resize + alt-text editing on selection; display width round-trips to markdown as the Obsidian-style pipe suffix `![alt|400](src)` (alignment deliberately unsupported — no portable markdown representation). Export: Markdown download + Print (styled HTML via `buildExportHtml` + `printExportHtml`). Embedded PDF pages via `![[file.pdf#page=N]]`.
-
-**PDF** — PDF.js renders pages to `<canvas>`; Fabric.js overlay handles annotations (highlight, ink, text, comment, signature). Annotations are written destructively into PDF bytes via `pdf-lib` (no sidecar). Tools: Select / Highlight / Draw / Text / Comment / Sign — each with separate color state (`highlightColor`, `drawColor`, `textColor`). Auto-save via `VaultConfig.autoSave` (default 5s interval + optional blur; no dedicated Save button). `PdfUndoStack` stores up to 20 pre-operation raw PDF byte snapshots. On first edit, a snapshot is created in `_marrow/snapshots/`. Side column: Pages tab (thumbnails, drag-to-reorder, multi-select extract) + Outline tab. Page operations: insert, delete, rotate, merge, split — all via `lib/pdf/page-operations.ts`. Form filling via `PdfFormDialog`. Find-in-document via `search-pdf-text.ts`. Pen paths flattened via `fabric-path-to-pdf-points.ts`. Text comments written as native `/Text` annotations with `InkMarrow` marker for idempotent saves.
-
-**Canvas** — PixiJS v8 (WebGL) raster-first, layer-based drawing surface (`.canvas` v5 drawings-folder format; v2/v3/v4 files are migrated on first save). 3-column layout: vertical tool strip (48px left), PixiJS canvas (center, infinite pan/zoom 0.1×–10×), properties panel (260px right — Color/Brush/Layers). Each layer is a `RenderTexture` displayed as a `Sprite` inside a viewport `Container`. Brush pipeline: `stroke-engine.ts` collects pointer samples, interpolates with Catmull-Rom, and passes stamps to `brush-system.ts` which renders into a scratchpad RT at pressure-only alpha; the stroke's **opacity setting lives on the scratchpad sprite** (`setScratchpadOpacity`), not the stamps, so overlapping stamps within one stroke can't self-accumulate past the configured opacity (Photoshop opacity-vs-flow). Eraser strokes skip the scratchpad and render directly into the active layer with PixiJS `erase` blend. Layers support opacity, visibility, lock, and 15 blend modes (some HSL modes may fall back to `normal` — see BUG-16). Stroke undo via PNG `Blob` snapshots (off-heap), **dirty-region scoped**: a `LayerSnapshot` may carry a `region` rect, in which case restore erases + redraws only that rect (`restoreLayerRegionFromBlob`) — a 1-px dot no longer costs a full-layer PNG on a grown canvas. Brush strokes need NO pointerdown readback at all (the layer is pristine until commit): their region is read synchronously at pointerup pre-commit via `snapshotActiveLayerRegion`. Eraser strokes capture a raw full-layer canvas at pointerdown (`engine.pendingPreStrokeCanvas`, sync readback — they mutate the layer from the first stamp) which pointerup crops to the stroke bounds (`encodeCanvasRegionSnapshot`) and stroke-cancel restores from directly with no PNG decode. `StrokeEngine` tracks per-stroke dirty bounds; pushes are serialized via `engine.undoPushChain`. Fill keeps full-layer snapshots (region unknowable). Undo history **survives tab switches**: unmount parks `undoManager.exportState()` in a module-scope LRU (4 canvases) keyed by path; the next mount re-imports it. Pointermove feeds every `getCoalescedEvents()` sample into the stroke so high-Hz styluses keep their curvature; the eyedropper reads back a 1×1 region per layer (via `extractLayerCanvas`) instead of full-layer extracts. Escape aborts the in-progress stroke (`engine.cancelActiveStroke()`) — brush discards the scratchpad, eraser restores the layer from the pending snapshot. **Selection** (`lib/canvas/selection.ts`, tool `select`, key M): rectangular marquee + move on the active layer. A move FLOATS the selected pixels at drag start (region extracted to an overlay sprite, erased from the layer) and COMMITS at pointerup — nothing stays floating between drags, so autosave/undo/layer ops never see a half-moved layer (autosave additionally skips while `isMoving`, and unmount cancels an in-flight move before flushing). Undo = one `stroke` entry whose region is the source∪dest union, encoded from a pre-float full-layer readback. Esc cancels the move (pixels return to source) or clears the selection; a locked layer allows marqueeing (and copying) but refuses any mutation. **The selection persists across tool switches and constrains painting** (Photoshop-style): brush strokes clip at the scratchpad (live preview mask + masked commit via `setStrokeClip`), eraser stamp batches clip at render time (`BrushSystem.setClipRect`; expect a few px of anti-aliased feather at the boundary — the rect mask goes through Pixi's stencil path), and fill is hard-bounded (`floodFill` takes a `bounds` rect; seed outside the selection is refused; fill undo is region-scoped to the selection). Switching away from Select only settles transient state (pending float commits, in-progress marquee finalizes). Selection ops: Delete/Backspace erases the selected pixels, Ctrl+A selects the whole canvas (switching to Select), Ctrl+C/Ctrl+X copy/cut to a **module-scope canvas clipboard** (survives tab switches, pastes across canvases; internal only — not the OS clipboard), Ctrl+V stamps the clipboard at its source position (pulled inside the canvas if it would overhang) and selects it for immediate moving. Delete/paste undo = one region-scoped `stroke` entry (`snapshotActiveLayerRegion` before the mutation). Arrow keys nudge the selection's pixels 1px (Shift = 10px): the first press floats the selection, each press shifts the float, and the float auto-commits ~500ms after the last press — one undo entry per burst. Move-commit orchestration is shared between pointer drag and nudge via `components/canvas/selection-ops.ts` (`captureSelectionMoveStart` / `commitSelectionMove`; the pre-float readback parks on `engine.pendingSelectionCapture`), and save/undo/redo land any pending float first. Hovering inside the marquee shows a `move` cursor. Auto-expansion (1024px steps, right/down only) is clamped to `min(MAX_CANVAS_DIMENSION = 8192, GPU max texture size)`; hitting the cap fires `engine.onExpansionCapped` once (editor shows a toast) instead of silently creating a blank oversized RT. Remove-layer / reorder-layers undo via full-metadata entries. Pressure sensitivity via Pointer Events API. Tools: Select (M), Brush (B), Eraser (E), Pan (H), Fill (G), Eyedropper (I). Default canvas background is white. **Backdrop:** the area outside the canvas bounds is a grey "mat" so the drawable region is obvious. The Pixi renderer is **transparent** (`backgroundAlpha: 0`); the mat (theme-aware Tailwind bg on the viewport wrapper) and a white "paper" sheet are DOM elements drawn BEHIND the canvas — deliberately NOT in the Pixi scene (a full-canvas backdrop sprite/graphics in the viewport stalled the GPU readback that region-scoped undo snapshots depend on, `canvas.toBlob` ~0ms→~1s). The paper (`canvas-viewport.tsx`, `paperRef`) is positioned imperatively in lockstep with the Pixi transform via `viewportController.onTransform` (pan/zoom) + `engine.onCanvasResized` (load/expand) — no React re-render on pan, no lag. `engine.background` (the paper colour + eyedropper composite base) stays white and is unrelated to the mat. Keyboard: `M`/`B`/`E`/`H`/`G`/`I` tool switch, `[`/`]` brush or eraser size, Ctrl+Z undo / Ctrl+Shift+Z or Ctrl+Y redo, Ctrl+S force-save, Esc cancel stroke / selection move / selection, Del/Backspace delete selection, Ctrl+A select all, Ctrl+C/X/V copy/cut/paste selection, arrows nudge selection (Shift = 10px). Auto-save ~3s + saveOnBlur + flush before unmount. Export PNG/PDF.
-
-**On-disk format (v5):** `<basename>.canvas` is a small metadata JSON carrying a stable `assetId` UUID. Per-layer pixel PNGs live in a hidden folder at `_marrow/_drawings/<assetId>/<layerId>.png`, not next to the `.canvas` file. Save order is PNGs-first, JSON-last so a crash mid-save never leaves the JSON pointing at unwritten PNGs. **Renaming the `.canvas` file does NOT rename its drawings folder** — the `assetId` is stored in the JSON, so the reference travels with the file contents, not the filename. Deleted layers leave orphan PNGs inside the drawings folder, and v4 → v5 migration leaves the old `<basename>.canvas.assets/` sibling folder behind as dead weight. **Settings → Vault → Maintenance → "Clean up"** reaps them (`lib/canvas/orphan-reaper.ts`): unreferenced `_marrow/_drawings/<assetId>/` folders, stale layer PNGs in live folders, and `.canvas.assets/` leftovers whose owner is v5-migrated or gone. Conservative by design — any unreadable/unparsable `.canvas` aborts the whole reap, a still-v4 owner keeps its `.assets` folder (that IS its pixel data), and the UI refuses while a canvas tab is open + awaits pending unmount flushes (`awaitPendingCanvasSaves`) so a mid-save canvas can't look orphaned. `_marrow/snapshots/` is NOT reaped — those are deliberate PDF backups.
-
-#### Canvas Lifecycle (Critical)
-
-The PixiJS canvas editor has an async init + async flush-save teardown. Key invariants:
-
-1. **Ticker stopped in cleanup** — the Pixi `Application` ticker auto-calls `app.render()` every frame. `engine.destroy()` calls `app.ticker?.stop()` synchronously before any async teardown, otherwise it renders destroyed geometry (`TypeError: Cannot read properties of null (reading 'geometry')`).
-
-2. **Observers disconnected before async teardown** — `ResizeObserver` (watching the host container for pane-resize sync, BUG-05) is disconnected synchronously at the top of `destroy()`. Doing it after `ticker.stop()` or `app.destroy()` risks a queued observer callback calling `renderer.resize` on a torn-down renderer.
-
-3. **Save → destroy is sequential on unmount, not fire-and-forget** (BUG-11). The unmount cleanup awaits `flushSave(engine, vaultFs, savePath)` before calling `engine.destroy()`. Previously the flush was fire-and-forget and `extract.base64` raced with `app.destroy()`, silently falling back to stale pixels — in-flight changes were lost if the autosave interval hadn't fired.
-
-4. **New mount awaits pending save** — `pendingCanvasSaves` (module-scope `Map<path, Promise>`) lets the next mount of the same path `await` the previous mount's async flush before reading the file from disk. Without this, the new mount reads stale bytes and overwrites the user's latest changes on its first save.
-
-5. **Unmount saves to `pathRef.current`** — not the closure's `path`. After a rename, the closure still holds the old path; saving to it would recreate the old file as a duplicate.
-
-6. **Pixi v8 texture loading** — `Texture.from(string)` is a cache-alias lookup, not image decoding. For inline base64 PNGs (v3 load path) we decode via `HTMLImageElement + img.decode()` then `Texture.from({ resource: img })`. For PNG bytes from disk (v4 `<path>.assets/` fallback or v5 `_marrow/_drawings/<assetId>/`) we decode via `createImageBitmap(blob)` then `Texture.from({ resource: bitmap })` — faster and off-main-thread where supported. In both cases the texture takes ownership of the resource; don't `.close()` the bitmap manually.
-
-7. **Pixel PNG read failures fail soft** — a missing / undecodable `_marrow/_drawings/<assetId>/<layerId>.png` (v5) or `<basename>.canvas.assets/<layerId>.png` (v4) during `readCanvasFile` makes that one layer load blank rather than failing the whole canvas. Corrupted / partial-sync vaults can still be opened and recovered by a save.
-
-8. **`assetId` is immutable once set** — v5 canvases embed a stable `assetId` UUID in their JSON; the engine mints one lazily on first save if absent. `engine.setAssetId()` is only called from (a) the load path when a v5 JSON already has one, or (b) `writeCanvasFile` when first-minting. Never rotate or clear the id — every PNG reference on disk points at the resulting folder, and the folder is intentionally not relocated when the `.canvas` file is renamed.
-
-### Board
-
-Quick-capture notice board (`Ctrl+2`). **Thoughts** are `.md` files in `_marrow/_board/` with frontmatter (`type`, `color`, timestamps). Title from first `# H1`. Masonry CSS-columns layout. Inline edit via minimal Tiptap (bold/italic/underline/lists — keyboard shortcuts only). Image thoughts in `_marrow/_board/_assets/`. `useBoardStore` for CRUD; `lib/board/index.ts` parse/serialize; `lib/editor/board-extensions.ts` extensions.
-
-**Audio thoughts** (`type: 'audio'`) are voice recordings saved as MP3 in `_marrow/_board/_assets/`. Frontmatter: `audioPath` (vault-relative path to MP3), `audioDuration` (seconds), `transcript` (Whisper-generated text). Recorded via `AudioRecorderBar` component (inline bar with live level metering). MP3 encoding via `mp3-mediarecorder` (WASM LAME encoder in a Web Worker, `lib/audio/recorder.ts`). Worker JS and `vmsg.wasm` live in `public/` — copied by postinstall script `scripts/copy-mp3-worker.mjs`. Transcription via Whisper-tiny (`@huggingface/transformers`, ~40MB quantized model cached in browser, `lib/audio/transcribe.ts`). Transcribe button appears on audio cards without transcripts.
-
-**Move to Vault** — all board items have a "Move to Vault" action (arrow icon). Plain text thoughts become a markdown note at vault root with assets moved into `_assets/` when embedded. **Voice notes** export as a **standalone audio file** (`*.mp3`/etc.) at vault root — not a markdown wrapper. **Image-only cards** (one board image attachment and no body text besides headings) export as a **standalone image file** at vault root; mixed text + image stays markdown with `_assets/` embeds. Dispatches `ink:vault-changed`. After move, **pending path is queued first**, then the app switches to **Vault** (Preview / tree); `NotesView` opens that file (`AudioPlayerView` / `ImageEditorView` / markdown tab as appropriate).
-
-### Bookmarks
-
-Web bookmark manager (`Ctrl+4`). `.md` files in `_marrow/_bookmarks/` with frontmatter (url, title, description, favicon, ogImage, tags). Categories as subfolders. `fetchOgMetadata` in `lib/bookmarks/og-fetch.ts` scrapes OG + Google favicon — CORS-safe fallback. Two-panel layout: category sidebar + bookmark list. Add/edit via Radix Dialog. `useBookmarksStore` for CRUD + categories; `lib/bookmarks/index.ts` parse/serialize.
-
-### Tasks
-
-CalDAV-compatible local-first task manager (`Ctrl+3`). `.md` files in `_marrow/_tasks/` with frontmatter mapping to iCalendar VTODO fields (`uid`, `status`, `priority` 1–4, `due`, `created`, `modified`, `completed`, `tags`, `parent`, `order`). Lists are subfolders of `_marrow/_tasks/`. Subtasks are separate `.md` files linked by `parent` UID in the same folder. Quick-add bar parses natural language: `!1` priority, `#tag` tags, `>tomorrow` / `>YYYY-MM-DD` due dates, phrases like **on Wednesday** (next occurrence) and **every Monday** / **on Wednesdays** (weekly `repeat` + `repeatWeekday`; completing rolls `due` forward). Explicit `>` due wins when both are present. Two-panel layout: sidebar (Inbox/Today/Upcoming smart filters + user lists) + task list. `.ics` export via `lib/tasks/ical.ts`. `useTasksStore` for CRUD; `lib/tasks/index.ts` parse/serialize/tree; `lib/tasks/parse-quick-add.ts` parser.
-
-### Calendar
-
-Local-first event calendar (`Ctrl+5`). Events are `.md` files in `_marrow/_calendar/` (hidden from Vault tree/browser/search; visible in Files). Frontmatter: `uid`, `start` (ISO date or `YYYY-MM-DDTHH:mm`), `end`, `allDay`, `color` (violet/sky/emerald/amber/rose/slate), `created`, `modified`. **Day / week / month** layouts; toolbar shows **month + year** on week view (aligned with month headline). Week grid shares one template for the day headers + hourly columns so borders line up (`week-grid.tsx`). Tasks with due dates appear as greyed "task due" chips. `useCalendarStore` for CRUD; `lib/calendar/index.ts` for parse/serialize/date helpers.
-
-### Kanban
-
-Markdown-based Kanban boards. A `.md` file with `type: kanban` in frontmatter renders as a drag-and-drop board. Columns = `## Headings` (optional `<!--kanban:color-->` for accent), cards = `- [ ]`/`- [x]` items. Drag cards by grip handle; drag columns by header grip. `detectEditorTabType` in `lib/notes/editor-tab-from-path.ts` peeks at frontmatter; `notes-view.tsx` renders `KanbanEditor`. Auto-save debounced ~750ms. `lib/kanban/index.ts` parse/serialize. The file is a regular `.md` — searchable, syncable, readable externally.
-
-### PPTX (Presentations)
-
-PowerPoint viewer/editor powered by `slidecanvas` (Fabric.js-based). `.pptx` files in the vault open inline with a full ribbon UI for editing text, shapes, images, and slide management. Lazy-loaded via `import('slidecanvas')` in `components/pptx/pptx-editor.tsx`. Auto-save: `onChange` fires with the `Presentation` state → debounced 3s → `PptxBlobExporter.exportToBlob()` → write bytes back to vault FS. Unmount flushes pending save. Search indexing extracts text from slide XML (`<a:t>` tags) via JSZip without loading the full editor. Graph shows pptx nodes as orange pentagons. File tree icon: `Presentation` (lucide), orange.
-
-### Mindmap
-
-`.mind` files — node-graph outlining powered by `@xyflow/react` (React Flow). Editor: `components/mindmap/mindmap-editor.tsx` + `mindmap-node.tsx`; pure logic in `lib/mindmap/index.ts`. On-disk format is a small JSON (`{version, nodes, edges, viewport}`) — a `MindmapNode` has `id`, `data.label`, `position`, optional `parentId`, and `manualPosition` (skip auto-layout once the user has dragged it). New mindmaps start with a single "Central Idea" root node.
-
-**Auto-layout**: `autoLayoutMindmap` walks the edge graph into a tree (`buildTree`) and assigns `{x, y}` via `assignPositions` (`H_GAP=220`, `V_GAP=80`), skipping any node with `manualPosition: true`. `buildTree`'s recursion tracks the ancestor chain and drops any edge that would revisit one — including a self-loop — so a user-created cycle can't cause infinite recursion / a stack overflow.
-
-**Editing**: double-click a label for inline rename (no modal). Keyboard (node must be selected, not mid-edit): `Tab` add child, `Enter` add sibling, `F2` rename, `Delete`/`Backspace` remove node + all descendants. Hover + the node's handle also adds a child directly into edit mode. Double-click empty canvas adds a disconnected node at that position. Drag node-to-node handles to connect; `wouldCreateCycle` (`lib/mindmap`) rejects a connection that would create a cycle or self-loop with a toast — both here in the editor's `onConnect` and defensively inside the layout algorithm. Undo/redo via an in-memory 50-entry history stack (`useHistory`), `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y`. Auto-save debounced 3s (`useAutoSave`) + `Ctrl+S`.
-
-File tree icon: `GitBranch` (lucide), teal. Graph shows mindmap nodes as teal hexagons. Search indexes node labels (`extractMindmapText`).
-
-### Spreadsheet (XLSX / CSV)
-
-`.xlsx` / `.xls` / `.csv` (also reads `.xlsm` / `.xlsb` / `.ods` / `.tsv`) open in `components/notes/spreadsheet-editor.tsx`, a grid powered by `jspreadsheet-ce` (lazy-loaded alongside `jsuites` and their CSS via dynamic `import()`). SheetJS (`xlsx`) bridges file bytes ↔ an in-memory `SpreadsheetWorkbook` model (`lib/spreadsheet/types.ts`): `{ sheets: [{ name, data: CellData[][], colWidths, merges }], activeSheetIndex }`. `lib/spreadsheet/xlsx-io.ts` handles `readXlsxFile` / `writeSpreadsheetFile` (format-aware via `bookTypeFromPath`, so a `.csv` stays `.csv` on save instead of silently becoming `.xlsx`) and `extractXlsxText` for search indexing (cell values flattened to CSV per sheet, capped at 14k chars).
-
-Multi-sheet UI: sheet tabs with add/delete/switch; switching syncs the currently-mounted grid back into the workbook model first (`syncGridToWorkbook`) so in-progress edits on the sheet you're leaving aren't lost. Auto-save debounced 750ms, same pattern as markdown/DOCX. Download button re-serves the raw on-disk bytes with a format-correct MIME type. New spreadsheets are created by `use-new-file-actions.ts` via `createBlankXlsx` (`lib/spreadsheet/xlsx-io.ts`), named `Spreadsheet YYYY-MM-DD.xlsx`.
-
-File tree icon: `Table2` (lucide), green. Graph shows spreadsheet nodes as sharp rects (tabular files). Search indexes cell text.
-
-### DOCX
-
-`.docx` files open in `components/notes/docx-editor.tsx`, powered by `@eigenpal/docx-js-editor` (ProseMirror-based, lazy-loaded so the bundle is only pulled when a DOCX tab opens). Auto-save follows the same debounced-750ms pattern as markdown. Responsive zoom: the library renders pages at a fixed ~850px width, so a `ResizeObserver` writes a `--docx-zoom` CSS custom property the page scales with (CSS `zoom`, not `transform: scale`, so the container's own scroll area stays correct). Mobile: touch double-tap is manually detected and forwarded as a synthetic `dblclick` so ProseMirror's word-select handler fires (mobile browsers don't fire a native `dblclick` on double-tap).
-
-**Unmount-save ref gotcha**: `editorRef` is populated via a callback ref (`setEditorRef`) that deliberately ignores `null` detach calls, rather than a plain `ref={editorRef}`. React nulls JSX-bound refs during the unmount _mutation_ phase, which runs before this component's own `useEffect` cleanup (a _passive_ effect) fires — a plain ref would always read `null` inside the unmount flush-save, silently dropping any edit that hadn't yet hit the debounced auto-save. The callback ref retains the last non-null instance so the flush can still reach it.
-
-File tree icon: `FileType2` (lucide), indigo. Graph shows docx nodes as rounded rects (same shape family as PDF).
-
-### Code Files
-
-Plain-text / source files (`.js` `.ts` `.tsx` `.py` `.json` `.yaml` `.css` `.html` `.sql` `.sh` etc. — see `lib/code/language-support.ts` for the full extension map) open in `components/notes/code-file-editor.tsx`, a CodeMirror 6 editor. Language support is lazy-loaded per extension (`languageFromExtension`) so unrelated `@codemirror/lang-*` packages aren't bundled together. Theme (`lib/code/codemirror-theme.ts`) reads the app's CSS custom properties (`--color-*`, `--hl-*`) so syntax highlighting follows the Light/Dark/System toggle automatically, using the same `--hl-*` tokens as Tiptap's markdown code blocks. Auto-save: 3s interval + save-on-blur (`useAutoSave`) + `Ctrl+S`. A file with no matching language extension still opens, just without syntax highlighting.
-
-File tree icon: `FileCode2` (lucide), sky. Graph shows code nodes as circles (same shape as plain notes).
-
-### Chat
-
-Two BYO-LLM chat surfaces share the same provider stack, thread storage format, and settings:
-
-1. **Per-document chat (tier 0)** — a collapsible panel embedded in the editor column for markdown notes and PDFs. Answers are grounded in the _open_ file only. Toggled with the ✨ button at the top-right of the editor.
-2. **Whole-vault chat (tier 1, `ViewMode.VaultChat`)** — a full-viewport surface reachable from the top of the left nav (Ctrl+0). Answers are grounded in a RAG pass over the whole vault (see RAG below). **Navigation:** opening Chat after a vault open / **Close vault** / new browser session starts a **new draft** thread; within the same tab session, returning to Chat restores the **last active thread** (`sessionStorage`, cleared when the vault is closed in-app). Sidebar width is user-resizable per vault (sessionStorage); sidebar is **collapsible** to a narrow icon strip (collapsed state also in sessionStorage); styling mirrors the vault file tree (sans-serif, `text-[13px]`, same color tokens). **Continuing** conversations do not show a model picker in the composer—only **new** (empty) chats do; **Load model** (Local / Gemma) is a centered CTA below the disclaimer when the `.task` file is missing from OPFS.
-
-**Per-document layout** — chat shares a single resizable right-side column with the backlinks section (markdown only). `EditorRightColumn` wraps both surfaces and renders the chat above a collapsible `BacklinksSection`; collapsing backlinks lets chat rise to fill the column. PDFs use the same column without backlinks. Width is persisted per surface (`ink-marrow:right-panel-width:md`, `...:pdf`) so markdown and PDF remember distinct widths.
-
-**Vault chat layout** — full-viewport two-pane view: thread list sidebar (left) + messages pane and composer (right). Thread switcher always visible, unlike the per-doc panel's compact top bar. Assistant replies use Inter (root `layout.tsx`) plus `.chat-assistant-prose` for ChatGPT-like body size and spacing; user bubbles remain sans ~12pt.
-
-**Storage** — threads live as sidecar JSON at `_marrow/_chats/<chatAssetId>/<threadId>.json`, mirroring the canvas v5 `_drawings/<assetId>/` pattern. `_marrow/_chats/` inherits `tree-filter.ts`'s hidden-folder rules so threads never show up in Vault/Files/Search/Graph. Writes use temp-file + rename for crash safety. Vault-wide threads use the reserved sentinel `chatAssetId = '_vault'` (documents mint UUIDs, which can never collide).
-
-**Asset-id resolution (per-document)** — markdown notes stash `chatAssetId: <uuid>` in frontmatter (minted lazily on first chat open; travels with the file on rename). PDFs have no frontmatter, so their id lives in a path-keyed index at `_marrow/_chats/index.json`, schema v2: `{ schemaVersion: 2, entries: { "<vault/path>": { id, size, hash } } }` — see `src/lib/chat/asset-index.ts`. The size+SHA-256 **content fingerprint** heals out-of-band renames (AI5): when a chat opens on an unknown path, exactly one DANGLING entry (its path gone) with a matching fingerprint means "renamed file" and its id is adopted, restoring the threads; copies (original still present) and ambiguous duplicates mint fresh ids. Fingerprints refresh when the file size changes (PDF saves rewrite bytes destructively). Limitations: a PDF edited between the rename and the next chat open won't reconcile, nor will v1-migrated entries whose file was renamed before its first post-migration chat open. In-app vault renames also call `movePdfChatAssetId` directly (notes-view).
-
-**Provider abstraction** — `src/lib/chat/providers/types.ts` defines `ChatProvider` with an `AsyncIterable<ChatStreamChunk>` streamer. Six providers are wired: `openrouter`, `openai`, `anthropic`, `gemini`, `ollama`, `device` (labeled **Local** in the UI). OpenRouter/OpenAI/Ollama share the OpenAI-compatible `/v1/chat/completions` SSE path (Ollama sends no auth header by default, and points at `http://localhost:11434/v1`); Anthropic uses its native `messages` SSE (named events, `content_block_delta`, `anthropic-dangerous-direct-browser-access`); Gemini uses `streamGenerateContent?alt=sse` with `systemInstruction` top-level and `role: 'model'`. The `device` provider runs **Gemma 4 E2B** in the browser (`gemma-4-e2b`) via `@mediapipe/tasks-genai` (LlmInference) on WebGPU. Caches the `.task` model in OPFS (`device-model-store.ts` downloads `huggingworld/gemma-4-E2B-it-litert-lm` / `gemma-4-E2B-it-web.task`). `LlmInference.createFromOptions` sets `maxTokens: 4096`, `temperature: 0.5`. Progress chunks may be **incremental** (append) or **cumulative** (full text so far); `gemma-stream-delta.ts` turns them into UI deltas without double-emitting or mis-slicing. Gemma IT expects only `user` / `model` turns: `device.ts` prepends system+RAG text into the first user message and ends the prompt with `<start_of_turn>model\n`.
-
-Download progress publishes on `ink:device-model-progress`. Cloud providers need a key; the two local providers (ollama, device) do not. API keys live in IndexedDB (`mentis-llm-keys`, keyed `llm:<provider>:<vaultId>`) via `src/lib/chat/key-store.ts`. Provider/model/baseUrl/systemPrompt/maxContextChars live in `VaultConfig.chat` (so they sync via Dropbox); keys never do.
-
-**Context**
-
-- Per-document: `src/lib/chat/context-builder.ts` reads the open file (MD body or PDF extracted text via `extractPdfText`) and caps to `settings.maxContextChars` (default 40 000 chars) with an explanatory truncation footer.
-- Vault-wide (RAG v1): `src/lib/chat/vault-rag.ts` runs the user's prompt through the existing MiniSearch index (`src/lib/search/index.ts`), takes the top-K hits (default 6), and pulls an excerpt around the first matched term for each. Falls back to re-extracting from disk when the indexed content is empty. Default system prompt requires `##`/`###` headings, blank-line paragraph spacing, and `<sup>n</sup>` whenever the model uses Source n (`n` in excerpt order). After each successful streamed reply `mergeVaultSourcesSection` replaces any model `## Sources` with a canonical list **`only for cited n`**: rows are `n. [document title](encodeURI(path))` (title from the search hit; basename fallback); omitted if nothing was cited in the reply body. Persisted assistant messages carry `vaultRagHitPaths` so `renderVaultChatMarkdown` can map vault-path `` `backticks` `` to `<sup>n</sup>` in the **body only** (`splitMarkdownShieldLastSourcesSection` leaves the Sources block untouched so titles are not eaten). Plain preprocess still applies to legacy threads without `vaultRagHitPaths`. `rewriteVaultAnchors` turns vault `href`s into in-app `data-ink-path` links (same tab); real `http(s)` URLs keep `target="_blank"` from sanitization. Embeddings-based RAG is deferred to tier 2 — see `docs/LAUNCH_DEFERRALS.md`.
-
-**Store/UI** — two Zustand+Immer stores: `src/stores/chat.ts` (per-document) and `src/stores/vault-chat.ts` (vault-wide). Both own streaming accumulation, AbortController cancellation, and once-per-turn persistence. `src/components/chat/chat-panel.tsx` renders the per-document panel; `src/components/views/vault-chat-view.tsx` renders the vault-wide view. Shared primitives: `ChatInput`, `ChatMessage`, `ChatAssistantHtml`, `renderChatMarkdown` (preprocess → `marked` → sanitize → vault-link rewrite); assistant bubbles use the same Inter + `.chat-assistant-prose` rhythm as vault chat. `ChatAssistantHtml` attaches click delegation for `a.chat-vault-source` so source links open the file in Vault (per-doc and vault-wide chat).
-
-### Routing / Views
-
-Next.js App Router, but the app is a single-page shell. Navigation is state-driven via `useUiStore` (`activeView`). `app/page.tsx` renders `<AppRoot>` which switches between views via `ViewRouter`. Before a vault is loaded, `AppRoot` renders either the `VaultLanding` (create/open vault) or the `AboutOverlay` (project overview with accordion feature breakdown) — toggled via an "About Mentis" link on the landing page.
-
-Nav order (sidebar): **Chat** (Ctrl+0) → **Vault** (Ctrl+1) → **Board** (Ctrl+2) → **Tasks** (Ctrl+3) → **Bookmarks** (Ctrl+4) → **Calendar** (Ctrl+5) → **Graph** (Ctrl+6) → **Files** (Ctrl+7) → **Search** (Ctrl+8 / Ctrl+F) → New (Ctrl+N).
-
-- **Chat** (`ViewMode.VaultChat`) = full-viewport whole-vault chat; see "Chat" section above.
-- **Vault** (`ViewMode.Vault`) = file tree + editor (markdown, PDF, canvas, image).
-- **Files** (`ViewMode.Files`) = `FileBrowserView` with `showHidden=true`; power-user raw view.
-- **Mobile (≤767px)**: `MobileNavMasthead` with hamburger → left sheet. `MOBILE_NAV_MEDIA_QUERY` in `lib/browser/breakpoints.ts` is the app's SINGLE mobile breakpoint — never branch mobile layout on `sm` or ad-hoc widths. Every view-level sub-sidebar (vault tree, task lists, bookmark categories, chat threads) collapses below `md` into the shared `MobileDrawer` (`components/ui/mobile-drawer.tsx`, Radix Dialog: focus trap, Escape, z-[210/211]); the drawer's trigger button shows the **section's own nav icon** (Vault, CheckSquare, Bookmark, Sparkles) — the hamburger is reserved for the app-level masthead. Collapsed rails are uniformly `w-10`. Calendar defaults to day view on mobile and the week grid pans horizontally (`minmax(110px,1fr)` columns) instead of crushing.
-
-### Search
-
-MiniSearch index built on vault open, stored in `_marrow/search-index.json`. Incrementally updated on save/rename for cheap text types (markdown, kanban, mindmap, code — see `isIndexableTextPath`); binary types (PDF, PPTX, XLSX, DOCX) re-extract on vault open or manual rebuild only. Indexed content: markdown title/body/tags, PDF text (PDF.js), PPTX slide text + DOCX body text (JSZip + Open-XML regex — `extractPptxText` / `extractDocxText`), spreadsheet cells, mindmap labels, kanban cards, **code/plain-text file bodies** (capped 14k chars; titles keep their extension so `a.ts`/`a.py` stay distinct), canvas titles/paths. Supports fuzzy matching, `#tag` filters, date range, folder prefix, file type filters. **The search UI is the Vault left-column panel** (`vault-left-search.tsx`); the legacy full-page search view was removed — `ViewMode.Search` redirects to Vault in `view-router.tsx`.
-
-### Graph
-
-Interactive force-directed visualization. `buildNoteGraph` scans all vault files (notes, PDF, canvas, mindmap, kanban, PPTX, DOCX, spreadsheet, code) for wiki-links and builds a node+edge model. Canvas 2D rendering with drag, pan, zoom, click-to-open. Distinct shapes per type (`lib/graph/build-graph.ts` + `components/graph/graph-canvas.tsx`): circle (note, code), rounded rect (PDF, DOCX), sharp rect (spreadsheet), pentagon (PPTX), hexagon (mindmap), wide rounded rect (kanban), diamond (canvas). Filter by folder dropdown.
-
-### Sync (optional)
-
-Provider: **Dropbox** (OAuth 2 PKCE; Full Dropbox scoped; absolute paths like `/Apps/Mentis/<vault>`). OAuth return `src/app/auth/dropbox/`. Tokens in IndexedDB keyed per vault path (`vaultId` = active vault path). Settings → Sync configures Dropbox; the Vault toolbar shows a **sync-now** control when `sync.provider === 'dropbox'`. `SyncManager` runs `fullSync` on vault open, `pushFile` after saves, `pull` on poll interval. Change detection via SHA-256 manifest. Conflict resolution: last-write-wins by `modifiedAt` (`lib/sync/conflicts.ts` — pure policy; ties and unparsable remote times keep local). TRUE conflicts (both sides changed → one version discarded) fire `SyncManager.onConflict` once per file per run; the sync context toasts which version was kept. The delta (poll) pull path applies the same policy via `decideRemoteUpdate` / `decideRemoteDelete` — an unpushed local edit is never silently clobbered by a poll, and a locally-edited file survives a remote delete (re-uploaded). **Excludes** (`lib/sync/excludes.ts`): `_marrow/snapshots` and `_marrow/search-index.json` are invisible to sync in both directions (never pushed/pulled/deleted remotely; stale manifest rows purge without touching the remote copy — pre-existing remote copies stay as inert junk). Extra patterns via `VaultConfig.sync.excludePaths` (config.json only, no UI). Env: `NEXT_PUBLIC_DROPBOX_CLIENT_ID` in `.env.local`. See `docs/CLOUD_SYNC.md`.
-
-### Image Files
-
-Image files in the vault tree open as `EditorTab` type `image`. PNG/JPEG/WebP: `ImageEditorView` (rotate, edge-trim crop, brightness/contrast/saturation via `lib/browser/image-edit-pipeline.ts`). GIF/SVG/BMP/ICO: plain preview via `VaultImageView`.
-
-### Audio Files
-
-Audio files (MP3/WAV/M4A/AAC/FLAC/WMA) open as `EditorTab` type `audio`. `AudioPlayerView` shows a centered player with play/pause, seekable progress bar, playback speed (0.5×–2×), and restart. Shared `AudioPlayer` component (`components/audio/audio-player.tsx`) used in both vault tab and board cards. Recording: `AudioRecorder` class (`lib/audio/recorder.ts`) wraps `mp3-mediarecorder` — a MediaRecorder ponyfill that encodes MP3 via WASM LAME in a Web Worker. Worker JS + `vmsg.wasm` served from `public/` (postinstall copies from `node_modules`). Level metering via our own `AudioContext` + `AnalyserNode`. Transcription: Whisper-tiny via `@huggingface/transformers` (`lib/audio/transcribe.ts`), ~40MB quantized model cached in browser, runs fully offline via WASM. Progress events on `ink:whisper-progress` CustomEvent.
-
-## Conventions
-
-**Imports:** Always use `@/` alias, never relative paths crossing directory boundaries. External → internal → types ordering.
-
-**Naming:**
-
-- Components: `PascalCase.tsx`
-- Hooks: `use-kebab-case.ts`
-- Lib/stores/types: `kebab-case.ts`
-- Constants: `SCREAMING_SNAKE_CASE`
-
-**Component structure:** imports (external → internal → types) → types → named export function → hooks → handlers → render.
-
-**Styling:** Tailwind CSS utility classes + `cn()` helper (`clsx` + `tailwind-merge`). No CSS modules. Dark mode via `.dark` class on `<html>` (three-state toggle: Light/System/Dark). Tailwind v4 (no `tailwind.config` file — configured via `postcss.config.mjs` and CSS `@theme` tokens in `globals.css`).
-
-**UI primitives:** Radix UI for dialogs, dropdowns, tooltips. Lucide for icons. Never nest interactive elements (e.g. `<button>` inside `<button>`). For tab UIs with close controls, use `<div role="tab">` with separate `<button>`s.
-
-**UI copy:** Simplicity is the priority — say as little as possible. Every word costs attention; cut anything that can be removed without losing meaning. Prefer one word over three. Prefer label + control only. No subtitle "hints" under labels unless they prevent a real mistake (irreversible actions, format requirements, edge cases). See `.cursor/rules/ui-copy.mdc`.
-
-**Errors:** File system ops use try/catch. User-facing errors via `toast.error()` (import from `@/stores/toast`). Always also `console.error()` for dev debugging. Critical errors via `ErrorBoundary` (recovery UI).
-
-**Git:** Conventional Commits (`feat(scope): description`, `fix(scope):`, `refactor(scope):`, `docs(scope):`, `chore(scope):`). One feature/fix per PR.
-
-## Testing
-
-- Default Vitest environment is `node`, not jsdom
-- Use `@vitest-environment happy-dom` docblock for component tests that need DOM
-- **Never use jsdom** — canvas bindings fail on Windows (no Cairo) and most CI
-- 33 test files under `tests/` (~340 tests) — check `tests/*.test.ts` before naming files; this list drifts
-
-Key suites: `search.test.ts`, `markdown.test.ts`, `markdown-bridge.test.ts`, `pdf-annotation-writer.test.ts`, `pdf-operations.test.ts`, `fs-adapter.test.ts`, `graph.test.ts`, `flood-fill.test.ts`, `daily-note.test.ts`, `folder-ops.test.ts`, `image-edit-pipeline.test.ts`. (There are NO `canvas.test.ts` / `canvas-undo.test.ts` unit suites — canvas behavior is covered by Playwright.)
-
-E2E specs live in `tests/e2e/` (Playwright, `pnpm test:e2e`). `21-canvas-selection.spec.ts` makes **pixel-level** canvas assertions: it sets `window.__mentisTest = {}` before opening a canvas, the editor registers the live engine there, and helpers read layer pixels via `extractLayerCanvas`. Use that hook for any new canvas test that needs to see actual pixels — WebGL screenshots can't.
-
-## Key Gotchas
-
-- **`Uint8Array<ArrayBufferLike>` vs `Uint8Array<ArrayBuffer>`:** Strict TS (`lib: ["dom"]`) distinguishes these. `new Uint8Array(n)` returns `Uint8Array<ArrayBufferLike>` but DOM APIs like `AnalyserNode.getByteTimeDomainData()` and `Blob` constructor expect `Uint8Array<ArrayBuffer>`. Fix with `as Uint8Array<ArrayBuffer>` cast at the allocation site, or type the field explicitly. This also applies to `FileSystemAdapter.readFile()` return values passed to `Blob` — see `assetToBlobUrl` in `assets.ts` for the existing pattern (`data as BlobPart`).
-- **Rename + auto-save race:** After a file rename, the auto-save cleanup closes over the _old_ path. Skip flush if `pathRef.current !== path` to avoid recreating the old file. Canvas unmount saves to `pathRef.current` (live path), not the closure `path`.
-- **COOP/COEP headers** are required for `SharedArrayBuffer` (PDF.js). They must be set at the hosting layer, not in `next.config.ts` (static export doesn't run Next.js middleware). See `docs/DEPLOYMENT.md`.
-- **PDF.js loading:** Use the loader in `src/lib/pdf/pdfjs-loader.ts` — do not import PDF.js directly, as it requires careful worker setup.
-- **Static export:** `pnpm build` uses `output: 'export'`. No server-side rendering, no API routes (except auth pages which are handled client-side).
-- **Browser-only libraries & prerendering:** Libraries that access `document` or `window` at module scope (e.g. `plyr`, `lamejs`) will crash the static-export prerender with `ReferenceError: document is not defined`. **Never add a top-level `import` for such libraries.** Use `await import('lib')` inside a `useEffect` or event handler instead. As a safety net, stub them on the server via `next.config.ts` → `webpack` → `if (isServer) config.resolve.alias['lib'] = false`. Current exclusions: `plyr`, `@huggingface/transformers`, `mp3-mediarecorder`.
-- **Canvas Pixi ticker:** The Pixi Application ticker must be stopped synchronously before async teardown in canvas cleanup, or it renders destroyed geometry. See "Canvas Lifecycle" section above.
-- **Pixi `extract.canvas` ignores `frame` for Texture targets:** when `target` is a `Texture`/`RenderTexture`, v8's `ExtractSystem.canvas` goes straight to `generateCanvas(target)` and silently drops the `frame` option — you get the FULL texture with content at absolute coords. `LayerManager.extractLayerCanvas(id, region)` works around it (renders the layer into a region-sized temp RT offset to the origin); route all region readbacks through it. This once made region-scoped undo restores stamp the whole layer shifted by +region origin, and the eyedropper sample pixel (0,0).
-- **Pixi standalone renders into a RenderTexture:** blend modes on the ROOT of a `renderer.render({ container, target })` call are ignored (an `erase` quad paints opaque white) and scene-attached display objects carry transform state that lands pixels at wrong coordinates. Always render a DETACHED temp `Container` with the blend/positioned children inside it — see `restoreLayerRegionFromBlob` / `SelectionTool.stampTexture`.
-- **Canvas unmount save race:** Unmount cleanup awaits `flushSave` before `engine.destroy()`, and publishes the promise into `pendingCanvasSaves` so the next mount of the same path can await it before reading disk. Skipping either half loses in-flight changes.
-- **Never put a full-canvas backdrop in the Pixi viewport:** a canvas-sized backdrop (Graphics OR Sprite) child of the viewport stalls the synchronous GPU readback that region-scoped undo snapshots rely on — `canvas.toBlob` on a 200×150 region jumped from ~0ms to ~1s, silently breaking any op that awaits a snapshot before mutating (e.g. bounded fill). The grey mat + white paper are DOM elements behind a transparent Pixi renderer instead; keep the Pixi scene to layers + scratchpad + selection overlay only.
-- **Canvas v5 drawings folder:** Pixel data lives at `_marrow/_drawings/<assetId>/<layerId>.png`, hidden from the vault tree. `assetId` is stored in the `.canvas` JSON and is minted on first save if missing (v3 / v4 migrations). Save order is PNGs-first, JSON-last for crash safety. Renaming a `.canvas` file does NOT move its drawings folder — the id travels with the JSON, not the filename. Deleted layers and v4-migration sibling `.assets/` folders leave orphans (out of scope for now).
-- **PDF annotation persistence:** After auto-save, the viewer reloads file bytes so the raster layer matches disk. `addAnnotation(..., { fromLoader: true })` when hydrating from disk avoids false unsaved/autosave loops. `annotation-writer` draws highlights/ink/FreeText/stamps into page content; text comments as native `/Text` annotations.
-- **PDF page add:** `appendBlankPage` uses `getPageCount()` on current bytes (not stale React `pages.length`).
-- **Vault rename collision:** `vaultPathsPointToSameFile` (`lib/fs/vault-path-equiv.ts`) prevents false "already exists" errors on case-only renames.
-- **FSAPI handle persistence:** `FileSystemDirectoryHandle` stored in IndexedDB via `lib/fs/handle-store.ts`; `queryPermission` restores on reload.
-- **Wiki-link resolution:** `resolveWikiLinkPath` normalizes spaces/hyphens/underscores for basename match.
-- **Markdown round-trip:** Load: marked → @tiptap/html `generateJSON` → `setContent`. Save: @tiptap/html `generateHTML` → turndown → gray-matter `serializeNote`. Not identical to raw GFM for all node types.
-- **Service Worker:** Hand-written `public/sw.js`. `_next/static/*` uses cache-first (immutable content-hashed). Other same-origin GETs use stale-while-revalidate.
-
-## AI / Cursor Rules
-
-- `.cursor/rules/greeting-and-docs.mdc` (`alwaysApply: true`): Greet with **Assalamualaikum** on substantive replies. After meaningful changes, update `docs/` and add **Manual verification** checklist when behavior/UX changes. Refresh `docs/LAUNCH_DEFERRALS.md` verification queue.
-- `.cursor/rules/ui-copy.mdc`: Simplicity first — fewest words that carry full meaning. No filler hints under labels unless they prevent a real mistake.
-- When suggesting redistribution or "open sourcing," remind readers that **BSL 1.1** governs this repo until the Change Date — point to `LICENSE`.
-- Prefer small, reviewable diffs; match existing patterns in touched files.
-- Security-sensitive areas (crypto, vault paths, FS adapters): extra care and human review.
-
-## Detailed Docs Reference
-
-For deeper context, see `docs/`:
-
-- `ARCHITECTURE.md` — full module descriptions, data flows, dependency graph, security
-- `TECH_STACK.md` — all libraries with version and purpose, key library decisions
-- `CONVENTIONS.md` — full project structure, naming, component/store patterns, styling, testing, git workflow
-- `PRD.md` — product requirements, core principles, feature breakdown, success metrics
-- `DEVELOPMENT_PHASES.md` — phase 1 completed work, pre-launch hardening, phase 2-3 roadmap
-- `LAUNCH_DEFERRALS.md` — open deferrals, manual verification queue, addressed archive
-- `DEPLOYMENT.md` — static hosting headers (COOP/COEP), OAuth redirects
-- `CLOUD_SYNC.md` — Dropbox setup, env vars, OAuth flow
-- `PDF_WORKFLOW.md` — detailed PDF UX flows (browser, import, edit, highlight, draw, sign, pages, forms, export)
-- `RISKS.md` — technical and product risk matrix with mitigations
-- `CURSOR.md` — AI/Cursor workflow expectations, active rules list
+# Mentis — project context
+
+Local-first personal knowledge system. Every item of user data is an ordinary
+file in a folder the user chooses. No database of record, no account required,
+no cloud dependency.
+
+Currently a Vite + React 19 static SPA (~50k LOC TS/TSX) storing files in OPFS.
+Being migrated to a Tauri 2 application with real filesystem access.
+
+## Non-negotiable principles
+
+1. **Files are the only source of truth.** SQLite holds derived data only —
+   search index, path manifest, cached hashes, expanded reminder occurrences.
+   Deleting the database must lose nothing. Never introduce state that exists
+   only in a database.
+2. **Nothing loads until it is needed.** Every file-type handler is a lazily
+   imported module. Opening a markdown note must not load the PDF engine, the
+   drawing canvas, or the spreadsheet grid.
+3. **Never walk the filesystem at launch.** The tree renders from the SQLite
+   manifest, then reconciles in the background.
+4. **No feature reaches into another feature's internals.** Cross-module access
+   goes through a registry or through `core/`.
+5. **Nothing heavy on the main thread.** Parsing, hashing, indexing and slide
+   rendering run in Workers.
+
+## Settled decisions — do not relitigate
+
+- **Shell:** Tauri 2 for desktop and mobile. Not Electron, not Capacitor.
+- **Build:** Vite + React 19 + TypeScript. Migrated off Next.js (2026-09-28).
+- **Storage:** the user's chosen folder. Folder identity == vault identity.
+  One vault open at a time; keep a recent-vaults list.
+- **App data:** `_mentis/` inside the chosen folder, containing `_journals`,
+  `_thoughts`, `_tasks`, `_bookmarks`, `_chats`, `templates`, `config.json`.
+  (Renamed from `_marrow/`; `_dailies` renamed to `_journals`.)
+- **Notebooks:** every root folder is a notebook; every subfolder is a section;
+  sections nest. Root folders starting with `_` are system, not notebooks.
+  Loose root-level files appear as an implicit "Unfiled" notebook.
+- **`_config.md`:** YAML frontmatter. Inherits down the tree, nearest wins.
+- **Index:** SQLite + FTS5. Shared table set for search, manifest, sync change
+  detection and reminders.
+- **AI:** LiteRT-LM with Gemma 4 on device; bring-your-own cloud keys; Ollama
+  over LAN. Read-and-answer only for v1 — no agentic writes.
+- **Capture grammar:** `/` for destinations, `@` reserved for file references.
+  Destinations: Thoughts (default), Journal, Calendar, Tasks, Lists,
+  Bookmarks, Note, Chat.
+- **Capture behaviour:** bare text and voice commit instantly to Thoughts with
+  undo. `/` destinations show a prefilled confirmation modal first.
+- **Date parsing:** chrono-node. Deterministic, never AI. Do not attempt to
+  parse locations.
+- **File extensions:** `.md`, `.canvas`, `.map.md`, `.kan.md`, `.slides.md`
+  (Marp dialect). Compound suffixes must be matched before the last segment.
+- **Office:** view only. Convert docx to markdown (mammoth → turndown) and
+  pptx to `.slides.md`. No xlsx editing in v1.
+- **Licence:** BSL 1.1. No third-party plugin system — "modular" means
+  internal decoupling only, single tier.
+- **Not for clinical or patient data.** Do not add features that imply it is.
+
+## Registries
+
+All of these live in `core/registries/`. Built-in features register through
+them exactly as any other module would.
+
+- File types — `{ match(path), icon, viewer, editor, createNew, convertTo }`
+- Views — replaces the `ViewMode` enum and the `view-router` switch
+- Commands — feeds command palette, editor slash menu, and capture menu
+- Capture destinations — `{ sigil, parse(input), confirmFields, write() }`
+- Settings schemas — each module contributes; the dialog renders them
+- Sync providers, AI providers — largely exist already
+
+Import boundaries are enforced by ESLint `no-restricted-imports`:
+`modules/*` may import from `core/*` but never from another `modules/*`.
+
+## Performance budgets — enforced in CI
+
+| Initial JS (gzipped) | ≤ 200 KB |
+| Desktop cold start | < 1.0 s |
+| Mobile cold start | < 1.8 s |
+| Open an existing note | < 100 ms |
+| First search results | < 50 ms |
+| Binary excluding model | < 15 MB |
+| First-PDF lazy chunk | < 400 KB |
+
+A build exceeding these fails. Do not raise a budget to make a build pass —
+raise it only as a deliberate, separately committed decision.
+
+## Working agreement
+
+- Produce a plan and wait for approval before editing more than two files.
+- One task per branch. Commit at every green build.
+- `typecheck`, `lint` and `build` must all pass before a task is considered
+  done. Run them; do not assume.
+- Do not add a dependency without asking. State the bundle cost when you do.
+- Do not refactor, reformat or "improve" code outside the stated task.
+- Do not rewrite working features. Existing notes, PDF, canvas, mindmap,
+  kanban, tasks, calendar, bookmarks, search and graph all work — the current
+  work is migration and decoupling, not reconstruction.
+- If a task turns out to be larger than described, stop and say so rather than
+  proceeding.
+- When behaviour is ambiguous, ask. Do not infer a product decision.
