@@ -38,10 +38,12 @@ test.describe('17.1 — Offline & Caching', () => {
   })
 
   test('17.1.2 Go offline — app still loads from cache', async ({ vaultPage: page }) => {
-    // Offline caching is only meaningful against a production build — the
-    // dev server's chunks aren't reliably cacheable and the dev overlay
-    // needs a live connection. Detect dev via Next's overlay element.
-    const isDevServer = await page.evaluate(() => Boolean(document.querySelector('nextjs-portal')))
+    // Offline caching is only meaningful against a production build — the dev
+    // server serves unbundled modules over a live connection. Detect dev via
+    // Vite's injected client script.
+    const isDevServer = await page.evaluate(() =>
+      Boolean(document.querySelector('script[src*="/@vite/client"]')),
+    )
     if (isDevServer) {
       test.skip(true, 'Offline caching requires a production build (dev chunks not precachable)')
       return
@@ -74,11 +76,14 @@ test.describe('17.1 — Offline & Caching', () => {
       const body = page.locator('body')
       await expect(body).toBeVisible({ timeout: 10_000 })
 
-      // Some meaningful content should be on screen (not a browser error page)
-      const hasContent = await page.evaluate(() => {
-        return document.body.innerText.length > 50
-      })
-      expect(hasContent).toBe(true)
+      // Some meaningful content should be on screen (not a browser error page).
+      // Poll rather than sample once: <body> becomes visible while the app is
+      // still painting its "Opening local storage…" state (22 chars), and the
+      // vault is restored ~100-200ms later. A single read races that boot — the
+      // faster the shell paints, the earlier it lands.
+      await expect
+        .poll(() => page.evaluate(() => document.body.innerText.length), { timeout: 10_000 })
+        .toBeGreaterThan(50)
     } finally {
       // Restore online
       await page.context().setOffline(false)

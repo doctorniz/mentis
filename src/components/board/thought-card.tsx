@@ -186,7 +186,6 @@ function ImagePreview({ vaultPath, alt }: { vaultPath: string; alt: string }) {
   return (
     <div className="-mx-4 -mt-4 mb-3 overflow-hidden rounded-t-xl">
       {/* Local vault blob URL — not a remote asset next/image can optimize; static export has no image loader anyway. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={blobUrl} alt={alt} className="h-auto w-full object-cover" loading="lazy" />
     </div>
   )

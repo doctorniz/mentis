@@ -1,6 +1,8 @@
 # Mentis — Static deployment & headers
 
-The app is built with **Next.js `output: 'export'`** — a fully static site under `out/`. There is **no** server runtime, so Next.js `headers()` in `next.config.ts` has **no effect** on the built output.
+The app is built with **Vite** — a fully static site under `out/`. There is **no** server runtime, so headers must be set by the host; nothing in the build can set them.
+
+Two HTML entry points are emitted: `out/index.html` (the app) and `out/auth/dropbox.html` (the Dropbox OAuth return). The host must serve the extensionless path `/auth/dropbox` from that file — the registered OAuth redirect URI depends on it. `serve out -L`, Vercel, Netlify and Cloudflare Pages all do this by default; a bare nginx `try_files` setup needs it spelled out.
 
 ## COOP / COEP (SharedArrayBuffer)
 
@@ -23,10 +25,10 @@ Some dependencies (for example PDF.js worker paths) benefit from **cross-origin 
 
 ## OAuth redirects (cloud sync)
 
-Dropbox sign-in returns to `/auth/dropbox`. Your static host must serve the SPA for that URL (same as `/`: `index.html` or equivalent). Register the **full** redirect URI in the Dropbox app. Setup: [`CLOUD_SYNC.md`](./CLOUD_SYNC.md).
+Dropbox sign-in returns to `/auth/dropbox`, which is its **own** HTML entry (`out/auth/dropbox.html`) rather than a client-side route inside `index.html`. The host must map the extensionless path to that file. Register the **full** redirect URI in the Dropbox app. Setup: [`CLOUD_SYNC.md`](./CLOUD_SYNC.md).
 
 ## Related
 
 - Build output and bundling: [`TECH_STACK.md`](./TECH_STACK.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 - Cloud sync env and providers: [`CLOUD_SYNC.md`](./CLOUD_SYNC.md)
-- PWA / offline shell: `public/sw.js`, root `layout.tsx`
+- PWA / offline shell: `public/sw.js`, plus the inline bootstrap in `index.html` (theme class, SW registration, cache warm-up)

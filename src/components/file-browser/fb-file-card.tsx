@@ -64,7 +64,6 @@ function FileCardIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string |
   if (item.type === 'pdf' && thumbUrl) {
     return (
       <div className="flex h-14 w-[42px] items-center justify-center overflow-hidden rounded shadow-sm ring-1 ring-black/10">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
       </div>
     )
@@ -73,7 +72,6 @@ function FileCardIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string |
   if (item.type === 'image' && thumbUrl) {
     return (
       <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg shadow-sm ring-1 ring-black/10 dark:ring-white/10">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
       </div>
     )
@@ -350,7 +348,6 @@ function FileRowIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string | 
   if (item.type === 'image' && thumbUrl) {
     return (
       <div className="size-5 shrink-0 overflow-hidden rounded ring-1 ring-black/10 dark:ring-white/10">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
       </div>
     )

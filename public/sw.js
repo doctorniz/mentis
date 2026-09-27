@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'mentis-marrow-v1'
+const CACHE_NAME = 'mentis-marrow-v2'
 
 const PRECACHE_URLS = ['/', '/manifest.json', '/icon.svg']
 
@@ -21,7 +21,8 @@ self.addEventListener('activate', (event) => {
 })
 
 /**
- * `_next/static/` assets are content-hashed and immutable per build.
+ * `assets/` (Vite) and `_next/static/` (legacy Next builds) are content-hashed
+ * and immutable per build.
  * Cache-first: serve from cache instantly, only fetch on miss.
  */
 function handleImmutable(request) {
@@ -63,7 +64,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return
   if (event.request.method !== 'GET') return
 
-  if (url.pathname.startsWith('/_next/static/')) {
+  if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/_next/static/')) {
     event.respondWith(handleImmutable(event.request))
     return
   }

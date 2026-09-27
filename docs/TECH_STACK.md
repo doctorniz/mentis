@@ -4,12 +4,12 @@
 
 ### Core Framework
 
-| Technology                     | Version           | Purpose                                                                                            |
-| ------------------------------ | ----------------- | -------------------------------------------------------------------------------------------------- |
-| **Next.js**                    | 15.x (App Router) | React framework with SSG/SSR, file-based routing, optimized bundling                               |
-| **React**                      | 19.x              | UI library                                                                                         |
-| **TypeScript**                 | 5.x               | Type safety across the entire codebase                                                             |
-| **Inter** (`next/font/google`) | bundled           | Primary UI typography; assistant chat HTML uses `.chat-assistant-prose` for spacing/heading rhythm |
+| Technology                     | Version | Purpose                                                                                            |
+| ------------------------------ | ------- | -------------------------------------------------------------------------------------------------- |
+| **Vite**                       | 7.x     | Build tool + dev server. Multi-page static build: `index.html` and `auth/dropbox.html`             |
+| **React**                      | 19.x    | UI library                                                                                         |
+| **TypeScript**                 | 5.x     | Type safety across the entire codebase                                                             |
+| **Inter** (`next/font/google`) | bundled | Primary UI typography; assistant chat HTML uses `.chat-assistant-prose` for spacing/heading rhythm |
 
 ### Markdown Editing
 

@@ -24,7 +24,11 @@ ink-marrow/
 ├── public/                # PWA: manifest, icons, sw.js, MP3 worker + vmsg.wasm
 ├── scripts/               # copy-mp3-worker (postinstall), qa-checklist server (pnpm qa)
 ├── src/
-│   ├── app/               # Next.js App Router shell (layout, page, auth/dropbox return)
+│   ├── main.tsx           # App entry (mounts AppRoot into #root from index.html)
+│   ├── auth-dropbox-main.tsx  # Entry for the /auth/dropbox HTML page
+│   ├── node-globals.ts    # Browser shims for Buffer + global (webpack used to inject these)
+│   ├── globals.css        # Tailwind v4 theme tokens + global styles
+│   ├── fonts.css          # Self-hosted Inter (replaces next/font)
 │   ├── components/        # React UI by domain: shell, views, notes, pdf, canvas, board,
 │   │                      # tasks, calendar, bookmarks, kanban, mindmap, pptx, chat,
 │   │                      # file-browser, graph, search, audio, ui
@@ -39,7 +43,8 @@ ink-marrow/
 │   └── utils/             # cn.ts (clsx + tailwind-merge)
 ├── .cursor/rules/         # Cursor AI rules (.mdc)
 ├── .github/workflows/     # CI (typecheck, lint, unit, build, e2e)
-├── next.config.ts         # Static export; server-side stubs for browser-only libs
+├── index.html             # App entry point (+ auth/dropbox.html for the OAuth return)
+├── vite.config.ts         # Multi-page static build; `node:` stubs; eager-vendor chunking
 ├── playwright.config.ts   # E2E: dev server locally, static export on CI
 └── CLAUDE.md              # AI working notes — the most detailed, most current module reference
 ```

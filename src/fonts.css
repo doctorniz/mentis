@@ -1,0 +1,33 @@
+/**
+ * Replaces `next/font/google`'s Inter loader from the former app/layout.tsx.
+ *
+ * `wght.css` declares the same seven @font-face blocks Next emitted (latin,
+ * latin-ext, vietnamese, cyrillic, cyrillic-ext, greek, greek-ext) over the
+ * same variable weight axis with `font-display: swap`. Only the subsets a
+ * document actually uses are downloaded, so a latin-only vault fetches one
+ * ~48 KB woff2 — the same single file Next preloaded.
+ */
+@import '@fontsource-variable/inter/wght.css';
+
+/**
+ * Metric-matched fallback, copied from next/font's generated face so the swap
+ * from Arial to Inter does not shift layout. Values lifted verbatim from the
+ * Next build output.
+ */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+
+/**
+ * Next applied this via `inter.className` on <body>. Unlayered, so it wins over
+ * globals.css's `@layer base { body { … } }` regardless of import order.
+ */
+body {
+  font-family: 'Inter Variable', 'Inter Fallback';
+  font-style: normal;
+}

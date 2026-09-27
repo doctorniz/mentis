@@ -25,7 +25,8 @@ Mentis is a local-first personal knowledge base built on a **plain-file architec
 
 ```
 src/
-├── app/              # Next.js App Router shell (layout, page, Dropbox OAuth return)
+├── main.tsx          # App entry, mounted by index.html
+├── auth-dropbox-main.tsx  # Entry for the /auth/dropbox page (Dropbox OAuth return)
 ├── components/       # React UI by domain: shell, views, notes, pdf, canvas, board,
 │                     # tasks, calendar, bookmarks, kanban, mindmap, pptx, chat,
 │                     # file-browser, graph, audio, ui
@@ -45,7 +46,7 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full picture.
 
 | Layer       | Technology                                                                        |
 | ----------- | --------------------------------------------------------------------------------- |
-| Framework   | Next.js 15 (App Router, static export)                                            |
+| Build       | Vite 7 (static multi-page build: app + `/auth/dropbox`)                           |
 | UI          | React 19, Tailwind CSS 4, Radix UI, Lucide icons                                  |
 | Notes       | Tiptap (ProseMirror) + marked + turndown + gray-matter; CodeMirror 6 (source/code) |
 | PDF         | PDF.js (render), pdf-lib (write), Fabric.js (annotation overlay)                  |
@@ -72,11 +73,8 @@ Optional **Dropbox sync** — set `NEXT_PUBLIC_DROPBOX_CLIENT_ID` in `.env.local
 # Install dependencies
 pnpm install
 
-# Start development server (Turbopack)
+# Start development server (Vite)
 pnpm dev
-
-# If you see Turbopack "Next.js package not found", reinstall deps or use Webpack:
-pnpm dev:webpack
 
 # Type check
 pnpm typecheck

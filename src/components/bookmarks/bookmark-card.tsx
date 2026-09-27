@@ -77,7 +77,6 @@ export function BookmarkCard({
       <div className="flex min-w-0 flex-1 gap-3">
         {/* Cross-origin favicon from an arbitrary bookmarked site — not a next/image candidate. */}
         {item.favicon && (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.favicon}
             alt=""
@@ -131,7 +130,6 @@ export function BookmarkCard({
       <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
         {/* Cross-origin OG image from an arbitrary bookmarked site — not a next/image candidate. */}
         {item.ogImage && (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.ogImage}
             alt=""

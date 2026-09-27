@@ -69,7 +69,6 @@ export function VaultImageView({
 
   return (
     // Local vault blob URL — not a remote asset next/image can optimize; static export has no image loader anyway.
-    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={blobUrl}
       alt={alt ?? ''}

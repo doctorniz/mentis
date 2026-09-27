@@ -281,7 +281,6 @@ export function AddBookmarkDialog({
                   <div className="border-border bg-bg-secondary flex gap-3 rounded-lg border p-3">
                     {/* Cross-origin favicon/OG image from an arbitrary bookmarked site — not a next/image candidate. */}
                     {ogMeta.favicon && (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={ogMeta.favicon}
                         alt=""
@@ -293,7 +292,6 @@ export function AddBookmarkDialog({
                       <p className="text-fg-muted/60 truncate text-[11px]">{domainFromUrl(url)}</p>
                     </div>
                     {ogMeta.ogImage && (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={ogMeta.ogImage}
                         alt=""

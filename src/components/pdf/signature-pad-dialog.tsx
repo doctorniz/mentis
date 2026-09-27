@@ -136,7 +136,6 @@ export function SignaturePadDialog({
                 className="text-sm"
               />
               {uploadedUrl && (
-                /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={uploadedUrl}
                   alt="Uploaded signature"

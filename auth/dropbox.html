@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <meta name="theme-color" content="#4c6ef5" />
+    <title>Mentis</title>
+    <meta
+      name="description"
+      content="Local-first markdown notes, PDF editor, and unlimited canvas"
+    />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Mentis" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  </head>
+  <body>
+    <!-- Same script as index.html. Next's root layout ran it on this route too,
+         so the service worker registers here as well. -->
+    <script>
+      ;(function () {
+        try {
+          var t = localStorage.getItem('ink-theme')
+          var dark =
+            t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme:dark)').matches)
+          if (dark) document.documentElement.classList.add('dark')
+        } catch (e) {}
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', function () {
+            navigator.serviceWorker
+              .register('/sw.js', { scope: '/' })
+              .then(function () {
+                // A newly registered worker does not control the load that
+                // registered it, so this page's hashed assets never pass through
+                // the fetch handler and would be missing on an offline reload.
+                // Re-request them once the worker is in control: those fetches
+                // ARE intercepted, so the cache-first handler stores them.
+                // Already-cached assets are served from the cache, so repeat
+                // loads cost no network.
+                function whenControlled() {
+                  if (navigator.serviceWorker.controller) return Promise.resolve()
+                  return new Promise(function (resolve) {
+                    navigator.serviceWorker.addEventListener('controllerchange', function () {
+                      resolve()
+                    })
+                  })
+                }
+                return whenControlled().then(function () {
+                  var urls = []
+                  document
+                    .querySelectorAll(
+                      'script[src], link[rel="stylesheet"][href], link[rel="modulepreload"][href]',
+                    )
+                    .forEach(function (el) {
+                      var u = el.src || el.href
+                      if (u && u.indexOf(location.origin + '/') === 0) urls.push(u)
+                    })
+                  return Promise.all(
+                    urls.map(function (u) {
+                      return fetch(u).catch(function () {})
+                    }),
+                  )
+                })
+              })
+              .catch(function () {})
+          })
+        }
+      })()
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/auth-dropbox-main.tsx"></script>
+  </body>
+</html>

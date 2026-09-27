@@ -229,14 +229,14 @@ test.describe('18.3 — Performance', () => {
 
 test.describe('18.4 — Accessibility', () => {
   test('18.4.1 Keyboard navigation — Tab through controls', async ({ vaultPage: page }) => {
-    // In dev, the first Tab may land on Next.js's dev-tools overlay
-    // (<nextjs-portal>) — skip past it; it doesn't exist in production.
+    // The first Tab can still be on <body> before focus enters the app, so give
+    // it a few presses to land on a real control.
     let focusedTag = ''
     for (let i = 0; i < 3; i++) {
       await page.keyboard.press('Tab')
       await page.waitForTimeout(200)
       focusedTag = await page.evaluate(() => document.activeElement?.tagName ?? '')
-      if (focusedTag !== 'NEXTJS-PORTAL' && focusedTag !== 'BODY') break
+      if (focusedTag !== 'BODY') break
     }
     expect(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA']).toContain(focusedTag)
 
