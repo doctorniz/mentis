@@ -1,4 +1,4 @@
-import matter from 'gray-matter'
+import { fileTypes } from '@/core/registries'
 import type { EditorTab } from '@/types/editor'
 import { FileType, getFileType } from '@/types/files'
 import type { FileSystemAdapter } from '@/lib/fs/types'
@@ -46,15 +46,13 @@ export async function detectEditorTabType(
   const base = editorTabTypeFromVaultPath(path)
   if (base !== 'markdown') return base
 
-  try {
-    const raw = await fs.readTextFile(path)
-    const { data } = matter(raw)
-    if (data.type === 'kanban') return 'kanban'
-  } catch {
-    /* fall through */
-  }
-
-  return 'markdown'
+  // Markdown — or an unknown file, which opens as markdown — may be claimed by
+  // another type on content (a kanban board's frontmatter). The owning module
+  // decides; this file no longer knows the rule.
+  const detected = await fileTypes.detect(path, (p) => fs.readTextFile(p), {
+    fallback: 'markdown',
+  })
+  return (detected?.id as EditorTab['type'] | undefined) ?? 'markdown'
 }
 
 /** Display title: filename without extension (or with extension for code files). */

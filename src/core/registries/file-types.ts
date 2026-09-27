@@ -14,8 +14,12 @@
 export interface FileTypeClaim {
   /** Id of the type whose files this type may take over after a content check. */
   baseType: string
-  /** Returns true when `text` (the file's full contents) belongs to this type. */
-  test: (text: string) => boolean
+  /**
+   * Returns true when `text` (the file's full contents) belongs to this type.
+   * May be async so heavy parsing can sit behind a dynamic import. A test that
+   * throws or rejects counts as false.
+   */
+  test: (text: string) => boolean | Promise<boolean>
 }
 
 export interface FileTypeDefinition {
@@ -48,11 +52,13 @@ export interface FileTypeRegistry {
   resolve(path: string): FileTypeDefinition | undefined
   /**
    * `resolve`, then — only if some other type claims files of the resolved type —
-   * read the contents and let the claim decide.
+   * read the contents and let the claim decide. `fallback` names the type to
+   * assume when the path does not resolve (unknown files open as markdown).
    */
   detect(
     path: string,
     readText: (path: string) => Promise<string>,
+    options?: { fallback?: string },
   ): Promise<FileTypeDefinition | undefined>
 }
 
@@ -100,8 +106,9 @@ export function createFileTypeRegistry(
   async function detect(
     path: string,
     readText: (path: string) => Promise<string>,
+    options?: { fallback?: string },
   ): Promise<FileTypeDefinition | undefined> {
-    const base = resolve(path)
+    const base = resolve(path) ?? (options?.fallback ? byId.get(options.fallback) : undefined)
     if (!base) return undefined
     const claimants = definitions.filter((d) => d.claims?.baseType === base.id)
     if (claimants.length === 0) return base
@@ -111,7 +118,14 @@ export function createFileTypeRegistry(
     } catch {
       return base
     }
-    return claimants.find((d) => d.claims!.test(text)) ?? base
+    for (const claimant of claimants) {
+      try {
+        if (await claimant.claims!.test(text)) return claimant
+      } catch {
+        // Unparseable content keeps the suffix type.
+      }
+    }
+    return base
   }
 
   return {

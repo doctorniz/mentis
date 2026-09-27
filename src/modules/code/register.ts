@@ -1,0 +1,43 @@
+import type { FileTypeDefinition } from '@/core/registries/file-types'
+
+const definition: FileTypeDefinition = {
+  id: 'code',
+  label: 'Code',
+  suffixes: [
+    '.html',
+    '.htm',
+    '.css',
+    '.scss',
+    '.less',
+    '.js',
+    '.mjs',
+    '.cjs',
+    '.jsx',
+    '.ts',
+    '.tsx',
+    '.mts',
+    '.cts',
+    '.py',
+    '.json',
+    '.yaml',
+    '.yml',
+    '.toml',
+    '.xml',
+    '.sh',
+    '.bash',
+    '.zsh',
+    '.bat',
+    '.ps1',
+    '.sql',
+    '.graphql',
+    '.gql',
+    '.env',
+    '.ini',
+    '.conf',
+    '.cfg',
+    '.log',
+    '.txt',
+  ],
+}
+
+export default definition
