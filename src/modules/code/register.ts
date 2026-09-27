@@ -38,6 +38,7 @@ const definition: FileTypeDefinition = {
     '.log',
     '.txt',
   ],
+  editor: () => import('./editor'),
 }
 
 export default definition

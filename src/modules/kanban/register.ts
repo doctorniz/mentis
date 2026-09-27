@@ -9,6 +9,7 @@ const definition: FileTypeDefinition = {
     baseType: 'markdown',
     test: async (text) => (await import('./detect')).isKanbanMarkdown(text),
   },
+  editor: () => import('./editor'),
 }
 
 export default definition

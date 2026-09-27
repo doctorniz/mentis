@@ -1,3 +1,5 @@
+import type { ComponentType, Ref } from 'react'
+
 /**
  * File-type registry.
  *
@@ -22,6 +24,55 @@ export interface FileTypeClaim {
   test: (text: string) => boolean | Promise<boolean>
 }
 
+/** Imperative handle an editor may expose to the host. */
+export interface FileEditorHandle {
+  /** Documents that store their chat id themselves (markdown frontmatter). */
+  ensureChatAssetId?: () => string
+}
+
+/** Everything the host hands to a module's editor. */
+export interface FileEditorProps {
+  tabId: string
+  path: string
+  /** Freshly created: the editor may focus its title for an immediate rename. */
+  isNew?: boolean
+  /** Vault structure changed (rename, create) — the tree must refresh. */
+  refreshTree: () => void
+  /** The file was saved — backlinks, graph and search must refresh. */
+  notifySaved: () => void
+  /** Rename on disk to `stem` + `ext`; the host retargets the tab. */
+  renameFile: (tabId: string, oldPath: string, stem: string, ext: string) => void
+  /** Open another vault file in a tab. */
+  openFile: (path: string) => void
+  /** Vault paths a document may link to (wiki-link autocomplete). */
+  linkTargets: string[]
+  /** Reports a live editor instance so host panels (the outline) can read it. */
+  onEditorReady?: (editor: unknown) => void
+  /** Reports the chat id read from disk (see FileEditorHandle.ensureChatAssetId). */
+  onChatAssetIdFromDisk?: (path: string, chatAssetId: string) => void
+  handleRef?: Ref<FileEditorHandle>
+}
+
+export type FileEditorLoader = () => Promise<{ default: ComponentType<FileEditorProps> }>
+
+export interface FileTypeLayout {
+  /** Show the host's right column (chat, and optionally outline + backlinks). */
+  rightColumn?: {
+    storageKey: string
+    defaultRightPx: number
+    minRightPx: number
+    outline?: boolean
+    backlinks?: boolean
+  }
+  /**
+   * Where per-document chat finds its asset id: `editor` asks the editor handle
+   * (id lives in the file), `index` uses the path-keyed chat index.
+   */
+  chat?: 'editor' | 'index'
+  /** Responsive behaviour: `canvas` and `wide` editors collapse surrounding chrome sooner. */
+  narrow?: 'canvas' | 'wide'
+}
+
 export interface FileTypeDefinition {
   /** Stable id. Stored in editor tabs; used as the key everywhere else. */
   id: string
@@ -37,6 +88,9 @@ export interface FileTypeDefinition {
    * frontmatter says it is a kanban board). Only consulted by `detect`.
    */
   claims?: FileTypeClaim
+  /** Lazily loaded editor/viewer. Loaded only when a file of this type opens. */
+  editor?: FileEditorLoader
+  layout?: FileTypeLayout
 }
 
 export interface FileTypeRegistry {

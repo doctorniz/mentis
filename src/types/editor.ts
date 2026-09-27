@@ -50,19 +50,8 @@ export interface SlashCommand {
 export interface EditorTab {
   id: string
   path: string
-  type:
-    | 'markdown'
-    | 'pdf'
-    | 'canvas'
-    | 'mindmap'
-    | 'image'
-    | 'video'
-    | 'audio'
-    | 'kanban'
-    | 'code'
-    | 'docx'
-    | 'pptx'
-    | 'spreadsheet'
+  /** File-type registry id (see `@/core/registries`). */
+  type: string
   title: string
   isDirty: boolean
   /** When true, notes editor shows full-file markdown source (incl. frontmatter). */

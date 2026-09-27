@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Editor as TiptapEditor } from '@tiptap/core'
 import { FileText, GitFork, Search, Vault } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
@@ -9,37 +9,22 @@ import { NotesWorkspaceProvider, useNotesWorkspace } from '@/contexts/notes-work
 import { NotesFileTree } from '@/components/notes/notes-file-tree'
 import { VaultLeftSearch } from '@/components/notes/vault-left-search'
 import { EditorTabBar } from '@/components/notes/editor-tab-bar'
-import {
-  MarkdownNoteEditor,
-  type MarkdownNoteEditorHandle,
-} from '@/components/notes/markdown-note-editor'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { EditorRightColumn } from '@/components/notes/editor-right-column'
 import { BacklinksSection } from '@/components/notes/backlinks-section'
 import { OutlineSection } from '@/components/notes/outline-section'
 import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import { ensureChatAssetIdForPath, movePdfChatAssetId } from '@/lib/chat/asset-index'
-import { PdfViewer } from '@/components/pdf/pdf-viewer'
-import { CanvasEditor } from '@/components/canvas/canvas-editor'
-import { KanbanEditor } from '@/components/kanban/kanban-editor'
-import { MindmapEditor } from '@/components/mindmap/mindmap-editor'
+import { fileTypes } from '@/core/registries'
+import type { FileEditorHandle } from '@/core/registries/file-types'
+import { lazyEditorFor, preloadEditor } from '@/core/registries/lazy-editor'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
 import { ViewMode } from '@/types/vault'
 import { Button } from '@/components/ui/button'
-import { InlineFileTitle } from '@/components/shell/inline-file-title'
-import { ImageEditorView } from '@/components/notes/image-editor-view'
-import { CodeFileEditor } from '@/components/notes/code-file-editor'
-import { DocxEditorView } from '@/components/notes/docx-editor'
-import { SpreadsheetEditor } from '@/components/notes/spreadsheet-editor'
-import { PptxEditorView } from '@/components/pptx/pptx-editor'
-import { PptxCompactViewer } from '@/components/pptx/pptx-compact-viewer'
-import { VideoPlayerView } from '@/components/notes/video-player-view'
-import { AudioPlayerView } from '@/components/notes/audio-player-view'
 import {
   MOBILE_NAV_MEDIA_QUERY,
-  PPTX_COMPACT_MEDIA_QUERY,
   WIDE_EDITOR_MEDIA_QUERY,
   CANVAS_TREE_MEDIA_QUERY,
   CANVAS_SIDEBAR_MEDIA_QUERY,
@@ -62,93 +47,6 @@ function stemFromVaultPath(path: string): string {
 
 function starredStorageKey(vaultPath: string) {
   return `ink-marrow:starred:${vaultPath}`
-}
-
-function imageExtFromPath(path: string): string {
-  const n = path.split('/').pop() ?? path
-  const i = n.lastIndexOf('.')
-  return i >= 0 ? n.slice(i) : ''
-}
-
-function ImagePreviewTabPane({
-  tabId,
-  path,
-  onRename,
-}: {
-  tabId: string
-  path: string
-  onRename: (tabId: string, oldPath: string, stem: string, ext: string) => void
-}) {
-  const { vaultFs } = useVaultSession()
-  const ext = imageExtFromPath(path)
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
-        <InlineFileTitle
-          path={path}
-          onRename={(oldPath, newStem) => void onRename(tabId, oldPath, newStem, ext)}
-        />
-      </div>
-      <div className="bg-bg flex min-h-0 flex-1 flex-col overflow-hidden p-3">
-        <ImageEditorView vaultFs={vaultFs} path={path} title={titleFromVaultPath(path)} />
-      </div>
-    </div>
-  )
-}
-
-function VideoPreviewTabPane({
-  tabId,
-  path,
-  onRename,
-}: {
-  tabId: string
-  path: string
-  onRename: (tabId: string, oldPath: string, stem: string, ext: string) => void
-}) {
-  const { vaultFs } = useVaultSession()
-  const ext = imageExtFromPath(path)
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
-        <InlineFileTitle
-          path={path}
-          onRename={(oldPath, newStem) => void onRename(tabId, oldPath, newStem, ext)}
-        />
-      </div>
-      <div className="bg-bg flex min-h-0 flex-1 flex-col overflow-hidden">
-        <VideoPlayerView vaultFs={vaultFs} path={path} title={titleFromVaultPath(path)} />
-      </div>
-    </div>
-  )
-}
-
-function AudioPreviewTabPane({
-  tabId,
-  path,
-  onRename,
-}: {
-  tabId: string
-  path: string
-  onRename: (tabId: string, oldPath: string, stem: string, ext: string) => void
-}) {
-  const { vaultFs } = useVaultSession()
-  const ext = imageExtFromPath(path)
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
-        <InlineFileTitle
-          path={path}
-          onRename={(oldPath, newStem) => void onRename(tabId, oldPath, newStem, ext)}
-        />
-      </div>
-      <div className="bg-bg flex min-h-0 flex-1 flex-col overflow-hidden">
-        <AudioPlayerView vaultFs={vaultFs} path={path} title={titleFromVaultPath(path)} />
-      </div>
-    </div>
-  )
 }
 
 export function NotesView() {
@@ -178,6 +76,23 @@ function NotesViewInner() {
   const setActiveView = useUiStore((s) => s.setActiveView)
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
+  // Unknown ids open as markdown, as unknown files always have.
+  const activeDef = activeTab
+    ? (fileTypes.get(activeTab.type) ?? fileTypes.get('markdown'))
+    : undefined
+
+  // Most tabs are notes: fetch the markdown editor while the vault settles so
+  // the first open doesn't wait on the chunk.
+  useEffect(() => {
+    const idle =
+      typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback(() => preloadEditor('markdown'))
+        : window.setTimeout(() => preloadEditor('markdown'), 200)
+    return () => {
+      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idle)
+      else window.clearTimeout(idle)
+    }
+  }, [])
 
   const starredList = useMemo(() => starredPaths, [starredPaths])
 
@@ -306,7 +221,7 @@ function NotesViewInner() {
 
   // Live editor of the active markdown tab, reported by MarkdownNoteEditor
   // so the outline panel can read headings without a save round-trip.
-  const [activeMarkdownEditor, setActiveMarkdownEditor] = useState<TiptapEditor | null>(null)
+  const [activeEditorInstance, setActiveEditorInstance] = useState<unknown>(null)
 
   // Chat collapsed state — collapsed = just a header bar at the bottom.
   const CHAT_COLLAPSED_KEY = 'ink-marrow:chat-collapsed'
@@ -350,7 +265,7 @@ function NotesViewInner() {
   // frontmatter via `MarkdownNoteEditor.ensureChatAssetId`; PDFs use
   // `_marrow/_chats/index.json`. The asset id is resolved eagerly
   // whenever the active tab changes so chat is ready without a toggle.
-  const markdownEditorRef = useRef<MarkdownNoteEditorHandle | null>(null)
+  const editorHandleRef = useRef<FileEditorHandle | null>(null)
   const [chatAssetIdByPath, setChatAssetIdByPath] = useState<Record<string, string>>({})
 
   const onMarkdownChatAssetIdFromDisk = useCallback((notePath: string, chatAssetId: string) => {
@@ -361,10 +276,10 @@ function NotesViewInner() {
 
   // Auto-ensure chatAssetId for the active markdown tab.
   useEffect(() => {
-    if (!activeTab || activeTab.type !== 'markdown') return
+    if (!activeTab || activeDef?.layout?.chat !== 'editor') return
     // Wait a tick for the editor ref to be set by the MarkdownNoteEditor mount.
     const timer = setTimeout(() => {
-      const id = markdownEditorRef.current?.ensureChatAssetId()
+      const id = editorHandleRef.current?.ensureChatAssetId?.()
       if (id) {
         setChatAssetIdByPath((m) => (m[activeTab.path] === id ? m : { ...m, [activeTab.path]: id }))
       }
@@ -377,7 +292,7 @@ function NotesViewInner() {
 
   // Auto-ensure chatAssetId for the active PDF tab.
   useEffect(() => {
-    if (!activeTab || activeTab.type !== 'pdf') return
+    if (!activeTab || activeDef?.layout?.chat !== 'index') return
     if (chatAssetIdByPath[activeTab.path]) return
     void ensureChatAssetIdForPath(vaultFs, activeTab.path)
       .then((id) => {
@@ -392,13 +307,11 @@ function NotesViewInner() {
   }, [activeTab?.path, activeTab?.type, vaultFs])
 
   const isMobileTree = useMediaQuery(MOBILE_NAV_MEDIA_QUERY)
-  const isPptxCompact = useMediaQuery(PPTX_COMPACT_MEDIA_QUERY)
   const isWideEditorNarrow = useMediaQuery(WIDE_EDITOR_MEDIA_QUERY)
   const isCanvasTreeNarrow = useMediaQuery(CANVAS_TREE_MEDIA_QUERY)
   const isCanvasSidebarNarrow = useMediaQuery(CANVAS_SIDEBAR_MEDIA_QUERY)
-  const isCanvasTab = activeTab?.type === 'canvas'
-  const isWideEditorTab =
-    activeTab?.type === 'pptx' || activeTab?.type === 'docx' || activeTab?.type === 'spreadsheet'
+  const isCanvasTab = activeDef?.layout?.narrow === 'canvas'
+  const isWideEditorTab = activeDef?.layout?.narrow === 'wide'
 
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const isSidebarOpen = useUiStore((s) => s.isSidebarOpen)
@@ -517,6 +430,31 @@ function NotesViewInner() {
     },
   }
 
+  const ActiveEditor = activeDef ? lazyEditorFor(activeDef) : undefined
+  const editorElement =
+    activeTab && ActiveEditor ? (
+      // Blank while a type's chunk loads for the first time — no spinner text,
+      // so a fast load shows nothing at all.
+      <Suspense fallback={<div className="min-h-0 flex-1" />}>
+        <ActiveEditor
+          key={activeTab.id}
+          tabId={activeTab.id}
+          path={activeTab.path}
+          isNew={activeTab.isNew}
+          refreshTree={vaultChanged}
+          notifySaved={bumpScan}
+          renameFile={(tabId, oldPath, stem, ext) =>
+            void handleRenameVaultFile(tabId, oldPath, stem, ext)
+          }
+          openFile={openNotePath}
+          linkTargets={markdownPaths}
+          onEditorReady={setActiveEditorInstance}
+          onChatAssetIdFromDisk={onMarkdownChatAssetIdFromDisk}
+          handleRef={editorHandleRef}
+        />
+      </Suspense>
+    ) : null
+
   return (
     <div className="relative flex h-full min-h-0 w-full">
       {!notesTreeExpanded && (
@@ -601,185 +539,66 @@ function NotesViewInner() {
 
       <div className="bg-bg flex min-h-0 min-w-0 flex-1 flex-col">
         <EditorTabBar />
-        {activeTab?.type === 'markdown' ? (
-          <div className="relative flex min-h-0 flex-1">
-            <EditorRightColumn
-              storageKey="ink-marrow:right-panel-width:md"
-              defaultRightPx={360}
-              minRightPx={240}
-              maxRightRatio={0.6}
-              columnCollapsed={columnCollapsed}
-              onColumnCollapsedChange={setColumnCollapsed}
-              chat={
-                chatAssetIdByPath[activeTab.path] ? (
-                  <ChatPanel
-                    chatAssetId={chatAssetIdByPath[activeTab.path]}
-                    documentPath={activeTab.path}
-                    collapsed={chatCollapsed}
-                    onCollapsedChange={setChatCollapsed}
-                  />
-                ) : null
-              }
-              trailing={
-                <>
-                  <OutlineSection
-                    editor={activeMarkdownEditor}
-                    collapsed={outlineCollapsed}
-                    onCollapsedChange={setOutlineCollapsed}
-                    maxExpandedHeightClass={
-                      chatCollapsed && backlinksCollapsed ? 'flex-1' : 'max-h-[35%]'
-                    }
-                  />
-                  <BacklinksSection
-                    vaultFs={vaultFs}
-                    markdownPaths={markdownPaths}
-                    activeNotePath={activeTab.path}
-                    scanPulse={scanPulse}
-                    onOpenNote={openNotePath}
-                    collapsed={backlinksCollapsed}
-                    onCollapsedChange={setBacklinksCollapsed}
-                    maxExpandedHeightClass={
-                      chatCollapsed && outlineCollapsed ? 'flex-1' : 'max-h-[40%]'
-                    }
-                  />
-                </>
-              }
-            >
-              <MarkdownNoteEditor
-                key={activeTab.id}
-                ref={markdownEditorRef}
-                tabId={activeTab.id}
-                path={activeTab.path}
-                markdownPaths={markdownPaths}
-                onOpenNotePath={openNotePath}
-                onPersisted={bumpScan}
-                onRenamed={vaultChanged}
-                onChatAssetIdFromDisk={onMarkdownChatAssetIdFromDisk}
-                onEditorReady={setActiveMarkdownEditor}
-              />
-            </EditorRightColumn>
-          </div>
-        ) : activeTab?.type === 'kanban' ? (
-          <div key={activeTab.id} className="min-h-0 flex-1">
-            <KanbanEditor
-              tabId={activeTab.id}
-              path={activeTab.path}
-              isNew={activeTab.isNew}
-              onRenamed={vaultChanged}
-              onPersisted={bumpScan}
-            />
-          </div>
-        ) : activeTab?.type === 'mindmap' ? (
-          <div key={activeTab.id} className="min-h-0 flex-1">
-            <MindmapEditor
-              tabId={activeTab.id}
-              path={activeTab.path}
-              isNew={activeTab.isNew}
-              onRenamed={vaultChanged}
-              onPersisted={bumpScan}
-              onRename={(tabId, oldPath, stem, ext) =>
-                void handleRenameVaultFile(tabId, oldPath, stem, ext)
-              }
-            />
-          </div>
-        ) : activeTab?.type === 'pdf' ? (
-          <div key={activeTab.id} className="relative flex min-h-0 flex-1">
-            <EditorRightColumn
-              storageKey="ink-marrow:right-panel-width:pdf"
-              defaultRightPx={420}
-              minRightPx={300}
-              maxRightRatio={0.6}
-              columnCollapsed={columnCollapsed}
-              onColumnCollapsedChange={setColumnCollapsed}
-              chat={
-                chatAssetIdByPath[activeTab.path] ? (
-                  <ChatPanel
-                    chatAssetId={chatAssetIdByPath[activeTab.path]}
-                    documentPath={activeTab.path}
-                    collapsed={chatCollapsed}
-                    onCollapsedChange={setChatCollapsed}
-                  />
-                ) : null
-              }
-            >
-              <PdfViewer path={activeTab.path} />
-            </EditorRightColumn>
-          </div>
-        ) : activeTab?.type === 'canvas' ? (
-          <div key={activeTab.id} className="min-h-0 flex-1">
-            <CanvasEditor
-              tabId={activeTab.id}
-              path={activeTab.path}
-              isNew={activeTab.isNew}
-              onRenamed={vaultChanged}
-              onPersisted={bumpScan}
-              onRename={(tabId, oldPath, stem, ext) =>
-                void handleRenameVaultFile(tabId, oldPath, stem, ext)
-              }
-            />
-          </div>
-        ) : activeTab?.type === 'image' ? (
-          <ImagePreviewTabPane
-            key={activeTab.id}
-            tabId={activeTab.id}
-            path={activeTab.path}
-            onRename={(tabId, oldPath, stem, ext) =>
-              void handleRenameVaultFile(tabId, oldPath, stem, ext)
-            }
-          />
-        ) : activeTab?.type === 'video' ? (
-          <VideoPreviewTabPane
-            key={activeTab.id}
-            tabId={activeTab.id}
-            path={activeTab.path}
-            onRename={(tabId, oldPath, stem, ext) =>
-              void handleRenameVaultFile(tabId, oldPath, stem, ext)
-            }
-          />
-        ) : activeTab?.type === 'audio' ? (
-          <AudioPreviewTabPane
-            key={activeTab.id}
-            tabId={activeTab.id}
-            path={activeTab.path}
-            onRename={(tabId, oldPath, stem, ext) =>
-              void handleRenameVaultFile(tabId, oldPath, stem, ext)
-            }
-          />
-        ) : activeTab?.type === 'code' ? (
-          <CodeFileEditor
-            key={activeTab.id}
-            tabId={activeTab.id}
-            path={activeTab.path}
-            onRenamed={vaultChanged}
-          />
-        ) : activeTab?.type === 'docx' ? (
-          <DocxEditorView
-            key={activeTab.id}
-            tabId={activeTab.id}
-            path={activeTab.path}
-            onRenamed={vaultChanged}
-            onPersisted={vaultChanged}
-          />
-        ) : activeTab?.type === 'pptx' ? (
-          isPptxCompact ? (
-            <PptxCompactViewer key={`${activeTab.id}-compact`} path={activeTab.path} />
+        {activeTab && activeDef && ActiveEditor ? (
+          activeDef.layout?.rightColumn ? (
+            // Keyed by type, not tab: switching between two tabs of the same type
+            // keeps the column (and its chat panel) mounted; only the editor below
+            // remounts. Switching type remounts, so the width storage key is re-read.
+            <div key={`column:${activeDef.id}`} className="relative flex min-h-0 flex-1">
+              <EditorRightColumn
+                storageKey={activeDef.layout.rightColumn.storageKey}
+                defaultRightPx={activeDef.layout.rightColumn.defaultRightPx}
+                minRightPx={activeDef.layout.rightColumn.minRightPx}
+                maxRightRatio={0.6}
+                columnCollapsed={columnCollapsed}
+                onColumnCollapsedChange={setColumnCollapsed}
+                chat={
+                  chatAssetIdByPath[activeTab.path] ? (
+                    <ChatPanel
+                      chatAssetId={chatAssetIdByPath[activeTab.path]}
+                      documentPath={activeTab.path}
+                      collapsed={chatCollapsed}
+                      onCollapsedChange={setChatCollapsed}
+                    />
+                  ) : null
+                }
+                trailing={
+                  activeDef.layout.rightColumn.outline || activeDef.layout.rightColumn.backlinks ? (
+                    <>
+                      {activeDef.layout.rightColumn.outline && (
+                        <OutlineSection
+                          editor={activeEditorInstance as TiptapEditor | null}
+                          collapsed={outlineCollapsed}
+                          onCollapsedChange={setOutlineCollapsed}
+                          maxExpandedHeightClass={
+                            chatCollapsed && backlinksCollapsed ? 'flex-1' : 'max-h-[35%]'
+                          }
+                        />
+                      )}
+                      {activeDef.layout.rightColumn.backlinks && (
+                        <BacklinksSection
+                          vaultFs={vaultFs}
+                          markdownPaths={markdownPaths}
+                          activeNotePath={activeTab.path}
+                          scanPulse={scanPulse}
+                          onOpenNote={openNotePath}
+                          collapsed={backlinksCollapsed}
+                          onCollapsedChange={setBacklinksCollapsed}
+                          maxExpandedHeightClass={
+                            chatCollapsed && outlineCollapsed ? 'flex-1' : 'max-h-[40%]'
+                          }
+                        />
+                      )}
+                    </>
+                  ) : undefined
+                }
+              >
+                {editorElement}
+              </EditorRightColumn>
+            </div>
           ) : (
-            <PptxEditorView
-              key={activeTab.id}
-              tabId={activeTab.id}
-              path={activeTab.path}
-              onRenamed={vaultChanged}
-              onPersisted={bumpScan}
-            />
+            editorElement
           )
-        ) : activeTab?.type === 'spreadsheet' ? (
-          <SpreadsheetEditor
-            key={activeTab.id}
-            tabId={activeTab.id}
-            path={activeTab.path}
-            onRenamed={vaultChanged}
-            onPersisted={bumpScan}
-          />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-5 px-8">
             <div className="bg-bg-tertiary flex size-16 items-center justify-center rounded-2xl">
