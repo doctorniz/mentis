@@ -1,0 +1,123 @@
+/**
+ * File-type registry.
+ *
+ * Every file type the app understands is described by one `FileTypeDefinition`,
+ * contributed by a module under `src/modules/<type>/register.ts`. Consumers ask
+ * the registry instead of switching on extensions, so adding a type means adding
+ * a module and nothing else.
+ *
+ * Registrations are loaded eagerly, so a definition must stay cheap: metadata plus
+ * `() => import(...)` loaders. Anything heavy (editors, parsers, extractors) lives
+ * behind those loaders.
+ */
+
+export interface FileTypeClaim {
+  /** Id of the type whose files this type may take over after a content check. */
+  baseType: string
+  /** Returns true when `text` (the file's full contents) belongs to this type. */
+  test: (text: string) => boolean
+}
+
+export interface FileTypeDefinition {
+  /** Stable id. Stored in editor tabs; used as the key everywhere else. */
+  id: string
+  /** Human-readable name, e.g. "Spreadsheet". */
+  label: string
+  /**
+   * Lower-case filename suffixes including the leading dot, e.g. `.slides.md`.
+   * Compound suffixes are fine — the longest match wins.
+   */
+  suffixes: readonly string[]
+  /**
+   * Content-based takeover of another type's files (e.g. a markdown file whose
+   * frontmatter says it is a kanban board). Only consulted by `detect`.
+   */
+  claims?: FileTypeClaim
+}
+
+export interface FileTypeRegistry {
+  /** All definitions, in registration order. */
+  all(): readonly FileTypeDefinition[]
+  /** Definition by id, or undefined. */
+  get(id: string): FileTypeDefinition | undefined
+  /**
+   * Resolve by filename alone. Checks compound suffixes before shorter ones, so
+   * `deck.slides.md` resolves to the `.slides.md` type rather than `.md`.
+   * Returns undefined for unknown files.
+   */
+  resolve(path: string): FileTypeDefinition | undefined
+  /**
+   * `resolve`, then — only if some other type claims files of the resolved type —
+   * read the contents and let the claim decide.
+   */
+  detect(
+    path: string,
+    readText: (path: string) => Promise<string>,
+  ): Promise<FileTypeDefinition | undefined>
+}
+
+function basename(path: string): string {
+  const i = path.lastIndexOf('/')
+  return (i >= 0 ? path.slice(i + 1) : path).toLowerCase()
+}
+
+export function createFileTypeRegistry(
+  definitions: readonly FileTypeDefinition[],
+): FileTypeRegistry {
+  const byId = new Map<string, FileTypeDefinition>()
+  const bySuffix = new Map<string, FileTypeDefinition>()
+
+  for (const def of definitions) {
+    if (byId.has(def.id)) throw new Error(`File type "${def.id}" is registered twice`)
+    byId.set(def.id, def)
+    for (const raw of def.suffixes) {
+      const suffix = raw.toLowerCase()
+      if (!suffix.startsWith('.')) {
+        throw new Error(`File type "${def.id}": suffix "${raw}" must start with "."`)
+      }
+      const owner = bySuffix.get(suffix)
+      if (owner) {
+        throw new Error(`Suffix "${suffix}" is claimed by both "${owner.id}" and "${def.id}"`)
+      }
+      bySuffix.set(suffix, def)
+    }
+  }
+
+  // Longest first, so compound suffixes are checked before their last segment.
+  const suffixes = [...bySuffix.keys()].sort((a, b) => b.length - a.length)
+
+  function resolve(path: string): FileTypeDefinition | undefined {
+    const name = basename(path)
+    for (const suffix of suffixes) {
+      if (name.endsWith(suffix)) return bySuffix.get(suffix)
+    }
+    // A dot-less name equal to an extension ("md", "pdf") resolved to that type
+    // under the old `split('.').pop()` lookup. Kept for parity.
+    if (!name.includes('.')) return bySuffix.get(`.${name}`)
+    return undefined
+  }
+
+  async function detect(
+    path: string,
+    readText: (path: string) => Promise<string>,
+  ): Promise<FileTypeDefinition | undefined> {
+    const base = resolve(path)
+    if (!base) return undefined
+    const claimants = definitions.filter((d) => d.claims?.baseType === base.id)
+    if (claimants.length === 0) return base
+    let text: string
+    try {
+      text = await readText(path)
+    } catch {
+      return base
+    }
+    return claimants.find((d) => d.claims!.test(text)) ?? base
+  }
+
+  return {
+    all: () => definitions,
+    get: (id) => byId.get(id),
+    resolve,
+    detect,
+  }
+}

@@ -204,9 +204,7 @@ export function SpreadsheetEditor({
 
         // Import CSS
         await Promise.all([
-          // @ts-expect-error CSS module import
           import('jspreadsheet-ce/dist/jspreadsheet.css'),
-          // @ts-expect-error CSS module import
           import('jsuites/dist/jsuites.css'),
         ]).catch(() => {
           // CSS imports may fail in some bundler configs; jspreadsheet
