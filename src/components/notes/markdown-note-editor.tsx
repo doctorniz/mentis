@@ -40,25 +40,8 @@ import { MarkdownSourceEditor } from '@/components/notes/markdown-source-editor'
 import { TableControlsMenu } from '@/components/notes/table-controls-menu'
 import { FindReplaceBar } from '@/components/notes/find-replace-bar'
 import { countWords } from '@/lib/notes/word-count'
+import { pendingMarkdownSaves } from '@/lib/notes/pending-saves'
 import { useSyncPush } from '@/contexts/sync-context'
-
-/**
- * Tracks the in-flight unmount-save flush per vault path so the next mount
- * of the same path can await it before reading the file from disk — the
- * same race the canvas editor guards against with `pendingCanvasSaves`.
- * Without this, closing a tab and immediately reopening the same note can
- * read stale bytes and overwrite the edit that was still being written.
- */
-const pendingMarkdownSaves = new Map<string, Promise<void>>()
-
-/**
- * Await the in-flight unmount flush-save for `path`, if any. Deleting an
- * open note must close its tab first and then wait here — otherwise the
- * unmount save runs after the delete and resurrects the file from memory.
- */
-export function awaitPendingMarkdownSave(path: string): Promise<void> {
-  return pendingMarkdownSaves.get(path) ?? Promise.resolve()
-}
 
 /** Flatten a FileEntry tree into vault-relative paths (files only, no dirs) */
 function flattenFilePaths(entry: FileEntry | null, depth = 0): string[] {

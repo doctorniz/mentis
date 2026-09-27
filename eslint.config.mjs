@@ -87,4 +87,47 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
+
+  {
+    // CLAUDE.md principle 4: no feature reaches into another feature's
+    // internals. A module may use core, shared lib and shared UI, and its own
+    // files (relative imports) — never another module.
+    files: ['src/modules/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/modules/*'],
+              message: 'Modules may not import other modules. Go through @/core instead.',
+            },
+            {
+              group: ['../*/**'],
+              message: 'Modules may not import other modules. Go through @/core instead.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    // Core is the layer modules build on; it must not depend on them or on UI.
+    // (Modules are discovered with import.meta.glob, not imported.)
+    files: ['src/core/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/modules/*', '@/components/*'],
+              message: 'Core must not depend on modules or UI components.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 )

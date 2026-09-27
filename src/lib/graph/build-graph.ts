@@ -1,17 +1,9 @@
 import type { FileSystemAdapter } from '@/lib/fs'
 import { extractWikiLinks, resolveWikiLinkPath } from '@/lib/markdown'
-import { getFileType, FileType } from '@/types/files'
+import { fileTypeIdOf, titleForPath } from '@/core/registries'
 
-export type GraphNodeType =
-  | 'note'
-  | 'pdf'
-  | 'canvas'
-  | 'mindmap'
-  | 'kanban'
-  | 'pptx'
-  | 'docx'
-  | 'spreadsheet'
-  | 'code'
+/** File-type registry id of the node's file (see `@/core/registries`). */
+export type GraphNodeType = string
 
 export interface GraphNode {
   id: string
@@ -37,16 +29,7 @@ export interface GraphData {
 }
 
 function titleFromPath(p: string): string {
-  const name = p.split('/').pop() ?? p
-  const ft = getFileType(name)
-  // Keep extension visible for code files (same as editor-tab-from-path)
-  if (ft === FileType.Code) return name
-  return (
-    p
-      .replace(/\.[^/.]+$/i, '')
-      .split('/')
-      .pop() ?? p
-  )
+  return titleForPath(p)
 }
 
 function folderFromPath(p: string): string {
@@ -55,27 +38,7 @@ function folderFromPath(p: string): string {
 }
 
 function typeFromPath(p: string): GraphNodeType {
-  const name = p.split('/').pop() ?? p
-  switch (getFileType(name)) {
-    case FileType.Pdf:
-      return 'pdf'
-    case FileType.Canvas:
-      return 'canvas'
-    case FileType.Mindmap:
-      return 'mindmap'
-    case FileType.Kanban:
-      return 'kanban'
-    case FileType.Pptx:
-      return 'pptx'
-    case FileType.Docx:
-      return 'docx'
-    case FileType.Spreadsheet:
-      return 'spreadsheet'
-    case FileType.Code:
-      return 'code'
-    default:
-      return 'note'
-  }
+  return fileTypeIdOf(p)
 }
 
 /**

@@ -1,14 +1,5 @@
-/** Every file type the search index can hold. */
-export type SearchDocFileType =
-  | 'markdown'
-  | 'pdf'
-  | 'canvas'
-  | 'mindmap'
-  | 'kanban'
-  | 'pptx'
-  | 'spreadsheet'
-  | 'docx'
-  | 'code'
+/** File-type registry id of an indexed document (types that declare search support). */
+export type SearchDocFileType = string
 
 export interface SearchResult {
   id: string

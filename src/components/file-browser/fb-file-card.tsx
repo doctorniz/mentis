@@ -1,18 +1,10 @@
 'use client'
 
 import { forwardRef, useEffect, useRef, useState, type ComponentPropsWithoutRef } from 'react'
-import {
-  File,
-  FileText,
-  FileType as FileTypeIcon,
-  ImageIcon,
-  LayoutGrid,
-  Table2,
-} from 'lucide-react'
+import { File } from 'lucide-react'
 import type { FbFileItem } from '@/types/file-browser'
 import type { FileSystemAdapter } from '@/lib/fs'
-import { getImageThumbnail } from '@/lib/file-browser/image-thumbnail'
-import { getPdfThumbnail } from '@/lib/pdf/thumbnail'
+import { fileTypes } from '@/core/registries'
 import { cn } from '@/utils/cn'
 
 export const FB_DND_TYPE = 'application/x-ink-fb-path'
@@ -48,10 +40,6 @@ function FolderSvg({ className }: { className?: string }) {
   )
 }
 
-function GridIcon({ className }: { className?: string }) {
-  return <LayoutGrid className={className} aria-hidden />
-}
-
 function FileCardIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string | null }) {
   if (item.isDirectory) {
     return (
@@ -61,60 +49,35 @@ function FileCardIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string |
     )
   }
 
-  if (item.type === 'pdf' && thumbUrl) {
+  const def = fileTypes.get(item.type)
+  if (def?.thumbnail && thumbUrl) {
     return (
-      <div className="flex h-14 w-[42px] items-center justify-center overflow-hidden rounded shadow-sm ring-1 ring-black/10">
+      <div
+        className={cn(
+          'flex items-center justify-center overflow-hidden',
+          def.thumbnail.gridFrameClass,
+        )}
+      >
         <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
       </div>
     )
   }
 
-  if (item.type === 'image' && thumbUrl) {
+  const browser = def?.appearance.browser
+  if (browser) {
+    const Icon = browser.icon
     return (
-      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg shadow-sm ring-1 ring-black/10 dark:ring-white/10">
-        <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
+      <div className={cn('flex h-14 w-14 items-center justify-center rounded-xl', browser.bgClass)}>
+        <Icon className={cn('size-8', browser.iconClass)} aria-hidden />
       </div>
     )
   }
 
-  switch (item.type) {
-    case 'pdf':
-      return (
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/40">
-          <FileTypeIcon className="size-8 text-red-500" />
-        </div>
-      )
-    case 'markdown':
-      return (
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/40">
-          <FileText className="size-8 text-blue-500" />
-        </div>
-      )
-    case 'canvas':
-      return (
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40">
-          <GridIcon className="size-8 text-violet-500" />
-        </div>
-      )
-    case 'image':
-      return (
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40">
-          <ImageIcon className="size-8 text-emerald-500" />
-        </div>
-      )
-    case 'spreadsheet':
-      return (
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-green-50 dark:bg-green-950/40">
-          <Table2 className="size-8 text-green-500" />
-        </div>
-      )
-    default:
-      return (
-        <div className="bg-bg-secondary flex h-14 w-14 items-center justify-center rounded-xl">
-          <File className="text-fg-muted size-8" />
-        </div>
-      )
-  }
+  return (
+    <div className="bg-bg-secondary flex h-14 w-14 items-center justify-center rounded-xl">
+      <File className="text-fg-muted size-8" />
+    </div>
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -184,12 +147,15 @@ export const FbFileCard = forwardRef<HTMLDivElement, FbFileCardProps>(function F
 
   useEffect(() => {
     if (item.isDirectory) return
-    if (item.type !== 'pdf' && item.type !== 'image') return
+    const thumbnail = fileTypes.get(item.type)?.thumbnail
+    if (!thumbnail) return
     let cancel = false
-    const loader = item.type === 'pdf' ? getPdfThumbnail : getImageThumbnail
-    void loader(vaultFs, item.path).then((url) => {
-      if (!cancel) setThumbUrl(url)
-    })
+    void thumbnail
+      .load()
+      .then((m) => m.default(vaultFs, item.path))
+      .then((url) => {
+        if (!cancel) setThumbUrl(url)
+      })
     return () => {
       cancel = true
     }
@@ -345,25 +311,20 @@ function FileRowIcon({ item, thumbUrl }: { item: FbFileItem; thumbUrl: string | 
   if (item.isDirectory) {
     return <FolderSvg className="h-4 w-5 shrink-0 text-amber-400 dark:text-amber-300" />
   }
-  if (item.type === 'image' && thumbUrl) {
+  const def = fileTypes.get(item.type)
+  if (def?.thumbnail?.inList && thumbUrl) {
     return (
       <div className="size-5 shrink-0 overflow-hidden rounded ring-1 ring-black/10 dark:ring-white/10">
         <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
       </div>
     )
   }
-  switch (item.type) {
-    case 'pdf':
-      return <FileTypeIcon className="size-4 shrink-0 text-red-500" />
-    case 'markdown':
-      return <FileText className="size-4 shrink-0 text-blue-500" />
-    case 'canvas':
-      return <GridIcon className="size-4 shrink-0 text-violet-500" />
-    case 'image':
-      return <ImageIcon className="size-4 shrink-0 text-emerald-500" />
-    default:
-      return <File className="text-fg-muted size-4 shrink-0" />
+  const browser = def?.appearance.browser
+  if (browser && browser.inList !== false) {
+    const Icon = browser.icon
+    return <Icon className={cn('size-4 shrink-0', browser.iconClass)} aria-hidden />
   }
+  return <File className="text-fg-muted size-4 shrink-0" />
 }
 
 type FbFileRowOwnProps = {
@@ -411,11 +372,16 @@ export const FbFileRow = forwardRef<HTMLDivElement, FbFileRowProps>(function FbF
   const renameTimerRef = useRef<number>(0)
 
   useEffect(() => {
-    if (item.type !== 'image' || item.isDirectory) return
+    if (item.isDirectory) return
+    const thumbnail = fileTypes.get(item.type)?.thumbnail
+    if (!thumbnail?.inList) return
     let cancel = false
-    void getImageThumbnail(vaultFs, item.path).then((url) => {
-      if (!cancel) setThumbUrl(url)
-    })
+    void thumbnail
+      .load()
+      .then((m) => m.default(vaultFs, item.path))
+      .then((url) => {
+        if (!cancel) setThumbUrl(url)
+      })
     return () => {
       cancel = true
     }

@@ -1,5 +1,10 @@
-import { fileTypes } from '@/core/registries'
+import { fileTypeIdOf } from '@/core/registries'
 
+/**
+ * Ids of the built-in file types, for readable comparisons. Not exhaustive: the
+ * file-type registry (`@/core/registries`) is the source of truth, and a module
+ * can add ids that are not listed here.
+ */
 export enum FileType {
   Markdown = 'markdown',
   Pdf = 'pdf',
@@ -19,7 +24,8 @@ export enum FileType {
 export interface FileEntry {
   name: string
   path: string
-  type: FileType
+  /** File-type registry id, or 'other' (directories are 'other'). */
+  type: string
   isDirectory: boolean
   size?: number
   createdAt?: string
@@ -38,12 +44,9 @@ export interface FileMoveOperation {
   destinationPath: string
 }
 
-/**
- * Transitional shim: answers through the file-type registry. FileType values are
- * the registry ids. Callers move to `fileTypes` from `@/core/registries` directly.
- */
-export function getFileType(filename: string): FileType {
-  return (fileTypes.resolve(filename)?.id as FileType | undefined) ?? FileType.Other
+/** Registry id for a file name, or 'other'. */
+export function getFileType(filename: string): string {
+  return fileTypeIdOf(filename)
 }
 
 export function isHiddenPath(path: string): boolean {

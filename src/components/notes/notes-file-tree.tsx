@@ -7,37 +7,27 @@ import { toast } from '@/stores/toast'
 import {
   ChevronRight,
   ChevronDown,
-  Columns3,
   ExternalLink,
-  FileCode2,
   FileText,
-  FileType2,
-  Film,
   Folder,
   FolderPlus,
-  GitBranch,
-  Image as ImageIcon,
   GitFork,
-  Layout,
-  Music,
   PanelLeftClose,
-  Presentation,
   Pencil,
   Plus,
   Search,
   Star,
-  Table2,
   Trash2,
 } from 'lucide-react'
 import type { FileSystemAdapter } from '@/lib/fs'
-import { FileType } from '@/types/files'
+import { fileTypes } from '@/core/registries'
 import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
 import type { FileEntry } from '@/types/files'
 import { isNotesTreeEntry, sortTreeEntries } from '@/lib/notes/tree-filter'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { createUntitledNote } from '@/lib/notes/new-note'
 import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
-import { awaitPendingMarkdownSave } from '@/components/notes/markdown-note-editor'
+import { awaitPendingMarkdownSave } from '@/lib/notes/pending-saves'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useEditorStore } from '@/stores/editor'
@@ -552,28 +542,10 @@ function TreeNode({
   if (!entry.isDirectory) {
     const selected = selectedPath === entry.path
     const displayName = titleFromVaultPath(entry.path)
-    const FileIcon =
-      entry.type === FileType.Canvas
-        ? Layout
-        : entry.type === FileType.Mindmap
-          ? GitBranch
-          : entry.type === FileType.Kanban
-            ? Columns3
-            : entry.type === FileType.Image
-              ? ImageIcon
-              : entry.type === FileType.Audio
-                ? Music
-                : entry.type === FileType.Video
-                  ? Film
-                  : entry.type === FileType.Docx
-                    ? FileType2
-                    : entry.type === FileType.Pptx
-                      ? Presentation
-                      : entry.type === FileType.Spreadsheet
-                        ? Table2
-                        : entry.type === FileType.Code
-                          ? FileCode2
-                          : FileText
+    // Icon and colour come from the file's module. Only registered types
+    // reach the tree (isNotesTreeEntry), so the fallback is defensive.
+    const fileDef = fileTypes.resolve(entry.path)
+    const FileIcon = fileDef?.appearance.icon ?? FileText
 
     function commitInline() {
       const val = inlineInputRef.current?.value
@@ -639,7 +611,7 @@ function TreeNode({
               onClick={() => onOpenFile(entry.path)}
               onDoubleClick={(e) => {
                 e.preventDefault()
-                if (entry.type === FileType.Markdown) onStartInlineEdit(entry.path)
+                if (fileDef?.renameOnDoubleClick) onStartInlineEdit(entry.path)
               }}
               className={cn(
                 'flex min-w-0 flex-1 items-center gap-2 py-0 text-left',
@@ -650,17 +622,7 @@ function TreeNode({
                 className={cn(
                   'size-3.5 shrink-0',
                   selected ? 'text-accent/60' : 'text-fg-muted',
-                  entry.type === FileType.Pdf && 'text-red-400/70',
-                  entry.type === FileType.Canvas && 'text-violet-400/70',
-                  entry.type === FileType.Mindmap && 'text-teal-400/70',
-                  entry.type === FileType.Kanban && 'text-amber-400/70',
-                  entry.type === FileType.Image && 'text-emerald-400/70',
-                  entry.type === FileType.Audio && 'text-pink-400/70',
-                  entry.type === FileType.Video && 'text-cyan-400/70',
-                  entry.type === FileType.Docx && 'text-indigo-400/70',
-                  entry.type === FileType.Pptx && 'text-orange-400/70',
-                  entry.type === FileType.Spreadsheet && 'text-green-400/70',
-                  entry.type === FileType.Code && 'text-sky-400/70',
+                  fileDef?.appearance.treeClass,
                 )}
                 aria-hidden
               />

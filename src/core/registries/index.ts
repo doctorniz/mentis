@@ -17,3 +17,22 @@ export const fileTypes = createFileTypeRegistry(
     .sort()
     .map((key) => registrations[key].default),
 )
+
+/** Registry id for a path, or `'other'` for files no module claims. */
+export function fileTypeIdOf(path: string): string {
+  return fileTypes.resolve(path)?.id ?? 'other'
+}
+
+/**
+ * Display title for a vault path: the file name without its type's suffix
+ * (the whole compound suffix — `deck.slides.md` → `deck`), or with the
+ * extension kept for types that ask (code: `a.ts` vs `a.py`). Unknown files
+ * lose their last extension.
+ */
+export function titleForPath(path: string): string {
+  const name = path.split('/').pop() ?? path
+  if (fileTypes.resolve(path)?.keepExtensionInTitle) return name
+  const suffix = fileTypes.matchedSuffix(path)
+  if (suffix && name.length > suffix.length) return name.slice(0, name.length - suffix.length)
+  return name.replace(/\.[^/.]+$/i, '')
+}

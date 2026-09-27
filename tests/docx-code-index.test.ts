@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import JSZip from 'jszip'
-import { extractDocxText, isIndexableTextPath } from '@/lib/search/build-vault-index'
+import { isIndexableTextPath } from '@/lib/search/build-vault-index'
+import { extractDocxText } from '@/modules/docx/search'
 
 /** Build a minimal synthetic .docx (ZIP with word/document.xml). */
 async function makeDocx(bodyXml: string): Promise<Uint8Array> {

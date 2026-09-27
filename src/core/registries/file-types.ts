@@ -1,4 +1,6 @@
 import type { ComponentType, Ref } from 'react'
+import type { LucideIcon } from 'lucide-react'
+import type { FileSystemAdapter } from '@/lib/fs/types'
 
 /**
  * File-type registry.
@@ -73,6 +75,90 @@ export interface FileTypeLayout {
   narrow?: 'canvas' | 'wide'
 }
 
+/** How a type looks wherever a file is listed. */
+export interface FileTypeAppearance {
+  /** Icon in the vault tree (and anywhere else that shows a small file glyph). */
+  icon: LucideIcon
+  /** Tree icon colour, e.g. `text-red-400/70`. Omit for the neutral default. */
+  treeClass?: string
+  /**
+   * Styling in the Files view. Types without one fall back to a generic file
+   * icon there.
+   */
+  browser?: {
+    icon: LucideIcon
+    iconClass: string
+    /** Tile background in grid view. */
+    bgClass: string
+    /** Offered as a type filter in the Files view, at this position. */
+    filter?: { label: string; order: number }
+    /** Also style list-view rows (default true; the grid is always styled). */
+    inList?: boolean
+  }
+}
+
+type ThemePair = { dark: string; light: string }
+
+export type GraphShape =
+  | 'circle'
+  | 'rounded-rect'
+  | 'rect'
+  | 'pentagon'
+  | 'hexagon'
+  | 'wide-rounded-rect'
+  | 'diamond'
+
+/** Presence means files of this type appear as graph nodes. */
+export interface GraphAppearance {
+  shape: GraphShape
+  colors: { fill: ThemePair; hover: ThemePair; stroke: ThemePair }
+  /** Inner SVG markup (24×24 viewBox) drawn inside the node when zoomed in. */
+  iconSvg: string
+  /** Label in the graph header's node counts, e.g. "3 notes", at this position. */
+  count: { singular: string; plural: string; order: number }
+}
+
+/** Searchable text pulled out of one file. */
+export interface SearchExtraction {
+  /** Defaults to the file name without its extension. */
+  title?: string
+  content: string
+  tags?: string[]
+}
+
+export type SearchExtractor = (
+  fs: FileSystemAdapter,
+  path: string,
+) => Promise<SearchExtraction | null>
+
+/** Presence means files of this type are indexed for search. */
+export interface SearchSupport {
+  /** Lazily loaded text extractor. Omit to index the file by title only. */
+  extract?: () => Promise<{ default: SearchExtractor }>
+  /** Cheap enough to re-index on every save or rename (text formats). */
+  reindexOnSave?: boolean
+}
+
+/** Makes a type creatable from the New menu. */
+export interface CreateNewSpec {
+  /** Menu label, e.g. "Canvas". */
+  label: string
+  /** File-name stem; the date is appended, e.g. "Drawing 2026-09-28". */
+  stem: string
+  /** Suffix the new file gets. Must be one of the type's `suffixes`. */
+  suffix: string
+  menu: { icon: LucideIcon; accentClass: string; order: number }
+  /**
+   * Select the new file in the tree and add it to recent files. Defaults to
+   * true; notes have historically opened without either.
+   */
+  revealInTree?: boolean
+  /** Lazily loaded initial file contents. `title` is the final file stem. */
+  content: () => Promise<{
+    default: (ctx: { title: string }) => string | Uint8Array | Promise<string | Uint8Array>
+  }>
+}
+
 export interface FileTypeDefinition {
   /** Stable id. Stored in editor tabs; used as the key everywhere else. */
   id: string
@@ -91,6 +177,30 @@ export interface FileTypeDefinition {
   /** Lazily loaded editor/viewer. Loaded only when a file of this type opens. */
   editor?: FileEditorLoader
   layout?: FileTypeLayout
+  appearance: FileTypeAppearance
+  graph?: GraphAppearance
+  search?: SearchSupport
+  createNew?: CreateNewSpec
+  /** Thumbnail for the Files view. */
+  thumbnail?: {
+    /** Lazily loaded renderer returning an object URL, or null. */
+    load: () => Promise<{
+      default: (fs: FileSystemAdapter, path: string) => Promise<string | null>
+    }>
+    /** Also shown in list-view rows (default false; grid tiles always show it). */
+    inList?: boolean
+    /** Frame around the grid-view thumbnail (page-shaped for PDFs, square for images). */
+    gridFrameClass: string
+  }
+  /** Show the extension in titles (code files: `a.ts` vs `a.py`). */
+  keepExtensionInTitle?: boolean
+  /** Double-clicking the file in the tree starts an inline rename. */
+  renameOnDoubleClick?: boolean
+  /**
+   * Open the file in a tab after importing it on its own. `true` for every
+   * suffix, or a list of the suffixes that should.
+   */
+  openAfterImport?: boolean | readonly string[]
 }
 
 export interface FileTypeRegistry {
@@ -104,6 +214,8 @@ export interface FileTypeRegistry {
    * Returns undefined for unknown files.
    */
   resolve(path: string): FileTypeDefinition | undefined
+  /** The registered suffix `path` matched (lower-case), e.g. `.slides.md`. */
+  matchedSuffix(path: string): string | undefined
   /**
    * `resolve`, then — only if some other type claims files of the resolved type —
    * read the contents and let the claim decide. `fallback` names the type to
@@ -146,15 +258,20 @@ export function createFileTypeRegistry(
   // Longest first, so compound suffixes are checked before their last segment.
   const suffixes = [...bySuffix.keys()].sort((a, b) => b.length - a.length)
 
-  function resolve(path: string): FileTypeDefinition | undefined {
+  function matchedSuffix(path: string): string | undefined {
     const name = basename(path)
     for (const suffix of suffixes) {
-      if (name.endsWith(suffix)) return bySuffix.get(suffix)
+      if (name.endsWith(suffix)) return suffix
     }
     // A dot-less name equal to an extension ("md", "pdf") resolved to that type
     // under the old `split('.').pop()` lookup. Kept for parity.
-    if (!name.includes('.')) return bySuffix.get(`.${name}`)
+    if (!name.includes('.') && bySuffix.has(`.${name}`)) return `.${name}`
     return undefined
+  }
+
+  function resolve(path: string): FileTypeDefinition | undefined {
+    const suffix = matchedSuffix(path)
+    return suffix === undefined ? undefined : bySuffix.get(suffix)
   }
 
   async function detect(
@@ -186,6 +303,7 @@ export function createFileTypeRegistry(
     all: () => definitions,
     get: (id) => byId.get(id),
     resolve,
+    matchedSuffix,
     detect,
   }
 }

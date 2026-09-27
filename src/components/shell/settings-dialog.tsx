@@ -29,7 +29,7 @@ import {
 } from '@/lib/chat/device-model-store'
 import { DEFAULT_CHAT_SETTINGS, type ChatProviderId, type ChatSettings } from '@/types/chat'
 import { reapCanvasOrphans } from '@/lib/canvas/orphan-reaper'
-import { awaitPendingCanvasSaves } from '@/components/canvas/canvas-editor'
+import { awaitPendingCanvasSaves } from '@/lib/canvas/pending-saves'
 import { useEditorStore } from '@/stores/editor'
 import { toast } from '@/stores/toast'
 import { cn } from '@/utils/cn'

@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useUiStore } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
@@ -8,11 +9,8 @@ import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useBoardStore } from '@/stores/board'
 import { DEFAULT_VAULT_CONFIG, ViewMode } from '@/types/vault'
-import { createBlankPdf } from '@/lib/pdf/page-operations'
-import { createEmptyCanvasJson } from '@/lib/canvas/serializer'
-import { createEmptyKanban } from '@/lib/kanban'
-import { createBlankXlsx } from '@/lib/spreadsheet/xlsx-io'
-import { createEmptyMindmap } from '@/lib/mindmap'
+import { fileTypes, titleForPath } from '@/core/registries'
+import type { FileTypeDefinition } from '@/core/registries/file-types'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 import { allocateUniqueFilePath } from '@/lib/notes/new-note'
 import { toast } from '@/stores/toast'
@@ -23,34 +21,37 @@ function useDefaultFolder() {
   )
 }
 
-function usePdfPageStyle() {
-  return useVaultStore((s) => s.config?.pdfPageStyle ?? DEFAULT_VAULT_CONFIG.pdfPageStyle)
+/** Should a lone imported file open in a tab? Its module decides. */
+function opensAfterImport(path: string): FileTypeDefinition | null {
+  const def = fileTypes.resolve(path)
+  const rule = def?.openAfterImport
+  if (!def || !rule) return null
+  if (rule === true) return def
+  const suffix = fileTypes.matchedSuffix(path)
+  return suffix && rule.includes(suffix) ? def : null
 }
 
-function fileTypeForPath(
-  path: string,
-): 'pdf' | 'markdown' | 'canvas' | 'mindmap' | 'kanban' | 'spreadsheet' | 'audio' | null {
-  if (path.endsWith('.pdf')) return 'pdf'
-  if (path.endsWith('.md') || path.endsWith('.markdown')) return 'markdown'
-  if (path.endsWith('.canvas')) return 'canvas'
-  if (path.endsWith('.mind')) return 'mindmap'
-  if (path.endsWith('.kanban')) return 'kanban'
-  if (path.endsWith('.xlsx') || path.endsWith('.xls') || path.endsWith('.csv')) return 'spreadsheet'
-  if (path.endsWith('.mp3') || path.endsWith('.wav') || path.endsWith('.m4a')) return 'audio'
-  return null
+export interface NewMenuItem {
+  label: string
+  icon: LucideIcon
+  accent: string
+  /** Position in the New menu, shared with the non-file entries (Thought, …). */
+  order: number
+  action: () => void
 }
 
 /**
- * Shared creation actions for new files (note, drawing, PDF, import).
- * Used by the sidebar "New" menu and the mobile inline accordion.
+ * Shared creation actions for new files and imports. Used by the sidebar
+ * "New" menu and the mobile inline accordion.
  *
- * Each action navigates to the Vault tree view and dispatches `ink:vault-changed`.
- * The caller supplies an `onDone` callback (e.g. close popover / close drawer).
+ * File creation is driven by each module's `createNew`, so a type that
+ * declares one appears in `fileTypeMenuItems` without changes here. Each action
+ * navigates to the Vault tree view and dispatches `ink:vault-changed`. The
+ * caller supplies `onDone` (e.g. close popover / close drawer).
  */
 export function useNewFileActions(onDone: () => void) {
   const { vaultFs } = useVaultSession()
   const defaultFolder = useDefaultFolder()
-  const pdfPageStyle = usePdfPageStyle()
   const [busy, setBusy] = useState(false)
 
   const defaultDir = useCallback(
@@ -58,100 +59,61 @@ export function useNewFileActions(onDone: () => void) {
     [defaultFolder],
   )
 
-  const createNote = useCallback(async () => {
-    if (busy) return
-    setBusy(true)
-    try {
-      const stem = `Note ${new Date().toISOString().slice(0, 10)}`
-      const dir = defaultDir()
-      const rawPath = dir ? `${dir}/${stem}.md` : `${stem}.md`
-      const filePath = await allocateUniqueFilePath(vaultFs, rawPath)
-      const title = filePath.replace(/\.md$/i, '').split('/').pop() ?? stem
-      const content = `---\ntitle: "${title}"\ndate: "${new Date().toISOString()}"\ntags: []\n---\n\n`
-      await vaultFs.writeTextFile(filePath, content)
-      useEditorStore.getState().openTab({
-        id: crypto.randomUUID(),
-        path: filePath,
-        type: 'markdown',
-        title,
-        isDirty: false,
-        isNew: true,
-      })
-      useUiStore.getState().setActiveView(ViewMode.Vault)
-      useUiStore.getState().setVaultMode('tree')
-      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-      onDone()
-    } finally {
-      setBusy(false)
-    }
-  }, [vaultFs, busy, onDone, defaultDir])
+  const createFile = useCallback(
+    async (def: FileTypeDefinition) => {
+      const spec = def.createNew
+      if (!spec || busy) return
+      setBusy(true)
+      try {
+        const stem = `${spec.stem} ${new Date().toISOString().slice(0, 10)}`
+        const dir = defaultDir()
+        const rawPath = dir ? `${dir}/${stem}${spec.suffix}` : `${stem}${spec.suffix}`
+        const path = await allocateUniqueFilePath(vaultFs, rawPath)
+        const title = titleForPath(path)
+        const makeContent = (await spec.content()).default
+        const content = await makeContent({ title })
+        if (typeof content === 'string') await vaultFs.writeTextFile(path, content)
+        else await vaultFs.writeFile(path, content)
 
-  const createDrawing = useCallback(async () => {
-    if (busy) return
-    setBusy(true)
-    try {
-      const stem = `Drawing ${new Date().toISOString().slice(0, 10)}`
-      const dir = defaultDir()
-      const rawPath = dir ? `${dir}/${stem}.canvas` : `${stem}.canvas`
-      const path = await allocateUniqueFilePath(vaultFs, rawPath)
-      const title =
-        path
-          .replace(/\.canvas$/i, '')
-          .split('/')
-          .pop() ?? stem
-      await vaultFs.writeTextFile(path, createEmptyCanvasJson())
-      useUiStore.getState().setActiveView(ViewMode.Vault)
-      useUiStore.getState().setVaultMode('tree')
-      useFileTreeStore.getState().setSelectedPath(path)
-      useEditorStore.getState().openTab({
-        id: crypto.randomUUID(),
-        path,
-        type: 'canvas',
-        title,
-        isDirty: false,
-        isNew: true,
-      })
-      useEditorStore.getState().addRecentFile(path)
-      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-      onDone()
-    } finally {
-      setBusy(false)
-    }
-  }, [vaultFs, busy, onDone, defaultDir])
+        const reveal = spec.revealInTree !== false
+        useUiStore.getState().setActiveView(ViewMode.Vault)
+        useUiStore.getState().setVaultMode('tree')
+        if (reveal) useFileTreeStore.getState().setSelectedPath(path)
+        useEditorStore.getState().openTab({
+          id: crypto.randomUUID(),
+          path,
+          type: def.id,
+          title,
+          isDirty: false,
+          isNew: true,
+        })
+        if (reveal) useEditorStore.getState().addRecentFile(path)
+        window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+        onDone()
+      } finally {
+        setBusy(false)
+      }
+    },
+    [vaultFs, busy, onDone, defaultDir],
+  )
 
-  const createPdf = useCallback(async () => {
-    if (busy) return
-    setBusy(true)
-    try {
-      const stem = `PDF ${new Date().toISOString().slice(0, 10)}`
-      const dir = defaultDir()
-      const rawPath = dir ? `${dir}/${stem}.pdf` : `${stem}.pdf`
-      const path = await allocateUniqueFilePath(vaultFs, rawPath)
-      const title =
-        path
-          .replace(/\.pdf$/i, '')
-          .split('/')
-          .pop() ?? stem
-      const pdfBytes = await createBlankPdf({ style: pdfPageStyle, size: 'a4' })
-      await vaultFs.writeFile(path, pdfBytes)
-      useUiStore.getState().setActiveView(ViewMode.Vault)
-      useUiStore.getState().setVaultMode('tree')
-      useFileTreeStore.getState().setSelectedPath(path)
-      useEditorStore.getState().openTab({
-        id: crypto.randomUUID(),
-        path,
-        type: 'pdf',
-        title,
-        isDirty: false,
-        isNew: true,
-      })
-      useEditorStore.getState().addRecentFile(path)
-      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-      onDone()
-    } finally {
-      setBusy(false)
-    }
-  }, [vaultFs, busy, pdfPageStyle, onDone, defaultDir])
+  const fileTypeMenuItems = useMemo<NewMenuItem[]>(
+    () =>
+      fileTypes.all().flatMap((def) =>
+        def.createNew
+          ? [
+              {
+                label: def.createNew.label,
+                icon: def.createNew.menu.icon,
+                accent: def.createNew.menu.accentClass,
+                order: def.createNew.menu.order,
+                action: () => void createFile(def),
+              },
+            ]
+          : [],
+      ),
+    [createFile],
+  )
 
   const importFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -174,20 +136,15 @@ export function useNewFileActions(onDone: () => void) {
         useUiStore.getState().setActiveView(ViewMode.Vault)
 
         if (count === 1) {
-          const type = fileTypeForPath(lastPath)
-          if (type) {
-            const title =
-              lastPath
-                .replace(/\.[^/.]+$/i, '')
-                .split('/')
-                .pop() ?? lastPath
+          const def = opensAfterImport(lastPath)
+          if (def) {
             useUiStore.getState().setVaultMode('tree')
             useFileTreeStore.getState().setSelectedPath(lastPath)
             useEditorStore.getState().openTab({
               id: crypto.randomUUID(),
               path: lastPath,
-              type,
-              title,
+              type: def.id,
+              title: titleForPath(lastPath),
               isDirty: false,
             })
           }
@@ -205,73 +162,6 @@ export function useNewFileActions(onDone: () => void) {
     [vaultFs, onDone, defaultDir],
   )
 
-  const createKanban = useCallback(async () => {
-    if (busy) return
-    setBusy(true)
-    try {
-      const stem = `Kanban ${new Date().toISOString().slice(0, 10)}`
-      const dir = defaultDir()
-      const rawPath = dir ? `${dir}/${stem}.kanban` : `${stem}.kanban`
-      const filePath = await allocateUniqueFilePath(vaultFs, rawPath)
-      const title =
-        filePath
-          .replace(/\.kanban$/i, '')
-          .split('/')
-          .pop() ?? stem
-      await vaultFs.writeTextFile(filePath, createEmptyKanban())
-      useUiStore.getState().setActiveView(ViewMode.Vault)
-      useUiStore.getState().setVaultMode('tree')
-      useFileTreeStore.getState().setSelectedPath(filePath)
-      useEditorStore.getState().openTab({
-        id: crypto.randomUUID(),
-        path: filePath,
-        type: 'kanban',
-        title,
-        isDirty: false,
-        isNew: true,
-      })
-      useEditorStore.getState().addRecentFile(filePath)
-      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-      onDone()
-    } finally {
-      setBusy(false)
-    }
-  }, [vaultFs, busy, onDone, defaultDir])
-
-  const createSpreadsheet = useCallback(async () => {
-    if (busy) return
-    setBusy(true)
-    try {
-      const stem = `Spreadsheet ${new Date().toISOString().slice(0, 10)}`
-      const dir = defaultDir()
-      const rawPath = dir ? `${dir}/${stem}.xlsx` : `${stem}.xlsx`
-      const path = await allocateUniqueFilePath(vaultFs, rawPath)
-      const bytes = createBlankXlsx()
-      await vaultFs.writeFile(path, bytes)
-      useUiStore.getState().setActiveView(ViewMode.Vault)
-      useUiStore.getState().setVaultMode('tree')
-      const title =
-        path
-          .replace(/\.xlsx$/i, '')
-          .split('/')
-          .pop() ?? stem
-      useFileTreeStore.getState().setSelectedPath(path)
-      useEditorStore.getState().openTab({
-        id: crypto.randomUUID(),
-        path,
-        type: 'spreadsheet',
-        title,
-        isDirty: false,
-        isNew: true,
-      })
-      useEditorStore.getState().addRecentFile(path)
-      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-      onDone()
-    } finally {
-      setBusy(false)
-    }
-  }, [vaultFs, busy, onDone, defaultDir])
-
   const createThought = useCallback(async () => {
     if (busy) return
     setBusy(true)
@@ -285,47 +175,9 @@ export function useNewFileActions(onDone: () => void) {
     }
   }, [vaultFs, busy, onDone])
 
-  const createMindmap = useCallback(async () => {
-    if (busy) return
-    setBusy(true)
-    try {
-      const stem = `Mindmap ${new Date().toISOString().slice(0, 10)}`
-      const dir = defaultDir()
-      const rawPath = dir ? `${dir}/${stem}.mind` : `${stem}.mind`
-      const path = await allocateUniqueFilePath(vaultFs, rawPath)
-      const title =
-        path
-          .replace(/\.mind$/i, '')
-          .split('/')
-          .pop() ?? stem
-      await vaultFs.writeTextFile(path, createEmptyMindmap())
-      useUiStore.getState().setActiveView(ViewMode.Vault)
-      useUiStore.getState().setVaultMode('tree')
-      useFileTreeStore.getState().setSelectedPath(path)
-      useEditorStore.getState().openTab({
-        id: crypto.randomUUID(),
-        path,
-        type: 'mindmap',
-        title,
-        isDirty: false,
-        isNew: true,
-      })
-      useEditorStore.getState().addRecentFile(path)
-      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-      onDone()
-    } finally {
-      setBusy(false)
-    }
-  }, [vaultFs, busy, onDone, defaultDir])
-
   return {
-    createNote,
+    fileTypeMenuItems,
     createThought,
-    createDrawing,
-    createPdf,
-    createKanban,
-    createSpreadsheet,
-    createMindmap,
     importFiles,
     busy,
   }

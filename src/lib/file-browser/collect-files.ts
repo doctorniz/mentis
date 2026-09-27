@@ -7,7 +7,7 @@ function toFbItem(e: FileEntry): FbFileItem {
   return {
     path: e.path,
     name: e.name,
-    type: e.type as FbFileItem['type'],
+    type: e.type,
     isDirectory: e.isDirectory,
     size: e.size ?? 0,
     modifiedAt: e.modifiedAt ?? new Date(0).toISOString(),

@@ -29,6 +29,7 @@ import {
 import { toast } from '@/stores/toast'
 import { removeSearchDocument, searchVault } from '@/lib/search/index'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
+import { fileTypes } from '@/core/registries'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import type { SearchResult } from '@/types/search'
 import { Button } from '@/components/ui/button'
@@ -101,6 +102,19 @@ function computeRubberBandSelection(
 /* ------------------------------------------------------------------ */
 /* Main view                                                           */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Type filters for the Files view: every type whose module offers one, in the
+ * module's chosen order, then 'Other' for files no filter covers by id.
+ */
+const TYPE_FILTERS: { id: string; label: string }[] = [
+  ...fileTypes
+    .all()
+    .flatMap((d) => (d.appearance.browser?.filter ? [{ id: d.id, ...d.appearance.browser.filter }] : []))
+    .sort((a, b) => a.order - b.order)
+    .map(({ id, label }) => ({ id, label })),
+  { id: 'other', label: 'Other' },
+]
 
 export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }) {
   const { vaultFs, config } = useVaultSession()
@@ -778,7 +792,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
 
       {showFilters && (
         <div className="border-border bg-bg-secondary flex shrink-0 flex-wrap items-center gap-3 rounded-lg border px-3 py-2 text-xs">
-          {['pdf', 'markdown', 'canvas', 'image', 'other'].map((t) => (
+          {TYPE_FILTERS.map(({ id: t, label }) => (
             <label key={t} className="text-fg-secondary flex cursor-pointer items-center gap-1.5">
               <input
                 type="checkbox"
@@ -786,7 +800,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
                 onChange={() => toggleType(t)}
                 className="accent-accent"
               />
-              {t === 'markdown' ? 'Notes' : t.charAt(0).toUpperCase() + t.slice(1)}
+              {label}
             </label>
           ))}
         </div>

@@ -1,13 +1,33 @@
 import { describe, expect, it } from 'vitest'
+import { File } from 'lucide-react'
 import { createFileTypeRegistry, type FileTypeDefinition } from '@/core/registries/file-types'
 
-const md: FileTypeDefinition = { id: 'markdown', label: 'Note', suffixes: ['.md', '.markdown'] }
-const slides: FileTypeDefinition = { id: 'slides', label: 'Slides', suffixes: ['.slides.md'] }
-const pdf: FileTypeDefinition = { id: 'pdf', label: 'PDF', suffixes: ['.pdf'] }
-const code: FileTypeDefinition = { id: 'code', label: 'Code', suffixes: ['.env', '.txt'] }
+// Resolution doesn't look at appearance; every definition just needs one.
+const appearance = { icon: File }
+
+const md: FileTypeDefinition = {
+  id: 'markdown',
+  label: 'Note',
+  appearance,
+  suffixes: ['.md', '.markdown'],
+}
+const slides: FileTypeDefinition = {
+  id: 'slides',
+  label: 'Slides',
+  appearance,
+  suffixes: ['.slides.md'],
+}
+const pdf: FileTypeDefinition = { id: 'pdf', label: 'PDF', appearance, suffixes: ['.pdf'] }
+const code: FileTypeDefinition = {
+  id: 'code',
+  label: 'Code',
+  appearance,
+  suffixes: ['.env', '.txt'],
+}
 const kanban: FileTypeDefinition = {
   id: 'kanban',
   label: 'Kanban',
+  appearance,
   suffixes: ['.kanban'],
   claims: { baseType: 'markdown', test: (t) => /^---[\s\S]*?type:\s*kanban/.test(t) },
 }
@@ -48,11 +68,11 @@ describe('resolveFileType', () => {
   it('rejects duplicate ids and contested suffixes', () => {
     expect(() => createFileTypeRegistry([md, md])).toThrow(/registered twice/)
     expect(() =>
-      createFileTypeRegistry([md, { id: 'other', label: 'x', suffixes: ['.MD'] }]),
+      createFileTypeRegistry([md, { id: 'other', label: 'x', appearance, suffixes: ['.MD'] }]),
     ).toThrow(/claimed by both/)
-    expect(() => createFileTypeRegistry([{ id: 'x', label: 'x', suffixes: ['md'] }])).toThrow(
-      /must start with/,
-    )
+    expect(() =>
+      createFileTypeRegistry([{ id: 'x', label: 'x', appearance, suffixes: ['md'] }]),
+    ).toThrow(/must start with/)
   })
 })
 

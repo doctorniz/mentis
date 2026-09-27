@@ -14,21 +14,16 @@ import {
   graphFolders,
   type GraphData,
 } from '@/lib/graph/build-graph'
-import { getFileType, FileType } from '@/types/files'
+import { fileTypes } from '@/core/registries'
 import { GraphCanvas } from '@/components/graph/graph-canvas'
 
 const SKIP_PREFIXES = ['_', '.']
 
-/** File types included in the graph (excludes image/audio/video/other). */
-const GRAPH_FILE_TYPES = new Set([
-  FileType.Markdown,
-  FileType.Pdf,
-  FileType.Canvas,
-  FileType.Pptx,
-  FileType.Docx,
-  FileType.Spreadsheet,
-  FileType.Code,
-])
+/** Types that appear in the graph, in header-count order. */
+const GRAPH_TYPES = fileTypes
+  .all()
+  .flatMap((d) => (d.graph ? [{ id: d.id, count: d.graph.count }] : []))
+  .sort((a, b) => a.count.order - b.count.order)
 
 /** Recursively collect all vault files we want to show in the graph. */
 async function collectVaultPaths(
@@ -50,7 +45,7 @@ async function collectVaultPaths(
       const sub = await collectVaultPaths(vaultFs, fullPath)
       paths.push(...sub)
     } else {
-      if (GRAPH_FILE_TYPES.has(getFileType(e.name))) paths.push(fullPath)
+      if (fileTypes.resolve(e.name)?.graph) paths.push(fullPath)
     }
   }
   return paths
@@ -173,19 +168,11 @@ export function GraphView() {
 
         <span className="text-fg-muted text-xs">
           {[
-            countByType['note'] &&
-              `${countByType['note']} note${countByType['note'] !== 1 ? 's' : ''}`,
-            countByType['pdf'] && `${countByType['pdf']} PDF${countByType['pdf'] !== 1 ? 's' : ''}`,
-            countByType['canvas'] &&
-              `${countByType['canvas']} drawing${countByType['canvas'] !== 1 ? 's' : ''}`,
-            countByType['pptx'] &&
-              `${countByType['pptx']} presentation${countByType['pptx'] !== 1 ? 's' : ''}`,
-            countByType['docx'] &&
-              `${countByType['docx']} doc${countByType['docx'] !== 1 ? 's' : ''}`,
-            countByType['spreadsheet'] &&
-              `${countByType['spreadsheet']} sheet${countByType['spreadsheet'] !== 1 ? 's' : ''}`,
-            countByType['code'] &&
-              `${countByType['code']} code file${countByType['code'] !== 1 ? 's' : ''}`,
+            ...GRAPH_TYPES.map(
+              ({ id, count }) =>
+                countByType[id] &&
+                `${countByType[id]} ${countByType[id] !== 1 ? count.plural : count.singular}`,
+            ),
             filteredData.edges.length &&
               `${filteredData.edges.length} link${filteredData.edges.length !== 1 ? 's' : ''}`,
           ]

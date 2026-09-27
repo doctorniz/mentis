@@ -11,7 +11,7 @@ export interface FbSort {
 export interface FbFilters {
   folder?: string
   /** Only show these file types (empty = all). */
-  types?: ('pdf' | 'markdown' | 'canvas' | 'image' | 'video' | 'other')[]
+  types?: string[]
   /** All listed tags must be present on the note. */
   tags?: string[]
 }
@@ -19,7 +19,8 @@ export interface FbFilters {
 export interface FbFileItem {
   path: string
   name: string
-  type: 'pdf' | 'markdown' | 'canvas' | 'image' | 'video' | 'spreadsheet' | 'other'
+  /** File-type registry id, or 'other'. */
+  type: string
   isDirectory: boolean
   size: number
   modifiedAt: string

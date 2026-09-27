@@ -1,5 +1,5 @@
 import type { FileEntry } from '@/types/files'
-import { FileType } from '@/types/files'
+import { fileTypes } from '@/core/registries'
 
 /** Hide app-internal dirs from the Notes sidebar. */
 export function isNotesTreeHidden(entry: FileEntry): boolean {
@@ -8,24 +8,11 @@ export function isNotesTreeHidden(entry: FileEntry): boolean {
   return parts.some((p) => p === '_marrow' || p === '_assets')
 }
 
-/** Folders always (if not hidden). Files: markdown, PDF, canvas, and images. */
+/** Folders always (if not hidden). Files: any type a module registers. */
 export function isNotesTreeEntry(entry: FileEntry): boolean {
   if (isNotesTreeHidden(entry)) return false
   if (entry.isDirectory) return true
-  return (
-    entry.type === FileType.Markdown ||
-    entry.type === FileType.Pdf ||
-    entry.type === FileType.Canvas ||
-    entry.type === FileType.Mindmap ||
-    entry.type === FileType.Kanban ||
-    entry.type === FileType.Image ||
-    entry.type === FileType.Docx ||
-    entry.type === FileType.Pptx ||
-    entry.type === FileType.Audio ||
-    entry.type === FileType.Video ||
-    entry.type === FileType.Spreadsheet ||
-    entry.type === FileType.Code
-  )
+  return fileTypes.resolve(entry.path) !== undefined
 }
 
 export function sortTreeEntries(a: FileEntry, b: FileEntry): number {

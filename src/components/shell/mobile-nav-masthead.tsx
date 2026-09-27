@@ -7,12 +7,8 @@ import {
   CalendarCheck,
   Camera,
   ChevronDown,
-  Columns3,
   FileStack,
-  FileText,
   Files,
-  GitBranch,
-  Layout,
   Menu,
   Mic,
   Monitor,
@@ -29,7 +25,7 @@ import {
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useNewFileActions } from '@/lib/notes/use-new-file-actions'
+import { useNewFileActions, type NewMenuItem } from '@/lib/notes/use-new-file-actions'
 import { useUiStore, type ThemeChoice } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
 import { useVaultSession } from '@/contexts/vault-fs-context'
@@ -143,11 +139,8 @@ export function MobileNavMasthead({
   }, [])
 
   const {
-    createNote,
+    fileTypeMenuItems,
     createThought,
-    createDrawing,
-    createKanban,
-    createMindmap,
     importFiles,
     busy,
   } = useNewFileActions(closeMenu)
@@ -168,56 +161,43 @@ export function MobileNavMasthead({
     return () => window.removeEventListener('ink:open-new-popover', onOpenNewPopover)
   }, [])
 
-  const NEW_ITEMS: { label: string; icon: typeof FileText; accent: string; action: () => void }[] =
-    [
-      { label: 'Note', icon: FileText, accent: 'text-blue-500', action: () => void createNote() },
-      {
-        label: 'Thought',
-        icon: StickyNote,
-        accent: 'text-yellow-500',
-        action: () => void createThought(),
+  // File types come from their modules (createNew.menu.order); the rest are
+  // app actions slotted between them by the same order numbers.
+  const NEW_ITEMS: NewMenuItem[] = [
+    ...fileTypeMenuItems,
+    {
+      label: 'Thought',
+      icon: StickyNote,
+      accent: 'text-yellow-500',
+      order: 20,
+      action: () => void createThought(),
+    },
+    {
+      label: 'Recording',
+      icon: Mic,
+      accent: 'text-red-500',
+      order: 60,
+      action: () => {
+        useUiStore.getState().setActiveView(ViewMode.Board)
+        setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
+        closeMenu()
       },
-      {
-        label: 'Canvas',
-        icon: Layout,
-        accent: 'text-violet-500',
-        action: () => void createDrawing(),
-      },
-      {
-        label: 'Kanban',
-        icon: Columns3,
-        accent: 'text-amber-500',
-        action: () => void createKanban(),
-      },
-      {
-        label: 'Mindmap',
-        icon: GitBranch,
-        accent: 'text-teal-500',
-        action: () => void createMindmap(),
-      },
-      {
-        label: 'Recording',
-        icon: Mic,
-        accent: 'text-red-500',
-        action: () => {
-          useUiStore.getState().setActiveView(ViewMode.Board)
-          setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
-          closeMenu()
-        },
-      },
-      {
-        label: 'Photo',
-        icon: Camera,
-        accent: 'text-sky-500',
-        action: () => photoInputRef.current?.click(),
-      },
-      {
-        label: 'File',
-        icon: Upload,
-        accent: 'text-emerald-500',
-        action: () => fileInputRef.current?.click(),
-      },
-    ]
+    },
+    {
+      label: 'Photo',
+      icon: Camera,
+      accent: 'text-sky-500',
+      order: 70,
+      action: () => photoInputRef.current?.click(),
+    },
+    {
+      label: 'File',
+      icon: Upload,
+      accent: 'text-emerald-500',
+      order: 80,
+      action: () => fileInputRef.current?.click(),
+    },
+  ].sort((a, b) => a.order - b.order)
 
   return (
     <header
