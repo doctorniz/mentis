@@ -3,6 +3,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const stub = path.resolve(__dirname, 'src/lib/empty-module.js')
+const esmStub = path.resolve(__dirname, 'src/lib/empty-module-esm.js')
 
 /**
  * Next/webpack split this app across ~14 initial chunks. A single monolithic
@@ -39,7 +40,7 @@ export default defineConfig(({ mode }) => {
       alias: [
         { find: '@', replacement: path.resolve(__dirname, 'src') },
         // pdfjs / fabric declare an optional dependency on the Node `canvas`
-        // package. Same stub next.config.ts uses.
+        // package.
         { find: 'canvas', replacement: stub },
         // pptxgenjs (via slidecanvas) has `import('node:fs')` / `import('node:https')`
         // in Node-only code paths. Rollup resolves dynamic import targets at build
@@ -47,6 +48,13 @@ export default defineConfig(({ mode }) => {
         // empty stub webpack's NormalModuleReplacementPlugin uses today. The code
         // behind them is never reached in a browser.
         { find: /^node:(fs|https)$/, replacement: stub },
+        // @marp-team/marp-core statically requires all of MathJax (TeX input,
+        // every package, SVG output), but the slides module renders math with
+        // KaTeX (`math: { lib: 'katex' }`), so MathJax is never called. Stubbing
+        // it removes ~620 KB gzipped from the lazy slides chunk.
+        // Unlike the stubs above, this one IS loaded (marp-core requires MathJax
+        // at import time), so it must be ESM — see src/lib/empty-module-esm.js.
+        { find: /^mathjax-full\/.+$/, replacement: esmStub },
       ],
     },
 
