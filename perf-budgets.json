@@ -8,7 +8,7 @@
     },
     "initialTotal": {
       "label": "Initial JS + CSS (ratchet)",
-      "maxKb": 215,
+      "maxKb": 209,
       "enforce": true
     },
     "firstPdf": {
