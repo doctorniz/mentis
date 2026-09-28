@@ -1,14 +1,14 @@
 /**
- * Vault-scoped RAG (v1, MiniSearch-backed).
+ * Vault-scoped RAG (v1, lexical search-backed).
  *
  * The tier-1 "whole vault" chat surface needs to answer questions that span
  * every note/PDF in the vault — but pasting the whole vault into the model
- * is wasteful at best and impossible at scale. v1 reuses the existing
- * MiniSearch index (built at vault open in `lib/search/index.ts`) to find
+ * is wasteful at best and impossible at scale. v1 reuses the vault search
+ * index (SQLite FTS5 in the index worker, via `lib/search/index.ts`) to find
  * the top-K most relevant documents for the user's prompt, then pulls an
  * excerpt around the best-matching region of each.
  *
- * This is deliberately *not* embedding-based. MiniSearch is already in the
+ * This is deliberately *not* embedding-based. The search index is already in the
  * bundle, the index is already warm, and lexical search is surprisingly
  * good at "what did I write about X?" queries that dominate PKM use. A
  * true embeddings path (Transformers.js or a vector service) is deferred —
@@ -22,11 +22,11 @@
  *     context so the prompt stays under `maxContextChars`.
  */
 
-import { getSearchIndex } from '@/lib/search'
+import { searchDocuments } from '@/lib/search'
 import { parseNote } from '@/lib/markdown'
 import { loadPdfjs } from '@/lib/pdf/pdfjs-loader'
 import type { FileSystemAdapter } from '@/lib/fs'
-import type { SearchDocFileType, SearchIndexDocument } from '@/types/search'
+import type { SearchDocFileType } from '@/types/search'
 import type { ChatSettings } from '@/types/chat'
 
 /** Default number of matches to pull in per query. */
@@ -67,26 +67,21 @@ interface RawHit {
   queryTerms: string[]
 }
 
-/** Run a MiniSearch query and coerce the raw results into a shape we can work with. */
-function searchTopK(query: string, topK: number): RawHit[] {
-  const index = getSearchIndex()
+/** Query the vault index and coerce the results into a shape we can work with. */
+async function searchTopK(query: string, topK: number): Promise<RawHit[]> {
   const q = query.trim()
   if (!q) return []
-  // `prefix: true` + `fuzzy: 0.2` is already the default on the shared index,
-  // which gives us a useful recall floor for typo-ed queries.
-  const raw = index.search(q).slice(0, topK)
-  return raw.map((r) => {
-    const doc = r as unknown as SearchIndexDocument
-    return {
-      id: String(r.id),
-      path: doc.path,
-      title: doc.title,
-      type: doc.fileType,
-      score: r.score,
-      content: doc.content ?? '',
-      queryTerms: r.queryTerms,
-    }
-  })
+  // Prefix matching on content, plus typo tolerance on titles.
+  const hits = await searchDocuments(q, topK)
+  return hits.map((h) => ({
+    id: h.path,
+    path: h.path,
+    title: h.title,
+    type: h.type,
+    score: h.score,
+    content: h.content,
+    queryTerms: h.queryTerms,
+  }))
 }
 
 /**
@@ -206,7 +201,7 @@ export async function buildVaultContext(
   const topK = opts.topK ?? DEFAULT_RAG_TOP_K
   const maxChars = Math.max(1_000, settings.maxContextChars || 40_000)
 
-  const raw = searchTopK(query, topK)
+  const raw = await searchTopK(query, topK)
   if (raw.length === 0) {
     return {
       query,

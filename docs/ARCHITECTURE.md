@@ -285,6 +285,12 @@ from both a static and a dynamic path.
 
 ### 6.3 Principle 3 — never walk the filesystem at launch
 
+> **Update (item 7a):** the search walk below is gone. The index is SQLite + FTS5 in a worker
+> (`src/core/index/`), saved per vault in the browser's private storage. On open, search answers
+> from it at once; a background reconcile then lists the vault (metadata only) and re-extracts
+> just the new or changed files (`src/lib/search/build-vault-index.ts`). The wiki-link walk and
+> the sync hashing walk described below remain (items 7b and 7c).
+
 **Violated three times over, on every single vault open.**
 
 `AppShell` mounts `<VaultSearchBootstrap />` unconditionally at

@@ -249,4 +249,87 @@ test.describe('11 — Search', () => {
       await expect(page.locator('mark').filter({ hasText: 'flumoxicated' })).toBeVisible()
     })
   })
+
+  test.describe('11.7 Saved index (SQLite)', () => {
+    type Reconciled = { indexed: number; removed: number; persisted: boolean }
+
+    /** Record every background reconcile of the index, from page start. */
+    async function recordReconciles(page: import('@playwright/test').Page) {
+      await page.addInitScript(() => {
+        const w = window as unknown as { __reconciled: unknown[] }
+        w.__reconciled = []
+        window.addEventListener('ink:search-index-reconciled', (e) =>
+          w.__reconciled.push((e as CustomEvent).detail),
+        )
+      })
+    }
+
+    async function reloadAndReconcile(page: import('@playwright/test').Page) {
+      await page.reload()
+      const handle = await page.waitForFunction(
+        () => (window as unknown as { __reconciled?: unknown[] }).__reconciled?.[0],
+        undefined,
+        { timeout: 15_000 },
+      )
+      return (await handle.jsonValue()) as Reconciled
+    }
+
+    test('11.7.1 Reopening re-reads only what changed', async ({ vaultPage: page }) => {
+      await recordReconciles(page)
+      await writeVaultFile(page, 'kept.md', '# Kept\n\nnebulorum first version\n')
+      await reloadAndReconcile(page)
+
+      // Nothing changed: the saved index is used as is.
+      expect(await reloadAndReconcile(page)).toEqual({ indexed: 0, removed: 0, persisted: true })
+
+      // Edited and deleted outside the app: exactly those are caught up.
+      await writeVaultFile(page, 'kept.md', '# Kept\n\nquasarite second version\n')
+      await writeVaultFile(page, 'gone.md', '# Gone\n')
+      await reloadAndReconcile(page)
+      await page.evaluate(async () => {
+        const vaults = await (await navigator.storage.getDirectory()).getDirectoryHandle('vaults')
+        for await (const entry of (
+          vaults as unknown as { values(): AsyncIterable<FileSystemDirectoryHandle> }
+        ).values()) {
+          await entry.removeEntry('gone.md')
+          break
+        }
+      })
+      expect(await reloadAndReconcile(page)).toMatchObject({ indexed: 0, removed: 1 })
+
+      await navigateTo(page, 'search')
+      const input = page.locator('input[aria-label="Search vault"]').first()
+      await input.fill('quasarite')
+      await expect(page.getByText('Kept').first()).toBeVisible({ timeout: 10_000 })
+      await input.fill('nebulorum')
+      await expect(page.getByText('No matches')).toBeVisible({ timeout: 10_000 })
+    })
+
+    test('11.7.2 A deleted index is rebuilt from the files', async ({ vaultPage: page }) => {
+      await recordReconciles(page)
+      await writeVaultFile(page, 'rebuilt.md', '# Rebuilt\n\nheliotropic words\n')
+      await reloadAndReconcile(page)
+
+      // Leave the app (releasing the database), delete the index, come back.
+      await page.goto('/404.html')
+      await page.evaluate(async () => {
+        const root = await navigator.storage.getDirectory()
+        await root.removeEntry('.mentis-index', { recursive: true })
+      })
+      await page.goto('/')
+      await page.waitForSelector('nav', { timeout: 30_000 })
+      const handle = await page.waitForFunction(
+        () => (window as unknown as { __reconciled?: unknown[] }).__reconciled?.[0],
+        undefined,
+        { timeout: 15_000 },
+      )
+      const rebuilt = (await handle.jsonValue()) as Reconciled
+      expect(rebuilt.persisted).toBe(true)
+      expect(rebuilt.indexed).toBeGreaterThanOrEqual(1)
+
+      await navigateTo(page, 'search')
+      await page.locator('input[aria-label="Search vault"]').first().fill('heliotropic')
+      await expect(page.getByText('Rebuilt').first()).toBeVisible({ timeout: 10_000 })
+    })
+  })
 })

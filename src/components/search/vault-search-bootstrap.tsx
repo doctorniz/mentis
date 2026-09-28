@@ -2,9 +2,24 @@
 
 import { useEffect, useState } from 'react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
-import { rebuildVaultSearchIndex } from '@/lib/search/build-vault-index'
+import { openSearchIndex } from '@/lib/search/index'
+import { reconcileVaultSearchIndex } from '@/lib/search/build-vault-index'
 
-/** Initializes / refreshes MiniSearch from vault contents (full rebuild). */
+function whenIdle(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(() => resolve(), { timeout: 500 })
+    } else {
+      window.setTimeout(resolve, 0)
+    }
+  })
+}
+
+/**
+ * Opens the vault's saved search index — search works from it immediately —
+ * then, once the first render is done, reconciles it against the vault in the
+ * background. Nothing walks or parses the vault before the app is on screen.
+ */
 export function VaultSearchBootstrap() {
   const { vaultFs, vaultPath } = useVaultSession()
   const [error, setError] = useState<string | null>(null)
@@ -14,7 +29,14 @@ export function VaultSearchBootstrap() {
     setError(null)
     void (async () => {
       try {
-        await rebuildVaultSearchIndex(vaultFs)
+        const { persisted } = await openSearchIndex(vaultPath)
+        await whenIdle()
+        if (cancelled) return
+        const result = await reconcileVaultSearchIndex(vaultFs, () => cancelled)
+        if (cancelled) return
+        window.dispatchEvent(
+          new CustomEvent('ink:search-index-reconciled', { detail: { ...result, persisted } }),
+        )
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Search index failed')

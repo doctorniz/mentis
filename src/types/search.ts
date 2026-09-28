@@ -31,17 +31,3 @@ export interface SearchFilters {
     to?: string
   }
 }
-
-/** Document stored in MiniSearch (field names are index keys). */
-export interface SearchIndexDocument {
-  id: string
-  path: string
-  title: string
-  fileType: SearchDocFileType
-  content: string
-  /** Space-separated tags for the indexed `tags` field. */
-  tags: string
-  /** Comma-separated lowercase tags for filtering. */
-  tagCsv: string
-  modifiedAt: string
-}

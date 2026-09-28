@@ -66,7 +66,15 @@ export function VaultLeftSearch({ onClose, rootClassName }: VaultLeftSearchProps
       setResults([])
       return
     }
-    setResults(searchVault(debounced, {}))
+    let stale = false
+    void searchVault(debounced, {})
+      .then((r) => {
+        if (!stale) setResults(r)
+      })
+      .catch(() => {})
+    return () => {
+      stale = true
+    }
   }, [debounced])
 
   const openResult = useCallback(

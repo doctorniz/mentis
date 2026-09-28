@@ -153,7 +153,15 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
       setSearchResults([])
       return
     }
-    setSearchResults(searchVault(searchDebounced, {}))
+    let stale = false
+    void searchVault(searchDebounced, {})
+      .then((r) => {
+        if (!stale) setSearchResults(r)
+      })
+      .catch(() => {})
+    return () => {
+      stale = true
+    }
   }, [searchDebounced])
 
   function openSearchResult(r: SearchResult) {

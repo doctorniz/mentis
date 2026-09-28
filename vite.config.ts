@@ -67,8 +67,14 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       // Let these load as-is rather than going through esbuild pre-bundling,
       // which resolves `node:` specifiers before `resolve.alias` can rewrite them.
-      exclude: ['slidecanvas', 'pptxgenjs'],
+      // sqlite-wasm locates sqlite3.wasm relative to its own module URL, which
+      // pre-bundling would break.
+      exclude: ['slidecanvas', 'pptxgenjs', '@sqlite.org/sqlite-wasm'],
     },
+
+    // The index worker (src/core/index/worker.ts) is an ES module worker, so its
+    // imports can be code-split like the rest of the app.
+    worker: { format: 'es' },
 
     build: {
       // Keep Next's output directory so `pnpm start`, the Playwright CI command
