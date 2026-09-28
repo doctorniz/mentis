@@ -10,16 +10,30 @@ import type { IndexDocument, ManifestEntry, OpenResult, SearchHit } from '@/core
 
 let activeVaultId: string | null = null
 
+let markOpen: () => void = () => {}
+let opened = new Promise<void>((resolve) => (markOpen = resolve))
+
 /** Open (or create) the index for a vault. Search answers from it at once. */
 export function openSearchIndex(vaultId: string): Promise<OpenResult> {
   activeVaultId = vaultId
-  return callIndex('open', { vaultId })
+  const result = callIndex('open', { vaultId })
+  void result.then(() => markOpen()).catch(() => {})
+  return result
 }
 
 /** Close the index on vault close. The database stays on disk. */
 export function clearSearchIndex(): void {
   activeVaultId = null
+  opened = new Promise<void>((resolve) => (markOpen = resolve))
   if (indexWorkerStarted()) void callIndex('close', undefined).catch(() => {})
+}
+
+/**
+ * Resolves once the current vault's index is open, so readers that mount
+ * before the index opens get its contents rather than an empty answer.
+ */
+export function whenSearchIndexOpen(): Promise<void> {
+  return opened
 }
 
 export function getIndexManifest(): Promise<ManifestEntry[]> {

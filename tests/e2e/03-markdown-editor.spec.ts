@@ -5,6 +5,8 @@ import {
   createMarkdownNote,
   typeInEditor,
   waitForAutoSave,
+  writeVaultFile,
+  openVaultFile,
 } from './fixtures'
 
 test.describe('Markdown Editor', () => {
@@ -166,6 +168,36 @@ test.describe('Markdown Editor', () => {
       // Wiki-link node should be inserted (rendered as a span/link in Tiptap)
       const wikiLink = editor.locator('[data-type="wikiLink"], .wiki-link, a[data-wiki-link]')
       await expect(wikiLink.first()).toBeVisible({ timeout: 5_000 })
+    })
+
+    test('3.3.4 Files already in the vault are link targets after reopening', async ({
+      vaultPage: page,
+    }) => {
+      // Written outside the app, so only the vault index knows about them.
+      await writeVaultFile(page, 'Linker.md', '# Linker\n\nSee also\n')
+      await writeVaultFile(page, 'projects/Orbit Notes.md', '# Orbit Notes\n')
+      await writeVaultFile(page, 'Orbit Board.kan.md', '---\nkanban: {}\n---\n')
+      // First reopen indexes them; the second answers from the saved index.
+      // Opening a note is not a file operation, so nothing re-lists the vault
+      // after this: the targets can only have come from the index.
+      for (let i = 0; i < 2; i++) {
+        await page.reload()
+        await page.waitForSelector('nav', { timeout: 30_000 })
+        await page.waitForTimeout(1500)
+      }
+
+      await openVaultFile(page, 'Linker.md')
+      const editor = page.locator('.tiptap').first()
+      await expect(editor).toBeVisible({ timeout: 10_000 })
+      await editor.click()
+      await editor.press('Enter')
+      await page.keyboard.type('[[orbit')
+
+      const menu = page.locator('[role="listbox"][aria-label="Wiki link targets"]')
+      await expect(menu.getByRole('option', { name: /Orbit Notes/ })).toBeVisible({
+        timeout: 5_000,
+      })
+      await expect(menu.getByRole('option', { name: /Orbit Board/ })).toBeVisible()
     })
   })
 
