@@ -15,7 +15,7 @@ import { BacklinksSection } from '@/components/notes/backlinks-section'
 import { OutlineSection } from '@/components/notes/outline-section'
 import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import { ensureChatAssetIdForPath, movePdfChatAssetId } from '@/lib/chat/asset-index'
-import { fileTypes } from '@/core/registries'
+import { fileTypes, titleForPath } from '@/core/registries'
 import type { FileEditorHandle } from '@/core/registries/file-types'
 import { lazyEditorFor, preloadEditor } from '@/core/registries/lazy-editor'
 import { useEditorStore } from '@/stores/editor'
@@ -35,15 +35,6 @@ import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-
 import { toast } from '@/stores/toast'
 import { removeSearchDocument } from '@/lib/search/index'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
-
-function stemFromVaultPath(path: string): string {
-  return (
-    path
-      .replace(/\.[^/.]+$/i, '')
-      .split('/')
-      .pop() ?? path
-  )
-}
 
 function starredStorageKey(vaultPath: string) {
   return `ink-marrow:starred:${vaultPath}`
@@ -142,7 +133,7 @@ function NotesViewInner() {
       if (newPath.toLowerCase().endsWith('.pdf')) {
         await movePdfChatAssetId(vaultFs, oldPath, newPath).catch(() => undefined)
       }
-      retargetTabPath(tabId, newPath, stemFromVaultPath(newPath))
+      retargetTabPath(tabId, newPath, titleForPath(newPath))
       setSelectedPath(newPath)
       vaultChanged()
     } catch {
