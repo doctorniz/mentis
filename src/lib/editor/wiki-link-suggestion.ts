@@ -5,6 +5,7 @@ import { Suggestion } from '@tiptap/suggestion'
 import type { SuggestionProps } from '@tiptap/suggestion'
 import { WikiLinkList } from '@/components/notes/wiki-link-list'
 import { findWikiLinkSuggestionMatch } from '@/lib/editor/find-wiki-suggestion-match'
+import { titleForPath } from '@/core/registries'
 import type { WikiLinkPick } from '@/lib/editor/wiki-link-types'
 
 export const inkWikiLinkPluginKey = new PluginKey('inkWikiLink')
@@ -16,7 +17,7 @@ function filterWikiCandidates(paths: string[], query: string, selfPath?: string)
   return paths
     .filter((p) => p !== selfPath)
     .map((path) => {
-      const title = path.replace(/\.md$/i, '').split('/').pop() ?? path
+      const title = titleForPath(path)
       return {
         path,
         title,

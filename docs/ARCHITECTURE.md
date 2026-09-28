@@ -129,7 +129,7 @@ Opening a file walks four separate pieces of per-type knowledge:
 | ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------- |
 | 1. Extension → `FileType` | `src/types/files.ts:39` `getFileType()`       | one `switch` over ~50 extensions, keyed on `filename.split('.').pop()` |
 | 2. `FileType` → tab type  | `src/lib/notes/editor-tab-from-path.ts:6`     | second `switch`, 11 arms                                               |
-| 3. Frontmatter override   | same file, `detectEditorTabType()`            | reads the file, `gray-matter`, `type: kanban` → `'kanban'`             |
+| 3. Content claims        | same file, `detectEditorTabType()`            | a module may claim another type's files by content; none do today (kanban now uses `.kan.md`) |
 | 4. Tab type → component   | `src/components/views/notes-view.tsx:604-798` | 12-arm nested ternary                                                  |
 
 The same per-type knowledge is then re-encoded in at least three more places: a 10-deep

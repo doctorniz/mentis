@@ -45,8 +45,8 @@ describe('extractDocxText', () => {
 describe('isIndexableTextPath', () => {
   it('accepts markdown, kanban, mindmap, and code files', () => {
     expect(isIndexableTextPath('notes/todo.md')).toBe(true)
-    expect(isIndexableTextPath('board.kanban')).toBe(true)
-    expect(isIndexableTextPath('ideas.mind')).toBe(true)
+    expect(isIndexableTextPath('board.kan.md')).toBe(true)
+    expect(isIndexableTextPath('ideas.map.md')).toBe(true)
     expect(isIndexableTextPath('src/util.ts')).toBe(true)
     expect(isIndexableTextPath('script.py')).toBe(true)
     expect(isIndexableTextPath('readme.txt')).toBe(true)

@@ -1,4 +1,5 @@
 import matter from 'gray-matter'
+import { fileTypes } from '@/core/registries'
 import type { NoteDocument, NoteFrontmatter, WikiLink } from '@/types/editor'
 
 export function parseNote(path: string, raw: string): NoteDocument {
@@ -54,8 +55,14 @@ export function extractTags(content: string): string[] {
   return Array.from(tags)
 }
 
-/** Strip the vault file extension from a basename for comparison purposes. */
+/**
+ * Strip the vault file extension from a basename for comparison purposes.
+ * Linkable types lose their whole (possibly compound) suffix — `board.kan.md`
+ * compares as `board`; other names keep the historic md/pdf/canvas rule.
+ */
 function stripVaultExt(name: string): string {
+  const suffix = fileTypes.matchedSuffix(name)
+  if (suffix && fileTypes.resolve(name)?.linkable) return name.slice(0, name.length - suffix.length)
   return name.replace(/\.(md|pdf|canvas)$/i, '')
 }
 

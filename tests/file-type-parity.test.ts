@@ -177,6 +177,11 @@ const NAMES = [
 
 const viaRegistry = (name: string) => fileTypes.resolve(name)?.id ?? 'other'
 
+// Boards and maps moved to .kan.md / .map.md on purpose (see the describe
+// below); every other name must still resolve exactly as the old switch did.
+const RETIRED = /\.(mind|kanban)$/i
+const PARITY_NAMES = NAMES.filter((n) => !RETIRED.test(n))
+
 describe('registry parity with the old getFileType switch', () => {
   // Parity means every pre-registry type is still registered and resolves as
   // before — not that nothing new may exist. Modules added later (slides, …)
@@ -188,41 +193,44 @@ describe('registry parity with the old getFileType switch', () => {
     }
   })
 
-  it.each(NAMES)('%s', (name) => {
+  it.each(PARITY_NAMES)('%s', (name) => {
     expect(viaRegistry(name)).toBe(legacyGetFileType(name))
   })
 
   it('getFileType() now answers through the registry, unchanged', () => {
-    for (const name of NAMES) expect(getFileType(name)).toBe(legacyGetFileType(name))
+    for (const name of PARITY_NAMES) expect(getFileType(name)).toBe(legacyGetFileType(name))
   })
 })
 
-describe('kanban content claim, as the old detectEditorTabType applied it', () => {
-  const read = (text: string) => async () => text
-  const detect = async (path: string, text: string) =>
-    (await fileTypes.detect(path, read(text), { fallback: 'markdown' }))?.id
-
-  it('claims markdown with `type: kanban` frontmatter', async () => {
-    expect(await detect('board.md', '---\ntype: kanban\n---\n## Todo\n')).toBe('kanban')
+describe('markdown formats for boards and maps (replacing .kanban / .mind)', () => {
+  it('resolves the compound suffixes', () => {
+    expect(fileTypes.resolve('board.kan.md')?.id).toBe('kanban')
+    expect(fileTypes.resolve('ideas.map.md')?.id).toBe('mindmap')
+    expect(fileTypes.resolve('Plan.KAN.MD')?.id).toBe('kanban')
+    expect(fileTypes.resolve('note.md')?.id).toBe('markdown')
   })
 
-  it('leaves other markdown alone', async () => {
-    expect(await detect('note.md', '---\ntype: note\n---\nhi')).toBe('markdown')
-    expect(await detect('note.md', '# no frontmatter')).toBe('markdown')
+  it('retires the old suffixes', () => {
+    expect(fileTypes.resolve('board.kanban')).toBeUndefined()
+    expect(fileTypes.resolve('ideas.mind')).toBeUndefined()
   })
 
-  it('keeps markdown when the frontmatter does not parse', async () => {
-    expect(await detect('bad.md', '---\ntype: [unclosed\n---\n')).toBe('markdown')
-  })
-
-  it('still applies to unknown files, which open as markdown', async () => {
-    expect(await detect('board.whatever', '---\ntype: kanban\n---\n')).toBe('kanban')
-  })
-
-  it('never reads non-markdown files', async () => {
-    const boom = async () => {
-      throw new Error('should not read')
+  it('no longer turns markdown into a board by frontmatter, and never reads to decide', async () => {
+    let reads = 0
+    const read = async () => {
+      reads++
+      return '---\ntype: kanban\n---\n## Todo\n'
     }
-    expect((await fileTypes.detect('x.pdf', boom, { fallback: 'markdown' }))?.id).toBe('pdf')
+    expect((await fileTypes.detect('board.md', read, { fallback: 'markdown' }))?.id).toBe(
+      'markdown',
+    )
+    expect(reads).toBe(0)
+  })
+
+  it('keeps boards and maps linkable from [[wiki-links]]', () => {
+    for (const p of ['a.md', 'b.kan.md', 'c.map.md', 'd.slides.md']) {
+      expect(fileTypes.resolve(p)?.linkable, p).toBe(true)
+    }
+    expect(fileTypes.resolve('e.pdf')?.linkable).toBeFalsy()
   })
 })

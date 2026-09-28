@@ -28,8 +28,11 @@ describe('createEmptyMindmap / parseMindmap / serializeMindmap', () => {
     expect(file.nodes[0]!.data.label).toBe('Central Idea')
     expect(file.edges).toEqual([])
 
+    // .map.md only writes ids for nodes the front matter refers to, so an
+    // unreferenced root is re-identified on each read; everything else survives.
+    const withoutId = ({ id: _id, ...rest }: (typeof file.nodes)[number]) => rest
     const reparsed = parseMindmap(serializeMindmap(file))
-    expect(reparsed.nodes).toEqual(file.nodes)
+    expect(reparsed.nodes.map(withoutId)).toEqual(file.nodes.map(withoutId))
   })
 
   it('defaults missing nodes/edges to empty arrays', () => {

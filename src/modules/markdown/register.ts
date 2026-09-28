@@ -55,6 +55,7 @@ const definition: FileTypeDefinition = {
     content: () => import('./create'),
   },
   renameOnDoubleClick: true,
+  linkable: true,
   openAfterImport: true,
 }
 

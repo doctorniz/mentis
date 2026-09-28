@@ -197,6 +197,11 @@ export interface FileTypeDefinition {
   /** Double-clicking the file in the tree starts an inline rename. */
   renameOnDoubleClick?: boolean
   /**
+   * Can be the target of a `[[wiki-link]]`: offered in link autocomplete,
+   * resolved by name, and scanned for backlinks. Markdown-family formats.
+   */
+  linkable?: boolean
+  /**
    * Open the file in a tab after importing it on its own. `true` for every
    * suffix, or a list of the suffixes that should.
    */

@@ -40,6 +40,7 @@ const definition: FileTypeDefinition = {
     menu: { icon: MonitorPlay, accentClass: 'text-fuchsia-500', order: 45 },
     content: () => import('./create'),
   },
+  linkable: true,
   openAfterImport: true,
 }
 

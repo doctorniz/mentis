@@ -500,9 +500,9 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
         <GitBranch className="size-4 shrink-0 text-teal-500" aria-hidden />
         <InlineFileTitle
           path={path}
-          onRename={(oldPath, newStem) => onRename?.(tabId, oldPath, newStem, '.mind')}
+          onRename={(oldPath, newStem) => onRename?.(tabId, oldPath, newStem, '.map.md')}
         />
-        <span className="text-fg-muted font-mono text-xs">.mind</span>
+        <span className="text-fg-muted font-mono text-xs">.map.md</span>
       </div>
 
       {/* React Flow canvas */}

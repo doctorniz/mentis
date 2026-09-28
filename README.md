@@ -13,7 +13,7 @@ Mentis is a local-first personal knowledge base built on a **plain-file architec
 - **Markdown Notes** — WYSIWYG editing (Tiptap) with Source mode, wiki-links, backlinks, slash commands, tables, KaTeX math, find/replace, outline, templates, image embed/resize
 - **PDF Editor** — Annotate, highlight, draw, sign, comment; page reorder/merge/extract; form filling; find-in-document; edits written destructively into the file with pre-edit snapshots
 - **Drawing Canvas** — Layered raster drawing (PixiJS/WebGL): pressure-sensitive brushes, eraser, fill, eyedropper, rectangular selection with move/nudge/clipboard, selection-constrained painting, blend modes, PNG/PDF export
-- **Office & code files** — Edit `.docx`, `.pptx`, `.xlsx`/`.csv`, and source/plain-text files inline; mindmaps (`.mind`) and markdown-based kanban boards
+- **Office & code files** — Edit `.docx`, `.pptx`, `.xlsx`/`.csv`, and source/plain-text files inline; mindmaps (`.map.md`) and kanban boards (`.kan.md`), both stored as plain markdown
 - **Organizer** — Tasks (CalDAV-shaped, natural-language quick-add, recurrence, `.ics` export), calendar (day/week/month), quick-capture Board (text/image/voice with Whisper transcription), web bookmarks
 - **AI Chat** — Bring-your-own-LLM chat grounded in the open document or the whole vault (MiniSearch RAG, cited sources); OpenRouter / OpenAI / Anthropic / Gemini / Ollama, or fully local Gemma over WebGPU
 - **Full-Text Search** — Instant fuzzy search across every file type's content, with tags, folder, date, and type filters

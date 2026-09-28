@@ -36,7 +36,7 @@
 | **pdf-lib**             | Client-side PDF manipulation — annotation writing, page management, merge, page extract/reorder, form filling, signature stamping             |
 | **Fabric.js**           | Canvas overlay for annotation editing on PDF pages                                                                                            |
 | **PixiJS** v8           | WebGL-accelerated layer-based drawing canvas (`.canvas` editor) with brush engine and Photoshop-style properties panel                        |
-| **@xyflow/react** 12.x  | Node-based interactive graph UI for the Mindmap editor (`.mind` files) — pan/zoom, draggable nodes, custom node/edge rendering, touch support |
+| **@xyflow/react** 12.x  | Node-based interactive graph UI for the Mindmap editor (`.map.md` files, stored as a nested markdown list) — pan/zoom, draggable nodes, custom node/edge rendering, touch support |
 
 ### Search
 

@@ -10,6 +10,7 @@ import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { KanbanColumn } from '@/components/kanban/kanban-column'
 import { reindexFilePath } from '@/lib/search/build-vault-index'
 import { toast } from '@/stores/toast'
+import { fileTypes } from '@/core/registries'
 
 const SAVE_DEBOUNCE = 750
 
@@ -244,7 +245,9 @@ export function KanbanEditor({
 
   const handleRenameFile = useCallback(
     async (oldPath: string, newStem: string) => {
-      const ext = oldPath.match(/\.[^/.]+$/)?.[0] ?? '.md'
+      // Keep the whole compound suffix — renaming `board.kan.md` must not
+      // produce `name.md`, which would turn the board into a plain note.
+      const ext = fileTypes.matchedSuffix(oldPath) ?? '.kan.md'
       const dir = oldPath.includes('/') ? oldPath.slice(0, oldPath.lastIndexOf('/')) : ''
       const newPath = dir ? `${dir}/${newStem}${ext}` : `${newStem}${ext}`
       if (newPath === oldPath) return
@@ -283,9 +286,7 @@ export function KanbanEditor({
       {/* Title bar */}
       <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
         <InlineFileTitle path={path} autoFocus={isNew} onRename={handleRenameFile} />
-        {path.endsWith('.kanban') && (
-          <span className="text-fg-muted font-mono text-xs">.kanban</span>
-        )}
+        <span className="text-fg-muted font-mono text-xs">.kan.md</span>
       </div>
 
       {/* Board */}
