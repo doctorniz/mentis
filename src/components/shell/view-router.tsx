@@ -8,7 +8,6 @@ import { FilesView } from '@/components/views/files-view'
 import { GraphView } from '@/components/views/graph-view'
 import { BoardView } from '@/components/views/board-view'
 import { BookmarksView } from '@/components/views/bookmarks-view'
-import { NewView } from '@/components/views/new-view'
 import { OrganizerView } from '@/components/views/organizer-view'
 import { VaultChatView } from '@/components/views/vault-chat-view'
 
@@ -51,9 +50,6 @@ export function ViewRouter() {
       break
     case ViewMode.Bookmarks:
       body = <BookmarksView />
-      break
-    case ViewMode.New:
-      body = <NewView />
       break
     default:
       body = <VaultView />

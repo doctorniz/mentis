@@ -36,9 +36,6 @@ import { Button } from '@/components/ui/button'
 import { FbFileCard, FbFileRow, FB_DND_TYPE } from '@/components/file-browser/fb-file-card'
 import { FbContextMenu } from '@/components/file-browser/fb-context-menu'
 import { FbBatchToolbar } from '@/components/file-browser/fb-batch-toolbar'
-import { PdfViewer } from '@/components/pdf/pdf-viewer'
-import { CanvasEditor } from '@/components/canvas/canvas-editor'
-import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { MoveToFolderDialog } from '@/components/file-browser/move-to-folder-dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { cn } from '@/utils/cn'
@@ -110,7 +107,9 @@ function computeRubberBandSelection(
 const TYPE_FILTERS: { id: string; label: string }[] = [
   ...fileTypes
     .all()
-    .flatMap((d) => (d.appearance.browser?.filter ? [{ id: d.id, ...d.appearance.browser.filter }] : []))
+    .flatMap((d) =>
+      d.appearance.browser?.filter ? [{ id: d.id, ...d.appearance.browser.filter }] : [],
+    )
     .sort((a, b) => a.order - b.order)
     .map(({ id, label }) => ({ id, label })),
   { id: 'other', label: 'Other' },
@@ -133,16 +132,9 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
   const [refreshKey, setRefreshKey] = useState(0)
   const [showFilters, setShowFilters] = useState(false)
   const [typeFilter, setTypeFilter] = useState<string[]>([])
-  const [openPdfPath, setOpenPdfPath] = useState<string | null>(null)
-  const [openCanvasPath, setOpenCanvasPath] = useState<string | null>(null)
   const [editingPath, setEditingPath] = useState<string | null>(null)
   const [movePaths, setMovePaths] = useState<string[] | null>(null)
   const [deletePaths, setDeletePaths] = useState<string[] | null>(null)
-  const [newFilePath, setNewFilePath] = useState<string | null>(null)
-  const pendingPdfPath = useFileBrowserStore((s) => s.pendingPdfPath)
-  const setPendingPdfPath = useFileBrowserStore((s) => s.setPendingPdfPath)
-  const pendingCanvasPath = useFileBrowserStore((s) => s.pendingCanvasPath)
-  const setPendingCanvasPath = useFileBrowserStore((s) => s.setPendingCanvasPath)
 
   // Search bar state
   const [searchQuery, setSearchQuery] = useState('')
@@ -232,22 +224,6 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
       window.clearTimeout(renameOutsideClickTimeoutRef.current)
     }
   }, [editingPath])
-
-  useEffect(() => {
-    if (pendingPdfPath) {
-      setOpenPdfPath(pendingPdfPath)
-      setNewFilePath(pendingPdfPath)
-      setPendingPdfPath(null)
-    }
-  }, [pendingPdfPath, setPendingPdfPath])
-
-  useEffect(() => {
-    if (pendingCanvasPath) {
-      setOpenCanvasPath(pendingCanvasPath)
-      setNewFilePath(pendingCanvasPath)
-      setPendingCanvasPath(null)
-    }
-  }, [pendingCanvasPath, setPendingCanvasPath])
 
   const refresh = useCallback(async () => {
     const items = await collectBrowserFiles(vaultFs, currentFolder, showHidden)
@@ -559,85 +535,6 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
 
   function toggleType(t: string) {
     setTypeFilter((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
-  }
-
-  async function handleInlineRenameFile(
-    oldPath: string,
-    newName: string,
-    setPath: (p: string) => void,
-  ) {
-    const sanitized = newName.replace(/[/\\:*?"<>|]/g, '').trim()
-    if (!sanitized) return
-    const ext = oldPath.includes('.') ? oldPath.slice(oldPath.lastIndexOf('.')) : ''
-    const fullName = sanitized.endsWith(ext) ? sanitized : `${sanitized}${ext}`
-    const parent = oldPath.includes('/') ? oldPath.slice(0, oldPath.lastIndexOf('/')) : ''
-    const newPath = parent ? `${parent}/${fullName}` : fullName
-    if (vaultPathsPointToSameFile(newPath, oldPath)) return
-    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, oldPath)) {
-      toast.error('A file with that name already exists')
-      return
-    }
-    try {
-      await vaultFs.rename(oldPath, newPath)
-      removeSearchDocument(oldPath)
-      if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
-      const tab = useEditorStore.getState().tabs.find((t) => t.path === oldPath)
-      if (tab)
-        useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))
-      setPath(newPath)
-    } catch {
-      toast.error('Failed to rename')
-    }
-  }
-
-  /* ---- PDF sub-view ---- */
-  if (openPdfPath) {
-    return (
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="border-border bg-bg-secondary flex items-center gap-2 border-b px-3 py-1.5">
-          <Button variant="ghost" size="sm" onClick={() => setOpenPdfPath(null)}>
-            <ChevronLeft className="size-4" />
-            Back
-          </Button>
-          <InlineFileTitle
-            path={openPdfPath}
-            autoFocus={newFilePath === openPdfPath}
-            onFocused={() => setNewFilePath(null)}
-            onRename={(oldPath, newName) =>
-              void handleInlineRenameFile(oldPath, newName, setOpenPdfPath)
-            }
-          />
-        </div>
-        <PdfViewer path={openPdfPath} />
-      </div>
-    )
-  }
-
-  /* ---- Canvas sub-view ---- */
-  if (openCanvasPath) {
-    return (
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="border-border bg-bg-secondary flex items-center gap-2 border-b px-3 py-1.5">
-          <Button variant="ghost" size="sm" onClick={() => setOpenCanvasPath(null)}>
-            <ChevronLeft className="size-4" />
-            Back
-          </Button>
-          <InlineFileTitle
-            path={openCanvasPath}
-            autoFocus={newFilePath === openCanvasPath}
-            onFocused={() => setNewFilePath(null)}
-            onRename={(oldPath, newName) =>
-              void handleInlineRenameFile(oldPath, newName, setOpenCanvasPath)
-            }
-          />
-        </div>
-        <CanvasEditor
-          key={openCanvasPath}
-          tabId={`fb-canvas-${openCanvasPath}`}
-          path={openCanvasPath}
-        />
-      </div>
-    )
   }
 
   /* ---- Main browser ---- */

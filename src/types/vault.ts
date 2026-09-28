@@ -86,7 +86,6 @@ export enum ViewMode {
   Bookmarks = 'bookmarks',
   /** Full file browser — shows all folders including hidden system ones */
   Files = 'files',
-  New = 'new',
   /** @deprecated folded into ViewMode.Organizer */
   Calendar = 'calendar',
   /** Unified organizer: Tasks, Lists, Calendars, Reminders */
