@@ -2,7 +2,7 @@
 
 The app is built with **Vite** — a fully static site under `out/`. There is **no** server runtime, so headers must be set by the host; nothing in the build can set them.
 
-Two HTML entry points are emitted: `out/index.html` (the app) and `out/auth/dropbox.html` (the Dropbox OAuth return). The host must serve the extensionless path `/auth/dropbox` from that file — the registered OAuth redirect URI depends on it. `serve out -L`, Vercel, Netlify and Cloudflare Pages all do this by default; a bare nginx `try_files` setup needs it spelled out.
+Two HTML entry points are emitted: `out/index.html` (the app) and `out/auth/dropbox.html` (the Dropbox OAuth return). The host must serve the extensionless path `/auth/dropbox` from that file — the registered OAuth redirect URI depends on it. `serve out -L` does this by default; on Vercel it comes from `cleanUrls` in the repo's `vercel.json` (which also sets the Vite preset and the `out/` output directory, overriding the project's old Next.js preset); a bare nginx `try_files` setup needs it spelled out.
 
 ## COOP / COEP (SharedArrayBuffer)
 
