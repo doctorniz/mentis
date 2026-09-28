@@ -1,0 +1,25 @@
+{
+  "$comment": "Performance budgets from CLAUDE.md. Raising a number here is a deliberate change: commit it on its own, never to make a build pass. Sizes are gzipped KiB; `enforce: false` means reported but not failing. Checked by scripts/check-budgets.mjs (sizes) and tests/e2e/22-perf-report.spec.ts (timings, report-only until the Tauri build exists).",
+  "size": {
+    "initialJs": {
+      "label": "Initial JS",
+      "maxKb": 200,
+      "enforce": true
+    },
+    "initialTotal": {
+      "label": "Initial JS + CSS (ratchet)",
+      "maxKb": 215,
+      "enforce": true
+    },
+    "firstPdf": {
+      "label": "First-PDF lazy chunk (excl. worker)",
+      "maxKb": 400,
+      "enforce": false
+    }
+  },
+  "timing": {
+    "desktopColdStartMs": 1000,
+    "openNoteMs": 100,
+    "firstSearchMs": 50
+  }
+}

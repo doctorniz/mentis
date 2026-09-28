@@ -75,6 +75,9 @@ export default defineConfig(({ mode }) => {
       // and the deployment docs all keep working unchanged.
       outDir: 'out',
       emptyOutDir: true,
+      // out/.vite/manifest.json maps the import graph to output chunks;
+      // scripts/check-budgets.mjs measures the size budgets from it.
+      manifest: true,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),

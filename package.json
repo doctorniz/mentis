@@ -18,6 +18,7 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "node scripts/copy-mp3-worker.mjs && node scripts/copy-pdf-worker.mjs",
     "test:run": "vitest run",
+    "budgets": "node scripts/check-budgets.mjs",
     "qa": "node scripts/qa-checklist-server.mjs"
   },
   "dependencies": {
