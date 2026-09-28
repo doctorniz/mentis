@@ -109,6 +109,7 @@ describe('.map.md format', () => {
   it('creates a starter map with a single root', () => {
     const file = parseMindmap(createEmptyMindmap())
     expect(file.nodes.map((n) => n.data.label)).toEqual(['Central Idea'])
-    expect(file.viewport).toEqual({ x: 400, y: 300, zoom: 1 })
+    // No saved view: a new map opens fitted to the screen.
+    expect(file.viewport).toBeUndefined()
   })
 })

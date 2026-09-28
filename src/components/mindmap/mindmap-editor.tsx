@@ -206,6 +206,8 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
 
   // ── Dirty / auto-save ─────────────────────────────────────────────────────
   const [isDirty, setIsDirty] = useState(false)
+  // Last user pan/zoom; saved with the map so it reopens where it was left.
+  const viewportRef = useRef<MindmapFile['viewport']>(initialFile.viewport)
   const pathRef = useRef(path)
   pathRef.current = path
 
@@ -221,7 +223,7 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
         version: 1,
         nodes: libNodesRef.current,
         edges: libEdgesRef.current,
-        viewport: undefined,
+        viewport: viewportRef.current,
       }
       await vaultFs.writeTextFile(pathRef.current, serializeMindmap(file))
       setIsDirty(false)
@@ -244,7 +246,7 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
           version: 1,
           nodes: libNodesRef.current,
           edges: libEdgesRef.current,
-          viewport: undefined,
+          viewport: viewportRef.current,
         }
         await vaultFs.writeTextFile(pathRef.current, serializeMindmap(file)).catch(console.error)
       })()
@@ -516,8 +518,19 @@ function MindmapEditorInner({ path, tabId, initialFile, onRename, onPersisted }:
           onPaneClick={() => setEditingId(null)}
           onDoubleClick={handlePaneDoubleClick}
           nodeTypes={NODE_TYPES}
-          fitView
-          fitViewOptions={{ padding: 0.3 }}
+          // Reopen where the map was left; maps without a saved view (new or
+          // hand-written) are fitted to the screen.
+          {...(initialFile.viewport
+            ? { defaultViewport: initialFile.viewport }
+            : { fitView: true, fitViewOptions: { padding: 0.3 } })}
+          onMoveEnd={(event, viewport) => {
+            // Only the user's own pans/zooms count: programmatic moves (the
+            // initial fit, reset layout) arrive with no event and must not
+            // write the file on open.
+            if (!event) return
+            viewportRef.current = viewport
+            markDirty()
+          }}
           minZoom={0.1}
           maxZoom={4}
           deleteKeyCode={null}
