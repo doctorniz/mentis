@@ -12,15 +12,7 @@ import { useEditorStore } from '@/stores/editor'
 import { usePdfStore } from '@/stores/pdf'
 import { useCanvasStore } from '@/stores/canvas'
 import { ViewMode } from '@/types/vault'
-
-const VIEW_BY_DIGIT: Record<string, ViewMode> = {
-  '0': ViewMode.VaultChat,
-  '1': ViewMode.Vault,
-  '2': ViewMode.Board,
-  '3': ViewMode.Organizer,
-  '4': ViewMode.Bookmarks,
-  '5': ViewMode.Files,
-}
+import { views } from '@/core/registries'
 
 export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   const setActiveView = useUiStore((s) => s.setActiveView)
@@ -93,10 +85,10 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         return
       }
 
-      const view = VIEW_BY_DIGIT[e.key]
+      const view = views.byShortcut(e.key)
       if (view) {
         e.preventDefault()
-        setActiveView(view)
+        setActiveView(view.id)
       }
     }
 

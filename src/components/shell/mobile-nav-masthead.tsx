@@ -3,12 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import {
-  Bookmark,
-  CalendarCheck,
   Camera,
   ChevronDown,
   FileStack,
-  Files,
   Menu,
   Mic,
   Monitor,
@@ -16,12 +13,9 @@ import {
   Plus,
   LogOut,
   Settings,
-  Sparkles,
   StickyNote,
   Sun,
   Upload,
-  Vault,
-  LayoutGrid,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -34,20 +28,8 @@ import { useFileTreeStore } from '@/stores/file-tree'
 import { ViewMode, DAILY_NOTES_DIR } from '@/types/vault'
 import { openOrCreateDailyNote } from '@/lib/notes/daily-note'
 import { cn } from '@/utils/cn'
+import { views } from '@/core/registries'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
-
-type MobileNavEntry =
-  | { kind: 'view'; mode: ViewMode; label: string; icon: typeof Vault }
-  | { kind: 'todo'; label: string; icon: typeof Vault }
-
-const NAV: MobileNavEntry[] = [
-  { kind: 'view', mode: ViewMode.VaultChat, label: 'Chat', icon: Sparkles },
-  { kind: 'view', mode: ViewMode.Vault, label: 'Vault', icon: Vault },
-  { kind: 'view', mode: ViewMode.Board, label: 'Board', icon: LayoutGrid },
-  { kind: 'view', mode: ViewMode.Organizer, label: 'Organizer', icon: CalendarCheck },
-  { kind: 'view', mode: ViewMode.Bookmarks, label: 'Bookmarks', icon: Bookmark },
-  { kind: 'view', mode: ViewMode.Files, label: 'Files', icon: Files },
-]
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -125,6 +107,7 @@ export function MobileNavMasthead({
   const [open, setOpen] = useState(false)
   const [newExpanded, setNewExpanded] = useState(false)
   const activeView = useUiStore((s) => s.activeView)
+  const activeHighlight = views.resolve(activeView)?.highlight
   const setActiveView = useUiStore((s) => s.setActiveView)
   const config = useVaultStore((s) => s.config)
   const theme = useUiStore((s) => s.theme)
@@ -138,12 +121,7 @@ export function MobileNavMasthead({
     setNewExpanded(false)
   }, [])
 
-  const {
-    fileTypeMenuItems,
-    createThought,
-    importFiles,
-    busy,
-  } = useNewFileActions(closeMenu)
+  const { fileTypeMenuItems, createThought, importFiles, busy } = useNewFileActions(closeMenu)
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
@@ -250,33 +228,14 @@ export function MobileNavMasthead({
             >
               <DailyNoteDate onClose={closeMenu} />
 
-              {NAV.map((entry) => {
-                if (entry.kind === 'todo') {
-                  const Icon = entry.icon
-                  return (
-                    <div
-                      key={entry.label}
-                      className="text-fg-muted/40 flex w-full cursor-default items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium select-none"
-                    >
-                      <Icon className="size-5 shrink-0 opacity-50" aria-hidden />
-                      <span className="flex-1 truncate">{entry.label}</span>
-                      <span className="text-[10px] opacity-60">soon</span>
-                    </div>
-                  )
-                }
-                const { mode, label, icon: Icon } = entry
-                const vaultModes = [ViewMode.Vault, ViewMode.FileBrowser, ViewMode.Notes]
-                const organizerModes = [ViewMode.Tasks, ViewMode.Calendar]
-                const active =
-                  activeView === mode ||
-                  (mode === ViewMode.Vault && vaultModes.includes(activeView)) ||
-                  (mode === ViewMode.Organizer && organizerModes.includes(activeView))
+              {views.nav().map(({ id, label, icon: Icon }) => {
+                const active = activeHighlight === id
                 return (
                   <button
-                    key={mode}
+                    key={id}
                     type="button"
                     onClick={() => {
-                      setActiveView(mode)
+                      setActiveView(id)
                       closeMenu()
                     }}
                     className={cn(

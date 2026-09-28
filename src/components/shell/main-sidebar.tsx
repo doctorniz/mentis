@@ -2,13 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  Bookmark,
-  CalendarCheck,
   Camera,
   ChevronDown,
   FileStack,
-  Files,
-  LayoutGrid,
   Loader2,
   LogOut,
   Mic,
@@ -19,11 +15,9 @@ import {
   Plus,
   RefreshCw,
   Settings,
-  Sparkles,
   StickyNote,
   Sun,
   Upload,
-  Vault,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSync } from '@/contexts/sync-context'
@@ -36,25 +30,7 @@ import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useNewFileActions, type NewMenuItem } from '@/lib/notes/use-new-file-actions'
 import { cn } from '@/utils/cn'
-
-type NavEntry =
-  | { kind: 'view'; mode: ViewMode; label: string; icon: typeof Vault; shortcut?: string }
-  | { kind: 'todo'; label: string; icon: typeof Vault }
-
-const NAV: NavEntry[] = [
-  { kind: 'view', mode: ViewMode.VaultChat, label: 'Chat', icon: Sparkles, shortcut: '0' },
-  { kind: 'view', mode: ViewMode.Vault, label: 'Vault', icon: Vault, shortcut: '1' },
-  { kind: 'view', mode: ViewMode.Board, label: 'Board', icon: LayoutGrid, shortcut: '2' },
-  {
-    kind: 'view',
-    mode: ViewMode.Organizer,
-    label: 'Organizer',
-    icon: CalendarCheck,
-    shortcut: '3',
-  },
-  { kind: 'view', mode: ViewMode.Bookmarks, label: 'Bookmarks', icon: Bookmark, shortcut: '4' },
-  { kind: 'view', mode: ViewMode.Files, label: 'Files', icon: Files, shortcut: '5' },
-]
+import { views } from '@/core/registries'
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -129,6 +105,7 @@ export function MainSidebar({
   onOpenSettings: () => void
 }) {
   const activeView = useUiStore((s) => s.activeView)
+  const activeHighlight = views.resolve(activeView)?.highlight
   const setActiveView = useUiStore((s) => s.setActiveView)
   const isOpen = useUiStore((s) => s.isSidebarOpen)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
@@ -202,8 +179,6 @@ export function MainSidebar({
   const syncing = sync?.status === 'syncing'
   const canClickSync = Boolean(sync?.canManualSync && !syncing)
 
-  const legacyVaultModes = [ViewMode.Vault, ViewMode.FileBrowser, ViewMode.Notes, ViewMode.Graph]
-
   if (!isOpen) {
     return (
       <div className="border-border bg-sidebar-bg hidden h-full w-12 shrink-0 flex-col items-center border-r py-3 md:flex md:flex-col">
@@ -269,34 +244,15 @@ export function MainSidebar({
 
       <nav className="flex flex-1 flex-col gap-0.5 p-2" aria-label="Main views">
         <DailyNoteDate />
-        {NAV.map((entry) => {
-          if (entry.kind === 'todo') {
-            const Icon = entry.icon
-            return (
-              <div
-                key={entry.label}
-                className="text-fg-muted/40 flex w-full cursor-default items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium select-none"
-                title="Coming soon"
-              >
-                <Icon className="size-5 shrink-0 opacity-50" aria-hidden />
-                <span className="flex-1 truncate">{entry.label}</span>
-                <span className="text-[10px] opacity-60">soon</span>
-              </div>
-            )
-          }
-
-          const { mode, label, icon: Icon, shortcut } = entry
-          const legacyOrganizerModes = [ViewMode.Tasks, ViewMode.Calendar]
-          const active =
-            activeView === mode ||
-            (mode === ViewMode.Vault && legacyVaultModes.includes(activeView)) ||
-            (mode === ViewMode.Organizer && legacyOrganizerModes.includes(activeView))
+        {views.nav().map(({ id, label, icon: Icon, nav }) => {
+          const shortcut = nav?.shortcut
+          const active = activeHighlight === id
 
           return (
             <button
-              key={mode}
+              key={id}
               type="button"
-              onClick={() => setActiveView(mode)}
+              onClick={() => setActiveView(id)}
               className={cn(
                 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors',
                 active

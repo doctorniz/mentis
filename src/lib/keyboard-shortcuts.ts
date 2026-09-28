@@ -1,3 +1,5 @@
+import { views } from '@/core/registries'
+
 export interface KeyboardShortcut {
   key: string
   ctrl?: boolean
@@ -9,14 +11,20 @@ export interface KeyboardShortcut {
 
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: 's', ctrl: true, description: 'Save current file', category: 'Global' },
-  { key: 'n', ctrl: true, description: 'Switch to New view', category: 'Global' },
-  { key: 'f', ctrl: true, description: 'Switch to Search view', category: 'Global' },
-  { key: '1', ctrl: true, description: 'Switch to Vault view', category: 'Global' },
-  { key: '2', ctrl: true, description: 'Switch to Board view', category: 'Global' },
-  { key: '3', ctrl: true, description: 'Switch to Organizer view', category: 'Global' },
-  { key: '4', ctrl: true, description: 'Switch to Bookmarks view', category: 'Global' },
-  { key: '5', ctrl: true, description: 'Switch to Files view', category: 'Global' },
-  { key: '8', ctrl: true, description: 'Switch to Search view', category: 'Global' },
+  { key: 'n', ctrl: true, description: 'Open the New menu', category: 'Global' },
+  { key: 'f', ctrl: true, description: 'Search the vault', category: 'Global' },
+  // Ctrl+<digit> view switching, straight from the view registry.
+  ...views
+    .nav()
+    .filter((v) => v.nav?.shortcut)
+    .map(
+      (v): KeyboardShortcut => ({
+        key: v.nav!.shortcut!,
+        ctrl: true,
+        description: `Switch to ${v.label} view`,
+        category: 'Global',
+      }),
+    ),
   { key: '\\', ctrl: true, description: 'Toggle sidebar', category: 'Global' },
   { key: '?', ctrl: true, shift: true, description: 'Show keyboard shortcuts', category: 'Global' },
   { key: 'b', ctrl: true, description: 'Bold text', category: 'Editor' },
