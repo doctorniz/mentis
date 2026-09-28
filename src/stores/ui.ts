@@ -6,14 +6,15 @@ import { useVaultStore } from '@/stores/vault'
 export type ThemeChoice = 'light' | 'dark' | 'system'
 
 interface UiState {
-  activeView: ViewMode
+  /** A view id or legacy alias from the view registry. */
+  activeView: string
   vaultMode: VaultLayoutMode
   isSidebarOpen: boolean
   sidebarWidth: number
   theme: ThemeChoice
   activeModal: string | null
 
-  setActiveView: (view: ViewMode) => void
+  setActiveView: (view: string) => void
   setVaultMode: (mode: VaultLayoutMode) => void
   /** Restore `vaultMode` from `localStorage` for the active vault path (call when vault opens or path changes). */
   hydrateVaultLayoutForActiveVault: () => void

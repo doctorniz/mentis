@@ -1,6 +1,8 @@
+import { createViewRegistry, type ViewDefinition } from '@/core/registries/views'
 import { createFileTypeRegistry, type FileTypeDefinition } from '@/core/registries/file-types'
 
 export type { FileTypeDefinition, FileTypeRegistry } from '@/core/registries/file-types'
+export type { ViewDefinition, ViewRegistry, ResolvedView } from '@/core/registries/views'
 
 /**
  * Every module registers itself by exporting a definition from
@@ -36,3 +38,14 @@ export function titleForPath(path: string): string {
   if (suffix && name.length > suffix.length) return name.slice(0, name.length - suffix.length)
   return name.replace(/\.[^/.]+$/i, '')
 }
+
+const viewRegistrations = import.meta.glob<{ default: ViewDefinition }>('/src/modules/*/view.ts', {
+  eager: true,
+})
+
+/** Every full-screen view, discovered from `src/modules/<name>/view.ts`. */
+export const views = createViewRegistry(
+  Object.keys(viewRegistrations)
+    .sort()
+    .map((key) => viewRegistrations[key].default),
+)

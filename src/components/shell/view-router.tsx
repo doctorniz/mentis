@@ -1,59 +1,28 @@
-'use client'
-
-import type { ReactNode } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useUiStore } from '@/stores/ui'
 import { ViewMode } from '@/types/vault'
-import { VaultView } from '@/components/views/vault-view'
-import { FilesView } from '@/components/views/files-view'
-import { GraphView } from '@/components/views/graph-view'
-import { BoardView } from '@/components/views/board-view'
-import { BookmarksView } from '@/components/views/bookmarks-view'
-import { OrganizerView } from '@/components/views/organizer-view'
-import { VaultChatView } from '@/components/views/vault-chat-view'
+import { views } from '@/core/registries'
+import { lazyViewFor, preloadViewsWhenIdle } from '@/core/registries/lazy-view'
 
+/**
+ * Renders the active view. Views, their legacy aliases (with any props they
+ * pass) and the fallback all come from the view registry; unknown ids show the
+ * vault, as they always have.
+ */
 export function ViewRouter() {
   const activeView = useUiStore((s) => s.activeView)
 
-  let body: ReactNode
-  switch (activeView) {
-    case ViewMode.VaultChat:
-      body = <VaultChatView />
-      break
-    case ViewMode.Vault:
-    // legacy routes — redirect into the vault (notes) view
-    case ViewMode.FileBrowser:
-    case ViewMode.Notes:
-      body = <VaultView />
-      break
-    case ViewMode.Files:
-      body = <FilesView />
-      break
-    // Search is now embedded in the Vault left column — redirect to Vault
-    case ViewMode.Search:
-      body = <VaultView />
-      break
-    case ViewMode.Graph:
-      body = <GraphView />
-      break
-    case ViewMode.Board:
-      body = <BoardView />
-      break
-    // Legacy routes — redirect into Organizer
-    case ViewMode.Tasks:
-      body = <OrganizerView initialTab="tasks" />
-      break
-    case ViewMode.Calendar:
-      body = <OrganizerView initialTab="calendars" />
-      break
-    case ViewMode.Organizer:
-      body = <OrganizerView />
-      break
-    case ViewMode.Bookmarks:
-      body = <BookmarksView />
-      break
-    default:
-      body = <VaultView />
-  }
+  useEffect(() => preloadViewsWhenIdle(), [])
 
-  return <div className="flex h-full min-h-0 flex-1 flex-col">{body}</div>
+  const resolved = views.resolve(activeView) ?? views.resolve(ViewMode.Vault)
+  if (!resolved) return null
+  const View = lazyViewFor(resolved.def)
+
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      <Suspense fallback={<div className="min-h-0 flex-1" />}>
+        <View {...resolved.props} />
+      </Suspense>
+    </div>
+  )
 }
