@@ -178,13 +178,14 @@ const NAMES = [
 const viaRegistry = (name: string) => fileTypes.resolve(name)?.id ?? 'other'
 
 describe('registry parity with the old getFileType switch', () => {
-  it('discovers exactly the pre-registry types', () => {
-    expect(
-      fileTypes
-        .all()
-        .map((d) => d.id)
-        .sort(),
-    ).toEqual([...new Set(EXTENSIONS.map(legacyGetFileType))].sort())
+  // Parity means every pre-registry type is still registered and resolves as
+  // before — not that nothing new may exist. Modules added later (slides, …)
+  // must not have to edit this test.
+  it('still registers every pre-registry type', () => {
+    const registered = new Set(fileTypes.all().map((d) => d.id))
+    for (const id of new Set(EXTENSIONS.map(legacyGetFileType))) {
+      expect(registered.has(id), `missing type "${id}"`).toBe(true)
+    }
   })
 
   it.each(NAMES)('%s', (name) => {
