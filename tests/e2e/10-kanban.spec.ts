@@ -1,9 +1,6 @@
 import { test, expect, waitForAutoSave, writeVaultFile, openVaultFile } from './fixtures'
 
-const KANBAN_MD = `---
-type: kanban
----
-
+const KANBAN_MD = `
 ## To Do
 <!--kanban:amber-->
 - [ ] First task
@@ -18,7 +15,7 @@ type: kanban
 - [x] Completed item
 `
 
-async function createKanbanFile(page: import('@playwright/test').Page, filename = 'board.md') {
+async function createKanbanFile(page: import('@playwright/test').Page, filename = 'board.kan.md') {
   await writeVaultFile(page, filename, KANBAN_MD)
 }
 
@@ -28,11 +25,11 @@ async function openFileInVault(page: import('@playwright/test').Page, filename: 
 
 test.describe('10 — Kanban Board', () => {
   test.describe('10.1 Board Rendering & Interaction', () => {
-    test('10.1.1 .md with type: kanban frontmatter renders as board', async ({
+    test('10.1.1 .kan.md renders as a board (no frontmatter needed)', async ({
       vaultPage: page,
     }) => {
       await createKanbanFile(page)
-      await openFileInVault(page, 'board.md')
+      await openFileInVault(page, 'board.kan.md')
 
       // Rendered as a board: column headings become h3s with card counts
       // (raw markdown would show ## text inside an editor instead)
@@ -45,7 +42,7 @@ test.describe('10 — Kanban Board', () => {
 
     test('10.1.2 Columns rendered from ## headings', async ({ vaultPage: page }) => {
       await createKanbanFile(page)
-      await openFileInVault(page, 'board.md')
+      await openFileInVault(page, 'board.kan.md')
 
       await page.waitForTimeout(1000)
 
@@ -57,7 +54,7 @@ test.describe('10 — Kanban Board', () => {
 
     test('10.1.4 Cards rendered from - [ ] / - [x] items', async ({ vaultPage: page }) => {
       await createKanbanFile(page)
-      await openFileInVault(page, 'board.md')
+      await openFileInVault(page, 'board.kan.md')
 
       await page.waitForTimeout(1000)
 
@@ -71,7 +68,7 @@ test.describe('10 — Kanban Board', () => {
     test.fixme('10.1.5 Drag card between columns', async ({ vaultPage: page }) => {
       // Complex DnD interaction — hard to simulate reliably in Playwright
       await createKanbanFile(page)
-      await openFileInVault(page, 'board.md')
+      await openFileInVault(page, 'board.kan.md')
 
       await page.waitForTimeout(1000)
 
@@ -84,7 +81,7 @@ test.describe('10 — Kanban Board', () => {
 
     test('10.1.7 Edit card text inline', async ({ vaultPage: page }) => {
       await createKanbanFile(page)
-      await openFileInVault(page, 'board.md')
+      await openFileInVault(page, 'board.kan.md')
 
       await page.waitForTimeout(1000)
 
@@ -107,7 +104,7 @@ test.describe('10 — Kanban Board', () => {
 
     test('10.1.8 Toggle card checkbox', async ({ vaultPage: page }) => {
       await createKanbanFile(page)
-      await openFileInVault(page, 'board.md')
+      await openFileInVault(page, 'board.kan.md')
 
       await page.waitForTimeout(1000)
 
@@ -120,9 +117,9 @@ test.describe('10 — Kanban Board', () => {
       await expect(page.getByRole('checkbox', { name: 'Uncheck card' }).first()).toBeVisible()
     })
 
-    test('10.1.9 File remains valid .md after edits', async ({ vaultPage: page }) => {
+    test('10.1.9 File remains valid markdown after edits', async ({ vaultPage: page }) => {
       await createKanbanFile(page)
-      await openFileInVault(page, 'board.md')
+      await openFileInVault(page, 'board.kan.md')
 
       await page.waitForTimeout(1000)
 
@@ -140,7 +137,7 @@ test.describe('10 — Kanban Board', () => {
         ).values()
         for await (const entry of iter) {
           if (entry.kind === 'directory') {
-            const fileHandle = await (entry as FileSystemDirectoryHandle).getFileHandle('board.md')
+            const fileHandle = await (entry as FileSystemDirectoryHandle).getFileHandle('board.kan.md')
             const file = await fileHandle.getFile()
             return file.text()
           }
@@ -148,8 +145,8 @@ test.describe('10 — Kanban Board', () => {
         throw new Error('vault not found')
       })
 
-      // Should still have frontmatter
-      expect(content).toContain('type: kanban')
+      // Plain markdown, not JSON
+      expect(content.trimStart().startsWith('{')).toBe(false)
       // Should still have column headings
       expect(content).toContain('## ')
       // Should still have list items
