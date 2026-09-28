@@ -59,7 +59,12 @@ test.describe('1.1 — Vault Creation & Opening', () => {
     const landingForm = page.locator('form').filter({
       has: page.getByRole('button', { name: /create/i }),
     })
-    const isLanding = await landingForm.isVisible({ timeout: 10_000 }).catch(() => false)
+    // isVisible() doesn't wait (its timeout option is ignored), so it raced the
+    // client render and skipped whenever React hadn't painted yet. Wait for it.
+    const isLanding = await landingForm
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false)
 
     if (isLanding) {
       const unicodeName = '日本語テスト 📝 Ñoño'
