@@ -1,9 +1,13 @@
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { RemoteSyncProvider, RemoteFileEntry, SyncManifestEntry, SyncStatus } from './types'
 import { SyncState } from './sync-state'
-import { detectLocalChanges, hashBytes } from './change-detector'
+import { detectLocalChanges, hashBytes, type HashCache } from './change-detector'
 import { buildSyncExcludeMatcher } from './excludes'
 import { resolveSyncConflict, decideRemoteUpdate, decideRemoteDelete } from './conflicts'
+import { putFileHashes, validFileHashes } from '@/lib/search/index'
+
+/** File hashes remembered in the vault index, so unchanged files are not re-read. */
+const indexHashCache: HashCache = { valid: validFileHashes, put: putFileHashes }
 
 export type SyncStatusListener = (status: SyncStatus, message?: string) => void
 
@@ -70,7 +74,12 @@ export class SyncManager {
     try {
       await this.provider.prepareRemoteRoot?.()
 
-      const localChanges = await detectLocalChanges(this.fs, this.state, this.isExcluded)
+      const localChanges = await detectLocalChanges(
+        this.fs,
+        this.state,
+        this.isExcluded,
+        indexHashCache,
+      )
       const manifestMap = new Map<string, SyncManifestEntry>()
       for (const e of await this.state.getAllEntries()) {
         // Purge stale rows for excluded paths (e.g. snapshots synced
@@ -356,8 +365,7 @@ export class SyncManager {
     manifestEntry: SyncManifestEntry | undefined,
   ): 'local' | 'remote' {
     const decision = resolveSyncConflict({
-      isLocallyChanged:
-        localChanges.modified.includes(path) || localChanges.created.includes(path),
+      isLocallyChanged: localChanges.modified.includes(path) || localChanges.created.includes(path),
       remoteHash: remote.hash,
       remoteModifiedAt: remote.modifiedAt,
       manifestEntry,

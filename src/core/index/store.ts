@@ -3,7 +3,7 @@ import type { Database } from '@sqlite.org/sqlite-wasm'
 import type { SearchFilters, SearchResult } from '@/types/search'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import { buildSnippet } from '@/lib/search/snippet'
-import type { IndexDocument, ManifestEntry, SearchHit } from './protocol'
+import type { FileHash, IndexDocument, ManifestEntry, SearchHit } from './protocol'
 
 /**
  * The vault index: SQLite tables holding derived data only. Everything here can
@@ -12,8 +12,11 @@ import type { IndexDocument, ManifestEntry, SearchHit } from './protocol'
  *
  * - `files` is the manifest: one row per indexed file, with the size and mtime
  *   it had when indexed. Reconciliation compares the vault against it.
- *   `hash` is reserved for sync change detection.
  * - `fts` is the FTS5 full-text table; its rowid is `files.id`.
+ * - `hashes` caches each file's SHA-256 with the size and mtime it had when
+ *   hashed, for sync change detection. It covers every file sync looks at
+ *   (media and system files too), not just searchable ones. A file whose size
+ *   and mtime are unchanged is taken to be unchanged, as git and rsync do.
  *
  * Search is FTS5 (prefix matching, bm25 ranking with title > tags > content),
  * plus typo-tolerant matching on titles through a small in-memory MiniSearch
@@ -28,7 +31,7 @@ import type { IndexDocument, ManifestEntry, SearchHit } from './protocol'
  * Bump when the schema or what an extractor produces changes: an index built
  * by another version is dropped and rebuilt from the files.
  */
-export const INDEX_VERSION = 1
+export const INDEX_VERSION = 2
 
 // bm25 weights in fts column order: title, content, tags.
 const BM25 = 'bm25(fts, 3.0, 1.0, 2.0)'
@@ -67,6 +70,7 @@ export class IndexStore {
     this.db.exec(`
       DROP TABLE IF EXISTS fts;
       DROP TABLE IF EXISTS files;
+      DROP TABLE IF EXISTS hashes;
       CREATE TABLE files (
         id INTEGER PRIMARY KEY,
         path TEXT NOT NULL UNIQUE,
@@ -75,7 +79,6 @@ export class IndexStore {
         mtime INTEGER NOT NULL,
         title TEXT NOT NULL,
         tags TEXT NOT NULL DEFAULT '',
-        hash TEXT,
         indexed_at INTEGER NOT NULL
       );
       CREATE VIRTUAL TABLE fts USING fts5(
@@ -83,6 +86,12 @@ export class IndexStore {
         tokenize = 'unicode61 remove_diacritics 2',
         prefix = '2 3'
       );
+      CREATE TABLE hashes (
+        path TEXT PRIMARY KEY,
+        size INTEGER NOT NULL,
+        mtime INTEGER NOT NULL,
+        hash TEXT NOT NULL
+      ) WITHOUT ROWID;
       PRAGMA user_version = ${INDEX_VERSION};
     `)
   }
@@ -95,6 +104,49 @@ export class IndexStore {
     return this.db.selectObjects(
       'SELECT path, size, mtime FROM files',
     ) as unknown as ManifestEntry[]
+  }
+
+  /**
+   * Given every file sync can see now, forget cached hashes for files that are
+   * gone and return the ones still valid (same size and mtime), by path.
+   */
+  validHashes(files: readonly ManifestEntry[]): Record<string, string> {
+    const out: Record<string, string> = {}
+    this.db.transaction(() => {
+      this.db.exec(
+        'CREATE TEMP TABLE IF NOT EXISTS seen (path TEXT PRIMARY KEY, size INTEGER, mtime INTEGER); DELETE FROM seen;',
+      )
+      const insert = this.db.prepare(
+        'INSERT OR REPLACE INTO seen (path, size, mtime) VALUES (?, ?, ?)',
+      )
+      try {
+        for (const f of files) insert.bind([f.path, f.size, f.mtime]).stepReset()
+      } finally {
+        insert.finalize()
+      }
+      this.db.exec('DELETE FROM hashes WHERE path NOT IN (SELECT path FROM seen)')
+      const rows = this.db.selectObjects(
+        'SELECT h.path, h.hash FROM hashes h JOIN seen s ON s.path = h.path AND s.size = h.size AND s.mtime = h.mtime',
+      ) as unknown as Array<{ path: string; hash: string }>
+      for (const r of rows) out[r.path] = r.hash
+      this.db.exec('DELETE FROM seen')
+    })
+    return out
+  }
+
+  /** Remember hashes computed for files at the given size and mtime. */
+  putHashes(entries: readonly FileHash[]): void {
+    if (entries.length === 0) return
+    this.db.transaction(() => {
+      const insert = this.db.prepare(
+        'INSERT OR REPLACE INTO hashes (path, size, mtime, hash) VALUES (?, ?, ?, ?)',
+      )
+      try {
+        for (const e of entries) insert.bind([e.path, e.size, e.mtime, e.hash]).stepReset()
+      } finally {
+        insert.finalize()
+      }
+    })
   }
 
   upsert(docs: readonly IndexDocument[]): void {
@@ -114,7 +166,7 @@ export class IndexStore {
         } else {
           id = Number(existing)
           this.db.exec({
-            sql: 'UPDATE files SET type = ?, size = ?, mtime = ?, title = ?, tags = ?, hash = NULL, indexed_at = ? WHERE id = ?',
+            sql: 'UPDATE files SET type = ?, size = ?, mtime = ?, title = ?, tags = ?, indexed_at = ? WHERE id = ?',
             bind: [doc.type, doc.size, doc.mtime, doc.title, tagCsv, now, id],
           })
           this.db.exec({ sql: 'DELETE FROM fts WHERE rowid = ?', bind: [id] })

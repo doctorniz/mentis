@@ -20,6 +20,11 @@ export interface ManifestEntry {
   mtime: number
 }
 
+/** A file's SHA-256 at the size and mtime it had when hashed. */
+export interface FileHash extends ManifestEntry {
+  hash: string
+}
+
 /** A search hit with its full indexed content, for retrieval. */
 export interface SearchHit {
   path: string
@@ -48,6 +53,9 @@ export interface IndexOps {
   remove: [{ vaultId: string; paths: string[] }, void]
   search: [{ query: string; filters?: SearchFilters }, SearchResult[]]
   searchDocuments: [{ query: string; topK: number }, SearchHit[]]
+  /** Prune the hash cache to `files` and return the hashes still valid. */
+  validHashes: [{ vaultId: string; files: ManifestEntry[] }, Record<string, string>]
+  putHashes: [{ vaultId: string; hashes: FileHash[] }, void]
 }
 
 export type IndexOp = keyof IndexOps

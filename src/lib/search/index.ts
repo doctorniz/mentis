@@ -1,6 +1,12 @@
 import type { SearchFilters, SearchResult } from '@/types/search'
 import { callIndex, indexWorkerStarted } from '@/core/index/client'
-import type { IndexDocument, ManifestEntry, OpenResult, SearchHit } from '@/core/index/protocol'
+import type {
+  FileHash,
+  IndexDocument,
+  ManifestEntry,
+  OpenResult,
+  SearchHit,
+} from '@/core/index/protocol'
 
 /**
  * Vault search, backed by the SQLite + FTS5 index in the index worker
@@ -74,4 +80,29 @@ export function searchVault(
 export function searchDocuments(query: string, topK: number): Promise<SearchHit[]> {
   if (!activeVaultId) return Promise.resolve([])
   return callIndex('searchDocuments', { query, topK })
+}
+
+/* ---- Hash cache for sync change detection ---- */
+
+const HASH_CACHE_WAIT_MS = 5_000
+
+/**
+ * Hashes still valid for `files` (same size and mtime as when hashed), after
+ * pruning the cache to them. `null` when the index is not open within a few
+ * seconds — callers then hash everything, so sync never waits on the index.
+ */
+export async function validFileHashes(
+  files: ManifestEntry[],
+): Promise<Record<string, string> | null> {
+  const open = await Promise.race([
+    whenSearchIndexOpen().then(() => true),
+    new Promise<false>((resolve) => setTimeout(() => resolve(false), HASH_CACHE_WAIT_MS)),
+  ])
+  if (!open || !activeVaultId) return null
+  return callIndex('validHashes', { vaultId: activeVaultId, files })
+}
+
+export function putFileHashes(hashes: FileHash[]): Promise<void> {
+  if (!activeVaultId || hashes.length === 0) return Promise.resolve()
+  return callIndex('putHashes', { vaultId: activeVaultId, hashes })
 }

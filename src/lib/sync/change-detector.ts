@@ -1,6 +1,19 @@
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { SyncManifestEntry, LocalChangeSet } from './types'
 import { SyncState } from './sync-state'
+import type { FileHash, ManifestEntry } from '@/core/index/protocol'
+
+/**
+ * Remembers file hashes between syncs, keyed by path, size and mtime (the
+ * vault index's `hashes` table). Without one, every file is read and hashed.
+ */
+export interface HashCache {
+  /** Hashes still valid for `files`, forgetting files not listed; null = unavailable. */
+  valid(files: ManifestEntry[]): Promise<Record<string, string> | null>
+  put(hashes: FileHash[]): Promise<void>
+}
+
+const HASH_SAVE_BATCH = 50
 
 export async function hashBytes(data: Uint8Array): Promise<string> {
   const buf = new Uint8Array(data).buffer as ArrayBuffer
@@ -13,31 +26,38 @@ export async function hashBytes(data: Uint8Array): Promise<string> {
   return hex.join('')
 }
 
+/** Every non-excluded file with the size and mtime `readdir` reports — no reads. */
 async function walkDir(
   fs: FileSystemAdapter,
   dir: string,
   isExcluded: (path: string) => boolean,
-): Promise<string[]> {
+): Promise<ManifestEntry[]> {
   const entries = await fs.readdir(dir)
-  const paths: string[] = []
+  const files: ManifestEntry[] = []
   for (const entry of entries) {
     if (isExcluded(entry.path)) continue
     if (entry.isDirectory) {
       const children = await walkDir(fs, entry.path, isExcluded)
-      paths.push(...children)
+      files.push(...children)
     } else {
-      paths.push(entry.path)
+      files.push({
+        path: entry.path,
+        size: entry.size ?? 0,
+        mtime: entry.modifiedAt ? Date.parse(entry.modifiedAt) : 0,
+      })
     }
   }
-  return paths
+  return files
 }
 
 export async function detectLocalChanges(
   fs: FileSystemAdapter,
   state: SyncState,
   isExcluded: (path: string) => boolean = () => false,
+  cache?: HashCache,
 ): Promise<LocalChangeSet> {
-  const allPaths = await walkDir(fs, '', isExcluded)
+  const allFiles = await walkDir(fs, '', isExcluded)
+  const cached = (await cache?.valid(allFiles).catch(() => null)) ?? {}
   const manifest = await state.getAllEntries()
 
   const manifestMap = new Map<string, SyncManifestEntry>()
@@ -52,10 +72,21 @@ export async function detectLocalChanges(
   const modified: string[] = []
   const seenPaths = new Set<string>()
 
-  for (const filePath of allPaths) {
+  let fresh: FileHash[] = []
+
+  for (const file of allFiles) {
+    const filePath = file.path
     seenPaths.add(filePath)
-    const data = await fs.readFile(filePath)
-    const hash = await hashBytes(data)
+    // Unchanged size and mtime: reuse the cached hash instead of reading.
+    let hash = cached[filePath]
+    if (hash === undefined) {
+      hash = await hashBytes(await fs.readFile(filePath))
+      fresh.push({ ...file, hash })
+      if (cache && fresh.length >= HASH_SAVE_BATCH) {
+        await cache.put(fresh).catch(() => {})
+        fresh = []
+      }
+    }
     const manifestEntry = manifestMap.get(filePath)
 
     if (!manifestEntry) {
@@ -64,6 +95,8 @@ export async function detectLocalChanges(
       modified.push(filePath)
     }
   }
+
+  if (cache) await cache.put(fresh).catch(() => {})
 
   const deleted: string[] = []
   for (const entry of manifestMap.values()) {

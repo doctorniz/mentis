@@ -290,7 +290,9 @@ from both a static and a dynamic path.
 > from it at once; a background reconcile then lists the vault (metadata only) and re-extracts
 > just the new or changed files (`src/lib/search/build-vault-index.ts`). Wiki-link targets now
 > come from the index's manifest too (item 7b; `notes-workspace-context.tsx`), re-listing the
-> vault only after the user's own file operations. The sync hashing walk remains (item 7c).
+> vault only after the user's own file operations. Sync change detection (item 7c) still lists
+> the vault but reads and hashes only files whose size or mtime changed, reusing hashes cached
+> in the index's `hashes` table (`src/lib/sync/change-detector.ts`).
 
 **Violated three times over, on every single vault open.**
 

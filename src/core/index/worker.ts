@@ -125,6 +125,11 @@ const handlers: { [K in IndexOp]: Handler<K> } = {
   },
   search: ({ query, filters }) => store?.search(query, filters) ?? [],
   searchDocuments: ({ query, topK }) => store?.searchDocuments(query, topK) ?? [],
+  validHashes: ({ vaultId, files }) =>
+    vaultId === openVaultId && store ? store.validHashes(files) : {},
+  putHashes: ({ vaultId, hashes }) => {
+    if (vaultId === openVaultId) store?.putHashes(hashes)
+  },
 }
 
 let queue: Promise<void> = Promise.resolve()
