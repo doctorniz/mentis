@@ -1,4 +1,5 @@
 import { parseKanban } from '@/lib/kanban'
+import { extractLinkTargets } from '@/lib/markdown/parse'
 import type { SearchExtractor } from '@/core/registries/file-types'
 
 /** Column headings and card titles. */
@@ -12,7 +13,7 @@ const extract: SearchExtractor<string> = ({ data }) => {
   } catch {
     /* use empty */
   }
-  return { content }
+  return { content, links: extractLinkTargets(data) }
 }
 
 export default extract

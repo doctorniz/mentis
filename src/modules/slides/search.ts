@@ -1,9 +1,10 @@
-import { parseNote } from '@/lib/markdown/parse'
+import { extractLinkTargets, parseNote } from '@/lib/markdown/parse'
 import { SEARCH_CONTENT_CAP } from '@/lib/search/content-cap'
 import type { SearchExtractor } from '@/core/registries/file-types'
 
 /** The deck's markdown without front matter; its `title` directive if set. */
 const extract: SearchExtractor<string> = ({ path, data }) => {
+  const links = extractLinkTargets(data)
   try {
     const doc = parseNote(path, data)
     const title =
@@ -14,9 +15,9 @@ const extract: SearchExtractor<string> = ({ path, data }) => {
       doc.content.length > SEARCH_CONTENT_CAP
         ? doc.content.slice(0, SEARCH_CONTENT_CAP)
         : doc.content
-    return { title, content }
+    return { title, content, links }
   } catch {
-    return { content: '' }
+    return { content: '', links }
   }
 }
 

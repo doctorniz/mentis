@@ -1,4 +1,11 @@
-import { test, expect, navigateTo, writeVaultFile } from './fixtures'
+import {
+  test,
+  expect,
+  navigateTo,
+  openVaultFile,
+  waitForAutoSave,
+  writeVaultFile,
+} from './fixtures'
 
 async function createNoteViaOPFS(
   page: import('@playwright/test').Page,
@@ -162,6 +169,77 @@ test.describe('12 — Graph Visualization', () => {
       const box = await canvas.boundingBox()
       expect(box).not.toBeNull()
       expect(box!.width).toBeGreaterThan(0)
+    })
+  })
+
+  test.describe('12.3 Built from the index', () => {
+    test('12.3.1 Counts the notes and the links between them', async ({ vaultPage: page }) => {
+      await seedGraphNotes(page)
+      await navigateTo(page, 'graph')
+
+      // Welcome and the five seeded notes. alpha→beta, alpha→gamma, beta→alpha; the broken link adds none.
+      await expect(page.getByText(/6 notes/)).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByText(/3 links/)).toBeVisible()
+    })
+
+    test('12.3.2 A PDF added while the graph is open appears, with the link to it', async ({
+      vaultPage: page,
+    }) => {
+      await seedGraphNotes(page)
+      await navigateTo(page, 'graph')
+      await expect(page.getByText(/6 notes/)).toBeVisible({ timeout: 15_000 })
+
+      const pdf =
+        'JVBERi0xLjQKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveFswIDAgMjAwIDIwMF0+PmVuZG9iagp0cmFpbGVyPDwvUm9vdCAxIDAgUj4+CiUlRU9G'
+      await writeVaultFile(page, 'Quarterly Report.pdf', pdf, { base64: true })
+      await writeVaultFile(page, 'note-delta.md', '# Delta\n\nSee [[Quarterly Report]].')
+
+      await expect(page.getByText(/1 PDF/)).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByText(/7 notes/)).toBeVisible()
+      await expect(page.getByText(/4 links/)).toBeVisible()
+    })
+
+    test('12.3.3 A note lists the notes that link to it as backlinks', async ({
+      vaultPage: page,
+    }) => {
+      await seedGraphNotes(page)
+      await navigateTo(page, 'graph')
+      await expect(page.getByText(/3 links/)).toBeVisible({ timeout: 15_000 })
+
+      await openVaultFile(page, 'note-beta.md')
+      const backlinks = page.getByRole('region', { name: 'Backlinks' })
+      await expect(backlinks).toBeVisible({ timeout: 10_000 })
+      await backlinks.getByRole('button', { name: /backlinks/i }).click()
+      // Only Alpha links to Beta.
+      await expect(backlinks.getByRole('button', { name: 'note-alpha' })).toBeVisible({
+        timeout: 10_000,
+      })
+      await expect(backlinks.getByRole('button', { name: 'note-gamma' })).toHaveCount(0)
+    })
+
+    test('12.3.4 A link typed into a note shows up as a backlink once it is saved', async ({
+      vaultPage: page,
+    }) => {
+      await seedGraphNotes(page)
+
+      await openVaultFile(page, 'note-gamma.md')
+      // The visual editor escapes typed brackets; a wiki-link is written in the source.
+      await page.getByRole('tab', { name: 'Source (raw markdown)' }).click()
+      const source = page.locator('[aria-label="Raw markdown source"] .cm-content')
+      await source.click()
+      await page.keyboard.press('Control+End')
+      await page.keyboard.insertText('\n\nAlso see [[note-beta]]\n')
+      await expect(source).toContainText('[[note-beta]]')
+      await waitForAutoSave(page)
+
+      await openVaultFile(page, 'note-beta.md')
+      const backlinks = page.getByRole('region', { name: 'Backlinks' })
+      await expect(backlinks).toBeVisible({ timeout: 10_000 })
+      await backlinks.getByRole('button', { name: /backlinks/i }).click()
+      await expect(backlinks.getByRole('button', { name: 'note-gamma' })).toBeVisible({
+        timeout: 10_000,
+      })
+      await expect(backlinks.getByRole('button', { name: 'note-alpha' })).toBeVisible()
     })
   })
 })

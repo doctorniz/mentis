@@ -568,7 +568,6 @@ function NotesViewInner() {
                       )}
                       {activeDef.layout.rightColumn.backlinks && (
                         <BacklinksSection
-                          vaultFs={vaultFs}
                           markdownPaths={markdownPaths}
                           activeNotePath={activeTab.path}
                           scanPulse={scanPulse}

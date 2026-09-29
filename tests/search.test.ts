@@ -293,6 +293,36 @@ describe('Search Index', () => {
     expect(rebuilt.fileCount()).toBe(0)
     expect(rebuilt.search('alpha')).toEqual([])
   })
+
+  it('stores wiki-link targets, once each', () => {
+    store.upsert([
+      makeDoc({ path: 'a.md', links: ['b', 'c', 'b'] }),
+      makeDoc({ path: 'b.md', links: ['a'] }),
+      makeDoc({ path: 'c.md' }),
+    ])
+    expect(store.links()).toEqual([
+      { source: 'a.md', target: 'b' },
+      { source: 'a.md', target: 'c' },
+      { source: 'b.md', target: 'a' },
+    ])
+  })
+
+  it('replaces links when it is upserted again', () => {
+    store.upsert([makeDoc({ path: 'a.md', links: ['b', 'c'] })])
+    store.upsert([makeDoc({ path: 'a.md', links: ['d'] })])
+    expect(store.links()).toEqual([{ source: 'a.md', target: 'd' }])
+  })
+
+  it('drops links when it is removed', () => {
+    store.upsert([makeDoc({ path: 'a.md', links: ['b'] }), makeDoc({ path: 'b.md', links: ['a'] })])
+    store.remove(['a.md'])
+    expect(store.links()).toEqual([{ source: 'b.md', target: 'a' }])
+  })
+
+  it('keeps links across reopening', () => {
+    store.upsert([makeDoc({ path: 'a.md', links: ['b'] })])
+    expect(new IndexStore(db).links()).toEqual([{ source: 'a.md', target: 'b' }])
+  })
 })
 
 /* ---- Reconcile plan ---- */

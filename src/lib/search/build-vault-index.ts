@@ -12,6 +12,7 @@ import {
   upsertSearchDocument,
   upsertSearchDocuments,
 } from '@/lib/search/index'
+import { announceIndexChanged } from '@/lib/search/index-events'
 
 /**
  * Builds search documents from vault files. What a file contributes is its
@@ -87,6 +88,7 @@ async function fileToDocument(
     title: extracted.title || titleForPath(path),
     content: extracted.content,
     tags: extracted.tags ?? [],
+    links: extracted.links ?? [],
     size,
     mtime,
   }
@@ -105,10 +107,26 @@ const IN_FLIGHT = 3
  * Reading the next files overlaps with the worker extracting the last ones.
  * `isCancelled` is checked between files so a vault switch stops it cleanly.
  */
-export async function reconcileVaultSearchIndex(
+export function reconcileVaultSearchIndex(
   fs: FileSystemAdapter,
   isCancelled: () => boolean = () => false,
   run: ExtractRunner = extractInWorker,
+): Promise<{ indexed: number; removed: number }> {
+  const result = queue.then(() => reconcileNow(fs, isCancelled, run))
+  queue = result.then(
+    () => undefined,
+    () => undefined,
+  )
+  return result
+}
+
+/** Reconciles run one at a time, so two callers never index the same files twice. */
+let queue: Promise<void> = Promise.resolve()
+
+async function reconcileNow(
+  fs: FileSystemAdapter,
+  isCancelled: () => boolean,
+  run: ExtractRunner,
 ): Promise<{ indexed: number; removed: number }> {
   const vault: ManifestEntry[] = []
   await listIndexableFiles(fs, '', vault)
@@ -147,6 +165,40 @@ export async function reconcileVaultSearchIndex(
   return { indexed, removed: toRemove.length }
 }
 
+const SOON_DELAY_MS = 1000
+let soonTimer: ReturnType<typeof setTimeout> | undefined
+let soonRunning = false
+let soonAgain = false
+
+/**
+ * Ask for a reconcile shortly, for the times the index may be behind the vault
+ * (a binary file was added, or sync brought files in). Requests made while one
+ * is pending or running collapse into a single follow-up run.
+ */
+export function reconcileSoon(fs: FileSystemAdapter): void {
+  clearTimeout(soonTimer)
+  soonTimer = setTimeout(() => void runSoon(fs), SOON_DELAY_MS)
+}
+
+async function runSoon(fs: FileSystemAdapter): Promise<void> {
+  if (soonRunning) {
+    soonAgain = true
+    return
+  }
+  soonRunning = true
+  try {
+    do {
+      soonAgain = false
+      const { indexed, removed } = await reconcileVaultSearchIndex(fs)
+      if (indexed > 0 || removed > 0) announceIndexChanged()
+    } while (soonAgain)
+  } catch {
+    // The next request tries again.
+  } finally {
+    soonRunning = false
+  }
+}
+
 /** Incremental update for one file path after save. Routes by type. */
 export async function reindexFilePath(
   fs: FileSystemAdapter,
@@ -154,7 +206,10 @@ export async function reindexFilePath(
   run: ExtractRunner = extractInWorker,
 ): Promise<void> {
   const doc = await fileToDocument(fs, path, undefined, run)
-  if (doc) await upsertSearchDocument(doc)
+  if (doc) {
+    await upsertSearchDocument(doc)
+    announceIndexChanged()
+  }
 }
 
 /** @deprecated Use reindexFilePath instead. */

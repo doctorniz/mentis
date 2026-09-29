@@ -1,3 +1,4 @@
+import { extractLinkTargets } from '@/lib/markdown/parse'
 import { parseMindmap, extractMindmapText } from '@/lib/mindmap'
 import type { SearchExtractor } from '@/core/registries/file-types'
 
@@ -9,7 +10,7 @@ const extract: SearchExtractor<string> = ({ data }) => {
   } catch {
     /* use empty */
   }
-  return { content }
+  return { content, links: extractLinkTargets(data) }
 }
 
 export default extract

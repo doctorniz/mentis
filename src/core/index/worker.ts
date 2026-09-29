@@ -115,6 +115,7 @@ const handlers: { [K in IndexOp]: Handler<K> } = {
   open: ({ vaultId }) => open(vaultId),
   close: () => closeDb(),
   manifest: () => store?.manifest() ?? [],
+  links: () => store?.links() ?? [],
   // Writes carry the vault they were meant for; late ones for a vault that has
   // since been closed are dropped rather than landing in the wrong index.
   upsert: ({ vaultId, docs }) => {

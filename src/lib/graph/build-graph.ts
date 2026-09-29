@@ -1,5 +1,3 @@
-import type { FileSystemAdapter } from '@/lib/fs'
-import { extractWikiLinks, resolveWikiLinkPath } from '@/lib/markdown'
 import { fileTypeIdOf, titleForPath } from '@/core/registries'
 
 /** File-type registry id of the node's file (see `@/core/registries`). */
@@ -42,19 +40,15 @@ function typeFromPath(p: string): GraphNodeType {
 }
 
 /**
- * Scan all vault files and build a graph of note connections.
- * Every file (note, PDF, canvas) becomes a node; resolved wiki-links in
- * markdown files become directed edges.
+ * Build the graph of note connections. Every path becomes a node; `edges` are
+ * already-resolved links between them, and each one adds to both ends'
+ * `linkCount`. Edges that name a path with no node are ignored.
  */
-export async function buildNoteGraph(
-  vaultFs: FileSystemAdapter,
-  allPaths: string[],
-): Promise<GraphData> {
+export function buildNoteGraph(
+  allPaths: readonly string[],
+  edges: readonly GraphEdge[],
+): GraphData {
   const nodeMap = new Map<string, GraphNode>()
-  const edges: GraphEdge[] = []
-  const edgeSet = new Set<string>()
-
-  // Create a node for every file
   for (const p of allPaths) {
     nodeMap.set(p, {
       id: p,
@@ -69,31 +63,17 @@ export async function buildNoteGraph(
     })
   }
 
-  // Build edges from wiki-links inside markdown files only
-  const markdownPaths = allPaths.filter((p) => p.endsWith('.md'))
-
-  for (const p of markdownPaths) {
-    try {
-      const raw = await vaultFs.readTextFile(p)
-      const links = extractWikiLinks(raw)
-      for (const link of links) {
-        const resolved = resolveWikiLinkPath(link.target, allPaths)
-        if (!resolved || resolved === p) continue
-
-        const edgeKey = `${p}→${resolved}`
-        if (edgeSet.has(edgeKey)) continue
-        edgeSet.add(edgeKey)
-
-        edges.push({ source: p, target: resolved })
-        nodeMap.get(p)!.linkCount++
-        if (nodeMap.has(resolved)) nodeMap.get(resolved)!.linkCount++
-      }
-    } catch {
-      // skip unreadable files
-    }
+  const kept: GraphEdge[] = []
+  for (const e of edges) {
+    const from = nodeMap.get(e.source)
+    const to = nodeMap.get(e.target)
+    if (!from || !to) continue
+    kept.push({ source: e.source, target: e.target })
+    from.linkCount++
+    to.linkCount++
   }
 
-  return { nodes: Array.from(nodeMap.values()), edges }
+  return { nodes: Array.from(nodeMap.values()), edges: kept }
 }
 
 /**

@@ -3,7 +3,7 @@ import type { Database } from '@sqlite.org/sqlite-wasm'
 import type { SearchFilters, SearchResult } from '@/types/search'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import { buildSnippet } from '@/lib/search/snippet'
-import type { FileHash, IndexDocument, ManifestEntry, SearchHit } from './protocol'
+import type { FileHash, IndexDocument, LinkRow, ManifestEntry, SearchHit } from './protocol'
 
 /**
  * The vault index: SQLite tables holding derived data only. Everything here can
@@ -17,6 +17,9 @@ import type { FileHash, IndexDocument, ManifestEntry, SearchHit } from './protoc
  *   hashed, for sync change detection. It covers every file sync looks at
  *   (media and system files too), not just searchable ones. A file whose size
  *   and mtime are unchanged is taken to be unchanged, as git and rsync do.
+ * - `links` holds each file's wiki-links exactly as written. They are not
+ *   resolved here: what a link points at depends on which files exist, so
+ *   callers resolve them against the current manifest.
  *
  * Search is FTS5 (prefix matching, bm25 ranking with title > tags > content),
  * plus typo-tolerant matching on titles through a small in-memory MiniSearch
@@ -31,7 +34,7 @@ import type { FileHash, IndexDocument, ManifestEntry, SearchHit } from './protoc
  * Bump when the schema or what an extractor produces changes: an index built
  * by another version is dropped and rebuilt from the files.
  */
-export const INDEX_VERSION = 2
+export const INDEX_VERSION = 3
 
 // bm25 weights in fts column order: title, content, tags.
 const BM25 = 'bm25(fts, 3.0, 1.0, 2.0)'
@@ -71,6 +74,7 @@ export class IndexStore {
       DROP TABLE IF EXISTS fts;
       DROP TABLE IF EXISTS files;
       DROP TABLE IF EXISTS hashes;
+      DROP TABLE IF EXISTS links;
       CREATE TABLE files (
         id INTEGER PRIMARY KEY,
         path TEXT NOT NULL UNIQUE,
@@ -92,6 +96,11 @@ export class IndexStore {
         mtime INTEGER NOT NULL,
         hash TEXT NOT NULL
       ) WITHOUT ROWID;
+      CREATE TABLE links (
+        source TEXT NOT NULL,
+        target TEXT NOT NULL,
+        PRIMARY KEY (source, target)
+      ) WITHOUT ROWID;
       PRAGMA user_version = ${INDEX_VERSION};
     `)
   }
@@ -104,6 +113,10 @@ export class IndexStore {
     return this.db.selectObjects(
       'SELECT path, size, mtime FROM files',
     ) as unknown as ManifestEntry[]
+  }
+
+  links(): LinkRow[] {
+    return this.db.selectObjects('SELECT source, target FROM links') as unknown as LinkRow[]
   }
 
   /**
@@ -175,6 +188,13 @@ export class IndexStore {
           sql: 'INSERT INTO fts (rowid, title, content, tags) VALUES (?, ?, ?, ?)',
           bind: [id, doc.title, doc.content, doc.tags.join(' ')],
         })
+        this.db.exec({ sql: 'DELETE FROM links WHERE source = ?', bind: [doc.path] })
+        for (const target of new Set(doc.links ?? [])) {
+          this.db.exec({
+            sql: 'INSERT INTO links (source, target) VALUES (?, ?)',
+            bind: [doc.path, target],
+          })
+        }
       }
     })
     for (const doc of docs) {
@@ -191,6 +211,7 @@ export class IndexStore {
         if (id === undefined) continue
         this.db.exec({ sql: 'DELETE FROM fts WHERE rowid = ?', bind: [id] })
         this.db.exec({ sql: 'DELETE FROM files WHERE id = ?', bind: [id] })
+        this.db.exec({ sql: 'DELETE FROM links WHERE source = ?', bind: [path] })
       }
     })
     for (const path of paths) {

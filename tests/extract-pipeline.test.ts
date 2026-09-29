@@ -22,7 +22,7 @@ vi.mock('@/lib/search/index', () => ({
 }))
 
 // Imported after the mock so the pipeline binds to it.
-const { reconcileVaultSearchIndex, reindexFilePath } =
+const { reconcileSoon, reconcileVaultSearchIndex, reindexFilePath } =
   await import('@/lib/search/build-vault-index')
 
 function fakeFs(files: Record<string, string | Uint8Array>): FileSystemAdapter {
@@ -151,6 +151,68 @@ describe('reconcileVaultSearchIndex with an injected runner', () => {
     const result = await reconcileVaultSearchIndex(fakeFs(files), () => cancelled, run)
     expect(indexed).toHaveLength(0)
     expect(result.indexed).toBe(0)
+  })
+})
+
+describe('links', () => {
+  it('carries the links an extractor reports into the document', async () => {
+    const run: ExtractRunner = async () => ({ content: 'x', links: ['Alpha', 'Beta'] })
+    await reconcileVaultSearchIndex(fakeFs({ 'a.md': 'x' }), () => false, run)
+    expect(indexed[0].links).toEqual(['Alpha', 'Beta'])
+  })
+
+  it('indexes no links for a file whose extractor reports none', async () => {
+    await reconcileVaultSearchIndex(fakeFs({ 'a.md': 'x' }), () => false, echo)
+    expect(indexed[0].links).toEqual([])
+  })
+})
+
+describe('reconcile serialisation', () => {
+  it('never runs two reconciles at once', async () => {
+    let active = 0
+    let peak = 0
+    const run: ExtractRunner = async () => {
+      active++
+      peak = Math.max(peak, active)
+      await new Promise((r) => setTimeout(r, 3))
+      active--
+      return { content: '' }
+    }
+    const files: Record<string, string> = {}
+    for (let i = 0; i < 9; i++) files[`n${i}.md`] = 'x'
+    await Promise.all([
+      reconcileVaultSearchIndex(fakeFs(files), () => false, run),
+      reconcileVaultSearchIndex(fakeFs(files), () => false, run),
+    ])
+    expect(peak).toBeLessThanOrEqual(3)
+  })
+
+  it('still runs the next reconcile after one fails', async () => {
+    const broken = {
+      readdir: async () => Promise.reject(new Error('boom')),
+    } as unknown as FileSystemAdapter
+    await expect(reconcileVaultSearchIndex(broken, () => false, echo)).rejects.toThrow('boom')
+    const result = await reconcileVaultSearchIndex(fakeFs({ 'a.md': 'x' }), () => false, echo)
+    expect(result.indexed).toBe(1)
+  })
+})
+
+describe('reconcileSoon', () => {
+  it('collapses a burst of requests into one reconcile', async () => {
+    vi.useFakeTimers()
+    try {
+      const fs = fakeFs({ 'a.md': 'x' })
+      const readdir = vi.spyOn(fs, 'readdir')
+      reconcileSoon(fs)
+      reconcileSoon(fs)
+      reconcileSoon(fs)
+      expect(readdir).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1500)
+      // One listing of the vault root, however many requests came in.
+      expect(readdir.mock.calls.filter(([dir]) => dir === '')).toHaveLength(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

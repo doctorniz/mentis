@@ -15,6 +15,10 @@ import {
   type GraphData,
 } from '@/lib/graph/build-graph'
 import { fileTypes } from '@/core/registries'
+import { resolveLinkEdges } from '@/lib/links/resolve-edges'
+import { reconcileSoon } from '@/lib/search/build-vault-index'
+import { getIndexLinks, getIndexManifest, whenSearchIndexOpen } from '@/lib/search/index'
+import { INDEX_CHANGED_EVENTS } from '@/lib/search/index-events'
 import { GraphCanvas } from '@/components/graph/graph-canvas'
 
 const SKIP_PREFIXES = ['_', '.']
@@ -25,30 +29,15 @@ const GRAPH_TYPES = fileTypes
   .flatMap((d) => (d.graph ? [{ id: d.id, count: d.graph.count }] : []))
   .sort((a, b) => a.count.order - b.count.order)
 
-/** Recursively collect all vault files we want to show in the graph. */
-async function collectVaultPaths(
-  vaultFs: { readdir: (dir: string) => Promise<{ name: string; isDirectory: boolean }[]> },
-  dir = '',
-): Promise<string[]> {
-  const paths: string[] = []
-  let entries: { name: string; isDirectory: boolean }[]
-  try {
-    entries = await vaultFs.readdir(dir)
-  } catch {
-    return paths
-  }
-
-  for (const e of entries) {
-    if (SKIP_PREFIXES.some((prefix) => e.name.startsWith(prefix))) continue
-    const fullPath = dir ? `${dir}/${e.name}` : e.name
-    if (e.isDirectory) {
-      const sub = await collectVaultPaths(vaultFs, fullPath)
-      paths.push(...sub)
-    } else {
-      if (fileTypes.resolve(e.name)?.graph) paths.push(fullPath)
-    }
-  }
-  return paths
+/** Indexed files that belong in the graph: a supported type, outside system and hidden folders. */
+function graphPathsFrom(manifestPaths: readonly string[]): string[] {
+  return manifestPaths
+    .filter(
+      (p) =>
+        fileTypes.resolve(p)?.graph &&
+        !p.split('/').some((seg) => SKIP_PREFIXES.some((x) => seg.startsWith(x))),
+    )
+    .sort()
 }
 
 export function GraphView() {
@@ -62,17 +51,24 @@ export function GraphView() {
   const [folderFilter, setFolderFilter] = useState('')
   const hasDataRef = useRef(false)
 
-  // Use a ref so the rebuild effect always uses the latest vaultFs without re-subscribing
-  const vaultFsRef = useRef(vaultFs)
-  vaultFsRef.current = vaultFs
-
   const [rebuildToken, setRebuildToken] = useState(0)
 
-  // Rebuild whenever the vault changes (new file, rename, save with wiki-links)
+  // The index may be behind the vault (a PDF was added, sync brought files in),
+  // so ask for a reconcile on open and whenever the vault changes. It announces
+  // itself if it found anything, which rebuilds the graph below.
   useEffect(() => {
-    const handler = () => setRebuildToken((n) => n + 1)
-    window.addEventListener('ink:vault-changed', handler)
-    return () => window.removeEventListener('ink:vault-changed', handler)
+    reconcileSoon(vaultFs)
+    const onVaultChanged = () => reconcileSoon(vaultFs)
+    window.addEventListener('ink:vault-changed', onVaultChanged)
+    return () => window.removeEventListener('ink:vault-changed', onVaultChanged)
+  }, [vaultFs])
+
+  useEffect(() => {
+    const bump = () => setRebuildToken((n) => n + 1)
+    for (const name of INDEX_CHANGED_EVENTS) window.addEventListener(name, bump)
+    return () => {
+      for (const name of INDEX_CHANGED_EVENTS) window.removeEventListener(name, bump)
+    }
   }, [])
 
   useEffect(() => {
@@ -80,12 +76,17 @@ export function GraphView() {
     // Show loading spinner only on the very first build; silent refresh after that
     if (!hasDataRef.current) setLoading(true)
     void (async () => {
-      const allPaths = await collectVaultPaths(vaultFsRef.current)
-      if (cancelled) return
-      const data = await buildNoteGraph(vaultFsRef.current, allPaths)
-      if (cancelled) return
+      try {
+        await whenSearchIndexOpen()
+        const [manifest, links] = await Promise.all([getIndexManifest(), getIndexLinks()])
+        if (cancelled) return
+        const paths = graphPathsFrom(manifest.map((m) => m.path))
+        setGraphData(buildNoteGraph(paths, resolveLinkEdges(links, paths)))
+      } catch {
+        if (cancelled) return
+        setGraphData({ nodes: [], edges: [] })
+      }
       hasDataRef.current = true
-      setGraphData(data)
       setLoading(false)
     })()
     return () => {

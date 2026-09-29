@@ -1,37 +1,12 @@
 import matter from 'gray-matter'
 import { fileTypes } from '@/core/registries'
-import type { NoteFrontmatter, WikiLink } from '@/types/editor'
+import type { NoteFrontmatter } from '@/types/editor'
 
-export { parseNote, extractTags } from './parse'
+export { parseNote, extractTags, extractWikiLinks } from './parse'
 
 export function serializeNote(frontmatter: NoteFrontmatter, content: string): string {
   const fm = { ...frontmatter, modified: new Date().toISOString() }
   return matter.stringify(content, fm)
-}
-
-const WIKI_LINK_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
-
-export function extractWikiLinks(content: string): WikiLink[] {
-  const links: WikiLink[] = []
-  let match: RegExpExecArray | null
-
-  while ((match = WIKI_LINK_RE.exec(content)) !== null) {
-    const target = match[1].trim()
-    const alias = match[2]?.trim()
-
-    const pageMatch = target.match(/^(.+)#page=(\d+(?:-\d+)?)$/)
-    if (pageMatch) {
-      links.push({
-        target: pageMatch[1],
-        alias,
-        pageRef: pageMatch[2],
-      })
-    } else {
-      links.push({ target, alias })
-    }
-  }
-
-  return links
 }
 
 /**
@@ -75,4 +50,34 @@ export function resolveWikiLinkPath(link: string, allPaths: string[]): string | 
   const needle = normStr(link)
   const partial = allPaths.find((p) => normStr(p).includes(needle))
   return partial ?? null
+}
+
+/**
+ * `resolveWikiLinkPath` for many links against one list of paths: the same
+ * answers, but the list is keyed once instead of scanned for every link.
+ */
+export function createWikiLinkResolver(
+  allPaths: readonly string[],
+): (link: string) => string | null {
+  const byStem = new Map<string, string>()
+  for (const p of allPaths) {
+    const key = wikiStemKey(p.split('/').pop() ?? '')
+    if (!byStem.has(key)) byStem.set(key, p)
+  }
+  let normalised: string[] | null = null
+  const cache = new Map<string, string | null>()
+
+  return (link) => {
+    const hit = cache.get(link)
+    if (hit !== undefined) return hit
+    let found = byStem.get(wikiStemKey(link)) ?? null
+    if (!found) {
+      normalised ??= allPaths.map(normStr)
+      const needle = normStr(link)
+      const i = normalised.findIndex((p) => p.includes(needle))
+      found = i === -1 ? null : allPaths[i]
+    }
+    cache.set(link, found)
+    return found
+  }
 }

@@ -381,6 +381,20 @@ has no `core/` or `registries/` directory. There is nothing in place to enforce 
 > thread) and hands the data over. The reconcile pass reads up to three files ahead of the worker.
 > The index-build and DOCX/PPTX rows below (and XLSX/PDF text for search) are therefore
 > off the main thread; hashing (item 7c), the graph and slide rendering are not yet.
+>
+> **Update (item 9b):** backlinks and the graph no longer read files. Each extractor also reports
+> the raw `[[targets]]` a file contains (`links`); the index keeps them in a `links(source, target)`
+> table (derived data, rebuilt with the index; `INDEX_VERSION` 3). `getIndexLinks()` returns the
+> rows and `lib/links/resolve-edges.ts` resolves them on the main thread against the current set
+> of paths with the same rules as `resolveWikiLinkPath` (`createWikiLinkResolver` keys the paths
+> once instead of scanning them per link). Links are stored as written, not resolved, so renaming
+> or adding a file never needs the other files re-extracted. Graph nodes come from the manifest.
+> The index can lag the vault for binary files (only text types reindex on save), so opening the
+> graph or a vault change calls `reconcileSoon`, a debounced, single-flight reconcile that shares a
+> queue with the launch reconcile. `ink:search-index-changed` (a file reindexed or a reconcile
+> found changes) and `ink:search-index-reconciled` refresh the open backlinks and graph. Where a
+> link could match several files, the first path in sorted order wins (previously readdir order).
+> Graph layout and canvas rendering remain on the main thread.
 
 **Effectively unimplemented.** The codebase contains exactly one `new Worker`, at
 `src/lib/audio/recorder.ts:118`, and it belongs to the third-party `mp3-mediarecorder`

@@ -3,6 +3,7 @@ import { callIndex, indexWorkerStarted } from '@/core/index/client'
 import type {
   FileHash,
   IndexDocument,
+  LinkRow,
   ManifestEntry,
   OpenResult,
   SearchHit,
@@ -44,6 +45,11 @@ export function whenSearchIndexOpen(): Promise<void> {
 
 export function getIndexManifest(): Promise<ManifestEntry[]> {
   return callIndex('manifest', undefined)
+}
+
+/** Every wiki-link in the indexed vault, as written (unresolved). */
+export function getIndexLinks(): Promise<LinkRow[]> {
+  return callIndex('links', undefined)
 }
 
 export function upsertSearchDocuments(docs: IndexDocument[]): Promise<void> {

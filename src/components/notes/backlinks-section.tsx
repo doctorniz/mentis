@@ -11,14 +11,13 @@
  * vertical space.
  */
 
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { ChevronDown, ChevronRight, Link2 } from 'lucide-react'
-import type { FileSystemAdapter } from '@/lib/fs'
-import { findBacklinksForNote } from '@/lib/notes/backlinks'
+import { useLinkEdges } from '@/lib/links/use-link-edges'
+import { backlinksFor } from '@/lib/notes/backlinks'
 import { cn } from '@/utils/cn'
 
 export function BacklinksSection({
-  vaultFs,
   markdownPaths,
   activeNotePath,
   scanPulse,
@@ -27,7 +26,6 @@ export function BacklinksSection({
   onCollapsedChange,
   maxExpandedHeightClass = 'max-h-[40%]',
 }: {
-  vaultFs: FileSystemAdapter
   markdownPaths: string[]
   activeNotePath: string | null
   scanPulse: number
@@ -37,27 +35,12 @@ export function BacklinksSection({
   /** Tailwind class cap on the expanded list; default 40% of container. */
   maxExpandedHeightClass?: string
 }) {
-  const [backlinks, setBacklinks] = useState<Awaited<ReturnType<typeof findBacklinksForNote>>>([])
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    if (!activeNotePath) {
-      setBacklinks([])
-      setBusy(false)
-      return
-    }
-    let cancelled = false
-    setBusy(true)
-    void findBacklinksForNote(vaultFs, markdownPaths, activeNotePath).then((hits) => {
-      if (!cancelled) {
-        setBacklinks(hits)
-        setBusy(false)
-      }
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [vaultFs, markdownPaths, activeNotePath, scanPulse])
+  const edges = useLinkEdges(markdownPaths, scanPulse)
+  const backlinks = useMemo(
+    () => (edges && activeNotePath ? backlinksFor(edges, activeNotePath) : []),
+    [edges, activeNotePath],
+  )
+  const busy = activeNotePath !== null && edges === null
 
   // When expanded with `flex-1` (no-chat case) we need to GROW to fill
   // the column, so we must not apply `shrink-0`. In every other case

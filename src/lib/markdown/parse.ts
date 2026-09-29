@@ -1,5 +1,5 @@
 import matter from 'gray-matter'
-import type { NoteDocument, NoteFrontmatter } from '@/types/editor'
+import type { NoteDocument, NoteFrontmatter, WikiLink } from '@/types/editor'
 
 /**
  * Note parsing with no dependency on the file-type registry, so a worker can
@@ -27,4 +27,34 @@ export function extractTags(content: string): string[] {
   }
 
   return Array.from(tags)
+}
+
+const WIKI_LINK_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
+
+export function extractWikiLinks(content: string): WikiLink[] {
+  const links: WikiLink[] = []
+  let match: RegExpExecArray | null
+
+  while ((match = WIKI_LINK_RE.exec(content)) !== null) {
+    const target = match[1].trim()
+    const alias = match[2]?.trim()
+
+    const pageMatch = target.match(/^(.+)#page=(\d+(?:-\d+)?)$/)
+    if (pageMatch) {
+      links.push({
+        target: pageMatch[1],
+        alias,
+        pageRef: pageMatch[2],
+      })
+    } else {
+      links.push({ target, alias })
+    }
+  }
+
+  return links
+}
+
+/** Distinct wiki-link targets in a file's raw text, in order of first appearance. */
+export function extractLinkTargets(content: string): string[] {
+  return [...new Set(extractWikiLinks(content).map((l) => l.target))]
 }

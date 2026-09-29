@@ -124,6 +124,8 @@ export interface SearchExtraction {
   title?: string
   content: string
   tags?: string[]
+  /** Raw `[[wiki-link]]` targets in the file, for the link index. */
+  links?: string[]
 }
 
 /** A file already read by the caller: text, or bytes for binary formats. */

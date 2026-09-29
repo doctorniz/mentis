@@ -8,6 +8,8 @@ export interface IndexDocument {
   title: string
   content: string
   tags: string[]
+  /** Raw wiki-link targets in the file (unresolved). */
+  links?: string[]
   size: number
   /** Last-modified time, ms since epoch. */
   mtime: number
@@ -18,6 +20,12 @@ export interface ManifestEntry {
   path: string
   size: number
   mtime: number
+}
+
+/** One wiki-link as written: the file it is in, and its unresolved target. */
+export interface LinkRow {
+  source: string
+  target: string
 }
 
 /** A file's SHA-256 at the size and mtime it had when hashed. */
@@ -49,6 +57,8 @@ export interface IndexOps {
   open: [{ vaultId: string }, OpenResult]
   close: [void, void]
   manifest: [void, ManifestEntry[]]
+  /** Every wiki-link in the vault, as written. Resolving them is the caller's job. */
+  links: [void, LinkRow[]]
   upsert: [{ vaultId: string; docs: IndexDocument[] }, void]
   remove: [{ vaultId: string; paths: string[] }, void]
   search: [{ query: string; filters?: SearchFilters }, SearchResult[]]
