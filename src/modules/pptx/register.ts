@@ -28,7 +28,7 @@ const definition: FileTypeDefinition = {
       '<line x1="22" y1="3" x2="2" y2="3"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m8 21 4-4 4 4"/>',
     count: { singular: 'presentation', plural: 'presentations', order: 4 },
   },
-  search: { extract: () => import('./search') },
+  search: { read: 'bytes' },
 }
 
 export default definition

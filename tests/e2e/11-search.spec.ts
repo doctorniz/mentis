@@ -248,6 +248,46 @@ test.describe('11 — Search', () => {
       await expect(page.getByText('q3-summary').first()).toBeVisible({ timeout: 10_000 })
       await expect(page.locator('mark').filter({ hasText: 'flumoxicated' })).toBeVisible()
     })
+
+    test('11.6.3 PDF page text is searchable (PDF.js runs in the extract worker)', async ({
+      vaultPage: page,
+    }) => {
+      const { PDFDocument, StandardFonts } = await import('pdf-lib')
+      const pdf = await PDFDocument.create()
+      const font = await pdf.embedFont(StandardFonts.Helvetica)
+      pdf.addPage().drawText('The perspicacious annual audit', { x: 50, y: 700, size: 18, font })
+      const base64 = await pdf.saveAsBase64()
+      await writeVaultFile(page, 'reports/audit.pdf', base64, { base64: true })
+      await page.waitForTimeout(1000)
+
+      await openSearchAndQuery(page, 'perspicacious')
+
+      await expect(page.getByText('audit').first()).toBeVisible({ timeout: 10_000 })
+      await expect(page.locator('mark').filter({ hasText: 'perspicacious' })).toBeVisible()
+    })
+
+    test('11.6.4 XLSX cell text is searchable (SheetJS runs in the extract worker)', async ({
+      vaultPage: page,
+    }) => {
+      const XLSX = await import('xlsx')
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.aoa_to_sheet([
+          ['Item', 'Note'],
+          ['widgets', 'lugubrious backlog'],
+        ]),
+        'Stock',
+      )
+      const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' })
+      await writeVaultFile(page, 'sheets/stock.xlsx', base64, { base64: true })
+      await page.waitForTimeout(1000)
+
+      await openSearchAndQuery(page, 'lugubrious')
+
+      await expect(page.getByText('stock').first()).toBeVisible({ timeout: 10_000 })
+      await expect(page.locator('mark').filter({ hasText: 'lugubrious' })).toBeVisible()
+    })
   })
 
   test.describe('11.7 Saved index (SQLite)', () => {

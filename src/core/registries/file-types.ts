@@ -126,15 +126,28 @@ export interface SearchExtraction {
   tags?: string[]
 }
 
-export type SearchExtractor = (
-  fs: FileSystemAdapter,
-  path: string,
-) => Promise<SearchExtraction | null>
+/** A file already read by the caller: text, or bytes for binary formats. */
+export interface SearchInput<D extends string | Uint8Array = string | Uint8Array> {
+  path: string
+  data: D
+}
+
+/**
+ * Pulls searchable text out of a file. Pure: it does no I/O, so it can run in
+ * a worker. It is the default export of `modules/<type id>/search.ts`, which
+ * the index's extract worker discovers by glob.
+ */
+export type SearchExtractor<D extends string | Uint8Array = string | Uint8Array> = (
+  input: SearchInput<D>,
+) => SearchExtraction | null | Promise<SearchExtraction | null>
 
 /** Presence means files of this type are indexed for search. */
 export interface SearchSupport {
-  /** Lazily loaded text extractor. Omit to index the file by title only. */
-  extract?: () => Promise<{ default: SearchExtractor }>
+  /**
+   * How the file is read for the extractor (`modules/<id>/search.ts`).
+   * Omit to index the file by title only.
+   */
+  read?: 'text' | 'bytes'
   /** Cheap enough to re-index on every save or rename (text formats). */
   reindexOnSave?: boolean
 }

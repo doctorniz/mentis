@@ -34,15 +34,11 @@ export async function extractDocxText(data: Uint8Array): Promise<string> {
   }
 }
 
-const extract: SearchExtractor = async (fs, path) => {
-  let content = ''
-  try {
-    content = await extractDocxText(await fs.readFile(path))
-    if (content.length > SEARCH_CONTENT_CAP) content = content.slice(0, SEARCH_CONTENT_CAP)
-  } catch {
-    /* use empty */
+const extract: SearchExtractor<Uint8Array> = async ({ data }) => {
+  const content = await extractDocxText(data)
+  return {
+    content: content.length > SEARCH_CONTENT_CAP ? content.slice(0, SEARCH_CONTENT_CAP) : content,
   }
-  return { content }
 }
 
 export default extract

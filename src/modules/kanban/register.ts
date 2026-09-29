@@ -7,7 +7,7 @@ const definition: FileTypeDefinition = {
   suffixes: ['.kan.md'],
   editor: () => import('./editor'),
   appearance: { icon: Columns3, treeClass: 'text-amber-400/70' },
-  search: { extract: () => import('./search'), reindexOnSave: true },
+  search: { read: 'text', reindexOnSave: true },
   createNew: {
     label: 'Kanban',
     stem: 'Kanban',

@@ -25,11 +25,10 @@ async function extractPdfText(data: Uint8Array): Promise<string> {
 }
 
 /** Page text via PDF.js, and the document's Title metadata when set. */
-const extract: SearchExtractor = async (fs, path) => {
+const extract: SearchExtractor<Uint8Array> = async ({ data }) => {
   let content = ''
   let title: string | undefined
   try {
-    const data = await fs.readFile(path)
     content = await extractPdfText(data)
     if (content.length > SEARCH_CONTENT_CAP) content = content.slice(0, SEARCH_CONTENT_CAP)
 

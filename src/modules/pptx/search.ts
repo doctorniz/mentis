@@ -37,14 +37,8 @@ async function extractPptxText(data: Uint8Array): Promise<string> {
   }
 }
 
-const extract: SearchExtractor = async (fs, path) => {
-  let content = ''
-  try {
-    content = await extractPptxText(await fs.readFile(path))
-  } catch {
-    /* use empty */
-  }
-  return { content }
-}
+const extract: SearchExtractor<Uint8Array> = async ({ data }) => ({
+  content: await extractPptxText(data),
+})
 
 export default extract

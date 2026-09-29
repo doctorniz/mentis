@@ -374,6 +374,14 @@ has no `core/` or `registries/` directory. There is nothing in place to enforce 
 
 ### 6.5 Principle 5 — nothing heavy on the main thread
 
+> **Update (item 9a):** search extraction now runs in a worker. `src/core/index/extract-worker.ts`
+> starts on the first file to index and stops after 30 s idle. Each module's `search.ts` is a pure
+> `{ path, data } → { title, content, tags }` function; the registry's `search.read` says whether
+> it wants text or bytes, and the main thread does the reading (the adapter stays on the main
+> thread) and hands the data over. The reconcile pass reads up to three files ahead of the worker.
+> The index-build and DOCX/PPTX rows below (and XLSX/PDF text for search) are therefore
+> off the main thread; hashing (item 7c), the graph and slide rendering are not yet.
+
 **Effectively unimplemented.** The codebase contains exactly one `new Worker`, at
 `src/lib/audio/recorder.ts:118`, and it belongs to the third-party `mp3-mediarecorder`
 ponyfill. No application code runs in a worker.

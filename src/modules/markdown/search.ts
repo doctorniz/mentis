@@ -1,4 +1,4 @@
-import { extractTags, parseNote } from '@/lib/markdown'
+import { extractTags, parseNote } from '@/lib/markdown/parse'
 import { SEARCH_CONTENT_CAP } from '@/lib/search/content-cap'
 import type { SearchExtractor } from '@/core/registries/file-types'
 import type { NoteFrontmatter } from '@/types/editor'
@@ -19,10 +19,9 @@ function normalizeDocTags(fm: NoteFrontmatter, content: string): string[] {
 }
 
 /** Frontmatter title, tags (frontmatter + inline #tags) and body. Unreadable notes are skipped. */
-const extract: SearchExtractor = async (fs, path) => {
+const extract: SearchExtractor<string> = ({ path, data }) => {
   try {
-    const raw = await fs.readTextFile(path)
-    const doc = parseNote(path, raw)
+    const doc = parseNote(path, data)
     const title =
       typeof doc.frontmatter.title === 'string' && doc.frontmatter.title
         ? doc.frontmatter.title

@@ -2,6 +2,8 @@ import type { FileSystemAdapter } from '@/lib/fs'
 import { isNotesTreeHidden } from '@/lib/notes/tree-filter'
 import { fileTypes, titleForPath } from '@/core/registries'
 import type { FileTypeDefinition, SearchExtraction } from '@/core/registries/file-types'
+import type { ExtractRunner } from '@/core/index/extract'
+import { extractInWorker } from '@/core/index/extract-client'
 import type { IndexDocument, ManifestEntry } from '@/core/index/protocol'
 import { planReconcile } from '@/core/index/reconcile'
 import {
@@ -13,10 +15,11 @@ import {
 
 /**
  * Builds search documents from vault files. What a file contributes is its
- * module's business: each type with `search` support may supply a lazily
- * loaded extractor (so PDF.js, JSZip and SheetJS load only when a file of that
- * type is actually indexed). This file only lists the vault and assembles the
- * document.
+ * module's business: each type with `search` support may supply an extractor
+ * (`modules/<id>/search.ts`) that runs in a worker, so parsing never blocks
+ * the UI and PDF.js, JSZip and SheetJS load only when a file of that type is
+ * indexed. This file lists the vault, reads the files (the only I/O), and
+ * assembles the documents.
  */
 
 /** Indexable files with the size and mtime `readdir` already reports. */
@@ -44,15 +47,16 @@ async function extractFor(
   def: FileTypeDefinition,
   fs: FileSystemAdapter,
   path: string,
+  run: ExtractRunner,
 ): Promise<SearchExtraction | null> {
-  const loader = def.search?.extract
-  if (!loader) return { content: '' } // indexed by title only (e.g. drawings)
+  const read = def.search?.read
+  if (!read) return { content: '' } // indexed by title only (e.g. drawings)
   try {
-    const extract = (await loader()).default
-    return await extract(fs, path)
+    const data = read === 'text' ? await fs.readTextFile(path) : await fs.readFile(path)
+    return await run({ typeId: def.id, path, data })
   } catch {
-    // Extractors handle their own read/parse failures; this covers a chunk that
-    // failed to load. The file still appears in results by title.
+    // Unreadable, or the extractor could not run. The file still appears in
+    // results by title.
     return { content: '' }
   }
 }
@@ -61,6 +65,7 @@ async function fileToDocument(
   fs: FileSystemAdapter,
   path: string,
   known?: ManifestEntry,
+  run: ExtractRunner = extractInWorker,
 ): Promise<IndexDocument | null> {
   const def = fileTypes.resolve(path)
   if (!def?.search) return null
@@ -73,7 +78,7 @@ async function fileToDocument(
     mtime = stat?.modifiedAt.getTime() ?? 0
   }
 
-  const extracted = await extractFor(def, fs, path)
+  const extracted = await extractFor(def, fs, path, run)
   if (!extracted) return null
 
   return {
@@ -88,6 +93,8 @@ async function fileToDocument(
 }
 
 const BATCH = 25
+/** Files read and in flight to the extract worker at once. */
+const IN_FLIGHT = 3
 
 /**
  * Bring the index up to date with the vault: list it (metadata only), then
@@ -95,11 +102,13 @@ const BATCH = 25
  * indexed, and drop the ones that are gone. On a normal open that is almost
  * nothing; on a first open, or after the index was deleted, it is everything.
  *
+ * Reading the next files overlaps with the worker extracting the last ones.
  * `isCancelled` is checked between files so a vault switch stops it cleanly.
  */
 export async function reconcileVaultSearchIndex(
   fs: FileSystemAdapter,
   isCancelled: () => boolean = () => false,
+  run: ExtractRunner = extractInWorker,
 ): Promise<{ indexed: number; removed: number }> {
   const vault: ManifestEntry[] = []
   await listIndexableFiles(fs, '', vault)
@@ -112,24 +121,39 @@ export async function reconcileVaultSearchIndex(
   const byPath = new Map(vault.map((e) => [e.path, e]))
   let batch: IndexDocument[] = []
   let indexed = 0
-  for (const path of toIndex) {
-    const doc = await fileToDocument(fs, path, byPath.get(path))
-    if (isCancelled()) return { indexed, removed: toRemove.length }
-    if (doc) batch.push(doc)
-    if (batch.length >= BATCH) {
-      await upsertSearchDocuments(batch)
-      indexed += batch.length
-      batch = []
+  let next = 0
+
+  async function flush() {
+    if (batch.length === 0) return
+    const docs = batch
+    batch = []
+    await upsertSearchDocuments(docs)
+    indexed += docs.length
+  }
+
+  async function lane() {
+    while (!isCancelled()) {
+      const path = toIndex[next++]
+      if (path === undefined) return
+      const doc = await fileToDocument(fs, path, byPath.get(path), run)
+      if (isCancelled()) return
+      if (doc) batch.push(doc)
+      if (batch.length >= BATCH) await flush()
     }
   }
-  await upsertSearchDocuments(batch)
-  indexed += batch.length
+
+  await Promise.all(Array.from({ length: Math.min(IN_FLIGHT, toIndex.length) }, lane))
+  if (!isCancelled()) await flush()
   return { indexed, removed: toRemove.length }
 }
 
 /** Incremental update for one file path after save. Routes by type. */
-export async function reindexFilePath(fs: FileSystemAdapter, path: string): Promise<void> {
-  const doc = await fileToDocument(fs, path)
+export async function reindexFilePath(
+  fs: FileSystemAdapter,
+  path: string,
+  run: ExtractRunner = extractInWorker,
+): Promise<void> {
+  const doc = await fileToDocument(fs, path, undefined, run)
   if (doc) await upsertSearchDocument(doc)
 }
 

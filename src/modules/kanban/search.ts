@@ -2,10 +2,10 @@ import { parseKanban } from '@/lib/kanban'
 import type { SearchExtractor } from '@/core/registries/file-types'
 
 /** Column headings and card titles. */
-const extract: SearchExtractor = async (fs, path) => {
+const extract: SearchExtractor<string> = ({ data }) => {
   let content = ''
   try {
-    const { board } = parseKanban(await fs.readTextFile(path))
+    const { board } = parseKanban(data)
     content = board.columns
       .flatMap((col) => [col.heading, ...col.cards.map((c) => c.title)])
       .join('\n')

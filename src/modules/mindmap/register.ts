@@ -7,7 +7,7 @@ const definition: FileTypeDefinition = {
   suffixes: ['.map.md'],
   editor: () => import('./editor'),
   appearance: { icon: GitBranch, treeClass: 'text-teal-400/70' },
-  search: { extract: () => import('./search'), reindexOnSave: true },
+  search: { read: 'text', reindexOnSave: true },
   createNew: {
     label: 'Mindmap',
     stem: 'Mindmap',

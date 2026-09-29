@@ -1,17 +1,8 @@
 import matter from 'gray-matter'
 import { fileTypes } from '@/core/registries'
-import type { NoteDocument, NoteFrontmatter, WikiLink } from '@/types/editor'
+import type { NoteFrontmatter, WikiLink } from '@/types/editor'
 
-export function parseNote(path: string, raw: string): NoteDocument {
-  const { data, content } = matter(raw)
-
-  return {
-    path,
-    frontmatter: data as NoteFrontmatter,
-    content,
-    rawContent: raw,
-  }
-}
+export { parseNote, extractTags } from './parse'
 
 export function serializeNote(frontmatter: NoteFrontmatter, content: string): string {
   const fm = { ...frontmatter, modified: new Date().toISOString() }
@@ -41,18 +32,6 @@ export function extractWikiLinks(content: string): WikiLink[] {
   }
 
   return links
-}
-
-export function extractTags(content: string): string[] {
-  const tagRe = /(?:^|\s)#([a-zA-Z][\w-/]*)/g
-  const tags = new Set<string>()
-  let match: RegExpExecArray | null
-
-  while ((match = tagRe.exec(content)) !== null) {
-    tags.add(match[1])
-  }
-
-  return Array.from(tags)
 }
 
 /**
