@@ -12,8 +12,7 @@ import { useUiStore } from '@/stores/ui'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { ViewMode } from '@/types/vault'
-import { setStoredActiveVaultPath } from '@/lib/vault/session-storage'
-import { clearStoredDirectoryHandle } from '@/lib/fs'
+import { forgetLastVault } from '@/lib/vault/session'
 import { clearSearchIndex } from '@/lib/search/index'
 import { clearVaultChatSession } from '@/lib/chat/vault-chat-session'
 import { useVaultChatStore } from '@/stores/vault-chat'
@@ -69,8 +68,7 @@ export function AppRoot() {
     const path = useVaultStore.getState().activeVaultPath
     if (path) clearVaultChatSession(path)
     useVaultChatStore.getState().reset()
-    setStoredActiveVaultPath(null)
-    clearStoredDirectoryHandle().catch(() => {})
+    void forgetLastVault()
     setSession(null)
     clearSearchIndex()
     useVaultStore.getState().reset()

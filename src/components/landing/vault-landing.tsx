@@ -1,129 +1,58 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Brain, FolderOpen, Info, Loader2, PlugZap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
-  getFileSystemAdapter,
-  createScopedAdapter,
-  FsapiAdapter,
-  isFsapiSupported,
-  pickDirectoryFsapi,
-  storeDirectoryHandle,
-  getStoredDirectoryHandle,
-  clearStoredDirectoryHandle,
-} from '@/lib/fs'
-import type { FileSystemAdapter } from '@/lib/fs'
-import { bootstrapNewVault, loadVaultConfig, createVault, isVault } from '@/lib/vault'
-import { discoverVaults } from '@/lib/vault/discover'
-import { getStoredActiveVaultPath, setStoredActiveVaultPath } from '@/lib/vault/session-storage'
-import type { VaultConfig } from '@/types/vault'
+  canOpenFolder,
+  createBrowserVault,
+  forgetLastVault,
+  listBrowserVaults,
+  openBrowserVault,
+  openFolderVault,
+  restoreLastVault,
+  type BrowserVault,
+  type VaultSession,
+} from '@/lib/vault/session'
 
 export interface VaultLandingProps {
-  onVaultReady: (session: {
-    rootFs: FileSystemAdapter
-    vaultFs: FileSystemAdapter
-    vaultPath: string
-    config: VaultConfig
-  }) => void
+  onVaultReady: (session: VaultSession) => void
   onShowAbout?: () => void
 }
 
-function fsapiVaultPath(handle: FileSystemDirectoryHandle) {
-  return `fsapi:${handle.name}`
+interface PendingFolder {
+  name: string
+  reconnect: () => Promise<VaultSession>
 }
 
 export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
   const [name, setName] = useState('My Vault')
-  const [vaults, setVaults] = useState<{ path: string; displayName: string }[]>([])
+  const [vaults, setVaults] = useState<BrowserVault[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pendingHandle, setPendingHandle] = useState<FileSystemDirectoryHandle | null>(null)
-
-  const refreshList = useCallback(async (root: FileSystemAdapter) => {
-    const list = await discoverVaults(root)
-    setVaults(list.map((v) => ({ path: v.path, displayName: v.displayName })))
-  }, [])
-
-  /** Open a vault from an FSAPI adapter that already passed init(). */
-  const openFsapiVault = useCallback(
-    async (fsapi: FsapiAdapter) => {
-      const handle = fsapi.directoryHandle
-      const vaultPath = fsapiVaultPath(handle)
-      if (await isVault(fsapi)) {
-        const config = await loadVaultConfig(fsapi)
-        setStoredActiveVaultPath(vaultPath)
-        await storeDirectoryHandle(handle)
-        onVaultReady({ rootFs: fsapi, vaultFs: fsapi, vaultPath, config })
-      } else {
-        const config = await createVault(fsapi, 'My Vault')
-        setStoredActiveVaultPath(vaultPath)
-        await storeDirectoryHandle(handle)
-        onVaultReady({ rootFs: fsapi, vaultFs: fsapi, vaultPath, config })
-      }
-    },
-    [onVaultReady],
-  )
+  const [pendingFolder, setPendingFolder] = useState<PendingFolder | null>(null)
 
   useEffect(() => {
-    let cancelled = false
+    const abort = new AbortController()
     async function boot() {
+      let opened = false
       setLoading(true)
       setError(null)
       try {
-        const root = await getFileSystemAdapter()
-        await root.init()
-        if (cancelled) return
-        await refreshList(root)
+        const list = await listBrowserVaults()
+        if (abort.signal.aborted) return
+        setVaults(list)
 
-        /* ── Try restoring an OPFS vault first ── */
-        const stored = getStoredActiveVaultPath()
-        if (stored && !stored.startsWith('fsapi:')) {
-          const scoped = createScopedAdapter(root, stored)
-          if (await isVault(scoped)) {
-            const config = await loadVaultConfig(scoped)
-            if (!cancelled) {
-              onVaultReady({
-                rootFs: root,
-                vaultFs: scoped,
-                vaultPath: stored,
-                config,
-              })
-              return
-            }
-          } else {
-            setStoredActiveVaultPath(null)
-          }
-        }
-
-        /* ── Try restoring a disk-folder (FSAPI) handle from IndexedDB ── */
-        if (isFsapiSupported() && stored?.startsWith('fsapi:')) {
-          try {
-            const handle = await getStoredDirectoryHandle()
-            if (handle && !cancelled) {
-              const perm = await handle.queryPermission({ mode: 'readwrite' })
-              if (perm === 'granted') {
-                const fsapi = new FsapiAdapter(handle)
-                await fsapi.init()
-                if (!cancelled) {
-                  await openFsapiVault(fsapi)
-                  return
-                }
-              } else if (perm === 'prompt') {
-                if (!cancelled) setPendingHandle(handle)
-              } else {
-                await clearStoredDirectoryHandle()
-                setStoredActiveVaultPath(null)
-              }
-            }
-          } catch {
-            await clearStoredDirectoryHandle().catch(() => {})
-            setStoredActiveVaultPath(null)
-          }
+        const restored = await restoreLastVault(abort.signal)
+        if (restored.status === 'opened') {
+          opened = true
+          onVaultReady(restored.session)
+        } else if (restored.status === 'needs-permission' && !abort.signal.aborted) {
+          setPendingFolder({ name: restored.folderName, reconnect: restored.reconnect })
         }
       } catch (e) {
-        if (!cancelled) {
+        if (!abort.signal.aborted) {
           const msg =
             e instanceof Error
               ? e.message
@@ -131,27 +60,19 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
           setError(msg)
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!opened && !abort.signal.aborted) setLoading(false)
       }
     }
     void boot()
-    return () => {
-      cancelled = true
-    }
-  }, [onVaultReady, openFsapiVault, refreshList])
+    return () => abort.abort()
+  }, [onVaultReady])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
     try {
-      const root = await getFileSystemAdapter()
-      await root.init()
-      const { vaultPath, config } = await bootstrapNewVault(root, name.trim() || 'My Vault')
-      const vaultFs = createScopedAdapter(root, vaultPath)
-      setStoredActiveVaultPath(vaultPath)
-      await refreshList(root)
-      onVaultReady({ rootFs: root, vaultFs, vaultPath, config })
+      onVaultReady(await createBrowserVault(name))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create vault')
     } finally {
@@ -163,32 +84,25 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
     setBusy(true)
     setError(null)
     try {
-      const fsapi = await pickDirectoryFsapi()
-      await openFsapiVault(fsapi)
+      const session = await openFolderVault()
+      if (session) onVaultReady(session)
     } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') {
-        /* user cancelled the picker */
-      } else {
-        setError(e instanceof Error ? e.message : 'Failed to open folder')
-      }
+      setError(e instanceof Error ? e.message : 'Failed to open folder')
     } finally {
       setBusy(false)
     }
   }
 
   async function handleReconnect() {
-    if (!pendingHandle) return
+    if (!pendingFolder) return
     setBusy(true)
     setError(null)
     try {
-      const fsapi = new FsapiAdapter(pendingHandle)
-      await fsapi.init()
-      setPendingHandle(null)
-      await openFsapiVault(fsapi)
+      const session = await pendingFolder.reconnect()
+      setPendingFolder(null)
+      onVaultReady(session)
     } catch (e) {
-      setPendingHandle(null)
-      await clearStoredDirectoryHandle().catch(() => {})
-      setStoredActiveVaultPath(null)
+      setPendingFolder(null)
       setError(
         e instanceof Error ? e.message : 'Could not reconnect — please open the folder again.',
       )
@@ -201,16 +115,7 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
     setBusy(true)
     setError(null)
     try {
-      const root = await getFileSystemAdapter()
-      await root.init()
-      const vaultFs = createScopedAdapter(root, path)
-      if (!(await isVault(vaultFs))) {
-        setError('That folder is not a valid Mentis vault.')
-        return
-      }
-      const config = await loadVaultConfig(vaultFs)
-      setStoredActiveVaultPath(path)
-      onVaultReady({ rootFs: root, vaultFs, vaultPath: path, config })
+      onVaultReady(await openBrowserVault(path))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to open vault')
     } finally {
@@ -260,10 +165,10 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
           </div>
         )}
 
-        {pendingHandle && (
+        {pendingFolder && (
           <div className="bg-accent/5 border-accent/30 mb-8 rounded-lg border p-4">
             <p className="text-fg text-sm font-medium">
-              Reconnect to <span className="font-semibold">{pendingHandle.name}</span>?
+              Reconnect to <span className="font-semibold">{pendingFolder.name}</span>?
             </p>
             <p className="text-fg-secondary mt-1 text-xs">
               The browser needs your permission to re-open this folder.
@@ -285,9 +190,8 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
                 size="sm"
                 disabled={busy}
                 onClick={() => {
-                  setPendingHandle(null)
-                  void clearStoredDirectoryHandle()
-                  setStoredActiveVaultPath(null)
+                  setPendingFolder(null)
+                  void forgetLastVault()
                 }}
               >
                 Dismiss
@@ -322,7 +226,7 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
           </Button>
         </form>
 
-        {isFsapiSupported() && (
+        {canOpenFolder() && (
           <div className="mb-10">
             <div className="relative mb-4 flex items-center justify-center">
               <span className="bg-bg-secondary text-fg-muted relative z-10 px-3 text-xs">or</span>

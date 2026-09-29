@@ -14,6 +14,7 @@ export {
 
 let adapter: FileSystemAdapter | null = null
 
+/** The one place the app's own storage backend is chosen. A Tauri build returns its adapter here. */
 export async function getFileSystemAdapter(): Promise<FileSystemAdapter> {
   if (adapter) return adapter
 
