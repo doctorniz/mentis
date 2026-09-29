@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Marp } from '@marp-team/marp-core'
 import {
   EditorView,
   drawSelection,
@@ -21,17 +20,13 @@ import { useEditorStore } from '@/stores/editor'
 import { useAutoSave } from '@/hooks/use-auto-save'
 import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { inkEditorTheme, inkHighlightStyle } from '@/lib/code/codemirror-theme'
+import { renderSlidesInWorker } from '@/core/render/slides-client'
 import { reindexFilePath } from '@/lib/search/build-vault-index'
 import { toast } from '@/stores/toast'
 import type { FileEditorProps } from '@/core/registries/file-types'
 
 const SUFFIX = '.slides.md'
 const PREVIEW_DEBOUNCE_MS = 150
-
-const marp = new Marp({
-  math: { lib: 'katex', katexFontPath: false },
-  script: false,
-})
 
 /** Laid out as a vertical strip of slides, each scaled to the pane width. */
 const PREVIEW_CSS = `
@@ -46,10 +41,11 @@ const PREVIEW_CSS = `
   }
 `
 
-function renderInto(root: ShadowRoot, source: string) {
+async function renderInto(root: ShadowRoot, source: string, isCurrent: () => boolean) {
   try {
-    const { html, css } = marp.render(source)
-    root.innerHTML = `<style>${css}</style><style>${PREVIEW_CSS}</style>${html}`
+    const rendered = await renderSlidesInWorker(source)
+    if (!rendered || !isCurrent()) return
+    root.innerHTML = `<style>${rendered.css}</style><style>${PREVIEW_CSS}</style>${rendered.html}`
   } catch (e) {
     console.error('Slide render failed', e)
   }
@@ -144,14 +140,15 @@ export default function SlidesFileEditor({
               markDirty(tabId, true)
               window.clearTimeout(renderTimerRef.current)
               renderTimerRef.current = window.setTimeout(() => {
-                if (shadowRef.current) renderInto(shadowRef.current, update.state.doc.toString())
+                if (shadowRef.current)
+                  void renderInto(shadowRef.current, update.state.doc.toString(), () => !destroyed)
               }, PREVIEW_DEBOUNCE_MS)
             }),
           ],
         }),
       })
       viewRef.current = view
-      if (shadowRef.current) renderInto(shadowRef.current, text)
+      if (shadowRef.current) void renderInto(shadowRef.current, text, () => !destroyed)
       setLoaded(true)
     })()
 

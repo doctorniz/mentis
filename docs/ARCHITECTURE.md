@@ -395,6 +395,13 @@ has no `core/` or `registries/` directory. There is nothing in place to enforce 
 > found changes) and `ink:search-index-reconciled` refresh the open backlinks and graph. Where a
 > link could match several files, the first path in sorted order wins (previously readdir order).
 > Graph layout and canvas rendering remain on the main thread.
+>
+> **Update (item 9c):** Marp slide rendering runs in a worker. `src/core/render/slides-render.ts`
+> is the pure `renderSlides(source)`; `slides-worker.ts` wraps it and `slides-client.ts` starts the
+> worker on the first render and stops it after 30 s idle. The client keeps only the newest source
+> waiting behind the one in flight, and a render superseded by a newer one resolves `null`, so a
+> burst of keystrokes costs one render, not one per keystroke. Marp now ships as its own worker
+> chunk rather than inside the slides editor chunk; initial JS is unchanged.
 
 **Effectively unimplemented.** The codebase contains exactly one `new Worker`, at
 `src/lib/audio/recorder.ts:118`, and it belongs to the third-party `mp3-mediarecorder`
