@@ -28,12 +28,12 @@ function dataUrlToUint8Array(dataUrl: string): Uint8Array {
 
 const SUBTYPE_TEXT = PDFName.of('Text')
 
-function stripInkMarrowTextAnnots(page: PDFPage, doc: PDFDocument): void {
+function stripMentisTextAnnots(page: PDFPage, doc: PDFDocument): void {
   const annots = page.node.Annots()
   if (!annots) return
   const ctx = doc.context
   const SUBTYPE = PDFName.of('Subtype')
-  const MARK = PDFName.of('InkMarrow')
+  const MARK = PDFName.of('Mentis')
   for (let i = annots.size() - 1; i >= 0; i--) {
     const entry = annots.get(i)
     const dict = ctx.lookup(entry, PDFDict)
@@ -63,7 +63,7 @@ function hexToRgb(hex: string): [number, number, number] {
  * Write annotations into the PDF bytes (pdf-lib).
  * Highlights, ink, and FreeText are **drawn** into page content. Stamps embed images.
  * Text comments use **native** `/Text` annotations (`Contents`, optional `NM`) plus a
- * custom `InkMarrow` flag so saves can strip prior app-owned notes before re-adding
+ * custom `Mentis` flag so saves can strip prior app-owned notes before re-adding
  * (avoids duplicate sticky notes). pdf.js returns `/Text` via `getAnnotations` for reload.
  * After save, the viewer reloads so raster + native layers stay in sync (`PdfViewer`).
  */
@@ -75,7 +75,7 @@ export async function writeAnnotationsIntoPdf(
   const pages = doc.getPages()
 
   for (const page of pages) {
-    stripInkMarrowTextAnnots(page, doc)
+    stripMentisTextAnnots(page, doc)
   }
 
   for (const ann of annotations) {
@@ -138,7 +138,7 @@ export async function writeAnnotationsIntoPdf(
         Contents: PDFHexString.fromText(tc.text),
         NM: PDFString.of(tc.id),
         Open: false,
-        InkMarrow: true,
+        Mentis: true,
       })
       const ref = doc.context.register(annotDict)
       page.node.addAnnot(ref)

@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'mentis-marrow-v2'
+const CACHE_NAME = 'mentis-v2'
 
 const PRECACHE_URLS = ['/', '/manifest.json', '/icon.svg']
 

@@ -1,4 +1,4 @@
-const ACTIVE_VAULT_KEY = 'ink-marrow:active-vault-path'
+const ACTIVE_VAULT_KEY = 'mentis:active-vault-path'
 
 export function getStoredActiveVaultPath(): string | null {
   if (typeof window === 'undefined') return null

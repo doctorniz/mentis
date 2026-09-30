@@ -3,12 +3,12 @@
  *
  * Layout mirrors Canvas v5's drawings folder:
  *
- *     _marrow/_chats/<chatAssetId>/<threadId>.json
+ *     _mentis/_chats/<chatAssetId>/<threadId>.json
  *
  * `chatAssetId` is a stable UUID the document carries in its own content
  * (frontmatter for markdown; a separate index for PDFs, deferred). This
  * means renaming the document does NOT move the chat folder — the link
- * travels with the UUID, not the filename. `_marrow/` is hidden by
+ * travels with the UUID, not the filename. `_mentis/` is hidden by
  * `src/lib/notes/tree-filter.ts`, so chat sidecars never appear in the
  * vault tree, file browser, search results, or graph.
  *
@@ -18,9 +18,9 @@
 
 import type { FileSystemAdapter } from '@/lib/fs'
 import { CHAT_SCHEMA_VERSION, type ChatMessage, type ChatThread } from '@/types/chat'
-import { MARROW_DIR } from '@/types/vault'
+import { MENTIS_DIR } from '@/types/vault'
 
-export const CHATS_DIR = `${MARROW_DIR}/_chats`
+export const CHATS_DIR = `${MENTIS_DIR}/_chats`
 
 /** Reserved `chatAssetId` for vault-wide threads (see `stores/vault-chat`). */
 export const VAULT_CHAT_ASSET_FOLDER = '_vault'

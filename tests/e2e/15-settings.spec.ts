@@ -249,9 +249,9 @@ test.describe('16.5 — Drawing cleanup', () => {
       'sketch.canvas',
       JSON.stringify({ version: 5, assetId: 'live-e2e', layers: [{ id: 'l1', name: 'Layer 1' }] }),
     )
-    await writeVaultFile(page, '_marrow/_drawings/live-e2e/l1.png', PNG_B64, { base64: true })
-    await writeVaultFile(page, '_marrow/_drawings/live-e2e/l2.png', PNG_B64, { base64: true })
-    await writeVaultFile(page, '_marrow/_drawings/orphan-e2e/z.png', PNG_B64, { base64: true })
+    await writeVaultFile(page, '_mentis/_drawings/live-e2e/l1.png', PNG_B64, { base64: true })
+    await writeVaultFile(page, '_mentis/_drawings/live-e2e/l2.png', PNG_B64, { base64: true })
+    await writeVaultFile(page, '_mentis/_drawings/orphan-e2e/z.png', PNG_B64, { base64: true })
     await writeVaultFile(page, 'deleted.canvas.assets/x.png', PNG_B64, { base64: true })
 
     await openSettings(page)
@@ -263,9 +263,9 @@ test.describe('16.5 — Drawing cleanup', () => {
       timeout: 10_000,
     })
 
-    expect(await vaultFileExists(page, '_marrow/_drawings/live-e2e/l1.png')).toBe(true)
-    expect(await vaultFileExists(page, '_marrow/_drawings/live-e2e/l2.png')).toBe(false)
-    expect(await vaultFileExists(page, '_marrow/_drawings/orphan-e2e/z.png')).toBe(false)
+    expect(await vaultFileExists(page, '_mentis/_drawings/live-e2e/l1.png')).toBe(true)
+    expect(await vaultFileExists(page, '_mentis/_drawings/live-e2e/l2.png')).toBe(false)
+    expect(await vaultFileExists(page, '_mentis/_drawings/orphan-e2e/z.png')).toBe(false)
     expect(await vaultFileExists(page, 'deleted.canvas.assets/x.png')).toBe(false)
 
     // Idempotent: a second run finds nothing.

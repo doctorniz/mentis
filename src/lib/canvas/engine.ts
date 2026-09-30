@@ -104,7 +104,7 @@ export class CanvasEngine {
   private _maxDimension = MAX_CANVAS_DIMENSION
   /**
    * Stable id for this canvas's pixel folder under
-   * `_marrow/_drawings/<assetId>/`. `null` until the file has been loaded
+   * `_mentis/_drawings/<assetId>/`. `null` until the file has been loaded
    * from a v5 JSON that already has one, or until `writeCanvasFile`
    * mints one on first save. Rename of the `.canvas` file does not
    * touch this id — it travels with the JSON content, not the filename.

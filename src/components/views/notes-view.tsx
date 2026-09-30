@@ -37,7 +37,7 @@ import { removeSearchDocument } from '@/lib/search/index'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 
 function starredStorageKey(vaultPath: string) {
-  return `ink-marrow:starred:${vaultPath}`
+  return `mentis:starred:${vaultPath}`
 }
 
 export function NotesView() {
@@ -173,7 +173,7 @@ function NotesViewInner() {
 
   // Collapsible backlinks section (lives inside the unified right column
   // for markdown tabs). Persisted so the user's choice survives reloads.
-  const BACKLINKS_COLLAPSED_KEY = 'ink-marrow:backlinks-collapsed'
+  const BACKLINKS_COLLAPSED_KEY = 'mentis:backlinks-collapsed'
   const [backlinksCollapsed, setBacklinksCollapsed] = useState(true)
   useLayoutEffect(() => {
     try {
@@ -192,7 +192,7 @@ function NotesViewInner() {
   }, [backlinksCollapsed])
 
   // Collapsible headings outline — same persistence pattern as backlinks.
-  const OUTLINE_COLLAPSED_KEY = 'ink-marrow:outline-collapsed'
+  const OUTLINE_COLLAPSED_KEY = 'mentis:outline-collapsed'
   const [outlineCollapsed, setOutlineCollapsed] = useState(true)
   useLayoutEffect(() => {
     try {
@@ -215,7 +215,7 @@ function NotesViewInner() {
   const [activeEditorInstance, setActiveEditorInstance] = useState<unknown>(null)
 
   // Chat collapsed state — collapsed = just a header bar at the bottom.
-  const CHAT_COLLAPSED_KEY = 'ink-marrow:chat-collapsed'
+  const CHAT_COLLAPSED_KEY = 'mentis:chat-collapsed'
   const [chatCollapsed, setChatCollapsed] = useState(true)
   useLayoutEffect(() => {
     try {
@@ -234,7 +234,7 @@ function NotesViewInner() {
   }, [chatCollapsed])
 
   // Right column collapsed state — collapsed = thin rail with icons.
-  const COLUMN_COLLAPSED_KEY = 'ink-marrow:right-column-collapsed'
+  const COLUMN_COLLAPSED_KEY = 'mentis:right-column-collapsed'
   const [columnCollapsed, setColumnCollapsed] = useState(false)
   useLayoutEffect(() => {
     try {
@@ -254,7 +254,7 @@ function NotesViewInner() {
 
   // Chat panel — always present in the right column. Markdown tabs use
   // frontmatter via `MarkdownNoteEditor.ensureChatAssetId`; PDFs use
-  // `_marrow/_chats/index.json`. The asset id is resolved eagerly
+  // `_mentis/_chats/index.json`. The asset id is resolved eagerly
   // whenever the active tab changes so chat is ready without a toggle.
   const editorHandleRef = useRef<FileEditorHandle | null>(null)
   const [chatAssetIdByPath, setChatAssetIdByPath] = useState<Record<string, string>>({})

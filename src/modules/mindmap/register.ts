@@ -6,7 +6,7 @@ const definition: FileTypeDefinition = {
   label: 'Mindmap',
   layout: {
     rightColumn: {
-      storageKey: 'ink-marrow:right-panel-width:mindmap',
+      storageKey: 'mentis:right-panel-width:mindmap',
       defaultRightPx: 360,
       minRightPx: 280,
     },

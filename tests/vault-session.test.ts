@@ -109,7 +109,7 @@ import {
   openFolderVault,
   restoreLastVault,
 } from '@/lib/vault/session'
-import { MARROW_DIR } from '@/types/vault'
+import { MENTIS_DIR } from '@/types/vault'
 
 function fakeHandle(name: string, permission: 'granted' | 'prompt' | 'denied') {
   return {
@@ -138,7 +138,7 @@ describe('browser vaults', () => {
     expect(session.config.name).toBe('Field Notes')
     expect(session.vaultPath).toMatch(/^vaults\//)
     expect(state.active).toBe(session.vaultPath)
-    expect(await session.vaultFs.exists(MARROW_DIR)).toBe(true)
+    expect(await session.vaultFs.exists(MENTIS_DIR)).toBe(true)
 
     expect(await listBrowserVaults()).toEqual([
       { path: session.vaultPath, displayName: 'Field Notes' },
@@ -202,13 +202,13 @@ describe('folder vaults', () => {
     expect(session?.rootFs).toBe(session?.vaultFs)
     expect(state.active).toBe('fsapi:Documents')
     expect(state.handle).toBe(handle)
-    expect(await (state.folderFs as MemFs).exists(MARROW_DIR)).toBe(true)
+    expect(await (state.folderFs as MemFs).exists(MENTIS_DIR)).toBe(true)
   })
 
   it('opens a folder that is already a vault without recreating it', async () => {
     const folder = state.folderFs as MemFs
-    folder.dirs.add(MARROW_DIR)
-    await folder.writeTextFile(`${MARROW_DIR}/config.json`, JSON.stringify({ name: 'Existing' }))
+    folder.dirs.add(MENTIS_DIR)
+    await folder.writeTextFile(`${MENTIS_DIR}/config.json`, JSON.stringify({ name: 'Existing' }))
     state.picker = async () =>
       new (await import('@/lib/fs')).FsapiAdapter(fakeHandle('Existing', 'granted') as never)
     expect((await openFolderVault())?.config.name).toBe('Existing')

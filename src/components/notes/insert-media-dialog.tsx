@@ -54,7 +54,7 @@ function VaultFilePicker({
           for (const e of entries) {
             if (e.isDirectory) {
               // Skip hidden internal dirs
-              if (e.name.startsWith('_marrow')) continue
+              if (e.name.startsWith('_mentis')) continue
               const sub = dir === '/' ? `/${e.name}` : `${dir}/${e.name}`
               await walk(sub)
             } else {

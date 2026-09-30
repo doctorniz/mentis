@@ -8,7 +8,7 @@ const definition: FileTypeDefinition = {
   editor: () => import('./editor'),
   layout: {
     rightColumn: {
-      storageKey: 'ink-marrow:right-panel-width:md',
+      storageKey: 'mentis:right-panel-width:md',
       defaultRightPx: 360,
       minRightPx: 240,
       outline: true,

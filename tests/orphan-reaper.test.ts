@@ -92,34 +92,34 @@ describe('reapCanvasOrphans', () => {
     const fs = new MemFs()
     await seed(fs, {
       'sketch.canvas': canvasJson('live-id', ['l1']),
-      '_marrow/_drawings/live-id/l1.png': PNG,
-      '_marrow/_drawings/dead-id/x.png': PNG,
+      '_mentis/_drawings/live-id/l1.png': PNG,
+      '_mentis/_drawings/dead-id/x.png': PNG,
     })
 
     const report = await reapCanvasOrphans(fs)
 
     expect(report.scannedCanvases).toBe(1)
-    expect(report.deletedDrawingFolders).toEqual(['_marrow/_drawings/dead-id'])
-    expect(fs.files.has('_marrow/_drawings/live-id/l1.png')).toBe(true)
-    expect(fs.files.has('_marrow/_drawings/dead-id/x.png')).toBe(false)
+    expect(report.deletedDrawingFolders).toEqual(['_mentis/_drawings/dead-id'])
+    expect(fs.files.has('_mentis/_drawings/live-id/l1.png')).toBe(true)
+    expect(fs.files.has('_mentis/_drawings/dead-id/x.png')).toBe(false)
   })
 
   it('removes stale layer PNGs but keeps live layers and non-png files', async () => {
     const fs = new MemFs()
     await seed(fs, {
       'sketch.canvas': canvasJson('id-1', ['keep-a', 'keep-b']),
-      '_marrow/_drawings/id-1/keep-a.png': PNG,
-      '_marrow/_drawings/id-1/keep-b.png': PNG,
-      '_marrow/_drawings/id-1/deleted-layer.png': PNG,
-      '_marrow/_drawings/id-1/notes.txt': PNG, // unknown file: untouched
+      '_mentis/_drawings/id-1/keep-a.png': PNG,
+      '_mentis/_drawings/id-1/keep-b.png': PNG,
+      '_mentis/_drawings/id-1/deleted-layer.png': PNG,
+      '_mentis/_drawings/id-1/notes.txt': PNG, // unknown file: untouched
     })
 
     const report = await reapCanvasOrphans(fs)
 
-    expect(report.deletedLayerPngs).toEqual(['_marrow/_drawings/id-1/deleted-layer.png'])
-    expect(fs.files.has('_marrow/_drawings/id-1/keep-a.png')).toBe(true)
-    expect(fs.files.has('_marrow/_drawings/id-1/keep-b.png')).toBe(true)
-    expect(fs.files.has('_marrow/_drawings/id-1/notes.txt')).toBe(true)
+    expect(report.deletedLayerPngs).toEqual(['_mentis/_drawings/id-1/deleted-layer.png'])
+    expect(fs.files.has('_mentis/_drawings/id-1/keep-a.png')).toBe(true)
+    expect(fs.files.has('_mentis/_drawings/id-1/keep-b.png')).toBe(true)
+    expect(fs.files.has('_mentis/_drawings/id-1/notes.txt')).toBe(true)
   })
 
   it('keeps a v4 .canvas.assets folder while its owner is still v4', async () => {
@@ -140,14 +140,14 @@ describe('reapCanvasOrphans', () => {
     await seed(fs, {
       'old.canvas': canvasJson('migrated-id', ['l1']),
       'old.canvas.assets/l1.png': PNG,
-      '_marrow/_drawings/migrated-id/l1.png': PNG,
+      '_mentis/_drawings/migrated-id/l1.png': PNG,
     })
 
     const report = await reapCanvasOrphans(fs)
 
     expect(report.deletedV4AssetFolders).toEqual(['old.canvas.assets'])
     expect(fs.files.has('old.canvas.assets/l1.png')).toBe(false)
-    expect(fs.files.has('_marrow/_drawings/migrated-id/l1.png')).toBe(true)
+    expect(fs.files.has('_mentis/_drawings/migrated-id/l1.png')).toBe(true)
   })
 
   it('removes a .canvas.assets folder whose owner .canvas is gone', async () => {
@@ -167,14 +167,14 @@ describe('reapCanvasOrphans', () => {
     const fs = new MemFs()
     await seed(fs, {
       'projects/art/deep.canvas': canvasJson('deep-id', ['l1']),
-      '_marrow/_drawings/deep-id/l1.png': PNG,
+      '_mentis/_drawings/deep-id/l1.png': PNG,
     })
 
     const report = await reapCanvasOrphans(fs)
 
     expect(report.scannedCanvases).toBe(1)
     expect(report.deletedDrawingFolders).toEqual([])
-    expect(fs.files.has('_marrow/_drawings/deep-id/l1.png')).toBe(true)
+    expect(fs.files.has('_mentis/_drawings/deep-id/l1.png')).toBe(true)
   })
 
   it('duplicated .canvas files sharing an assetId union their layer sets', async () => {
@@ -182,17 +182,17 @@ describe('reapCanvasOrphans', () => {
     await seed(fs, {
       'a.canvas': canvasJson('shared', ['l1']),
       'a copy.canvas': canvasJson('shared', ['l2']),
-      '_marrow/_drawings/shared/l1.png': PNG,
-      '_marrow/_drawings/shared/l2.png': PNG,
-      '_marrow/_drawings/shared/l3.png': PNG,
+      '_mentis/_drawings/shared/l1.png': PNG,
+      '_mentis/_drawings/shared/l2.png': PNG,
+      '_mentis/_drawings/shared/l3.png': PNG,
     })
 
     const report = await reapCanvasOrphans(fs)
 
     // l1 and l2 are each referenced by one of the duplicates — only l3 goes.
-    expect(report.deletedLayerPngs).toEqual(['_marrow/_drawings/shared/l3.png'])
-    expect(fs.files.has('_marrow/_drawings/shared/l1.png')).toBe(true)
-    expect(fs.files.has('_marrow/_drawings/shared/l2.png')).toBe(true)
+    expect(report.deletedLayerPngs).toEqual(['_mentis/_drawings/shared/l3.png'])
+    expect(fs.files.has('_mentis/_drawings/shared/l1.png')).toBe(true)
+    expect(fs.files.has('_mentis/_drawings/shared/l2.png')).toBe(true)
   })
 
   it('aborts without deleting anything when a .canvas fails to parse', async () => {
@@ -200,13 +200,13 @@ describe('reapCanvasOrphans', () => {
     await seed(fs, {
       'good.canvas': canvasJson('good-id', ['l1']),
       'corrupt.canvas': '{ not json',
-      '_marrow/_drawings/good-id/l1.png': PNG,
-      '_marrow/_drawings/orphan-id/x.png': PNG,
+      '_mentis/_drawings/good-id/l1.png': PNG,
+      '_mentis/_drawings/orphan-id/x.png': PNG,
     })
 
     await expect(reapCanvasOrphans(fs)).rejects.toThrow()
     // The would-be orphan survives — the scan failed before any deletion.
-    expect(fs.files.has('_marrow/_drawings/orphan-id/x.png')).toBe(true)
+    expect(fs.files.has('_mentis/_drawings/orphan-id/x.png')).toBe(true)
   })
 
   it('reports empty on a vault with no canvases and no drawings dir', async () => {

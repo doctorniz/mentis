@@ -18,7 +18,7 @@ import {
  * Persist a canvas engine's state to disk in the v5 drawings-folder
  * format.
  *
- *   - PNGs live under `_marrow/_drawings/<assetId>/<layerId>.png` —
+ *   - PNGs live under `_mentis/_drawings/<assetId>/<layerId>.png` —
  *     hidden from the vault tree and decoupled from the `.canvas` file's
  *     name. Renaming the `.canvas` never touches this folder.
  *   - JSON carries `assetId` so the link survives rename.
@@ -31,7 +31,7 @@ import {
  *      BEFORE any disk write so a mid-save crash can't leave the JSON
  *      pointing at half-written PNGs.
  *   3. `mkdir` the drawings sub-directory (idempotent — includes all
- *      parents, so `_marrow/_drawings/` is created if missing).
+ *      parents, so `_mentis/_drawings/` is created if missing).
  *   4. Write each layer's PNG. A failed blob (GPU extract returned
  *      null) is skipped rather than deleting the prior PNG — leaving
  *      the last good bytes on disk is strictly better than overwriting
@@ -43,7 +43,7 @@ import {
  *   - Deleted layers leave their PNGs in the drawings folder.
  *   - v4 → v5 migration leaves the old `<canvasPath>.assets/` folder
  *     untouched on disk.
- *   Both are the same policy as `_marrow/snapshots/` PDF backups; a
+ *   Both are the same policy as `_mentis/snapshots/` PDF backups; a
  *   vault-wide cleanup pass can reap them later.
  */
 export async function writeCanvasFile(
@@ -69,7 +69,7 @@ export async function writeCanvasFile(
 
   // Step 3: ensure the drawings sub-directory exists. `mkdir` creates
   // all intermediate segments, so this covers a brand-new vault that
-  // has never had a `_marrow/_drawings/` folder before.
+  // has never had a `_mentis/_drawings/` folder before.
   await fs.mkdir(canvasDrawingsDirFor(assetId))
 
   // Step 4: write each layer's PNG bytes.
@@ -98,10 +98,10 @@ export async function writeCanvasFile(
  *   - v4: pixel PNGs live in a sibling `<canvasPath>.assets/` folder,
  *     one file per `layerId`. Readable forever — rewritten as v5 on
  *     next save, which will mint an `assetId`, move the bytes into
- *     `_marrow/_drawings/<assetId>/`, and leave the old folder as a
+ *     `_mentis/_drawings/<assetId>/`, and leave the old folder as a
  *     harmless orphan.
  *
- *   - v5: pixel PNGs live in `_marrow/_drawings/<assetId>/<layerId>.png`.
+ *   - v5: pixel PNGs live in `_mentis/_drawings/<assetId>/<layerId>.png`.
  *     The JSON carries `assetId` so the reader can find the folder
  *     regardless of how the `.canvas` file has been renamed.
  *
@@ -135,7 +135,7 @@ export async function readCanvasFile(
   // Must happen before loadLayers so RenderTextures are created at the right size.
   engine.setDimensions(parsed.width, parsed.height)
 
-  // v5 — drawings folder under `_marrow/_drawings/<assetId>/`.
+  // v5 — drawings folder under `_mentis/_drawings/<assetId>/`.
   // If the JSON is v5 but somehow lacks a valid `assetId` (hand-edited,
   // truncated file), fall through to the "no bitmaps" path so layers
   // load blank; the writer will mint a fresh id on the next save.
@@ -150,7 +150,7 @@ export async function readCanvasFile(
 
   // v4 — sibling `<canvasPath>.assets/<layerId>.png`.
   // Don't call `engine.setAssetId` here; we want the next save to mint
-  // a fresh id and plant the folder under `_marrow/_drawings/`.
+  // a fresh id and plant the folder under `_mentis/_drawings/`.
   if (sourceVersion === 4) {
     const bitmaps = await loadLayerBitmaps(fs, parsed.layers, (layerId) =>
       canvasLayerAssetPath(canvasPath, layerId),

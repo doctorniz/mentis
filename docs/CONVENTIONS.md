@@ -17,7 +17,7 @@ Third-party npm packages remain under their respective licenses.
 ## Project Structure
 
 ```
-ink-marrow/
+mentis/
 ├── docs/                  # Project documentation (see README's doc index)
 ├── tests/                 # Vitest unit tests (default env: node; happy-dom per file where needed)
 │   └── e2e/               # Playwright specs (chromium + Pixel-5 mobile projects) + fixtures

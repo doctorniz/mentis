@@ -9,7 +9,7 @@ const definition: FileTypeDefinition = {
   layout: {
     narrow: 'wide',
     rightColumn: {
-      storageKey: 'ink-marrow:right-panel-width:docx',
+      storageKey: 'mentis:right-panel-width:docx',
       defaultRightPx: 360,
       minRightPx: 280,
     },

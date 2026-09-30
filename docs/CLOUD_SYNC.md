@@ -18,15 +18,15 @@ If it is missing, **Connect Dropbox** in Settings will alert.
 2. **Permissions** (Scopes tab): enable `files.content.read`, `files.content.write`, `files.metadata.read`, `files.metadata.write`.
 3. **OAuth 2** → redirect URIs, e.g. `http://localhost:3000/auth/dropbox` and `https://your-domain.example/auth/dropbox`.
 4. `.env.local`: `NEXT_PUBLIC_DROPBOX_CLIENT_ID=your_app_key_here`
-5. **Settings** → **Sync**: **Remote folder** defaults to `/Apps/Mentis/<vault name>`. Click **Connect Dropbox**. With Dropbox enabled, use the **sync** icon in the Vault toolbar (next to Preview / Files) to run a full sync on demand. Each vault has its own `_marrow/config.json` sync section and its own OAuth token key (`vaultId` = active vault path).
+5. **Settings** → **Sync**: **Remote folder** defaults to `/Apps/Mentis/<vault name>`. Click **Connect Dropbox**. With Dropbox enabled, use the **sync** icon in the Vault toolbar (next to Preview / Files) to run a full sync on demand. Each vault has its own `_mentis/config.json` sync section and its own OAuth token key (`vaultId` = active vault path).
 
 After OAuth, the app opens **`/auth/dropbox`** (`src/app/auth/dropbox/page.tsx`), exchanges `code` for tokens, returns to `/`. Static hosting must serve the SPA for `/auth/dropbox` (see `docs/DEPLOYMENT.md`).
 
 ## Excluded paths
 
-Sync never touches (in either direction): `_marrow/snapshots` (pre-edit PDF backups — heavy, per-device) and `_marrow/search-index.json` (rebuilt on every vault open). Copies of these already on Dropbox from before the exclude feature stay there untouched — delete them in Dropbox if you want the space back.
+Sync never touches (in either direction): `_mentis/snapshots` (pre-edit PDF backups — heavy, per-device) and `_mentis/search-index.json` (rebuilt on every vault open). Copies of these already on Dropbox from before the exclude feature stay there untouched — delete them in Dropbox if you want the space back.
 
-Extra excludes per vault: add `"excludePaths": ["some/folder", "big-file.mp4"]` to the `sync` section of `_marrow/config.json`. A pattern matches the exact path or anything under it as a folder. There is no Settings UI for this yet.
+Extra excludes per vault: add `"excludePaths": ["some/folder", "big-file.mp4"]` to the `sync` section of `_mentis/config.json`. A pattern matches the exact path or anything under it as a folder. There is no Settings UI for this yet.
 
 ## Related
 

@@ -410,7 +410,7 @@ This is the body after frontmatter.`
           dir: FileSystemDirectoryHandle,
         ): Promise<FileSystemDirectoryHandle | null> {
           for await (const [name, handle] of (dir as any).entries()) {
-            if (handle.kind === 'directory' && name !== '_marrow') {
+            if (handle.kind === 'directory' && name !== '_mentis') {
               return handle as FileSystemDirectoryHandle
             }
           }

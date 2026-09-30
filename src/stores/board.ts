@@ -325,7 +325,7 @@ export const useBoardStore = create<BoardState>()(
         }
 
         let updatedContent = content
-        const assetRe = /(_marrow\/_board\/_assets\/[^\s)]+)/g
+        const assetRe = /(_mentis\/_thoughts\/_assets\/[^\s)]+)/g
         const assetMatches = [...raw.matchAll(assetRe)]
         const assetDir = '_assets'
         if (assetMatches.length > 0) {

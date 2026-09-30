@@ -62,7 +62,7 @@ All edits written directly into the PDF file on save.
 - **New PDF note**: Create a blank PDF canvas (lined, grid, dot grid, or blank pages).
 - **Export**: Download as-is or flatten (removes annotation editability).
 - **Auto-save**: Configurable interval (default 5s and on blur; overridable in Settings).
-- **Version snapshots**: Pre-edit safety copies in `_marrow/snapshots/`.
+- **Version snapshots**: Pre-edit safety copies in `_mentis/snapshots/`.
 
 ### 3.4 App Views
 
@@ -85,7 +85,7 @@ Layered raster drawing surface (Photoshop/Procreate direction — the original w
 - Undo/redo with dirty-region snapshots; history survives tab switches
 - Touch: pinch-zoom, two-finger pan, gesture-safe stroke handling
 - Export to PNG/PDF
-- Saved as `.canvas` metadata JSON + per-layer PNGs under `_marrow/_drawings/`
+- Saved as `.canvas` metadata JSON + per-layer PNGs under `_mentis/_drawings/`
 
 ### 3.6 Cross-Platform Sync (Phase 2+)
 

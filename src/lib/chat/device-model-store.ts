@@ -8,7 +8,7 @@ export const DEVICE_MODEL_ID = DEVICE_CHAT_MODEL
 
 export const DEVICE_MODEL_URL =
   'https://huggingface.co/huggingworld/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task'
-const DEVICE_MODEL_DIR = 'ink-marrow-models'
+const DEVICE_MODEL_DIR = 'mentis-models'
 const DEVICE_MODEL_FILE = 'gemma-4-e2b.task'
 
 /* ------------------------------------------------------------------ */

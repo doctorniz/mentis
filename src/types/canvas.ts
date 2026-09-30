@@ -17,7 +17,7 @@
  *        no longer written.
  *   v5 — current. JSON holds metadata plus a stable `assetId` UUID; pixel
  *        PNGs live in a hidden per-canvas subdirectory under the vault's
- *        `_marrow/_drawings/<assetId>/`. The `assetId` is generated once
+ *        `_mentis/_drawings/<assetId>/`. The `assetId` is generated once
  *        on first save and never rotates, so renaming the `.canvas` file
  *        leaves its pixel folder untouched — the id travels with the JSON,
  *        not the filename. `CanvasLayerData.imageData` is always `null`.
@@ -74,7 +74,7 @@ export interface CanvasFile {
   activeLayerId: string
   /**
    * Stable identifier for this canvas's sidecar folder under
-   * `_marrow/_drawings/<assetId>/`. Generated on first v5 save and never
+   * `_mentis/_drawings/<assetId>/`. Generated on first v5 save and never
    * rotated — rename of the `.canvas` file does not move or rename the
    * pixel folder. Missing on v3 / v4 files; the writer will mint one.
    */

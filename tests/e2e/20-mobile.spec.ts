@@ -61,7 +61,7 @@ test.describe('20 — Mobile (Pixel 5)', () => {
       {
         label: 'Files',
         probe: async () => {
-          await expect(page.getByText('_marrow').first()).toBeVisible()
+          await expect(page.getByText('_mentis').first()).toBeVisible()
         },
       },
       {

@@ -20,7 +20,7 @@ import {
  *
  * v5 does NOT inline pixel data — every layer's `imageData` is `null`.
  * Pixel bytes are written separately as PNGs under
- * `_marrow/_drawings/<assetId>/` by `writeCanvasFile` in
+ * `_mentis/_drawings/<assetId>/` by `writeCanvasFile` in
  * `canvas-file-io.ts`. This keeps `serializer.ts` pure (no file system,
  * no GPU extract) and makes it straightforward to unit-test.
  *
@@ -71,7 +71,7 @@ export function serializeCanvasToJson(file: CanvasFile): string {
  *
  *   - `version <= 3` → read pixels from inline `imageData` (base64)
  *   - `version === 4` → read pixels from `<canvasPath>.assets/<id>.png`
- *   - `version >= 5` → read pixels from `_marrow/_drawings/<assetId>/<id>.png`
+ *   - `version >= 5` → read pixels from `_mentis/_drawings/<assetId>/<id>.png`
  *
  * `parsed.version` is always the current `CANVAS_VERSION` (post-migration
  * structure), so callers must branch on `sourceVersion`, not `parsed`.
@@ -122,7 +122,7 @@ function migrateV2ToV3(obj: Record<string, unknown>): CanvasFile {
  * Sanitize a v3, v4, or v5 canvas file. The field shapes are largely
  * identical — v4/v5 never populate `imageData`, and v5 additionally
  * carries an `assetId` UUID pointing at the pixel folder under
- * `_marrow/_drawings/`. Keeping a single sanitizer avoids a parallel
+ * `_mentis/_drawings/`. Keeping a single sanitizer avoids a parallel
  * code path for what is, structurally, the same JSON.
  *
  * An unrecognised `assetId` shape is simply dropped — the writer will
@@ -158,7 +158,7 @@ function sanitizeModernCanvas(obj: Record<string, unknown>): CanvasFile {
 
 /**
  * Accept only UUID-shaped asset ids. The id is used to construct a path
- * under `_marrow/_drawings/<id>/`, so rejecting anything that could
+ * under `_mentis/_drawings/<id>/`, so rejecting anything that could
  * contain `/`, `..`, or null bytes is a cheap directory-traversal
  * defence. UUIDs produced by `crypto.randomUUID()` are always 36
  * hex-and-hyphen characters, so this regex is both sufficient and
@@ -233,10 +233,10 @@ export function createEmptyCanvasJson(): string {
 
 /**
  * v5 — pixel folder for a canvas, keyed by stable `assetId` and living
- * under the vault's `_marrow/_drawings/` root. Rename of the `.canvas`
+ * under the vault's `_mentis/_drawings/` root. Rename of the `.canvas`
  * file does *not* rename this folder: the id travels with the JSON.
  *
- *   assetId "a1b2c3d4-…"   →   "_marrow/_drawings/a1b2c3d4-…"
+ *   assetId "a1b2c3d4-…"   →   "_mentis/_drawings/a1b2c3d4-…"
  */
 export function canvasDrawingsDirFor(assetId: string): string {
   return `${CANVAS_DRAWINGS_DIR}/${assetId}`

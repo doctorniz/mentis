@@ -24,7 +24,7 @@ This document describes product behaviour for **Mentis**. Repository **licensing
 1. User clicks a `.pdf` in the file tree or PDF browser.
 2. PDF.js renders the document in the main pane. Existing annotations (from any PDF viewer) are detected and displayed as editable objects.
 3. **Toolbar** (`PdfToolbar`): **Select | Highlight | Draw | Text | Comment | Sign**; colour/width controls per tool; zoom; page navigation and **Add page**; **Undo / Redo** (page operations only); **Form fields**; **Version history**; **Search**. **Pages** and **Outline** live in the left **side column** (`PdfSideColumn`) — expand/collapse via the column header and **Layers** rail, not the main toolbar.
-4. On first edit: a snapshot is silently saved to `_marrow/snapshots/`.
+4. On first edit: a snapshot is silently saved to `_mentis/snapshots/`.
 5. Edits are held in memory on the Fabric overlay until **auto-save** runs (no dedicated Save button in the PDF toolbar).
 6. **Auto-save** writes pending annotations into the PDF (default: every **5s** and optionally on window blur — see **Settings → Auto-save**; can be disabled or retimed).
 
@@ -55,14 +55,14 @@ This document describes product behaviour for **Mentis**. Repository **licensing
 1. User selects **Comment** tool (or right-clicks in Select mode → "Add comment").
 2. Click on a point in the page → comment icon appears, note editor opens.
 3. User types comment text.
-4. On auto-save, comments are written as native `/Text` annotations (`InkMarrow` strip for idempotent re-save).
+4. On auto-save, comments are written as native `/Text` annotations (`Mentis` strip for idempotent re-save).
 5. Comment icons visible on the page; click to expand/edit/delete.
 
 ## 8. Signing
 
 1. User clicks **Sign** in toolbar.
 2. If no saved signatures: modal to draw signature on a canvas pad, or upload an image.
-3. Signature saved to `_marrow/signatures/` for reuse.
+3. Signature saved to `_mentis/signatures/` for reuse.
 4. Signature appears as a draggable, resizable stamp. User places it, clicks to confirm.
 5. On auto-save, the signature is stamped into the page content as an embedded image (stamp parity).
 6. Multiple signatures supported (e.g., initials vs. full signature).
@@ -116,7 +116,7 @@ Editor idle for the configured interval OR window blur (when enabled)
         ▼
     Is this the first edit in session?
         │
-    Yes ──► Create snapshot in _marrow/snapshots/
+    Yes ──► Create snapshot in _mentis/snapshots/
         │
         ▼
     Collect all dirty annotations from Fabric.js canvas
@@ -139,8 +139,8 @@ Editor idle for the configured interval OR window blur (when enabled)
 
 ## 14. Snapshot Retention
 
-- Snapshots stored at: `_marrow/snapshots/<filename>_<ISO-timestamp>.pdf`
+- Snapshots stored at: `_mentis/snapshots/<filename>_<ISO-timestamp>.pdf`
 - Default retention: last 5 snapshots per file, or 30 days, whichever is reached first
 - Pruning runs on vault open and after each snapshot creation
 - Users can browse and restore snapshots from the PDF viewer's "Version History" menu
-- Snapshots are opt-out (enabled by default) via `_marrow/config.json`
+- Snapshots are opt-out (enabled by default) via `_mentis/config.json`

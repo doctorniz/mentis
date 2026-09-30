@@ -3,9 +3,9 @@ import { fileTypes } from '@/core/registries'
 
 /** Hide app-internal dirs from the Notes sidebar. */
 export function isNotesTreeHidden(entry: FileEntry): boolean {
-  if (entry.name === '_marrow' || entry.name === '_assets') return true
+  if (entry.name === '_mentis' || entry.name === '_assets') return true
   const parts = entry.path.split('/')
-  return parts.some((p) => p === '_marrow' || p === '_assets')
+  return parts.some((p) => p === '_mentis' || p === '_assets')
 }
 
 /** Folders always (if not hidden). Files: any type a module registers. */

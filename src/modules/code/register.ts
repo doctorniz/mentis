@@ -6,7 +6,7 @@ const definition: FileTypeDefinition = {
   label: 'Code',
   layout: {
     rightColumn: {
-      storageKey: 'ink-marrow:right-panel-width:code',
+      storageKey: 'mentis:right-panel-width:code',
       defaultRightPx: 360,
       minRightPx: 280,
     },

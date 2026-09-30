@@ -195,8 +195,8 @@ describe('detectLocalChanges with a hash cache', () => {
   it('does not cache or read excluded files', async () => {
     const fs = new StatFs()
     await fs.writeTextFile('note.md', 'x')
-    await fs.writeTextFile('_marrow/snapshots/big.pdf', 'BIG')
-    const excluded = (p: string) => p.startsWith('_marrow/snapshots')
+    await fs.writeTextFile('_mentis/snapshots/big.pdf', 'BIG')
+    const excluded = (p: string) => p.startsWith('_mentis/snapshots')
     await detectLocalChanges(fs, fakeState([]), excluded, cache)
     expect(fs.reads).toEqual(['note.md'])
   })

@@ -54,7 +54,7 @@ const ARROW_DELTAS: Record<string, [number, number]> = {
 /** Quiet period after the last arrow press before the float commits. */
 const NUDGE_COMMIT_DELAY_MS = 500
 
-const CANVAS_PANEL_STORAGE_KEY = 'ink-marrow:canvas-panel-width'
+const CANVAS_PANEL_STORAGE_KEY = 'mentis:canvas-panel-width'
 const CANVAS_PANEL_DEFAULT_WIDTH = 260
 const CANVAS_PANEL_MIN_WIDTH = 180
 const CANVAS_PANEL_MAX_RATIO = 0.45
@@ -201,7 +201,7 @@ export function CanvasEditor({ tabId, path, onRename, onPersisted }: CanvasEdito
         }
 
         // Load file. v5 reads metadata JSON plus PNGs from
-        // `_marrow/_drawings/<assetId>/<layerId>.png`. v4 falls back to
+        // `_mentis/_drawings/<assetId>/<layerId>.png`. v4 falls back to
         // the legacy sibling `<path>.assets/<layerId>.png` folder; v3
         // files with inline base64 pixels are still honoured. Both
         // older formats are rewritten as v5 on the next save.

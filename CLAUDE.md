@@ -30,8 +30,10 @@ Being migrated to a Tauri 2 application with real filesystem access.
 - **Storage:** the user's chosen folder. Folder identity == vault identity.
   One vault open at a time; keep a recent-vaults list.
 - **App data:** `_mentis/` inside the chosen folder, containing `_journals`,
-  `_thoughts`, `_tasks`, `_bookmarks`, `_chats`, `templates`, `config.json`.
-  (Renamed from `_marrow/`; `_dailies` renamed to `_journals`.)
+  `_thoughts`, `_tasks`, `_bookmarks`, `_chats`, `_calendar`, `_drawings`,
+  `signatures`, `snapshots`, `templates`, `config.json`, `search-index.json`.
+  (Renamed from `_marrow/`; `_dailies` is now `_journals`, `_board` is now
+  `_thoughts`. No migration — there were no users of the old layout.)
 - **Notebooks:** every root folder is a notebook; every subfolder is a section;
   sections nest. Root folders starting with `_` are system, not notebooks.
   Loose root-level files appear as an implicit "Unfiled" notebook.

@@ -4,7 +4,7 @@
  * can live in IDB, but NOT in localStorage.
  */
 
-const DB_NAME = 'ink-marrow'
+const DB_NAME = 'mentis'
 const STORE_NAME = 'handles'
 const KEY = 'vault-dir'
 

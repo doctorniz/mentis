@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The canvas engine is well-structured architecturally — clean separation between `CanvasEngine` orchestrator, `LayerManager` (GPU resources), `StrokeEngine` (pointer → stamps), `BrushSystem` (pixel output), `ViewportController` (pan/zoom), and `UndoManager` (per-layer PNG snapshots). The initial triage surfaced 18 bugs across correctness, UX, and GPU-efficiency. **All 18 have since been addressed in code**; a follow-up storage refactor (post-fix) moved sidecar PNGs into a hidden, filename-decoupled folder under `_marrow/_drawings/`. See the _Post-fix Storage Refactor (v4 → v5)_ section below for the full story.
+The canvas engine is well-structured architecturally — clean separation between `CanvasEngine` orchestrator, `LayerManager` (GPU resources), `StrokeEngine` (pointer → stamps), `BrushSystem` (pixel output), `ViewportController` (pan/zoom), and `UndoManager` (per-layer PNG snapshots). The initial triage surfaced 18 bugs across correctness, UX, and GPU-efficiency. **All 18 have since been addressed in code**; a follow-up storage refactor (post-fix) moved sidecar PNGs into a hidden, filename-decoupled folder under `_mentis/_drawings/`. See the _Post-fix Storage Refactor (v4 → v5)_ section below for the full story.
 
 ---
 
@@ -288,10 +288,10 @@ Snapshots are still _full-layer_ PNGs. A bounding-box / tile-based dirty-region 
 ### BUG-13 — On-disk `.canvas` JSON grows unboundedly with layer count × density
 
 **Status:** ✅ Resolved (with follow-up storage refactor — see _Post-fix Storage Refactor (v4 → v5)_ below)
-**Fix location:** v4 — `src/lib/canvas/serializer.ts` + `src/lib/canvas/canvas-file-io.ts` (sidecar PNG format) · v5 — same files (move sidecar into hidden `_marrow/_drawings/<assetId>/`)
+**Fix location:** v4 — `src/lib/canvas/serializer.ts` + `src/lib/canvas/canvas-file-io.ts` (sidecar PNG format) · v5 — same files (move sidecar into hidden `_mentis/_drawings/<assetId>/`)
 
 **Fix**
-As of v5 (post-fix refactor), pixel PNGs live under `_marrow/_drawings/<assetId>/<layerId>.png`. The `.canvas` JSON carries only metadata (ids, names, opacity, visibility, lock, blend mode) plus `assetId`, `viewport`, `background`, `width`, `height`, `activeLayerId`. A 5-layer dense canvas that was previously ~10–25 MB of JSON is now a few hundred bytes of JSON + 5 PNG files Dropbox can sync as per-file deltas. `JSON.parse` cost on open is now negligible.
+As of v5 (post-fix refactor), pixel PNGs live under `_mentis/_drawings/<assetId>/<layerId>.png`. The `.canvas` JSON carries only metadata (ids, names, opacity, visibility, lock, blend mode) plus `assetId`, `viewport`, `background`, `width`, `height`, `activeLayerId`. A 5-layer dense canvas that was previously ~10–25 MB of JSON is now a few hundred bytes of JSON + 5 PNG files Dropbox can sync as per-file deltas. `JSON.parse` cost on open is now negligible.
 
 v3 (inline base64) and v4 (sibling `<path>.canvas.assets/` folder) files remain openable; both migrate to v5 on first save.
 
@@ -358,25 +358,25 @@ React attaches synthetic wheel events with `passive: true` and that cannot be ov
 
 ## Post-fix Storage Refactor (v4 → v5)
 
-After the 18-bug fix pass, the sidecar PNG storage was refactored once more based on user direction: _"save the pngs in a folder `_drawings` which lives in `_marrow` so that they are hidden in the vault. Note that rename of the file does NOT rename the folder as well."_
+After the 18-bug fix pass, the sidecar PNG storage was refactored once more based on user direction: _"save the pngs in a folder `_drawings` which lives in `_mentis` so that they are hidden in the vault. Note that rename of the file does NOT rename the folder as well."_
 
 ### What changed
 
 | Aspect                    | v4 (pre-refactor)                                          | v5 (current)                                                |
 | ------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------- |
-| PNG location              | `<canvasPath>.assets/<layerId>.png` (sibling of `.canvas`) | `_marrow/_drawings/<assetId>/<layerId>.png` (hidden folder) |
-| Visible in vault tree     | Yes (noisy — one folder per drawing)                       | No (`_marrow/` is hidden)                                   |
+| PNG location              | `<canvasPath>.assets/<layerId>.png` (sibling of `.canvas`) | `_mentis/_drawings/<assetId>/<layerId>.png` (hidden folder) |
+| Visible in vault tree     | Yes (noisy — one folder per drawing)                       | No (`_mentis/` is hidden)                                   |
 | Survives `.canvas` rename | No — sibling folder became orphan                          | Yes — `assetId` stored in JSON                              |
 | Identifier                | Derived from file path                                     | UUID (`crypto.randomUUID()`) stored in `CanvasFile.assetId` |
 
 ### Rename invariant
 
-Renaming `Drawing A.canvas` → `Doodle.canvas` does **not** touch `_marrow/_drawings/<assetId>/`. The reference from JSON to drawings folder is the `assetId` string, which travels inside the file contents. This is the explicit user requirement and the critical design choice.
+Renaming `Drawing A.canvas` → `Doodle.canvas` does **not** touch `_mentis/_drawings/<assetId>/`. The reference from JSON to drawings folder is the `assetId` string, which travels inside the file contents. This is the explicit user requirement and the critical design choice.
 
 ### Migration policy
 
 - **v3 (inline base64)** — still readable, migrates to v5 on next save.
-- **v4 (sibling `<path>.canvas.assets/`)** — still readable, migrates to v5 on next save. The writer mints a fresh `assetId`, writes PNGs to `_marrow/_drawings/<assetId>/`, and leaves the old sibling folder behind as orphan — same policy as deleted-layer PNGs and `_marrow/snapshots/` PDF backups. A vault-wide cleanup pass can reap orphans later.
+- **v4 (sibling `<path>.canvas.assets/`)** — still readable, migrates to v5 on next save. The writer mints a fresh `assetId`, writes PNGs to `_mentis/_drawings/<assetId>/`, and leaves the old sibling folder behind as orphan — same policy as deleted-layer PNGs and `_mentis/snapshots/` PDF backups. A vault-wide cleanup pass can reap orphans later.
 
 ### Crash-safety
 
@@ -384,11 +384,11 @@ Write order is unchanged from v4: blobs are extracted from the GPU _before_ any 
 
 ### Defensive `assetId` validation
 
-Parsed `assetId` values are run through a canonical-UUID regex before being trusted. Anything else is dropped, and the writer mints a fresh `assetId` on the next save (old pixel folder becomes an orphan). This is a cheap directory-traversal defense — `assetId` flows into a `_marrow/_drawings/<assetId>` path segment, and a hand-edited JSON with `../` or `/` or a null byte would otherwise escape the `_drawings/` root.
+Parsed `assetId` values are run through a canonical-UUID regex before being trusted. Anything else is dropped, and the writer mints a fresh `assetId` on the next save (old pixel folder becomes an orphan). This is a cheap directory-traversal defense — `assetId` flows into a `_mentis/_drawings/<assetId>` path segment, and a hand-edited JSON with `../` or `/` or a null byte would otherwise escape the `_drawings/` root.
 
 ### New surface area
 
-- `CANVAS_DRAWINGS_DIR = '_marrow/_drawings'` constant.
+- `CANVAS_DRAWINGS_DIR = '_mentis/_drawings'` constant.
 - `CanvasEngine._assetId` + `assetId` getter + `setAssetId(id)`.
 - `canvasDrawingsDirFor(assetId)` / `canvasDrawingsLayerPath(assetId, layerId)` helpers in `serializer.ts`.
 - v4 helpers (`canvasAssetsDirFor`, `canvasLayerAssetPath`) retained for the read-only fallback path.
@@ -461,10 +461,10 @@ Walk through these in a browser with a fresh vault to confirm the fixes end-to-e
 
 ### v5 storage (post-fix refactor)
 
-- [ ] **PNGs hidden (v5)** — After first save, `_marrow/_drawings/<uuid>/` exists and contains one `<layerId>.png` per layer. The folder does not appear in the vault tree / file browser.
+- [ ] **PNGs hidden (v5)** — After first save, `_mentis/_drawings/<uuid>/` exists and contains one `<layerId>.png` per layer. The folder does not appear in the vault tree / file browser.
 - [ ] **No sibling folder next to `.canvas`** — `Drawing.canvas` has no `Drawing.canvas.assets/` sibling (on a vault created fresh after v5).
-- [ ] **Rename doesn't move folder** — Rename `Drawing.canvas` → `Sketch.canvas`. `_marrow/_drawings/<uuid>/` is untouched; reopen still shows all pixels.
-- [ ] **v4 migration** — Open an older file that still has `<path>.canvas.assets/` (or manually create one to test). Pixels load correctly. Save once. `_marrow/_drawings/<new-uuid>/` is created; old sibling folder is left as orphan.
+- [ ] **Rename doesn't move folder** — Rename `Drawing.canvas` → `Sketch.canvas`. `_mentis/_drawings/<uuid>/` is untouched; reopen still shows all pixels.
+- [ ] **v4 migration** — Open an older file that still has `<path>.canvas.assets/` (or manually create one to test). Pixels load correctly. Save once. `_mentis/_drawings/<new-uuid>/` is created; old sibling folder is left as orphan.
 - [ ] **v3 migration** — Open a legacy v3 file with inline base64. Pixels load. Save once. Migrates to v5; JSON is now small.
 
 ### Undo memory (spot check, BUG-12)

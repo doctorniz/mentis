@@ -3,7 +3,7 @@ import { createScopedAdapter } from '@/lib/fs'
 import {
   type VaultConfig,
   DEFAULT_VAULT_CONFIG,
-  MARROW_DIR,
+  MENTIS_DIR,
   SIGNATURES_DIR,
   TEMPLATES_DIR,
   SNAPSHOTS_DIR,
@@ -15,7 +15,7 @@ import { uniqueVaultSlug, vaultFolderPath, vaultsRootPath } from '@/lib/vault/pa
 export async function createVault(fs: FileSystemAdapter, name: string): Promise<VaultConfig> {
   const config: VaultConfig = { ...DEFAULT_VAULT_CONFIG, name }
 
-  await fs.mkdir(MARROW_DIR)
+  await fs.mkdir(MENTIS_DIR)
   await fs.mkdir(SIGNATURES_DIR)
   await fs.mkdir(TEMPLATES_DIR)
   await fs.mkdir(SNAPSHOTS_DIR)
@@ -102,7 +102,7 @@ export async function saveVaultConfig(fs: FileSystemAdapter, config: VaultConfig
 }
 
 export async function isVault(fs: FileSystemAdapter): Promise<boolean> {
-  return fs.exists(MARROW_DIR)
+  return fs.exists(MENTIS_DIR)
 }
 
 /**

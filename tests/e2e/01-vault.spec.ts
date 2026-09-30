@@ -233,12 +233,12 @@ test.describe('1.3 — Auto-Save Behavior', () => {
 })
 
 test.describe('1.5 — Vault Structure Integrity', () => {
-  test('1.5.1 Verify _marrow/ directory hidden from file tree', async ({ vaultPage: page }) => {
+  test('1.5.1 Verify _mentis/ directory hidden from file tree', async ({ vaultPage: page }) => {
     await page.keyboard.press('Control+1')
     await page.waitForTimeout(1000)
 
-    // The _marrow folder should NOT be visible in the vault tree
-    await expect(vaultTree(page).getByText('_marrow')).not.toBeVisible({ timeout: 3000 })
+    // The _mentis folder should NOT be visible in the vault tree
+    await expect(vaultTree(page).getByText('_mentis')).not.toBeVisible({ timeout: 3000 })
   })
 
   test('1.5.8 Open Files view (Ctrl+5) — verify hidden folders visible', async ({
@@ -248,7 +248,7 @@ test.describe('1.5 — Vault Structure Integrity', () => {
     await page.keyboard.press('Control+5')
     await page.waitForTimeout(1500)
 
-    // In the Files view (FileBrowserView with showHidden), _marrow should be visible
-    await expect(page.getByText('_marrow').first()).toBeVisible({ timeout: 10_000 })
+    // In the Files view (FileBrowserView with showHidden), _mentis should be visible
+    await expect(page.getByText('_mentis').first()).toBeVisible({ timeout: 10_000 })
   })
 })

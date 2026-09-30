@@ -9,22 +9,22 @@ import { detectLocalChanges, hashBytes } from '@/lib/sync/change-detector'
 
 describe('sync exclude matcher', () => {
   it('excludes the default local-only artifacts and their contents', () => {
-    expect(isSyncExcluded('_marrow/snapshots')).toBe(true)
-    expect(isSyncExcluded('_marrow/snapshots/report.pdf')).toBe(true)
-    expect(isSyncExcluded('_marrow/snapshots/deep/nested.pdf')).toBe(true)
-    expect(isSyncExcluded('_marrow/search-index.json')).toBe(true)
+    expect(isSyncExcluded('_mentis/snapshots')).toBe(true)
+    expect(isSyncExcluded('_mentis/snapshots/report.pdf')).toBe(true)
+    expect(isSyncExcluded('_mentis/snapshots/deep/nested.pdf')).toBe(true)
+    expect(isSyncExcluded('_mentis/search-index.json')).toBe(true)
   })
 
   it('does not false-match sibling names or other vault content', () => {
-    expect(isSyncExcluded('_marrow/snapshots-old/x.pdf')).toBe(false)
-    expect(isSyncExcluded('_marrow/search-index.json.bak')).toBe(false)
-    expect(isSyncExcluded('_marrow/config.json')).toBe(false)
-    expect(isSyncExcluded('_marrow/_drawings/abc/l1.png')).toBe(false)
+    expect(isSyncExcluded('_mentis/snapshots-old/x.pdf')).toBe(false)
+    expect(isSyncExcluded('_mentis/search-index.json.bak')).toBe(false)
+    expect(isSyncExcluded('_mentis/config.json')).toBe(false)
+    expect(isSyncExcluded('_mentis/_drawings/abc/l1.png')).toBe(false)
     expect(isSyncExcluded('notes/todo.md')).toBe(false)
   })
 
   it('normalizes leading and trailing slashes', () => {
-    expect(isSyncExcluded('/_marrow/snapshots/x.pdf')).toBe(true)
+    expect(isSyncExcluded('/_mentis/snapshots/x.pdf')).toBe(true)
     const matcher = buildSyncExcludeMatcher(['/Big Folder/'])
     expect(matcher('Big Folder/video.mp4')).toBe(true)
     expect(matcher('Big Folder')).toBe(true)
@@ -34,7 +34,7 @@ describe('sync exclude matcher', () => {
   it('merges user patterns with the defaults', () => {
     const matcher = buildSyncExcludeMatcher(['drafts'])
     expect(matcher('drafts/wip.md')).toBe(true)
-    expect(matcher('_marrow/snapshots/x.pdf')).toBe(true) // defaults kept
+    expect(matcher('_mentis/snapshots/x.pdf')).toBe(true) // defaults kept
     expect(matcher('notes/final.md')).toBe(false)
   })
 })
@@ -112,8 +112,8 @@ describe('detectLocalChanges with excludes', () => {
   it('never reports excluded files as created', async () => {
     const fs = new MemFs()
     await fs.writeTextFile('note.md', 'hello')
-    await fs.writeTextFile('_marrow/snapshots/backup.pdf', 'BIG')
-    await fs.writeTextFile('_marrow/search-index.json', '{}')
+    await fs.writeTextFile('_mentis/snapshots/backup.pdf', 'BIG')
+    await fs.writeTextFile('_mentis/search-index.json', '{}')
 
     const changes = await detectLocalChanges(fs, fakeState([]), isSyncExcluded)
 
@@ -130,7 +130,7 @@ describe('detectLocalChanges with excludes', () => {
     // Manifest predates the exclude feature: it tracked a snapshot.
     const state = fakeState([
       manifestEntry('note.md', noteHash),
-      manifestEntry('_marrow/snapshots/old.pdf', 'deadbeef'),
+      manifestEntry('_mentis/snapshots/old.pdf', 'deadbeef'),
     ])
 
     const changes = await detectLocalChanges(fs, state, isSyncExcluded)

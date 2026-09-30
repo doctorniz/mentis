@@ -8,7 +8,7 @@ import {
 
 describe('board vault export helpers', () => {
   it('stripBoardImageMarkdown removes images and keeps headings', () => {
-    const body = '# Title\n\nHello\n\n![](_marrow/_board/_assets/a.png)\n'
+    const body = '# Title\n\nHello\n\n![](_mentis/_thoughts/_assets/a.png)\n'
     const { stripped, imageLines } = stripBoardImageMarkdown(body)
     expect(imageLines).toHaveLength(1)
     expect(stripped).toContain('# Title')
@@ -18,8 +18,8 @@ describe('board vault export helpers', () => {
 
   it('extractBoardVaultImagePaths skips http URLs', () => {
     expect(extractBoardVaultImagePaths('![](https://x/y.png)')).toEqual([])
-    expect(extractBoardVaultImagePaths('![](_marrow/_board/_assets/a.png)')).toEqual([
-      '_marrow/_board/_assets/a.png',
+    expect(extractBoardVaultImagePaths('![](_mentis/_thoughts/_assets/a.png)')).toEqual([
+      '_mentis/_thoughts/_assets/a.png',
     ])
   })
 

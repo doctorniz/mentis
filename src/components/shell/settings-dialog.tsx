@@ -426,7 +426,7 @@ function CalendarSettingsTab() {
       <p className="text-fg-secondary mb-4 text-xs leading-relaxed">
         Calendar events are stored locally in your vault as markdown files (
         <code className="bg-bg-tertiary rounded px-1 font-mono text-[10px]">
-          _marrow/_calendar/
+          _mentis/_calendar/
         </code>
         ). External sync options are coming soon.
       </p>

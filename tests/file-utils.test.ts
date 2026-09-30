@@ -42,9 +42,9 @@ describe('getFileType', () => {
 })
 
 describe('isHiddenPath', () => {
-  it('detects _marrow paths', () => {
-    expect(isHiddenPath('_marrow/config.json')).toBe(true)
-    expect(isHiddenPath('vault/_marrow/data')).toBe(true)
+  it('detects _mentis paths', () => {
+    expect(isHiddenPath('_mentis/config.json')).toBe(true)
+    expect(isHiddenPath('vault/_mentis/data')).toBe(true)
   })
 
   it('detects _assets paths', () => {
@@ -58,7 +58,7 @@ describe('isHiddenPath', () => {
   })
 
   it('does not match partial names', () => {
-    expect(isHiddenPath('my_marrow_stuff/file')).toBe(false)
+    expect(isHiddenPath('my_mentis_stuff/file')).toBe(false)
     expect(isHiddenPath('pre_assets/file')).toBe(false)
   })
 })

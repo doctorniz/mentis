@@ -433,11 +433,11 @@ test.describe('5.4 Save & Lifecycle', () => {
 /* ================================================================== */
 
 test.describe('5.5 File Format', () => {
-  test.fixme('5.5.3 v5 format: small JSON + layer PNGs in _marrow/_drawings/', async ({
+  test.fixme('5.5.3 v5 format: small JSON + layer PNGs in _mentis/_drawings/', async ({
     vaultPage: page,
   }) => {
     // Manual: create canvas, draw, save, then inspect OPFS via DevTools
-    // to verify _marrow/_drawings/<assetId>/<layerId>.png structure
+    // to verify _mentis/_drawings/<assetId>/<layerId>.png structure
     // and that the .canvas JSON is a small metadata file with an assetId field.
     await navigateTo(page, 'vault')
     await createCanvas(page)

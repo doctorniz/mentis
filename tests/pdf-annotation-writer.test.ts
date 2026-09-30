@@ -18,7 +18,7 @@ function textAnnotContents(dict: PDFDict): string {
 }
 
 describe('writeAnnotationsIntoPdf', () => {
-  it('writes a native /Text annotation with Contents and InkMarrow', async () => {
+  it('writes a native /Text annotation with Contents and Mentis', async () => {
     const blank = await createBlankPdf({ size: 'a4', style: 'blank' })
     const now = ts()
     const out = await writeAnnotationsIntoPdf(blank, [
@@ -41,10 +41,10 @@ describe('writeAnnotationsIntoPdf', () => {
     const dict = doc.context.lookup(annots!.get(0), PDFDict)
     expect(dict.get(PDFName.of('Subtype'))).toEqual(PDFName.of('Text'))
     expect(textAnnotContents(dict)).toBe('Sticky note body')
-    expect(dict.get(PDFName.of('InkMarrow'))?.toString()).toBe('true')
+    expect(dict.get(PDFName.of('Mentis'))?.toString()).toBe('true')
   })
 
-  it('strips prior InkMarrow /Text before rewrite so a second save does not duplicate', async () => {
+  it('strips prior Mentis /Text before rewrite so a second save does not duplicate', async () => {
     const blank = await createBlankPdf({ size: 'a4', style: 'blank' })
     const now = ts()
     const base = {

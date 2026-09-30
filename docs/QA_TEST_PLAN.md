@@ -150,7 +150,7 @@ File CRUD Operations
 
 1.2.1 Create markdown file — verify appears in tree, search index updated ☐
 1.2.2 Create PDF file — verify appears in tree, pages rendered ☐
-1.2.3 Create canvas file — verify .canvas JSON created + \_marrow/\_drawings/ folder ☐
+1.2.3 Create canvas file — verify .canvas JSON created + \_mentis/\_drawings/ folder ☐
 1.2.4 Rename file — verify all open tabs update path, search index updated ☐
 1.2.5 Rename file with case-only change (e.g. "note" → "Note") — no false "already exists" error ☐
 1.2.6 Delete file — verify removed from tree, search index, tabs closed ☐
@@ -176,7 +176,7 @@ Snapshots / Version History
 
 # Test Case Result Notes
 
-1.4.1 Enable snapshots — edit PDF — verify pre-edit snapshot created in \_marrow/snapshots/ ☐
+1.4.1 Enable snapshots — edit PDF — verify pre-edit snapshot created in \_mentis/snapshots/ ☐
 1.4.2 List snapshots — verify sorted newest-first with human-readable times ☐
 1.4.3 Restore snapshot — verify safety snapshot of current state created first, then file replaced ☐
 1.4.4 Delete individual snapshot — verify removed from disk ☐
@@ -188,12 +188,12 @@ Vault Structure Integrity
 
 # Test Case Result Notes
 
-1.5.1 Verify \_marrow/ directory hidden from file tree (Vault view) ☐
-1.5.2 Verify \_marrow/\_board/ hidden from tree/search ☐
-1.5.3 Verify \_marrow/\_bookmarks/ hidden from tree/search ☐
-1.5.4 Verify \_marrow/\_tasks/ hidden from tree/search ☐
-1.5.5 Verify \_marrow/\_calendar/ hidden from tree (visible in Files view) ☐
-1.5.6 Verify \_marrow/\_chats/ hidden from tree/search/graph ☐
+1.5.1 Verify \_mentis/ directory hidden from file tree (Vault view) ☐
+1.5.2 Verify \_mentis/\_thoughts/ hidden from tree/search ☐
+1.5.3 Verify \_mentis/\_bookmarks/ hidden from tree/search ☐
+1.5.4 Verify \_mentis/\_tasks/ hidden from tree/search ☐
+1.5.5 Verify \_mentis/\_calendar/ hidden from tree (visible in Files view) ☐
+1.5.6 Verify \_mentis/\_chats/ hidden from tree/search/graph ☐
 1.5.7 Verify \_assets/ folders hidden from tree but images shown inline in notes ☐
 1.5.8 Open Files view (Ctrl+7) — verify ALL hidden folders visible ☐
 
@@ -349,7 +349,7 @@ Annotation Tools
 4.2.2 Draw/Ink tool — freehand draw with pressure sensitivity (Pointer Events API) ☐
 4.2.3 Adjust draw brush: size, color, opacity — verify visual changes ☐
 4.2.4 Text annotation — click page — type — 10 colors available ☐
-4.2.5 Comment (sticky note) — click page — type — verify native /Text annotation with InkMarrow marker ☐
+4.2.5 Comment (sticky note) — click page — type — verify native /Text annotation with Mentis marker ☐
 4.2.6 Signature — draw new signature — save — reuse from dropdown ☐
 4.2.7 Eraser tool — remove ink strokes ☐
 4.2.8 Select tool — click annotation to move/resize ☐
@@ -376,7 +376,7 @@ Persistence & Auto-Save
 4.4.2 Auto-save fires — viewer reloads file bytes so raster matches disk ☐
 4.4.3 addAnnotation with fromLoader: true when hydrating from disk — no false dirty flags ☐
 4.4.4 Undo stack — up to 20 pre-operation snapshots — verify undo reverts correctly ☐
-4.4.5 First edit — snapshot created in \_marrow/snapshots/ ☐
+4.4.5 First edit — snapshot created in \_mentis/snapshots/ ☐
 4.4.6 Save after annotation — close — reopen — annotations still present ☐
 
 Forms
@@ -439,7 +439,7 @@ Save & Lifecycle (Critical)
 
 # Test Case Result Notes
 
-5.4.1 Auto-save fires ~3s after last stroke — verify PNGs written to \_marrow/\_drawings/<assetId>/ ☐
+5.4.1 Auto-save fires ~3s after last stroke — verify PNGs written to \_mentis/\_drawings/<assetId>/ ☐
 5.4.2 Save order: PNGs first, JSON last — verify crash-safe ordering ☐
 5.4.3 Unmount cleanup: ticker stopped → ResizeObserver disconnected → flushSave awaited → destroy() ☐
 5.4.4 Unmount save writes to pathRef.current (live path), NOT closure path ☐
@@ -454,7 +454,7 @@ File Format & Migration
 
 5.5.1 Open v3 canvas (inline base64 PNGs) — migrated to v5 on save ☐
 5.5.2 Open v4 canvas (sibling .assets/ folder) — migrated to v5, old folder left as orphan ☐
-5.5.3 v5 format: small JSON + layer PNGs in \_marrow/\_drawings/<assetId>/ ☐
+5.5.3 v5 format: small JSON + layer PNGs in \_mentis/\_drawings/<assetId>/ ☐
 5.5.4 Missing/corrupt layer PNG — layer loads blank, rest of canvas intact ☐
 5.5.5 assetId minted lazily on first save if absent ☐
 
@@ -467,7 +467,7 @@ Export
 5.6.3 Export with hidden layers — verify hidden layers excluded ☐
 
   6. Board (Quick Capture)
-Masonry-layout notice board for quick thoughts, stored as markdown in \_marrow/\_board/.
+Masonry-layout notice board for quick thoughts, stored as markdown in \_mentis/\_thoughts/.
 Thought CRUD
 
 # Test Case Result Notes
@@ -483,7 +483,7 @@ Image Thoughts
 
 # Test Case Result Notes
 
-6.2.1 Drag image onto board — image thought created in \_marrow/\_board/\_assets/ ☐
+6.2.1 Drag image onto board — image thought created in \_mentis/\_thoughts/\_assets/ ☐
 6.2.2 Click image thumbnail — opens image editor ☐
 6.2.3 Delete image thought — verify image file cleaned up ☐
 
@@ -526,13 +526,13 @@ Task Operations
 
 # Test Case Result Notes
 
-7.3.1 Create task — verify .md file in \_marrow/\_tasks/ with correct frontmatter ☐
+7.3.1 Create task — verify .md file in \_mentis/\_tasks/ with correct frontmatter ☐
 7.3.2 Check task done — status=done, completed timestamp set ☐
 7.3.3 Uncheck task — status reverts to active ☐
 7.3.4 Delete task — removed from list and disk ☐
 7.3.5 Edit task inline — title/tags/priority/due updated ☐
 7.3.6 Subtask: create child linked by parent UID — verify tree structure ☐
-7.3.7 Create custom list "Work" — subfolder created in \_marrow/\_tasks/ ☐
+7.3.7 Create custom list "Work" — subfolder created in \_mentis/\_tasks/ ☐
 7.3.8 Move task between lists — file moved to new subfolder ☐
 
 Recurring Tasks
@@ -567,7 +567,7 @@ Categories & Organization
 
 # Test Case Result Notes
 
-8.2.1 Create category "Tech" — subfolder in \_marrow/\_bookmarks/ ☐
+8.2.1 Create category "Tech" — subfolder in \_mentis/\_bookmarks/ ☐
 8.2.2 Assign bookmark to category — verify .md moved to subfolder ☐
 8.2.3 Two-panel layout: category sidebar + bookmark list ☐
 8.2.4 Search bookmarks by title/description — verify filtering ☐
@@ -580,7 +580,7 @@ Event CRUD
 # Test Case Result Notes
 
 9.1.1 Click day cell — create event dialog with title, start/end, color ☐
-9.1.2 Save event — .md in \_marrow/\_calendar/ with correct frontmatter ☐
+9.1.2 Save event — .md in \_mentis/\_calendar/ with correct frontmatter ☐
 9.1.3 Edit event — change title/time/color — verify persisted ☐
 9.1.4 Delete event — removed from calendar and disk ☐
 9.1.5 Toggle all-day — time fields disabled/enabled ☐
@@ -618,7 +618,7 @@ Index & Query
 
 # Test Case Result Notes
 
-11.1.1 Open vault — search index built, stored in \_marrow/search-index.json ☐
+11.1.1 Open vault — search index built, stored in \_mentis/search-index.json ☐
 11.1.2 Create/save file — index updated incrementally ☐
 11.1.3 Rename file — old entry removed, new entry added ☐
 11.1.4 Delete file — entry removed from index ☐
@@ -732,7 +732,7 @@ Per-Document Chat
 14.2.4 Context: document content truncated to maxContextChars (40k default) ☐
 14.2.5 Create new thread (+ button) — new conversation, old preserved ☐
 14.2.6 Switch threads — messages update to selected thread ☐
-14.2.7 Delete thread — removed from sidebar and \_marrow/\_chats/<assetId>/ ☐
+14.2.7 Delete thread — removed from sidebar and \_mentis/\_chats/<assetId>/ ☐
 14.2.8 Close panel — no data loss ☐
 14.2.9 Thread persisted as JSON on stream end (not per-delta) ☐
 
@@ -745,7 +745,7 @@ Vault-Wide Chat (RAG)
 14.3.3 System prompt instructs model to cite sources as backticked paths ☐
 14.3.4 Source chips below assistant messages — click opens file in Vault view ☐
 14.3.5 Thread list sidebar — switch between threads ☐
-14.3.6 Threads stored in \_marrow/\_chats/\_vault/ (reserved sentinel) ☐
+14.3.6 Threads stored in \_mentis/\_chats/\_vault/ (reserved sentinel) ☐
 14.3.7 New message in same thread — RAG re-runs per turn (context refreshes) ☐
 
 Streaming & Cancellation

@@ -20,7 +20,7 @@ Every number below was measured, not estimated. The commands are in §8 so they 
 | Shell             | Vite 7 — a static SPA, no server, no API routes. Two HTML entries: `index.html` and `auth/dropbox.html` |
 | Runtime           | React 19, Zustand 5 + Immer, Tailwind 4                                                                 |
 | Storage today     | OPFS (default) or File System Access API; **no SQLite, no Tauri**                                       |
-| App-data folder   | `_marrow/` (target name is `_mentis/` — not yet renamed)                                                |
+| App-data folder   | `_mentis/` (target name is `_mentis/` — not yet renamed)                                                |
 | Client components | 110 files carry `'use client'`                                                                          |
 | Workers           | **1**, and it is third-party (`src/lib/audio/recorder.ts:118`, the MP3 encoder)                         |
 | Tests             | 38 Vitest files in `tests/`, 21 Playwright specs in `tests/e2e/`                                        |
@@ -198,7 +198,7 @@ Worth stating, because the next section is all problems:
 - The `FileSystemAdapter` / `ScopedAdapter` boundary is clean, complete, and already typed
   for `'tauri'`. No feature code touches a browser storage API directly.
 - Documents really are files. Nothing important lives only in a database — with one
-  exception (§6.1). Deleting `_marrow/search-index.json` today loses nothing, because
+  exception (§6.1). Deleting `_mentis/search-index.json` today loses nothing, because
   nothing reads it (§6.3).
 - The file tree loads lazily: root `readdir` at `notes-file-tree.tsx:90`, per-folder
   `readdir` on expand at `:542`. It does not walk the vault.
@@ -219,7 +219,7 @@ Worth stating, because the next section is all problems:
 **Mostly held. One real breach: starred files.**
 
 `starredPaths` lives in `useFileTreeStore` (`src/stores/file-tree.ts`) and is persisted to
-`localStorage` under `ink-marrow:starred:<vaultPath>` by `src/components/views/notes-view.tsx`
+`localStorage` under `mentis:starred:<vaultPath>` by `src/components/views/notes-view.tsx`
 (read at `:186`, written at `:201`). It is never written to a file.
 
 Consequences: starring is lost by clearing site data, does not travel with the vault folder,
@@ -306,7 +306,7 @@ from both a static and a dynamic path.
    each one. For a PDF that means PDF.js text extraction; for PPTX/DOCX a JSZip inflate;
    for XLSX a SheetJS parse.
 
-There is no persisted index to skip this. `SEARCH_INDEX_FILE = '_marrow/search-index.json'`
+There is no persisted index to skip this. `SEARCH_INDEX_FILE = '_mentis/search-index.json'`
 is declared at `src/types/vault.ts:113` and excluded from sync at `src/lib/sync/excludes.ts:23`,
 but **nothing in the codebase ever reads or writes that file**. The constant is dead. The
 index is an in-memory MiniSearch instance rebuilt from scratch every open.
@@ -441,7 +441,7 @@ loop that drives it is not.
 The prior `docs/ARCHITECTURE.md` (2026-07-14) contained two claims that the code contradicts.
 Recording them so they are not re-copied:
 
-1. **§6 claimed the MiniSearch index is "persisted to `_marrow/search-index.json`."** It is
+1. **§6 claimed the MiniSearch index is "persisted to `_mentis/search-index.json`."** It is
    not. No read, no write; the constant is dead (§6.3).
 2. **§9 claimed "heavy editors … are dynamic imports so the base bundle stays lean."** Only
    the innermost libraries are dynamic. The editor components are statically imported, and
@@ -503,8 +503,8 @@ grep -rn "collectIndexableFiles\|collectMarkdownPaths\|walkDir" src/
 # Cross-domain import graph (script written for this audit, not committed)
 ```
 
-The `_marrow` → `_mentis` rename cost, for planning: **54 hardcoded `'_marrow'` string
-literals across 23 files**, against only 13 uses of the `MARROW_DIR` constant
+The `_mentis` → `_mentis` rename cost, for planning: **54 hardcoded `'_mentis'` string
+literals across 23 files**, against only 13 uses of the `MENTIS_DIR` constant
 (`src/types/vault.ts:107`).
 
 ---
@@ -567,7 +567,7 @@ ceiling only ever goes up as a separately committed decision.
 ### 5. Move starred files into the vault
 
 Small, self-contained Principle 1 fix — worth doing while item 3 is already touching the
-tree. Persist stars where the vault can see them (`_marrow/config.json`, or per-note
+tree. Persist stars where the vault can see them (`_mentis/config.json`, or per-note
 frontmatter to survive moves), following the pattern chat threads already use with
 `favouritedAt`. Read the existing `localStorage` key once and migrate it.
 
@@ -579,7 +579,7 @@ DOM dependency. Deliberately after (1), which removes the launch-time extraction
 doing it in the other order would mean building a worker for work that should not be
 happening at that moment anyway.
 
-### 7. Rename `_marrow` → `_mentis`, `_dailies` → `_journals`
+### 7. Rename `_mentis` → `_mentis`, `_journals` → `_journals`
 
 Mechanical, but it rewrites paths users have on disk, so it needs a one-time migration on
 vault open and should land alone, after the registry has centralised path knowledge. Route

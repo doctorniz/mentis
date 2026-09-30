@@ -79,7 +79,7 @@ test.describe('2.1 — View Switching', () => {
     await page.waitForTimeout(1000)
 
     // Files view shows the raw browser including hidden folders
-    await expect(page.getByText('_marrow').first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('_mentis').first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('2.1.9 Search panel opens in Vault', async ({ vaultPage: page }) => {

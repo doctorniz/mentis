@@ -5,7 +5,7 @@ import type { FileSystemAdapter } from '@/lib/fs'
  *
  * Three kinds of dead weight accumulate (see CLAUDE.md "Canvas"):
  *
- *   1. Orphan drawings folders — `_marrow/_drawings/<assetId>/` whose
+ *   1. Orphan drawings folders — `_mentis/_drawings/<assetId>/` whose
  *      assetId no `.canvas` file references (the canvas was deleted;
  *      its folder is deliberately not removed at delete time).
  *   2. Stale layer PNGs — `<layerId>.png` inside a LIVE drawings folder
@@ -33,7 +33,7 @@ import type { FileSystemAdapter } from '@/lib/fs'
 export interface CanvasOrphanReport {
   /** `.canvas` files found and successfully parsed. */
   scannedCanvases: number
-  /** Removed `_marrow/_drawings/<assetId>` folders (unreferenced). */
+  /** Removed `_mentis/_drawings/<assetId>` folders (unreferenced). */
   deletedDrawingFolders: string[]
   /** Removed stale `<layerId>.png` files inside live drawings folders. */
   deletedLayerPngs: string[]
@@ -41,13 +41,13 @@ export interface CanvasOrphanReport {
   deletedV4AssetFolders: string[]
 }
 
-const DRAWINGS_DIR = '_marrow/_drawings'
+const DRAWINGS_DIR = '_mentis/_drawings'
 const V4_ASSETS_SUFFIX = '.canvas.assets'
 
 interface VaultScan {
   /** vault path → parsed info for every .canvas file */
   canvases: Map<string, { assetId: string | null; layerIds: Set<string> }>
-  /** paths of `<name>.canvas.assets` directories found outside _marrow */
+  /** paths of `<name>.canvas.assets` directories found outside _mentis */
   v4AssetDirs: string[]
 }
 
@@ -71,9 +71,9 @@ function parseCanvasRefs(raw: string): { assetId: string | null; layerIds: Set<s
 async function scanVault(fs: FileSystemAdapter, dir: string, acc: VaultScan): Promise<void> {
   const entries = await fs.readdir(dir)
   for (const e of entries) {
-    // _marrow is app metadata — no user .canvas files live there, and
-    // _marrow/_drawings is handled separately by the reap itself.
-    if (e.name.startsWith('_marrow')) continue
+    // _mentis is app metadata — no user .canvas files live there, and
+    // _mentis/_drawings is handled separately by the reap itself.
+    if (e.name.startsWith('_mentis')) continue
 
     if (e.isDirectory) {
       if (e.name.endsWith(V4_ASSETS_SUFFIX)) {
@@ -118,7 +118,7 @@ export async function reapCanvasOrphans(fs: FileSystemAdapter): Promise<CanvasOr
     deletedV4AssetFolders: [],
   }
 
-  // ---- 1 + 2: _marrow/_drawings ----
+  // ---- 1 + 2: _mentis/_drawings ----
   if (await fs.exists(DRAWINGS_DIR)) {
     for (const entry of await fs.readdir(DRAWINGS_DIR)) {
       if (!entry.isDirectory) continue
@@ -146,7 +146,7 @@ export async function reapCanvasOrphans(fs: FileSystemAdapter): Promise<CanvasOr
     const canvasPath = dirPath.slice(0, -'.assets'.length) // `<name>.canvas`
     const owner = scan.canvases.get(canvasPath)
     // Delete when the owner is gone (orphan) or migrated to v5 (assetId
-    // present — pixels now live under _marrow/_drawings). A still-v4
+    // present — pixels now live under _mentis/_drawings). A still-v4
     // owner keeps its folder: that IS its live pixel data.
     if (owner && owner.assetId === null) continue
     await fs.removeDir(dirPath)

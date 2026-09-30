@@ -7,10 +7,10 @@ export interface VaultSyncConfig {
   lastSyncedAt?: string
   /**
    * Extra vault-relative paths sync ignores in both directions, merged
-   * with the built-in defaults (`_marrow/snapshots`,
-   * `_marrow/search-index.json`). A pattern matches the exact path or
+   * with the built-in defaults (`_mentis/snapshots`,
+   * `_mentis/search-index.json`). A pattern matches the exact path or
    * anything under it as a folder. No Settings UI yet — edit
-   * `_marrow/config.json` directly.
+   * `_mentis/config.json` directly.
    */
   excludePaths?: string[]
 }
@@ -40,7 +40,7 @@ export interface VaultConfig {
   dailyNotesEnabled: boolean
   /**
    * Vault-relative folder where daily notes are stored.
-   * Defaults to '_marrow/_dailies' (hidden from the file tree).
+   * Defaults to '_mentis/_journals' (hidden from the file tree).
    * Free-form; the folder is created on first use.
    */
   dailyNotesFolder: string
@@ -102,14 +102,14 @@ export interface VaultMetadata {
   lastOpened: string
 }
 
-export const DAILY_NOTES_DIR = '_marrow/_dailies'
-export const MARROW_DIR = '_marrow'
+export const DAILY_NOTES_DIR = '_mentis/_journals'
+export const MENTIS_DIR = '_mentis'
 export const ASSETS_DIR = '_assets'
-export const SIGNATURES_DIR = `${MARROW_DIR}/signatures`
-export const TEMPLATES_DIR = `${MARROW_DIR}/templates`
-export const SNAPSHOTS_DIR = `${MARROW_DIR}/snapshots`
-export const CONFIG_FILE = `${MARROW_DIR}/config.json`
-export const SEARCH_INDEX_FILE = `${MARROW_DIR}/search-index.json`
+export const SIGNATURES_DIR = `${MENTIS_DIR}/signatures`
+export const TEMPLATES_DIR = `${MENTIS_DIR}/templates`
+export const SNAPSHOTS_DIR = `${MENTIS_DIR}/snapshots`
+export const CONFIG_FILE = `${MENTIS_DIR}/config.json`
+export const SEARCH_INDEX_FILE = `${MENTIS_DIR}/search-index.json`
 
 export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   name: 'My Vault',
@@ -131,5 +131,5 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   attachmentFolder: '_assets',
   pdfPageStyle: 'blank',
   dailyNotesEnabled: true,
-  dailyNotesFolder: '_marrow/_dailies',
+  dailyNotesFolder: '_mentis/_journals',
 }

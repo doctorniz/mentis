@@ -4,7 +4,7 @@
  * A *thread* is a single conversation; a document can have many threads
  * (multi-thread UI is deferred — v1 pins one thread per document). Each
  * thread is stored as a sidecar JSON file under
- * `_marrow/_chats/<chatAssetId>/<threadId>.json`, mirroring the canvas v5
+ * `_mentis/_chats/<chatAssetId>/<threadId>.json`, mirroring the canvas v5
  * drawings-folder convention. `chatAssetId` is a stable UUID stored in
  * the document itself (frontmatter for markdown) so a rename moves the
  * reference, not the folder.

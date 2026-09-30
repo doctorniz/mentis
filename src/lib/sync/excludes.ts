@@ -9,18 +9,18 @@
  * be more surprising than leaving them.
  *
  * A pattern matches the exact path or anything under it as a folder
- * (`_marrow/snapshots` matches `_marrow/snapshots/x.pdf` but NOT
- * `_marrow/snapshots-old`).
+ * (`_mentis/snapshots` matches `_mentis/snapshots/x.pdf` but NOT
+ * `_mentis/snapshots-old`).
  */
 
 /**
  * Local-only artifacts every vault excludes:
- *  - `_marrow/snapshots` — pre-edit PDF backups; heavy and per-device.
- *  - `_marrow/search-index.json` — rebuilt on every vault open.
+ *  - `_mentis/snapshots` — pre-edit PDF backups; heavy and per-device.
+ *  - `_mentis/search-index.json` — rebuilt on every vault open.
  */
 export const DEFAULT_SYNC_EXCLUDES: readonly string[] = [
-  '_marrow/snapshots',
-  '_marrow/search-index.json',
+  '_mentis/snapshots',
+  '_mentis/search-index.json',
 ]
 
 function normalize(path: string): string {

@@ -268,7 +268,7 @@ test.describe('PDF Editor', () => {
           dir: FileSystemDirectoryHandle,
         ): Promise<FileSystemDirectoryHandle> {
           for await (const [name, handle] of (dir as any).entries()) {
-            if (handle.kind === 'directory' && name !== '_marrow') {
+            if (handle.kind === 'directory' && name !== '_mentis') {
               return handle as FileSystemDirectoryHandle
             }
           }

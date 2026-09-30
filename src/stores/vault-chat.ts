@@ -31,7 +31,7 @@ import type { ChatMessage, ChatSettings, ChatThread, ChatProviderId } from '@/ty
  * Unlike the per-document `useChatStore`, this one is *vault-scoped*: there
  * is no "active document" — every prompt is answered from a RAG pass over
  * the whole vault's MiniSearch index. Threads live at
- * `_marrow/_chats/_vault/<threadId>.json` so they sit next to (but don't
+ * `_mentis/_chats/_vault/<threadId>.json` so they sit next to (but don't
  * collide with) per-document thread folders. The `_vault` segment is a
  * reserved sentinel — documents use UUIDs for their `chatAssetId`, which
  * can never equal this literal.

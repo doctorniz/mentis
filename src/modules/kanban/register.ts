@@ -6,7 +6,7 @@ const definition: FileTypeDefinition = {
   label: 'Kanban board',
   layout: {
     rightColumn: {
-      storageKey: 'ink-marrow:right-panel-width:kanban',
+      storageKey: 'mentis:right-panel-width:kanban',
       defaultRightPx: 360,
       minRightPx: 280,
     },

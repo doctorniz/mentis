@@ -4,7 +4,7 @@
  * Markdown notes embed `chatAssetId` in their frontmatter so the id
  * travels with the file when it's renamed or moved. PDFs (and any
  * future binary format) have no equivalent place to stash the id, so
- * we keep a single JSON index at `_marrow/_chats/index.json`.
+ * we keep a single JSON index at `_mentis/_chats/index.json`.
  *
  * Schema v2 (AI5): each entry stores a content fingerprint (byte size +
  * SHA-256) alongside the id. When a chat opens on a PDF the index does
@@ -26,7 +26,7 @@
  */
 
 import type { FileSystemAdapter } from '@/lib/fs'
-import { MARROW_DIR } from '@/types/vault'
+import { MENTIS_DIR } from '@/types/vault'
 import { hashBytes } from '@/lib/sync/change-detector'
 import { CHATS_DIR } from './chat-io'
 
@@ -90,7 +90,7 @@ async function readIndex(vaultFs: FileSystemAdapter): Promise<IndexShape> {
 }
 
 async function writeIndex(vaultFs: FileSystemAdapter, next: IndexShape): Promise<void> {
-  await ensureDir(vaultFs, MARROW_DIR)
+  await ensureDir(vaultFs, MENTIS_DIR)
   await ensureDir(vaultFs, CHATS_DIR)
   const finalPath = CHAT_ASSET_INDEX_PATH
   const tmpPath = `${finalPath}.tmp`

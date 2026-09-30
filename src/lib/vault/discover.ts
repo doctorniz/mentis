@@ -29,7 +29,7 @@ export async function discoverVaults(rootFs: FileSystemAdapter): Promise<Discove
 
     let displayName = dir.name
     try {
-      const raw = await scoped.readTextFile('_marrow/config.json')
+      const raw = await scoped.readTextFile('_mentis/config.json')
       const parsed = JSON.parse(raw) as { name?: string }
       if (parsed.name) displayName = parsed.name
     } catch {

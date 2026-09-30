@@ -51,5 +51,5 @@ export function getFileType(filename: string): string {
 
 export function isHiddenPath(path: string): boolean {
   const segments = path.split('/')
-  return segments.some((s) => s.startsWith('_marrow') || s.startsWith('_assets'))
+  return segments.some((s) => s.startsWith('_mentis') || s.startsWith('_assets'))
 }

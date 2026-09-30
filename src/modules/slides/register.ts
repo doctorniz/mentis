@@ -14,7 +14,7 @@ const definition: FileTypeDefinition = {
   layout: {
     narrow: 'wide',
     rightColumn: {
-      storageKey: 'ink-marrow:right-panel-width:slides',
+      storageKey: 'mentis:right-panel-width:slides',
       defaultRightPx: 360,
       minRightPx: 280,
     },
