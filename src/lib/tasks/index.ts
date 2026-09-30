@@ -151,6 +151,20 @@ export function isDueToday(task: TaskItem): boolean {
   )
 }
 
+/** Badge text for a `YYYY-MM-DD` due date, counted in local calendar days. */
+export function formatDueLabel(due: string, now: Date = new Date()): string {
+  const d = parseLocalDate(due)
+  if (!d) return due
+  const today = startOfLocalDay(now)
+  // Rounding absorbs the 23h/25h days on either side of a DST change.
+  const days = Math.round((d.getTime() - today.getTime()) / 86_400_000)
+  if (days < 0) return `${Math.abs(days)}d overdue`
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  if (days < 7) return d.toLocaleDateString(undefined, { weekday: 'short' })
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
 export function isDueThisWeek(task: TaskItem): boolean {
   const today = startOfLocalDay(new Date())
   const weekEnd = new Date(today)

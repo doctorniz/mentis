@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react'
 import { Check, ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
-import { isDueToday, isOverdue } from '@/lib/tasks'
+import { formatDueLabel, isDueToday, isOverdue } from '@/lib/tasks'
 import { useTasksStore } from '@/stores/tasks'
 import type { TaskItem } from '@/types/tasks'
 import { cn } from '@/utils/cn'
@@ -14,18 +14,6 @@ const PRIORITY_RING: Record<number, string> = {
   2: 'border-orange-400',
   3: 'border-blue-400',
   4: 'border-border',
-}
-
-function formatDue(due: string): string {
-  const d = new Date(due)
-  const now = new Date()
-  const diff = d.getTime() - now.getTime()
-  const days = Math.ceil(diff / 86_400_000)
-  if (days < 0) return `${Math.abs(days)}d overdue`
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Tomorrow'
-  if (days < 7) return d.toLocaleDateString(undefined, { weekday: 'short' })
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 export function TaskRow({
@@ -169,7 +157,7 @@ export function TaskRow({
                     : 'bg-bg-tertiary text-fg-muted',
               )}
             >
-              {formatDue(item.due)}
+              {formatDueLabel(item.due)}
             </span>
           )}
 
