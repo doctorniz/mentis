@@ -141,27 +141,125 @@ async function notesFor(zip: JSZip, slidePath: string): Promise<string> {
   return xml ? notesToMarkdown(xml) : ''
 }
 
+/** Formats a Marp slide can show through an `<img>`; emf, wmf and tiff cannot be. */
+const IMAGE_FORMATS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
+/** Marp's default slide width in CSS pixels. */
+const MARP_SLIDE_WIDTH = 1280
+const DEFAULT_SLIDE_EMU = 9144000
+
+function partPath(fromDir: string, target: string): string {
+  if (target.startsWith('/')) return target.slice(1)
+  const out: string[] = []
+  for (const seg of `${fromDir}/${target}`.split('/')) {
+    if (seg === '..') out.pop()
+    else if (seg && seg !== '.') out.push(seg)
+  }
+  return out.join('/')
+}
+
+/** Relationship id to part path, for one slide. */
+async function slideRelationships(zip: JSZip, slidePath: string): Promise<Map<string, string>> {
+  const relsPath = slidePath.replace('slides/', 'slides/_rels/') + '.rels'
+  const rels = await zip.files[relsPath]?.async('text')
+  const map = new Map<string, string>()
+  for (const rel of rels?.match(/<Relationship\b[^>]*>/g) ?? []) {
+    const id = attr(rel, 'Id')
+    const target = attr(rel, 'Target')
+    if (id && target) map.set(id, partPath('ppt/slides', target))
+  }
+  return map
+}
+
+async function slideWidthEmu(zip: JSZip): Promise<number> {
+  const pres = await zip.files['ppt/presentation.xml']?.async('text')
+  const cx = Number(pres?.match(/<p:sldSz\b[^>]*>/)?.[0].match(/\scx="(\d+)"/)?.[1])
+  return cx > 0 ? cx : DEFAULT_SLIDE_EMU
+}
+
+type SaveAsset = (fileName: string, data: Uint8Array) => Promise<string>
+
+/**
+ * One `<p:pic>` as a Markdown image, or null when its picture cannot be shown.
+ * Identical media used on several slides is saved once.
+ */
+async function pictureToMarkdown(
+  pic: string,
+  zip: JSZip,
+  rels: Map<string, string>,
+  ctx: {
+    saveAsset: SaveAsset
+    title: string
+    slideNumber: number
+    slideWidth: number
+    saved: Map<string, string>
+    counter: { n: number }
+  },
+): Promise<string | null> {
+  const embed = pic.match(/<a:blip\b[^>]*>/)?.[0]
+  const media = embed ? rels.get(attr(embed, 'r:embed') ?? '') : undefined
+  const file = media ? zip.files[media] : undefined
+  const ext = media?.split('.').pop()?.toLowerCase()
+  if (!media || !file || !ext || !IMAGE_FORMATS.has(ext)) return null
+
+  let saved = ctx.saved.get(media)
+  if (!saved) {
+    const bytes = await file.async('uint8array')
+    ctx.counter.n++
+    const name = `${ctx.title}-slide${ctx.slideNumber}-image${ctx.counter.n}.${ext === 'jpeg' ? 'jpg' : ext}`
+    saved = await ctx.saveAsset(name, bytes)
+    ctx.saved.set(media, saved)
+  }
+
+  const descr = attr(pic.match(/<p:cNvPr\b[^>]*>/)?.[0] ?? '', 'descr')
+  const alt = decode(descr ?? '')
+    .replace(/[[\]\r\n]+/g, ' ')
+    .trim()
+  const cx = Number(pic.match(/<a:ext\b[^>]*\scx="(\d+)"/)?.[1])
+  const width = cx > 0 ? Math.round((cx / ctx.slideWidth) * MARP_SLIDE_WIDTH) : 0
+  const hint = width > 0 ? `${alt ? ' ' : ''}w:${width}` : ''
+  return `![${alt}${hint}](${saved})`
+}
+
 /** Turns a `.pptx` into a Marp deck. Exported for tests. */
 export async function pptxToSlidesMarkdown(
   data: Uint8Array,
   title: string,
+  saveAsset?: SaveAsset,
 ): Promise<{ content: string; skippedImages: number }> {
   const JSZipCtor = (await import('jszip')).default
   const zip = await JSZipCtor.loadAsync(data)
   const slidePaths = await slideOrder(zip)
+  const slideWidth = await slideWidthEmu(zip)
+  const savedMedia = new Map<string, string>()
+  const counter = { n: 0 }
 
   const slides: string[] = []
   let skippedImages = 0
   for (const [index, path] of slidePaths.entries()) {
     const xml = await zip.files[path].async('text')
-    skippedImages += (xml.match(/<p:pic>/g) ?? []).length
+    const rels = await slideRelationships(zip, path)
 
     const blocks: string[] = []
     const shapes =
-      xml.match(/<p:sp>[\s\S]*?<\/p:sp>|<p:graphicFrame>[\s\S]*?<\/p:graphicFrame>/g) ?? []
+      xml.match(
+        /<p:sp>[\s\S]*?<\/p:sp>|<p:graphicFrame>[\s\S]*?<\/p:graphicFrame>|<p:pic>[\s\S]*?<\/p:pic>/g,
+      ) ?? []
     for (const shape of shapes) {
       if (shape.startsWith('<p:graphicFrame')) blocks.push(...tableToMarkdown(shape))
-      else blocks.push(...shapeToMarkdown(shape, index === 0))
+      else if (shape.startsWith('<p:pic')) {
+        const image = saveAsset
+          ? await pictureToMarkdown(shape, zip, rels, {
+              saveAsset,
+              title,
+              slideNumber: index + 1,
+              slideWidth,
+              saved: savedMedia,
+              counter,
+            })
+          : null
+        if (image) blocks.push(image)
+        else skippedImages++
+      } else blocks.push(...shapeToMarkdown(shape, index === 0))
     }
 
     let body = ''
@@ -178,15 +276,19 @@ export async function pptxToSlidesMarkdown(
   return { content: `${frontMatter}\n\n${slides.join('\n\n---\n\n')}\n`, skippedImages }
 }
 
-export default async function convertPptx({ data, title }: ConvertInput): Promise<ConvertOutput> {
-  const { content, skippedImages } = await pptxToSlidesMarkdown(data, title)
+export default async function convertPptx({
+  data,
+  title,
+  saveAsset,
+}: ConvertInput): Promise<ConvertOutput> {
+  const { content, skippedImages } = await pptxToSlidesMarkdown(data, title, saveAsset)
   const n = skippedImages
   return {
     content,
     suffix: '.slides.md',
     warning:
       n > 0
-        ? `${n} image${n === 1 ? '' : 's'} could not be converted and ${n === 1 ? 'was' : 'were'} left out.`
+        ? `${n} image${n === 1 ? '' : 's'} in a format slides cannot show (such as EMF or WMF) ${n === 1 ? 'was' : 'were'} left out.`
         : undefined,
   }
 }

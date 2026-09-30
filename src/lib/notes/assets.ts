@@ -1,6 +1,6 @@
 import type { FileSystemAdapter } from '@/lib/fs'
 
-const DEFAULT_ASSETS_DIR = '_assets'
+export const DEFAULT_ASSETS_DIR = '_assets'
 
 function uniqueName(originalName: string): string {
   const dot = originalName.lastIndexOf('.')

@@ -194,6 +194,64 @@ describe('pptxToSlidesMarkdown', () => {
     expect(out.suffix).toBe('.slides.md')
     expect(out.warning).toMatch(/1 image/)
   })
+
+  async function pictureDeck(picture: string, media: Record<string, Uint8Array>) {
+    const zip = new JSZip()
+    zip.file(
+      'ppt/presentation.xml',
+      `<?xml version="1.0"?><p:presentation ${NS}><p:sldSz cx="9144000" cy="5143500"/></p:presentation>`,
+    )
+    zip.file('ppt/slides/slide1.xml', slideXml(titleShape('Look') + picture))
+    zip.file('ppt/slides/slide2.xml', slideXml(titleShape('Again') + picture))
+    const rels =
+      `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      Object.keys(media)
+        .map((n, i) => `<Relationship Id="rId${i + 2}" Type="x/image" Target="../media/${n}"/>`)
+        .join('') +
+      `</Relationships>`
+    zip.file('ppt/slides/_rels/slide1.xml.rels', rels)
+    zip.file('ppt/slides/_rels/slide2.xml.rels', rels)
+    for (const [n, bytes] of Object.entries(media)) zip.file(`ppt/media/${n}`, bytes)
+    return zip.generateAsync({ type: 'uint8array' })
+  }
+
+  const pic = (embed: string, extra = '') =>
+    `<p:pic><p:nvPicPr><p:cNvPr id="4" name="Picture 3" descr="A red square${extra}"/></p:nvPicPr>` +
+    `<p:blipFill><a:blip r:embed="${embed}"/></p:blipFill>` +
+    `<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="4572000" cy="2000000"/></a:xfrm></p:spPr></p:pic>`
+
+  it('saves pictures through saveAsset and links them with alt text and a width hint', async () => {
+    const saved: string[] = []
+    const { content, skippedImages } = await pptxToSlidesMarkdown(
+      await pictureDeck(pic('rId2'), { 'image1.png': new Uint8Array([1, 2, 3]) }),
+      'Talk',
+      async (name) => {
+        saved.push(name)
+        return `_assets/${name}`
+      },
+    )
+    expect(skippedImages).toBe(0)
+    expect(saved).toEqual(['Talk-slide1-image1.png'])
+    // Half of a 9144000-EMU slide is half of Marp's 1280 px.
+    expect(content).toContain('![A red square w:640](_assets/Talk-slide1-image1.png)')
+    // The same media on slide 2 reuses the saved file.
+    expect(content.match(/_assets\/Talk-slide1-image1\.png/g)).toHaveLength(2)
+  })
+
+  it('leaves out formats a slide cannot show and counts only those', async () => {
+    const saved: string[] = []
+    const { content, skippedImages } = await pptxToSlidesMarkdown(
+      await pictureDeck(pic('rId2'), { 'image1.emf': new Uint8Array([1]) }),
+      'Talk',
+      async (name) => {
+        saved.push(name)
+        return name
+      },
+    )
+    expect(saved).toEqual([])
+    expect(content).not.toContain('![')
+    expect(skippedImages).toBe(2)
+  })
 })
 
 describe('freePath', () => {

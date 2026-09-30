@@ -21,6 +21,7 @@ import { useAutoSave } from '@/hooks/use-auto-save'
 import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { inkEditorTheme, inkHighlightStyle } from '@/lib/code/codemirror-theme'
 import { renderSlidesInWorker } from '@/core/render/slides-client'
+import { createImageResolver, type ImageResolver } from '@/core/render/resolve-images'
 import { reindexFilePath } from '@/lib/search/build-vault-index'
 import { toast } from '@/stores/toast'
 import type { FileEditorProps } from '@/core/registries/file-types'
@@ -41,11 +42,22 @@ const PREVIEW_CSS = `
   }
 `
 
-async function renderInto(root: ShadowRoot, source: string, isCurrent: () => boolean) {
+async function renderInto(
+  root: ShadowRoot,
+  source: string,
+  images: ImageResolver,
+  isCurrent: () => boolean,
+) {
   try {
     const rendered = await renderSlidesInWorker(source)
     if (!rendered || !isCurrent()) return
-    root.innerHTML = `<style>${rendered.css}</style><style>${PREVIEW_CSS}</style>${rendered.html}`
+    // Built off-DOM so images point at blob URLs before the browser tries to
+    // fetch vault-relative paths from the app origin.
+    const template = document.createElement('template')
+    template.innerHTML = `<style>${rendered.css}</style><style>${PREVIEW_CSS}</style>${rendered.html}`
+    await images.resolve(template.content)
+    if (!isCurrent()) return
+    root.replaceChildren(template.content)
   } catch (e) {
     console.error('Slide render failed', e)
   }
@@ -95,6 +107,7 @@ export default function SlidesFileEditor({
 
     let destroyed = false
     let view: EditorView | null = null
+    const images = createImageResolver(vaultFs)
 
     void (async () => {
       let text: string
@@ -141,14 +154,19 @@ export default function SlidesFileEditor({
               window.clearTimeout(renderTimerRef.current)
               renderTimerRef.current = window.setTimeout(() => {
                 if (shadowRef.current)
-                  void renderInto(shadowRef.current, update.state.doc.toString(), () => !destroyed)
+                  void renderInto(
+                    shadowRef.current,
+                    update.state.doc.toString(),
+                    images,
+                    () => !destroyed,
+                  )
               }, PREVIEW_DEBOUNCE_MS)
             }),
           ],
         }),
       })
       viewRef.current = view
-      if (shadowRef.current) void renderInto(shadowRef.current, text, () => !destroyed)
+      if (shadowRef.current) void renderInto(shadowRef.current, text, images, () => !destroyed)
       setLoaded(true)
     })()
 
@@ -157,6 +175,7 @@ export default function SlidesFileEditor({
       window.clearTimeout(renderTimerRef.current)
       view?.destroy()
       viewRef.current = null
+      images.dispose()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabId])
