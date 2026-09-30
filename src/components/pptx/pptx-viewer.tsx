@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Download } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { Button } from '@/components/ui/button'
+import { ConvertButton } from '@/components/notes/convert-button'
 import { toast } from '@/stores/toast'
 
 /**
- * Lightweight read-only PPTX viewer for compact / narrow viewports.
+ * Read-only PPTX viewer.
  *
  * Parses the file via SlideCanvas's headless `PptxParser` and renders
  * every slide as a card in a vertical scroll container. Text elements
@@ -64,7 +65,15 @@ interface Presentation {
   layout?: { width: number; height: number }
 }
 
-export function PptxCompactViewer({ path }: { path: string }) {
+export function PptxViewer({
+  path,
+  openFile,
+  refreshTree,
+}: {
+  path: string
+  openFile: (path: string) => void
+  refreshTree: () => void
+}) {
   const { vaultFs } = useVaultSession()
   const [presentation, setPresentation] = useState<Presentation | null>(null)
   const [loading, setLoading] = useState(true)
@@ -96,7 +105,7 @@ export function PptxCompactViewer({ path }: { path: string }) {
         setPresentation(pres)
         setLoading(false)
       } catch (e) {
-        console.error('PPTX compact viewer load failed', e)
+        console.error('PPTX viewer load failed', e)
         if (!cancelled) {
           setError('Failed to load presentation.')
           setLoading(false)
@@ -155,7 +164,7 @@ export function PptxCompactViewer({ path }: { path: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Top bar — slide count + download */}
+      {/* Top bar — slide count, convert, download */}
       <div className="border-border bg-bg-secondary flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
         <span className="text-fg font-mono text-xs font-medium">
           {path
@@ -167,6 +176,7 @@ export function PptxCompactViewer({ path }: { path: string }) {
         <span className="text-fg-muted ml-auto text-xs">
           {total > 0 ? `${total} slide${total !== 1 ? 's' : ''}` : ''}
         </span>
+        <ConvertButton path={path} openFile={openFile} refreshTree={refreshTree} />
         <Button
           type="button"
           variant="ghost"
@@ -183,7 +193,7 @@ export function PptxCompactViewer({ path }: { path: string }) {
       {/* Alpha disclaimer */}
       <div className="border-border shrink-0 border-b bg-amber-50 px-3 py-1 dark:bg-amber-950/40">
         <p className="text-center text-xs text-amber-700 dark:text-amber-400">
-          Compact presentation viewer is in alpha — some slides may not render correctly.
+          Presentation viewer is in alpha — some slides may not render correctly.
         </p>
       </div>
 

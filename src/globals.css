@@ -1,6 +1,5 @@
 @import 'tailwindcss';
 @import 'katex/dist/katex.min.css';
-@import '@eigenpal/docx-js-editor/styles.css';
 @import 'plyr/dist/plyr.css';
 
 @variant dark (&:where(.dark, .dark *));
@@ -618,38 +617,6 @@
 .ProseMirror.board-editor em,
 .ProseMirror.board-editor i {
   font-style: italic;
-}
-
-/* ---- DOCX editor (@eigenpal/docx-js-editor) ---- */
-.docx-editor-container {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  /* JS writes --docx-zoom via ResizeObserver; defaults to 1 (no scaling) */
-  --docx-zoom: 1;
-}
-
-/* Scale the entire editor so the document page always fits the container.
-   CSS `zoom` (unlike transform: scale) reflows the layout box, so the page
-   stays left-aligned and no horizontal clipping occurs. */
-.docx-editor-container > * {
-  flex: 1;
-  min-height: 0;
-  zoom: var(--docx-zoom);
-}
-
-/* ---- PPTX editor (slidecanvas) ---- */
-.pptx-editor-root {
-  /* Isolate SlideCanvas so its toolbar / dropdowns / popovers
-     cannot escape the editor column and overlap the vault tree. */
-  contain: layout paint;
-  position: relative;
-}
-
-/* Force all SlideCanvas children to respect container bounds */
-.pptx-editor-root > div {
-  max-width: 100%;
-  max-height: 100%;
 }
 
 /* Toast enter animation */

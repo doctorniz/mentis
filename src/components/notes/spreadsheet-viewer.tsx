@@ -1,52 +1,40 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Download, Plus, Trash2 } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useEditorStore } from '@/stores/editor'
 import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/stores/toast'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
-import { readXlsxFile, writeSpreadsheetFile, bookTypeFromPath } from '@/lib/spreadsheet/xlsx-io'
-import type { SpreadsheetWorkbook, CellData } from '@/lib/spreadsheet/types'
+import { readXlsxFile } from '@/lib/spreadsheet/xlsx-io'
+import type { SpreadsheetWorkbook } from '@/lib/spreadsheet/types'
 import { DEFAULT_COL_WIDTH, MIN_ROWS, MIN_COLS } from '@/lib/spreadsheet/types'
 
-/** Debounce interval for auto-save (ms) — matches markdown/docx editors. */
-const SAVE_DEBOUNCE_MS = 750
-
 /**
- * Spreadsheet editor powered by jspreadsheet-ce.
+ * Read-only spreadsheet viewer powered by jspreadsheet-ce.
  *
- * Loads `.xlsx` / `.xls` / `.csv` files via SheetJS, presents them in a
- * jspreadsheet-ce grid, and auto-saves edits back to the vault as `.xlsx`.
- * The library is lazy-loaded so the bundle is only pulled when a spreadsheet
- * tab is actually opened.
+ * Loads `.xlsx` / `.xls` / `.csv` files via SheetJS and shows them in a locked
+ * grid. Nothing is written back to the file. The library is lazy-loaded so the
+ * bundle is only pulled when a spreadsheet tab is actually opened.
  */
-export function SpreadsheetEditor({
+export function SpreadsheetViewer({
   tabId,
   path,
   onRenamed,
-  onPersisted,
 }: {
   tabId: string
   path: string
   onRenamed?: () => void
-  onPersisted?: () => void
 }) {
   const { vaultFs } = useVaultSession()
   const retargetTabPath = useEditorStore((s) => s.retargetTabPath)
-  const updateTab = useEditorStore((s) => s.updateTab)
   const pathRef = useRef(path)
   pathRef.current = path
 
   const containerRef = useRef<HTMLDivElement>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const jssInstancesRef = useRef<any[]>([])
   const workbookRef = useRef<SpreadsheetWorkbook | null>(null)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const onPersistedRef = useRef(onPersisted)
-  onPersistedRef.current = onPersisted
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -54,63 +42,6 @@ export function SpreadsheetEditor({
   const [sheetNames, setSheetNames] = useState<string[]>([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [jspreadsheet, setJspreadsheet] = useState<any>(null)
-
-  // ---- Collect current grid state into workbook model ----
-  const syncGridToWorkbook = useCallback(() => {
-    const wb = workbookRef.current
-    if (!wb) return
-    jssInstancesRef.current.forEach((instance, idx) => {
-      if (!instance || !wb.sheets[idx]) return
-      // jspreadsheet getData returns string[][]
-      const rawData: string[][] = instance.getData()
-      const grid: CellData[][] = rawData.map((row: string[]) =>
-        row.map((cell: string) => {
-          if (typeof cell === 'string' && cell.startsWith('=')) {
-            return { value: cell, formula: cell }
-          }
-          // Try to parse as number
-          const num = Number(cell)
-          if (cell !== '' && !isNaN(num)) {
-            return { value: num }
-          }
-          return { value: cell ?? '' }
-        }),
-      )
-      wb.sheets[idx].data = grid
-    })
-    wb.activeSheetIndex = activeSheet
-  }, [activeSheet])
-
-  // ---- Save logic ----
-  const doSave = useCallback(async () => {
-    try {
-      syncGridToWorkbook()
-      const wb = workbookRef.current
-      if (!wb) return
-      const fmt = bookTypeFromPath(pathRef.current)
-      const bytes = writeSpreadsheetFile(wb, fmt)
-      await vaultFs.writeFile(pathRef.current, bytes)
-      updateTab(tabId, { isDirty: false })
-      onPersistedRef.current?.()
-    } catch (e) {
-      console.error('Spreadsheet auto-save failed', e)
-      toast.error('Failed to save spreadsheet')
-    }
-  }, [vaultFs, tabId, updateTab, syncGridToWorkbook])
-
-  const scheduleSave = useCallback(() => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      saveTimerRef.current = null
-      void doSave()
-    }, SAVE_DEBOUNCE_MS)
-  }, [doSave])
-
-  // ---- onChange from grid ----
-  const handleChange = useCallback(() => {
-    updateTab(tabId, { isDirty: true })
-    scheduleSave()
-  }, [tabId, updateTab, scheduleSave])
 
   // ---- Create jspreadsheet instance for a sheet ----
   const mountSheet = useCallback(
@@ -138,15 +69,17 @@ export function SpreadsheetEditor({
         tableOverflow: true,
         tableWidth: '100%',
         tableHeight: '100%',
-        allowInsertRow: true,
-        allowInsertColumn: true,
-        allowDeleteRow: true,
-        allowDeleteColumn: true,
-        allowRenameColumn: true,
-        columnSorting: true,
-        columnDrag: true,
-        rowDrag: true,
-        contextMenu: true,
+        editable: false,
+        allowInsertRow: false,
+        allowInsertColumn: false,
+        allowDeleteRow: false,
+        allowDeleteColumn: false,
+        allowRenameColumn: false,
+        allowComments: false,
+        columnSorting: false,
+        columnDrag: false,
+        rowDrag: false,
+        contextMenu: false,
         search: true,
         // Merge cells (jspreadsheet uses { A1: [colSpan, rowSpan] } format)
         ...(sheet.merges.length
@@ -166,24 +99,11 @@ export function SpreadsheetEditor({
               ),
             }
           : {}),
-        onchange: handleChange,
-        oninsertrow: handleChange,
-        oninsertcolumn: handleChange,
-        ondeleterow: handleChange,
-        ondeletecolumn: handleChange,
-        onsort: handleChange,
-        onmoverow: handleChange,
-        onmovecolumn: handleChange,
-        onmerge: handleChange,
-        onresizecolumn: handleChange,
-        onresizerow: handleChange,
-        onundo: handleChange,
-        onredo: handleChange,
       })
 
       return instance
     },
-    [handleChange],
+    [],
   )
 
   // ---- Load file + jspreadsheet library ----
@@ -243,72 +163,19 @@ export function SpreadsheetEditor({
     const container = containerRef.current
     // Clear previous instance
     container.innerHTML = ''
-    jssInstancesRef.current = []
 
     const sheet = workbookRef.current.sheets[activeSheet]
     if (!sheet) return
 
     try {
-      const instance = mountSheet(jspreadsheet, container, sheet)
-      jssInstancesRef.current[activeSheet] = instance
+      mountSheet(jspreadsheet, container, sheet)
     } catch (e) {
       console.error('Failed to mount jspreadsheet', e)
       setError('Failed to render spreadsheet grid.')
     }
   }, [loading, jspreadsheet, activeSheet, mountSheet])
 
-  // ---- Flush save on unmount ----
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = null
-      }
-      void doSave()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabId])
-
-  // ---- Sheet tab operations ----
-  const addSheet = useCallback(() => {
-    const wb = workbookRef.current
-    if (!wb) return
-    syncGridToWorkbook()
-    const name = `Sheet${wb.sheets.length + 1}`
-    const emptyRow = (): CellData[] => Array.from({ length: MIN_COLS }, () => ({ value: '' }))
-    wb.sheets.push({
-      name,
-      data: Array.from({ length: MIN_ROWS }, emptyRow),
-      colWidths: Array.from({ length: MIN_COLS }, () => DEFAULT_COL_WIDTH),
-      merges: [],
-    })
-    setSheetNames(wb.sheets.map((s) => s.name))
-    setActiveSheet(wb.sheets.length - 1)
-    handleChange()
-  }, [syncGridToWorkbook, handleChange])
-
-  const deleteSheet = useCallback(
-    (idx: number) => {
-      const wb = workbookRef.current
-      if (!wb || wb.sheets.length <= 1) return
-      syncGridToWorkbook()
-      wb.sheets.splice(idx, 1)
-      setSheetNames(wb.sheets.map((s) => s.name))
-      const newActive = Math.min(activeSheet, wb.sheets.length - 1)
-      setActiveSheet(newActive)
-      handleChange()
-    },
-    [activeSheet, syncGridToWorkbook, handleChange],
-  )
-
-  const switchSheet = useCallback(
-    (idx: number) => {
-      if (idx === activeSheet) return
-      syncGridToWorkbook()
-      setActiveSheet(idx)
-    },
-    [activeSheet, syncGridToWorkbook],
-  )
+  const switchSheet = useCallback((idx: number) => setActiveSheet(idx), [])
 
   // ---- Download ----
   const handleDownload = useCallback(async () => {
@@ -351,12 +218,6 @@ export function SpreadsheetEditor({
         if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, oldPath)) {
           toast.error('A file with that name already exists')
           return
-        }
-        // Flush pending save before rename
-        if (saveTimerRef.current) {
-          clearTimeout(saveTimerRef.current)
-          saveTimerRef.current = null
-          await doSave()
         }
         await vaultFs.rename(oldPath, newPath)
         retargetTabPath(
@@ -416,37 +277,8 @@ export function SpreadsheetEditor({
               onClick={() => switchSheet(idx)}
             >
               {name}
-              {sheetNames.length > 1 && (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  className="text-fg-muted hover:text-danger ml-1 inline-flex"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    deleteSheet(idx)
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.stopPropagation()
-                      deleteSheet(idx)
-                    }
-                  }}
-                  aria-label={`Delete sheet ${name}`}
-                >
-                  <Trash2 className="size-3" />
-                </span>
-              )}
             </button>
           ))}
-          <button
-            type="button"
-            className="text-fg-muted hover:text-fg ml-1 rounded p-1 transition-colors"
-            onClick={addSheet}
-            aria-label="Add sheet"
-            title="Add sheet"
-          >
-            <Plus className="size-3.5" />
-          </button>
         </div>
       )}
 

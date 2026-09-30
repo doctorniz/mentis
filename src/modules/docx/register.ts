@@ -37,6 +37,7 @@ const definition: FileTypeDefinition = {
     count: { singular: 'doc', plural: 'docs', order: 5 },
   },
   search: { read: 'bytes' },
+  convertTo: { label: 'Convert to Markdown', run: () => import('./convert') },
 }
 
 export default definition

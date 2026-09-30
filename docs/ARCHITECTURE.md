@@ -163,9 +163,9 @@ Six distinct locations, in rough order of how much they matter:
 **1. The vault directory** — the source of truth for documents. Notes, PDFs, canvases,
 board thoughts, tasks, bookmarks, calendar events, chat threads are all files.
 
-**2. Zustand stores (16, 2,885 loc)** — `vault`, `editor`, `file-tree`, `file-browser`,
+**2. Zustand stores (15)** — `vault`, `editor`, `file-tree`, `file-browser`,
 `pdf`, `canvas`, `board`, `tasks`, `calendar`, `bookmarks`, `search`, `chat`, `vault-chat`,
-`pptx`, `ui`, `toast`. Mostly in-memory caches and view state. No store uses `persist`
+`ui`, `toast`. Mostly in-memory caches and view state. No store uses `persist`
 middleware; `Set`/`Map` are avoided because `enableMapSet()` is never called.
 
 Two things in here are _only_ in memory and are silently lost on reload:
@@ -204,7 +204,7 @@ Worth stating, because the next section is all problems:
   `readdir` on expand at `:542`. It does not walk the vault.
 - Several heavy libraries are correctly deferred and stay out of the initial bundle:
   PixiJS, KaTeX, `pdfjs-dist`, `plyr`, `jspreadsheet-ce`, `jsuites`, `slidecanvas`,
-  `@eigenpal/docx-js-editor`, `@huggingface/transformers`, `@mediapipe/tasks-genai`,
+  `mammoth`, `@huggingface/transformers`, `@mediapipe/tasks-genai`,
   `mp3-mediarecorder`.
 - Canvas and PDF have genuinely careful persistence invariants (save-then-destroy ordering,
   `pendingCanvasSaves` hand-off, PNGs-first/JSON-last, destructive-write snapshots).

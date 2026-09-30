@@ -174,6 +174,31 @@ export interface CreateNewSpec {
   }>
 }
 
+/** What a converter receives: one file's bytes and a way to store images it pulls out. */
+export interface ConvertInput {
+  data: Uint8Array
+  /** The source file's name without its extension. */
+  title: string
+  /** Saves an extracted image and returns its vault-relative path. */
+  saveAsset: (fileName: string, data: Uint8Array) => Promise<string>
+}
+
+export interface ConvertOutput {
+  content: string
+  /** Suffix of the file the content is written to: `.md` or `.slides.md`. */
+  suffix: string
+  /** Something the user should know about the conversion, e.g. what was left out. */
+  warning?: string
+}
+
+/** Turns a file of this type into an editable one, written next to the original. */
+export interface ConvertSpec {
+  /** Button and menu label, e.g. "Convert to Markdown". */
+  label: string
+  /** Lazily loaded converter. Loaded only when the user converts a file. */
+  run: () => Promise<{ default: (input: ConvertInput) => Promise<ConvertOutput> }>
+}
+
 export interface FileTypeDefinition {
   /** Stable id. Stored in editor tabs; used as the key everywhere else. */
   id: string
@@ -196,6 +221,7 @@ export interface FileTypeDefinition {
   graph?: GraphAppearance
   search?: SearchSupport
   createNew?: CreateNewSpec
+  convertTo?: ConvertSpec
   /** Thumbnail for the Files view. */
   thumbnail?: {
     /** Lazily loaded renderer returning an object URL, or null. */

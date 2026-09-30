@@ -12,12 +12,6 @@
 export const MOBILE_NAV_MEDIA_QUERY = '(max-width: 767px)'
 
 /**
- * Below this width the PPTX editor switches to a compact read-only
- * slide viewer (no ribbon, no slide reel, vault tree auto-collapsed).
- */
-export const PPTX_COMPACT_MEDIA_QUERY = '(max-width: 1380px)'
-
-/**
  * Below this width, full-width editors (docx, xlsx, pptx) auto-collapse
  * the vault tree to give the editor more room.
  */

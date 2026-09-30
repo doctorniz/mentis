@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ChevronDown,
   ExternalLink,
+  FileOutput,
   FileText,
   Folder,
   FolderPlus,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react'
 import type { FileSystemAdapter } from '@/lib/fs'
 import { fileTypes } from '@/core/registries'
+import { convertLabel, convertVaultFile } from '@/core/convert/convert-file'
 import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
 import type { FileEntry } from '@/types/files'
 import { isNotesTreeEntry, sortTreeEntries } from '@/lib/notes/tree-filter'
@@ -241,6 +243,20 @@ export function NotesFileTree({
     }
   }
 
+  async function handleConvertFile(path: string) {
+    try {
+      const result = await convertVaultFile(vaultFs, path)
+      void refresh()
+      onNoteCreated?.()
+      if (result.warning) toast.warning(result.warning)
+      else toast.success(`Created ${result.path.split('/').pop()}`)
+      handleOpenFile(result.path)
+    } catch (e) {
+      console.error('Conversion failed', e)
+      toast.error('Could not convert this file')
+    }
+  }
+
   return (
     <>
       <RenameNoteDialog
@@ -443,6 +459,7 @@ export function NotesFileTree({
                   onNewSubfolder={setNewFolderParent}
                   onMoveFile={handleMoveFile}
                   onExternalImport={handleExternalImport}
+                  onConvertFile={handleConvertFile}
                 />
               ))}
             </div>
@@ -497,6 +514,7 @@ function TreeNode({
   onNewSubfolder,
   onMoveFile,
   onExternalImport,
+  onConvertFile,
 }: {
   entry: FileEntry
   depth: number
@@ -515,6 +533,7 @@ function TreeNode({
   onNewSubfolder: (parentPath: string) => void
   onMoveFile: (srcPath: string, destFolder: string) => void
   onExternalImport: (files: FileList, targetFolder: string) => void
+  onConvertFile: (path: string) => void
 }) {
   const expandedPaths = useFileTreeStore((s) => s.expandedPaths)
   const toggleExpanded = useFileTreeStore((s) => s.toggleExpanded)
@@ -677,6 +696,8 @@ function TreeNode({
         onOpen={() => onOpenFile(entry.path)}
         onRename={() => onStartInlineEdit(entry.path)}
         onStar={() => toggleStarred(entry.path)}
+        convertLabel={convertLabel(entry.path)}
+        onConvert={() => onConvertFile(entry.path)}
         onDelete={() => onDeleteItem(entry.path, false)}
       >
         {fileRow}
@@ -806,6 +827,7 @@ function TreeNode({
               onNewSubfolder={onNewSubfolder}
               onMoveFile={onMoveFile}
               onExternalImport={onExternalImport}
+              onConvertFile={onConvertFile}
             />
           ))}
         </div>
@@ -831,6 +853,8 @@ function TreeContextMenu({
   onRename,
   onStar,
   onNewSubfolder,
+  convertLabel,
+  onConvert,
   onDelete,
 }: {
   children: React.ReactNode
@@ -841,6 +865,8 @@ function TreeContextMenu({
   onRename: () => void
   onStar?: () => void
   onNewSubfolder?: () => void
+  convertLabel?: string
+  onConvert?: () => void
   onDelete: () => void
 }) {
   return (
@@ -864,6 +890,12 @@ function TreeContextMenu({
             <Pencil className="size-4" />
             Rename
           </ContextMenu.Item>
+          {isFile && convertLabel && onConvert && (
+            <ContextMenu.Item className={CTX_ROW} onSelect={onConvert}>
+              <FileOutput className="size-4" />
+              {convertLabel}
+            </ContextMenu.Item>
+          )}
           {!isFile && onNewSubfolder && (
             <ContextMenu.Item className={CTX_ROW} onSelect={onNewSubfolder}>
               <FolderPlus className="size-4" />

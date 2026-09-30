@@ -5,6 +5,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // The app bundles mammoth's browser build; tests must read docx the same way.
+      mammoth: path.resolve(__dirname, './node_modules/mammoth/mammoth.browser.js'),
     },
   },
   test: {

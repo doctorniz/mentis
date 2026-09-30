@@ -13,7 +13,7 @@ Mentis is a local-first personal knowledge base built on a **plain-file architec
 - **Markdown Notes** — WYSIWYG editing (Tiptap) with Source mode, wiki-links, backlinks, slash commands, tables, KaTeX math, find/replace, outline, templates, image embed/resize
 - **PDF Editor** — Annotate, highlight, draw, sign, comment; page reorder/merge/extract; form filling; find-in-document; edits written destructively into the file with pre-edit snapshots
 - **Drawing Canvas** — Layered raster drawing (PixiJS/WebGL): pressure-sensitive brushes, eraser, fill, eyedropper, rectangular selection with move/nudge/clipboard, selection-constrained painting, blend modes, PNG/PDF export
-- **Office & code files** — Edit `.docx`, `.pptx`, `.xlsx`/`.csv`, and source/plain-text files inline; mindmaps (`.map.md`) and kanban boards (`.kan.md`), both stored as plain markdown
+- **Office & code files** — View `.docx`, `.pptx` and `.xlsx`/`.csv` (and convert Word and PowerPoint files to Markdown and slides); edit source/plain-text files inline; mindmaps (`.map.md`) and kanban boards (`.kan.md`), both stored as plain markdown
 - **Organizer** — Tasks (CalDAV-shaped, natural-language quick-add, recurrence, `.ics` export), calendar (day/week/month), quick-capture Board (text/image/voice with Whisper transcription), web bookmarks
 - **AI Chat** — Bring-your-own-LLM chat grounded in the open document or the whole vault (MiniSearch RAG, cited sources); OpenRouter / OpenAI / Anthropic / Gemini / Ollama, or fully local Gemma over WebGPU
 - **Full-Text Search** — Instant fuzzy search across every file type's content, with tags, folder, date, and type filters
@@ -44,19 +44,19 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full picture.
 
 ## Tech Stack
 
-| Layer       | Technology                                                                        |
-| ----------- | --------------------------------------------------------------------------------- |
-| Build       | Vite 7 (static multi-page build: app + `/auth/dropbox`)                           |
-| UI          | React 19, Tailwind CSS 4, Radix UI, Lucide icons                                  |
+| Layer       | Technology                                                                         |
+| ----------- | ---------------------------------------------------------------------------------- |
+| Build       | Vite 7 (static multi-page build: app + `/auth/dropbox`)                            |
+| UI          | React 19, Tailwind CSS 4, Radix UI, Lucide icons                                   |
 | Notes       | Tiptap (ProseMirror) + marked + turndown + gray-matter; CodeMirror 6 (source/code) |
-| PDF         | PDF.js (render), pdf-lib (write), Fabric.js (annotation overlay)                  |
-| Canvas      | PixiJS v8 (WebGL, layered raster)                                                 |
-| Office      | @eigenpal/docx-js-editor, slidecanvas (PPTX), SheetJS + jspreadsheet-ce           |
-| AI          | Provider SSE clients; MediaPipe LLM (local Gemma); transformers.js (Whisper)      |
-| Search      | MiniSearch                                                                        |
-| State       | Zustand + Immer                                                                   |
-| File System | OPFS (all browsers); File System Access API on Chromium (“open folder”)           |
-| Offline     | Service Worker (stale-while-revalidate), PWA manifest                             |
+| PDF         | PDF.js (render), pdf-lib (write), Fabric.js (annotation overlay)                   |
+| Canvas      | PixiJS v8 (WebGL, layered raster)                                                  |
+| Office      | mammoth (DOCX), slidecanvas (PPTX), SheetJS + jspreadsheet-ce                      |
+| AI          | Provider SSE clients; MediaPipe LLM (local Gemma); transformers.js (Whisper)       |
+| Search      | MiniSearch                                                                         |
+| State       | Zustand + Immer                                                                    |
+| File System | OPFS (all browsers); File System Access API on Chromium (“open folder”)            |
+| Offline     | Service Worker (stale-while-revalidate), PWA manifest                              |
 
 ## Getting Started
 

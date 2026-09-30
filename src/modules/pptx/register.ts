@@ -37,6 +37,7 @@ const definition: FileTypeDefinition = {
     count: { singular: 'presentation', plural: 'presentations', order: 4 },
   },
   search: { read: 'bytes' },
+  convertTo: { label: 'Convert to slides', run: () => import('./convert') },
 }
 
 export default definition
