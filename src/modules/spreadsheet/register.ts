@@ -6,7 +6,15 @@ const definition: FileTypeDefinition = {
   label: 'Spreadsheet',
   suffixes: ['.xlsx', '.xls', '.csv'],
   editor: () => import('./editor'),
-  layout: { narrow: 'wide' },
+  layout: {
+    narrow: 'wide',
+    rightColumn: {
+      storageKey: 'ink-marrow:right-panel-width:spreadsheet',
+      defaultRightPx: 360,
+      minRightPx: 280,
+    },
+    chat: 'index',
+  },
   appearance: {
     icon: Table2,
     treeClass: 'text-green-400/70',

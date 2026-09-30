@@ -11,7 +11,15 @@ const definition: FileTypeDefinition = {
   label: 'Slides',
   suffixes: ['.slides.md'],
   editor: () => import('./editor'),
-  layout: { narrow: 'wide' },
+  layout: {
+    narrow: 'wide',
+    rightColumn: {
+      storageKey: 'ink-marrow:right-panel-width:slides',
+      defaultRightPx: 360,
+      minRightPx: 280,
+    },
+    chat: 'index',
+  },
   appearance: {
     icon: MonitorPlay,
     treeClass: 'text-fuchsia-400/70',

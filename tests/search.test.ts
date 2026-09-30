@@ -5,6 +5,7 @@ import { planReconcile } from '@/core/index/reconcile'
 import type { IndexDocument } from '@/core/index/protocol'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import { buildSnippet } from '@/lib/search/snippet'
+import { SEARCH_CONTENT_CAP } from '@/lib/search/content-cap'
 /* ---- parseSearchQuery ---- */
 
 describe('parseSearchQuery', () => {
@@ -265,15 +266,40 @@ describe('Search Index', () => {
     expect(store.search('projct').map((r) => r.path)).toEqual(['plan.md'])
   })
 
-  it('searchDocuments returns top hits with their content', () => {
+  it('searchPassages returns matching passages with their text', () => {
     store.upsert([
       makeDoc({ path: 'a.md', title: 'Alpha', content: 'the quick brown fox' }),
       makeDoc({ path: 'b.md', title: 'Beta', content: 'the lazy dog' }),
     ])
-    const hits = store.searchDocuments('fox', 5)
+    const hits = store.searchPassages('fox', 5)
     expect(hits).toHaveLength(1)
-    expect(hits[0]).toMatchObject({ path: 'a.md', content: 'the quick brown fox' })
+    expect(hits[0]).toMatchObject({ path: 'a.md', seq: 0, text: 'the quick brown fox' })
     expect(hits[0]!.queryTerms).toEqual(['fox'])
+  })
+
+  it('finds passages past the search cap, which global search does not', () => {
+    const filler = Array.from({ length: 600 }, (_, i) => `Paragraph ${i} of routine text.`)
+    const content = `${filler.join('\n\n')}\n\nThe zanzibar clause is at the very end.`
+    expect(content.length).toBeGreaterThan(SEARCH_CONTENT_CAP)
+    store.upsert([makeDoc({ path: 'long.md', title: 'Long', content })])
+
+    expect(store.search('zanzibar')).toHaveLength(0)
+    const [hit] = store.searchPassages('zanzibar', 5)
+    expect(hit).toMatchObject({ path: 'long.md' })
+    expect(hit!.seq).toBeGreaterThan(0)
+    expect(hit!.text).toContain('The zanzibar clause is at the very end.')
+  })
+
+  it('replaces the passages of a file on upsert and drops them on remove', () => {
+    store.upsert([makeDoc({ path: 'a.md', title: 'A', content: 'unicornalpha' })])
+    store.upsert([makeDoc({ path: 'b.md', title: 'B', content: 'unicornalpha too' })])
+    store.upsert([makeDoc({ path: 'a.md', title: 'A', content: 'zebrabeta' })])
+    expect(store.searchPassages('unicornalpha', 5).map((h) => h.path)).toEqual(['b.md'])
+    expect(store.searchPassages('zebrabeta', 5).map((h) => h.path)).toEqual(['a.md'])
+
+    store.remove(['a.md'])
+    expect(store.searchPassages('zebrabeta', 5)).toHaveLength(0)
+    expect(store.searchPassages('unicornalpha', 5).map((h) => h.path)).toEqual(['b.md'])
   })
 
   it('keeps its data across reopening (the saved index)', () => {

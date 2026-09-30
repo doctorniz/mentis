@@ -125,7 +125,7 @@ const handlers: { [K in IndexOp]: Handler<K> } = {
     if (vaultId === openVaultId) store?.remove(paths)
   },
   search: ({ query, filters }) => store?.search(query, filters) ?? [],
-  searchDocuments: ({ query, topK }) => store?.searchDocuments(query, topK) ?? [],
+  searchPassages: ({ query, limit }) => store?.searchPassages(query, limit) ?? [],
   validHashes: ({ vaultId, files }) =>
     vaultId === openVaultId && store ? store.validHashes(files) : {},
   putHashes: ({ vaultId, hashes }) => {

@@ -4,6 +4,14 @@ import type { FileTypeDefinition } from '@/core/registries/file-types'
 const definition: FileTypeDefinition = {
   id: 'kanban',
   label: 'Kanban board',
+  layout: {
+    rightColumn: {
+      storageKey: 'ink-marrow:right-panel-width:kanban',
+      defaultRightPx: 360,
+      minRightPx: 280,
+    },
+    chat: 'index',
+  },
   suffixes: ['.kan.md'],
   editor: () => import('./editor'),
   appearance: { icon: Columns3, treeClass: 'text-amber-400/70' },

@@ -6,7 +6,15 @@ const definition: FileTypeDefinition = {
   label: 'Word document',
   suffixes: ['.docx'],
   editor: () => import('./editor'),
-  layout: { narrow: 'wide' },
+  layout: {
+    narrow: 'wide',
+    rightColumn: {
+      storageKey: 'ink-marrow:right-panel-width:docx',
+      defaultRightPx: 360,
+      minRightPx: 280,
+    },
+    chat: 'index',
+  },
   appearance: { icon: FileType2, treeClass: 'text-indigo-400/70' },
   graph: {
     shape: 'rounded-rect',

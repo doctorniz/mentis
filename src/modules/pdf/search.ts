@@ -1,5 +1,5 @@
 import { loadPdfjs } from '@/lib/pdf/pdfjs-loader'
-import { SEARCH_CONTENT_CAP } from '@/lib/search/content-cap'
+import { FULL_TEXT_CAP } from '@/lib/search/content-cap'
 import type { SearchExtractor } from '@/core/registries/file-types'
 
 async function extractPdfText(data: Uint8Array): Promise<string> {
@@ -8,7 +8,7 @@ async function extractPdfText(data: Uint8Array): Promise<string> {
     const doc = await pdfjs.getDocument({ data }).promise
     const chunks: string[] = []
     let len = 0
-    for (let i = 1; i <= doc.numPages && len < SEARCH_CONTENT_CAP; i++) {
+    for (let i = 1; i <= doc.numPages && len < FULL_TEXT_CAP; i++) {
       const page = await doc.getPage(i)
       const tc = await page.getTextContent()
       const pageText = tc.items
@@ -30,7 +30,7 @@ const extract: SearchExtractor<Uint8Array> = async ({ data }) => {
   let title: string | undefined
   try {
     content = await extractPdfText(data)
-    if (content.length > SEARCH_CONTENT_CAP) content = content.slice(0, SEARCH_CONTENT_CAP)
+    if (content.length > FULL_TEXT_CAP) content = content.slice(0, FULL_TEXT_CAP)
 
     const pdfjs = await loadPdfjs()
     const doc = await pdfjs.getDocument({ data }).promise

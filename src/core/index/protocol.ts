@@ -33,13 +33,14 @@ export interface FileHash extends ManifestEntry {
   hash: string
 }
 
-/** A search hit with its full indexed content, for retrieval. */
-export interface SearchHit {
+/** A passage of a file that matched a retrieval query. `seq` is its order in the file. */
+export interface PassageHit {
   path: string
   title: string
   type: string
+  seq: number
+  text: string
   score: number
-  content: string
   queryTerms: string[]
 }
 
@@ -62,7 +63,7 @@ export interface IndexOps {
   upsert: [{ vaultId: string; docs: IndexDocument[] }, void]
   remove: [{ vaultId: string; paths: string[] }, void]
   search: [{ query: string; filters?: SearchFilters }, SearchResult[]]
-  searchDocuments: [{ query: string; topK: number }, SearchHit[]]
+  searchPassages: [{ query: string; limit: number }, PassageHit[]]
   /** Prune the hash cache to `files` and return the hashes still valid. */
   validHashes: [{ vaultId: string; files: ManifestEntry[] }, Record<string, string>]
   putHashes: [{ vaultId: string; hashes: FileHash[] }, void]

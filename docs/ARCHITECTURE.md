@@ -402,6 +402,16 @@ has no `core/` or `registries/` directory. There is nothing in place to enforce 
 > waiting behind the one in flight, and a render superseded by a newer one resolves `null`, so a
 > burst of keystrokes costs one render, not one per keystroke. Marp now ships as its own worker
 > chunk rather than inside the slides editor chunk; initial JS is unchanged.
+>
+> **Update (item 10):** chat sees whole documents. Global search still indexes only the first
+> `SEARCH_CONTENT_CAP` (14,000) characters, but extractors now return up to `FULL_TEXT_CAP`
+> (2,000,000), and the index worker also splits that text into overlapping ~1,500-character
+> passages in a `chunks` FTS5 table (rowid = `files.id * 65536 + seq`; `INDEX_VERSION` 4, so
+> existing indexes rebuild once). Vault chat ranks passages with bm25, groups them by file and
+> joins adjacent ones. Document chat runs the type's extractor in the extract worker (with a
+> last-document cache) and picks the best excerpt. Kanban, mindmap, code, docx, pptx, slides and
+> spreadsheet files now get the chat panel via `layout.chat: 'index'`. The index is roughly twice
+> as large on disk; that growth and the reindex time have not been measured.
 
 **Effectively unimplemented.** The codebase contains exactly one `new Worker`, at
 `src/lib/audio/recorder.ts:118`, and it belongs to the third-party `mp3-mediarecorder`

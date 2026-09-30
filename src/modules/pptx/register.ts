@@ -6,7 +6,15 @@ const definition: FileTypeDefinition = {
   label: 'Presentation',
   suffixes: ['.pptx'],
   editor: () => import('./editor'),
-  layout: { narrow: 'wide' },
+  layout: {
+    narrow: 'wide',
+    rightColumn: {
+      storageKey: 'ink-marrow:right-panel-width:pptx',
+      defaultRightPx: 360,
+      minRightPx: 280,
+    },
+    chat: 'index',
+  },
   appearance: { icon: Presentation, treeClass: 'text-orange-400/70' },
   graph: {
     shape: 'pentagon',

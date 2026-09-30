@@ -4,7 +4,9 @@ import {
   navigateTo,
   waitForView,
   createMarkdownNote,
+  openVaultFile,
   waitForAutoSave,
+  writeVaultFile,
 } from './fixtures'
 
 test.describe('13 — AI Chat', () => {
@@ -162,6 +164,24 @@ test.describe('13 — AI Chat', () => {
         timeout: 5_000,
       })
     })
+
+    for (const [file, content] of [
+      ['Roadmap.kan.md', '---\nkanban-plugin: basic\n---\n\n## Todo\n\n- [ ] Ship it\n'],
+      ['Talk.slides.md', '---\nmarp: true\n---\n\n# Hello\n'],
+    ] as const) {
+      test(`14.2.9 Chat panel is offered for ${file}`, async ({ vaultPage: page }) => {
+        await writeVaultFile(page, file, content)
+        await openVaultFile(page, file)
+        const expand = page
+          .locator('button[aria-label="Expand chat"], button[aria-label="Open chat"]')
+          .first()
+        await expect(expand).toBeVisible({ timeout: 10_000 })
+        await expand.click()
+        await expect(page.locator('button[aria-label="Collapse chat"]')).toBeVisible({
+          timeout: 5_000,
+        })
+      })
+    }
 
     test('14.2.8 Close panel — no data loss', async ({ vaultPage: page }) => {
       await createMarkdownNote(page, 'Persistence Test')

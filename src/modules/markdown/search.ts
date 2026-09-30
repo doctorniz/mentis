@@ -1,5 +1,5 @@
 import { extractLinkTargets, extractTags, parseNote } from '@/lib/markdown/parse'
-import { SEARCH_CONTENT_CAP } from '@/lib/search/content-cap'
+import { FULL_TEXT_CAP } from '@/lib/search/content-cap'
 import type { SearchExtractor } from '@/core/registries/file-types'
 import type { NoteFrontmatter } from '@/types/editor'
 
@@ -27,9 +27,7 @@ const extract: SearchExtractor<string> = ({ path, data }) => {
         ? doc.frontmatter.title
         : undefined
     const content =
-      doc.content.length > SEARCH_CONTENT_CAP
-        ? doc.content.slice(0, SEARCH_CONTENT_CAP)
-        : doc.content
+      doc.content.length > FULL_TEXT_CAP ? doc.content.slice(0, FULL_TEXT_CAP) : doc.content
     return {
       title,
       content,

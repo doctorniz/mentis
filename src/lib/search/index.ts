@@ -6,7 +6,7 @@ import type {
   LinkRow,
   ManifestEntry,
   OpenResult,
-  SearchHit,
+  PassageHit,
 } from '@/core/index/protocol'
 
 /**
@@ -82,10 +82,10 @@ export function searchVault(
   return callIndex('search', { query: rawQuery, filters })
 }
 
-/** Top `topK` hits with their full indexed text, for vault chat retrieval. */
-export function searchDocuments(query: string, topK: number): Promise<SearchHit[]> {
+/** The `limit` best-matching passages from anywhere in the vault's files, for vault chat. */
+export function searchPassages(query: string, limit: number): Promise<PassageHit[]> {
   if (!activeVaultId) return Promise.resolve([])
-  return callIndex('searchDocuments', { query, topK })
+  return callIndex('searchPassages', { query, limit })
 }
 
 /* ---- Hash cache for sync change detection ---- */

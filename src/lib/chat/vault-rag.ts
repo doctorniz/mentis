@@ -3,10 +3,11 @@
  *
  * The tier-1 "whole vault" chat surface needs to answer questions that span
  * every note/PDF in the vault — but pasting the whole vault into the model
- * is wasteful at best and impossible at scale. v1 reuses the vault search
- * index (SQLite FTS5 in the index worker, via `lib/search/index.ts`) to find
- * the top-K most relevant documents for the user's prompt, then pulls an
- * excerpt around the best-matching region of each.
+ * is wasteful at best and impossible at scale. The index (SQLite FTS5 in the
+ * index worker, via `lib/search/index.ts`) keeps every file's whole text as
+ * overlapping passages; retrieval ranks those passages, groups the best ones
+ * by file, and quotes them — so a match deep in a long PDF is found and
+ * quoted, not just one in its opening pages.
  *
  * This is deliberately *not* embedding-based. The search index is already in the
  * bundle, the index is already warm, and lexical search is surprisingly
@@ -22,10 +23,9 @@
  *     context so the prompt stays under `maxContextChars`.
  */
 
-import { searchDocuments } from '@/lib/search'
-import { parseNote } from '@/lib/markdown'
-import { loadPdfjs } from '@/lib/pdf/pdfjs-loader'
-import type { FileSystemAdapter } from '@/lib/fs'
+import { searchPassages } from '@/lib/search'
+import { joinAdjacent } from '@/core/index/chunk'
+import type { PassageHit } from '@/core/index/protocol'
 import type { SearchDocFileType } from '@/types/search'
 import type { ChatSettings } from '@/types/chat'
 
@@ -37,6 +37,9 @@ const PER_DOC_EXCERPT_CHARS = 3_000
 
 /** Hard minimum so we never return an empty context for a matched doc. */
 const MIN_EXCERPT_CHARS = 400
+
+/** Passages fetched per file wanted, so a few files can each contribute several. */
+const PASSAGES_PER_FILE = 4
 
 export interface VaultRagHit {
   path: string
@@ -58,7 +61,6 @@ export interface VaultContext {
 }
 
 interface RawHit {
-  id: string
   path: string
   title: string
   type: SearchDocFileType
@@ -67,21 +69,46 @@ interface RawHit {
   queryTerms: string[]
 }
 
-/** Query the vault index and coerce the results into a shape we can work with. */
+/**
+ * The best passages for `query`, grouped by file in order of each file's best
+ * passage. A file's passages are joined in document order; ones that do not
+ * follow each other are separated by an ellipsis.
+ */
+export function groupPassages(passages: readonly PassageHit[], topK: number): RawHit[] {
+  const byPath = new Map<string, PassageHit[]>()
+  for (const p of passages) {
+    const list = byPath.get(p.path)
+    if (list) list.push(p)
+    else if (byPath.size < topK) byPath.set(p.path, [p])
+  }
+  return [...byPath.values()].map((list) => {
+    const inOrder = [...list].sort((x, y) => x.seq - y.seq)
+    let content = inOrder[0].text
+    for (let i = 1; i < inOrder.length; i++) {
+      content =
+        inOrder[i].seq === inOrder[i - 1].seq + 1
+          ? joinAdjacent(content, inOrder[i].text)
+          : `${content}
+
+…
+
+${inOrder[i].text}`
+    }
+    return {
+      path: list[0].path,
+      title: list[0].title,
+      type: list[0].type,
+      score: list[0].score,
+      content,
+      queryTerms: [...new Set(list.flatMap((p) => p.queryTerms))],
+    }
+  })
+}
+
 async function searchTopK(query: string, topK: number): Promise<RawHit[]> {
   const q = query.trim()
   if (!q) return []
-  // Prefix matching on content, plus typo tolerance on titles.
-  const hits = await searchDocuments(q, topK)
-  return hits.map((h) => ({
-    id: h.path,
-    path: h.path,
-    title: h.title,
-    type: h.type,
-    score: h.score,
-    content: h.content,
-    queryTerms: h.queryTerms,
-  }))
+  return groupPassages(await searchPassages(q, topK * PASSAGES_PER_FILE), topK)
 }
 
 /**
@@ -145,45 +172,6 @@ function extractExcerpt(content: string, terms: string[], maxChars: number): str
  */
 export { extractExcerpt as extractBestExcerpt }
 
-/**
- * For PDFs the search index holds extracted text already, but older indexes
- * may predate the PDF indexer. Fall back to re-extracting from disk when
- * the stored content is empty.
- */
-async function rehydrateIfEmpty(hit: RawHit, vaultFs: FileSystemAdapter): Promise<string> {
-  if (hit.content.length > 0) return hit.content
-  try {
-    if (hit.type === 'markdown') {
-      const raw = await vaultFs.readTextFile(hit.path)
-      return parseNote(hit.path, raw).content ?? ''
-    }
-    if (hit.type === 'code') {
-      return await vaultFs.readTextFile(hit.path)
-    }
-    if (hit.type === 'pdf') {
-      const bytes = await vaultFs.readFile(hit.path)
-      const pdfjs = await loadPdfjs()
-      const doc = await pdfjs.getDocument({ data: bytes }).promise
-      const chunks: string[] = []
-      const pages = Math.min(doc.numPages, 30)
-      for (let i = 1; i <= pages; i++) {
-        const page = await doc.getPage(i)
-        const tc = await page.getTextContent()
-        chunks.push(
-          tc.items
-            .filter((it) => 'str' in it)
-            .map((it) => (it as { str: string }).str)
-            .join(' '),
-        )
-      }
-      return chunks.join('\n\n')
-    }
-  } catch {
-    /* fall through */
-  }
-  return ''
-}
-
 function fmtKind(type: VaultRagHit['type']): string {
   return type === 'markdown' ? 'note' : type
 }
@@ -193,7 +181,6 @@ function fmtKind(type: VaultRagHit['type']): string {
  * hits so the UI can show "sources" chips if desired.
  */
 export async function buildVaultContext(
-  vaultFs: FileSystemAdapter,
   query: string,
   settings: ChatSettings,
   opts: { topK?: number } = {},
@@ -224,8 +211,7 @@ export async function buildVaultContext(
   let truncated = false
 
   for (const r of raw) {
-    const content = await rehydrateIfEmpty(r, vaultFs)
-    const excerpt = extractExcerpt(content, r.queryTerms, perDoc)
+    const excerpt = extractExcerpt(r.content, r.queryTerms, perDoc)
     // Stop adding hits once we'd exceed the cap; never drop mid-excerpt.
     if (total + excerpt.length > maxChars) {
       truncated = true

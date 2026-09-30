@@ -3,7 +3,9 @@ import type { Database } from '@sqlite.org/sqlite-wasm'
 import type { SearchFilters, SearchResult } from '@/types/search'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import { buildSnippet } from '@/lib/search/snippet'
-import type { FileHash, IndexDocument, LinkRow, ManifestEntry, SearchHit } from './protocol'
+import { SEARCH_CONTENT_CAP } from '@/lib/search/content-cap'
+import { chunkText } from './chunk'
+import type { FileHash, IndexDocument, LinkRow, ManifestEntry, PassageHit } from './protocol'
 
 /**
  * The vault index: SQLite tables holding derived data only. Everything here can
@@ -12,7 +14,11 @@ import type { FileHash, IndexDocument, LinkRow, ManifestEntry, SearchHit } from 
  *
  * - `files` is the manifest: one row per indexed file, with the size and mtime
  *   it had when indexed. Reconciliation compares the vault against it.
- * - `fts` is the FTS5 full-text table; its rowid is `files.id`.
+ * - `fts` is the FTS5 table global search uses; its rowid is `files.id`. It
+ *   holds the first SEARCH_CONTENT_CAP characters of each file.
+ * - `chunks` is an FTS5 table of overlapping passages covering each file's
+ *   whole text, for chat retrieval. A passage's rowid is
+ *   `files.id * CHUNK_STRIDE + seq`, so a file's passages are one rowid range.
  * - `hashes` caches each file's SHA-256 with the size and mtime it had when
  *   hashed, for sync change detection. It covers every file sync looks at
  *   (media and system files too), not just searchable ones. A file whose size
@@ -34,10 +40,15 @@ import type { FileHash, IndexDocument, LinkRow, ManifestEntry, SearchHit } from 
  * Bump when the schema or what an extractor produces changes: an index built
  * by another version is dropped and rebuilt from the files.
  */
-export const INDEX_VERSION = 3
+export const INDEX_VERSION = 4
 
 // bm25 weights in fts column order: title, content, tags.
 const BM25 = 'bm25(fts, 3.0, 1.0, 2.0)'
+// bm25 weights in chunks column order: title, text.
+const CHUNK_BM25 = 'bm25(chunks, 2.0, 1.0)'
+
+/** Passages per file the rowid scheme allows (FULL_TEXT_CAP needs about 1,500). */
+const CHUNK_STRIDE = 1 << 16
 
 interface FileRow {
   path: string
@@ -72,6 +83,7 @@ export class IndexStore {
     if (version === INDEX_VERSION) return
     this.db.exec(`
       DROP TABLE IF EXISTS fts;
+      DROP TABLE IF EXISTS chunks;
       DROP TABLE IF EXISTS files;
       DROP TABLE IF EXISTS hashes;
       DROP TABLE IF EXISTS links;
@@ -87,6 +99,11 @@ export class IndexStore {
       );
       CREATE VIRTUAL TABLE fts USING fts5(
         title, content, tags,
+        tokenize = 'unicode61 remove_diacritics 2',
+        prefix = '2 3'
+      );
+      CREATE VIRTUAL TABLE chunks USING fts5(
+        title, text,
         tokenize = 'unicode61 remove_diacritics 2',
         prefix = '2 3'
       );
@@ -183,10 +200,18 @@ export class IndexStore {
             bind: [doc.type, doc.size, doc.mtime, doc.title, tagCsv, now, id],
           })
           this.db.exec({ sql: 'DELETE FROM fts WHERE rowid = ?', bind: [id] })
+          this.deleteChunks(id)
         }
         this.db.exec({
           sql: 'INSERT INTO fts (rowid, title, content, tags) VALUES (?, ?, ?, ?)',
-          bind: [id, doc.title, doc.content, doc.tags.join(' ')],
+          bind: [id, doc.title, doc.content.slice(0, SEARCH_CONTENT_CAP), doc.tags.join(' ')],
+        })
+        const passages = chunkText(doc.content).slice(0, CHUNK_STRIDE)
+        passages.forEach((text, seq) => {
+          this.db.exec({
+            sql: 'INSERT INTO chunks (rowid, title, text) VALUES (?, ?, ?)',
+            bind: [id * CHUNK_STRIDE + seq, doc.title, text],
+          })
         })
         this.db.exec({ sql: 'DELETE FROM links WHERE source = ?', bind: [doc.path] })
         for (const target of new Set(doc.links ?? [])) {
@@ -210,6 +235,7 @@ export class IndexStore {
         const id = this.db.selectValue('SELECT id FROM files WHERE path = ?', [path])
         if (id === undefined) continue
         this.db.exec({ sql: 'DELETE FROM fts WHERE rowid = ?', bind: [id] })
+        this.deleteChunks(Number(id))
         this.db.exec({ sql: 'DELETE FROM files WHERE id = ?', bind: [id] })
         this.db.exec({ sql: 'DELETE FROM links WHERE source = ?', bind: [path] })
       }
@@ -244,20 +270,43 @@ export class IndexStore {
     })
   }
 
-  /** Top hits with their full indexed content (vault chat's retrieval). */
-  searchDocuments(query: string, topK: number): SearchHit[] {
-    const q = query.trim()
-    if (!q) return []
-    return this.query(q)
-      .slice(0, topK)
-      .map((hit) => ({
-        path: hit.row.path,
-        title: hit.row.title,
-        type: hit.row.type,
-        score: hit.score,
-        content: hit.content,
-        queryTerms: hit.queryTerms,
-      }))
+  /**
+   * The passages that best match `query`, best first, from anywhere in a
+   * file's text (vault chat's retrieval).
+   */
+  searchPassages(query: string, limit: number): PassageHit[] {
+    const tokens = tokenize(query)
+    if (tokens.length === 0) return []
+    const match = tokens.map((t) => `"${t.replace(/"/g, '""')}"*`).join(' OR ')
+    const rows = this.db.selectObjects(
+      `SELECT c.rowid AS rid, c.text, ${CHUNK_BM25} AS rank, f.path, f.title, f.type
+       FROM chunks c JOIN files f ON f.id = c.rowid / ${CHUNK_STRIDE}
+       WHERE chunks MATCH ? ORDER BY rank LIMIT ?`,
+      [match, limit],
+    ) as unknown as Array<{
+      rid: number
+      text: string
+      rank: number
+      path: string
+      title: string
+      type: string
+    }>
+    return rows.map((r) => ({
+      path: r.path,
+      title: r.title,
+      type: r.type,
+      seq: Number(r.rid) % CHUNK_STRIDE,
+      text: r.text,
+      score: -r.rank,
+      queryTerms: expandTerms(`${r.title} ${r.text}`, tokens),
+    }))
+  }
+
+  private deleteChunks(fileId: number) {
+    this.db.exec({
+      sql: 'DELETE FROM chunks WHERE rowid >= ? AND rowid < ?',
+      bind: [fileId * CHUNK_STRIDE, (fileId + 1) * CHUNK_STRIDE],
+    })
   }
 
   /**

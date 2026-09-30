@@ -127,10 +127,10 @@ function NotesViewInner() {
       await vaultFs.rename(oldPath, newPath)
       removeSearchDocument(oldPath)
       if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
-      // PDFs keep their chatAssetId in a path-keyed index — migrate the
-      // entry so chat threads follow the rename. (Renames that miss this
+      // Types whose chatAssetId lives in the path-keyed chat index — migrate
+      // the entry so chat threads follow the rename. (Renames that miss this
       // are healed later by fingerprint reconciliation.)
-      if (newPath.toLowerCase().endsWith('.pdf')) {
+      if (fileTypes.resolve(newPath)?.layout?.chat === 'index') {
         await movePdfChatAssetId(vaultFs, oldPath, newPath).catch(() => undefined)
       }
       retargetTabPath(tabId, newPath, titleForPath(newPath))

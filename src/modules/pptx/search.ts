@@ -1,4 +1,4 @@
-import { SEARCH_CONTENT_CAP } from '@/lib/search/content-cap'
+import { FULL_TEXT_CAP } from '@/lib/search/content-cap'
 import type { SearchExtractor } from '@/core/registries/file-types'
 
 /**
@@ -22,7 +22,7 @@ async function extractPptxText(data: Uint8Array): Promise<string> {
       })
 
     for (const fileName of slideFiles) {
-      if (len >= SEARCH_CONTENT_CAP) break
+      if (len >= FULL_TEXT_CAP) break
       const xml = await zip.files[fileName].async('text')
       const textRuns = xml.match(/<a:t[^>]*>([\s\S]*?)<\/a:t>/g) ?? []
       const slideText = textRuns.map((tag) => tag.replace(/<[^>]+>/g, '')).join(' ')

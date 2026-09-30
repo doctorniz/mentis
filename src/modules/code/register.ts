@@ -4,6 +4,14 @@ import type { FileTypeDefinition } from '@/core/registries/file-types'
 const definition: FileTypeDefinition = {
   id: 'code',
   label: 'Code',
+  layout: {
+    rightColumn: {
+      storageKey: 'ink-marrow:right-panel-width:code',
+      defaultRightPx: 360,
+      minRightPx: 280,
+    },
+    chat: 'index',
+  },
   suffixes: [
     '.html',
     '.htm',

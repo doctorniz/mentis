@@ -273,7 +273,7 @@ export const useVaultChatStore = create<VaultChatState>()(
       let systemMessage: string
       let ctx: VaultContext
       try {
-        ctx = await buildVaultContext(vaultFs, text, settings)
+        ctx = await buildVaultContext(text, settings)
         systemMessage = buildVaultSystemMessage(ctx, settings)
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
