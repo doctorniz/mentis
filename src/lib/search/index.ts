@@ -7,6 +7,8 @@ import type {
   ManifestEntry,
   OpenResult,
   PassageHit,
+  TreeListing,
+  TreeRow,
 } from '@/core/index/protocol'
 
 /**
@@ -19,18 +21,25 @@ let activeVaultId: string | null = null
 
 let markOpen: () => void = () => {}
 let opened = new Promise<void>((resolve) => (markOpen = resolve))
+let indexIsOpen = false
 
 /** Open (or create) the index for a vault. Search answers from it at once. */
 export function openSearchIndex(vaultId: string): Promise<OpenResult> {
   activeVaultId = vaultId
   const result = callIndex('open', { vaultId })
-  void result.then(() => markOpen()).catch(() => {})
+  void result
+    .then(() => {
+      if (activeVaultId === vaultId) indexIsOpen = true
+      markOpen()
+    })
+    .catch(() => {})
   return result
 }
 
 /** Close the index on vault close. The database stays on disk. */
 export function clearSearchIndex(): void {
   activeVaultId = null
+  indexIsOpen = false
   opened = new Promise<void>((resolve) => (markOpen = resolve))
   if (indexWorkerStarted()) void callIndex('close', undefined).catch(() => {})
 }
@@ -41,6 +50,23 @@ export function clearSearchIndex(): void {
  */
 export function whenSearchIndexOpen(): Promise<void> {
   return opened
+}
+
+/** True once the current vault's index is open. Never waits. */
+export function isSearchIndexOpen(): boolean {
+  return indexIsOpen
+}
+
+/** One folder's entries as last recorded, or null if it was never listed. */
+export function getTreeChildren(dir: string): Promise<TreeRow[] | null> {
+  if (!indexIsOpen) return Promise.resolve(null)
+  return callIndex('children', { dir })
+}
+
+/** Record what each folder in `listings` contains. */
+export function putTreeListings(listings: TreeListing[]): Promise<void> {
+  if (!activeVaultId || listings.length === 0) return Promise.resolve()
+  return callIndex('setChildren', { vaultId: activeVaultId, listings })
 }
 
 export function getIndexManifest(): Promise<ManifestEntry[]> {

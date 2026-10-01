@@ -25,7 +25,7 @@ import { fileTypes } from '@/core/registries'
 import { convertLabel, convertVaultFile } from '@/core/convert/convert-file'
 import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
 import type { FileEntry } from '@/types/files'
-import { isNotesTreeEntry, sortTreeEntries } from '@/lib/notes/tree-filter'
+import { listFolder } from '@/lib/notes/tree-listing'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { createUntitledNote } from '@/lib/notes/new-note'
 import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
@@ -78,14 +78,26 @@ export function NotesFileTree({
   const openTab = useEditorStore((s) => s.openTab)
   const addRecentFile = useEditorStore((s) => s.addRecentFile)
 
-  const refresh = useCallback(async () => {
-    const entries = await vaultFs.readdir('')
-    const visible = entries.filter(isNotesTreeEntry).sort(sortTreeEntries)
-    setRootEntries(visible)
+  const rootShown = useRef(false)
+  const refresh = useCallback(
+    (isCancelled?: () => boolean) => {
+      const fromIndex = !rootShown.current
+      rootShown.current = true
+      return listFolder(vaultFs, '', setRootEntries, isCancelled, fromIndex)
+    },
+    [vaultFs],
+  )
+
+  useEffect(() => {
+    rootShown.current = false
   }, [vaultFs])
 
   useEffect(() => {
-    void refresh()
+    let cancelled = false
+    void refresh(() => cancelled)
+    return () => {
+      cancelled = true
+    }
   }, [refresh, refreshToken])
 
   async function handleNewNote() {
@@ -543,16 +555,14 @@ function TreeNode({
   const [children, setChildren] = useState<FileEntry[] | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const inlineInputRef = useRef<HTMLInputElement>(null)
+  const childrenShown = useRef(false)
   const isEditing = inlineEditPath === entry.path
 
   useEffect(() => {
     if (!entry.isDirectory || !expanded) return
     let cancelled = false
-    void vaultFs.readdir(entry.path).then((entries) => {
-      if (cancelled) return
-      const visible = entries.filter(isNotesTreeEntry).sort(sortTreeEntries)
-      setChildren(visible)
-    })
+    void listFolder(vaultFs, entry.path, setChildren, () => cancelled, !childrenShown.current)
+    childrenShown.current = true
     return () => {
       cancelled = true
     }

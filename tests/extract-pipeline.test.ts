@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FileSystemAdapter } from '@/lib/fs'
 import type { ExtractRequest, ExtractRunner } from '@/core/index/extract'
-import type { IndexDocument } from '@/core/index/protocol'
+import type { IndexDocument, TreeListing } from '@/core/index/protocol'
 import { fileTypes } from '@/core/registries'
 import { extractorTypeIds, runExtractor } from '@/core/index/extract'
 
 const indexed: IndexDocument[] = []
+const treeListings: TreeListing[] = []
 const removed: string[][] = []
 
 vi.mock('@/lib/search/index', () => ({
   getIndexManifest: vi.fn(async () => []),
+  putTreeListings: vi.fn(async (listings: TreeListing[]) => {
+    treeListings.push(...listings)
+  }),
   removeSearchDocuments: vi.fn(async (paths: string[]) => {
     removed.push(paths)
   }),
@@ -66,9 +70,42 @@ const echo: ExtractRunner = async ({ path, data }) => ({
 beforeEach(() => {
   indexed.length = 0
   removed.length = 0
+  treeListings.length = 0
 })
 
 describe('reconcileVaultSearchIndex with an injected runner', () => {
+  it('records each folder the file tree shows, including empty ones', async () => {
+    const dirs: Record<string, Array<[string, boolean]>> = {
+      '': [
+        ['docs', true],
+        ['empty', true],
+        ['_mentis', true],
+        ['n.md', false],
+        ['x.unknownext', false],
+      ],
+      docs: [['docs/a.md', false]],
+      empty: [],
+    }
+    const fs = {
+      readdir: async (dir: string) =>
+        dirs[dir].map(([path, isDirectory]) => ({
+          name: path.split('/').pop()!,
+          path,
+          isDirectory,
+          size: 3,
+          modifiedAt: new Date(1_700_000_000_000).toISOString(),
+        })),
+      readTextFile: async () => 'x',
+      readFile: async () => new Uint8Array(),
+    } as unknown as FileSystemAdapter
+    await reconcileVaultSearchIndex(fs, () => false, echo)
+
+    const byDir = Object.fromEntries(
+      treeListings.map((l) => [l.dir, l.entries.map((e) => e.path).sort()]),
+    )
+    expect(byDir).toEqual({ '': ['docs', 'empty', 'n.md'], docs: ['docs/a.md'], empty: [] })
+  })
+
   it('reads text types as strings and binary types as bytes', async () => {
     const seen: ExtractRequest[] = []
     const run: ExtractRunner = async (req) => {

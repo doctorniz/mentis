@@ -131,6 +131,10 @@ const handlers: { [K in IndexOp]: Handler<K> } = {
   putHashes: ({ vaultId, hashes }) => {
     if (vaultId === openVaultId) store?.putHashes(hashes)
   },
+  children: ({ dir }) => store?.children(dir) ?? null,
+  setChildren: ({ vaultId, listings }) => {
+    if (vaultId === openVaultId) store?.setChildren(listings)
+  },
 }
 
 let queue: Promise<void> = Promise.resolve()

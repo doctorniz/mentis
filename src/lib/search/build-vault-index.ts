@@ -1,13 +1,15 @@
 import type { FileSystemAdapter } from '@/lib/fs'
-import { isNotesTreeHidden } from '@/lib/notes/tree-filter'
+import { isNotesTreeEntry } from '@/lib/notes/tree-filter'
+import { toTreeRow } from '@/lib/notes/tree-listing'
 import { fileTypes, titleForPath } from '@/core/registries'
 import type { FileTypeDefinition, SearchExtraction } from '@/core/registries/file-types'
 import type { ExtractRunner } from '@/core/index/extract'
 import { extractInWorker } from '@/core/index/extract-client'
-import type { IndexDocument, ManifestEntry } from '@/core/index/protocol'
+import type { IndexDocument, ManifestEntry, TreeListing } from '@/core/index/protocol'
 import { planReconcile } from '@/core/index/reconcile'
 import {
   getIndexManifest,
+  putTreeListings,
   removeSearchDocuments,
   upsertSearchDocument,
   upsertSearchDocuments,
@@ -23,17 +25,22 @@ import { announceIndexChanged } from '@/lib/search/index-events'
  * assembles the documents.
  */
 
-/** Indexable files with the size and mtime `readdir` already reports. */
+/**
+ * Indexable files with the size and mtime `readdir` already reports. The walk
+ * also notes each folder's tree entries in `listings`, so the file tree can
+ * paint from the index next time at no extra reads.
+ */
 async function listIndexableFiles(
   fs: FileSystemAdapter,
   dir: string,
   acc: ManifestEntry[],
+  listings: TreeListing[],
 ): Promise<void> {
-  const entries = await fs.readdir(dir)
+  const entries = (await fs.readdir(dir)).filter(isNotesTreeEntry)
+  listings.push({ dir, entries: entries.map(toTreeRow) })
   for (const e of entries) {
-    if (isNotesTreeHidden(e)) continue
     if (e.isDirectory) {
-      await listIndexableFiles(fs, e.path, acc)
+      await listIndexableFiles(fs, e.path, acc, listings)
     } else if (fileTypes.resolve(e.path)?.search) {
       acc.push({
         path: e.path,
@@ -95,6 +102,8 @@ async function fileToDocument(
 }
 
 const BATCH = 25
+/** Folders recorded per request to the index. */
+const TREE_BATCH = 200
 /** Files read and in flight to the extract worker at once. */
 const IN_FLIGHT = 3
 
@@ -129,8 +138,12 @@ async function reconcileNow(
   run: ExtractRunner,
 ): Promise<{ indexed: number; removed: number }> {
   const vault: ManifestEntry[] = []
-  await listIndexableFiles(fs, '', vault)
+  const listings: TreeListing[] = []
+  await listIndexableFiles(fs, '', vault, listings)
   if (isCancelled()) return { indexed: 0, removed: 0 }
+  for (let i = 0; i < listings.length; i += TREE_BATCH) {
+    await putTreeListings(listings.slice(i, i + TREE_BATCH))
+  }
 
   const { toIndex, toRemove } = planReconcile(await getIndexManifest(), vault)
   if (isCancelled()) return { indexed: 0, removed: 0 }

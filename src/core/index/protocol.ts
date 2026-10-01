@@ -22,6 +22,22 @@ export interface ManifestEntry {
   mtime: number
 }
 
+/** One entry of the file tree: a folder, or a file of a registered type. */
+export interface TreeRow {
+  name: string
+  path: string
+  isDirectory: boolean
+  size: number
+  mtime: number
+}
+
+/** What the tree knew about one folder's contents when it was last listed. */
+export interface TreeListing {
+  /** Vault-relative folder path; '' is the vault root. */
+  dir: string
+  entries: TreeRow[]
+}
+
 /** One wiki-link as written: the file it is in, and its unresolved target. */
 export interface LinkRow {
   source: string
@@ -67,6 +83,10 @@ export interface IndexOps {
   /** Prune the hash cache to `files` and return the hashes still valid. */
   validHashes: [{ vaultId: string; files: ManifestEntry[] }, Record<string, string>]
   putHashes: [{ vaultId: string; hashes: FileHash[] }, void]
+  /** One folder's entries as last listed, or null if that folder was never listed. */
+  children: [{ dir: string }, TreeRow[] | null]
+  /** Replace what is recorded for each folder listed; folders that vanished are forgotten with their contents. */
+  setChildren: [{ vaultId: string; listings: TreeListing[] }, void]
 }
 
 export type IndexOp = keyof IndexOps

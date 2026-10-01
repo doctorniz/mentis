@@ -5,7 +5,15 @@ import { parseSearchQuery } from '@/lib/search/parse-query'
 import { buildSnippet } from '@/lib/search/snippet'
 import { SEARCH_CONTENT_CAP } from '@/lib/search/content-cap'
 import { chunkText } from './chunk'
-import type { FileHash, IndexDocument, LinkRow, ManifestEntry, PassageHit } from './protocol'
+import type {
+  FileHash,
+  IndexDocument,
+  LinkRow,
+  ManifestEntry,
+  PassageHit,
+  TreeListing,
+  TreeRow,
+} from './protocol'
 
 /**
  * The vault index: SQLite tables holding derived data only. Everything here can
@@ -27,6 +35,11 @@ import type { FileHash, IndexDocument, LinkRow, ManifestEntry, PassageHit } from
  *   resolved here: what a link points at depends on which files exist, so
  *   callers resolve them against the current manifest.
  *
+ * - `tree` and `listed` record the file tree: every folder and every file
+ *   of a registered type, by parent folder, and which folders have been
+ *   listed (so a folder known to be empty differs from one never seen). The
+ *   tree paints from here before the disk answers.
+ *
  * Search is FTS5 (prefix matching, bm25 ranking with title > tags > content),
  * plus typo-tolerant matching on titles through a small in-memory MiniSearch
  * over titles only. FTS5 has no fuzzy matching, and titles are what people
@@ -40,7 +53,7 @@ import type { FileHash, IndexDocument, LinkRow, ManifestEntry, PassageHit } from
  * Bump when the schema or what an extractor produces changes: an index built
  * by another version is dropped and rebuilt from the files.
  */
-export const INDEX_VERSION = 4
+export const INDEX_VERSION = 5
 
 // bm25 weights in fts column order: title, content, tags.
 const BM25 = 'bm25(fts, 3.0, 1.0, 2.0)'
@@ -87,6 +100,8 @@ export class IndexStore {
       DROP TABLE IF EXISTS files;
       DROP TABLE IF EXISTS hashes;
       DROP TABLE IF EXISTS links;
+      DROP TABLE IF EXISTS tree;
+      DROP TABLE IF EXISTS listed;
       CREATE TABLE files (
         id INTEGER PRIMARY KEY,
         path TEXT NOT NULL UNIQUE,
@@ -118,6 +133,16 @@ export class IndexStore {
         target TEXT NOT NULL,
         PRIMARY KEY (source, target)
       ) WITHOUT ROWID;
+      CREATE TABLE tree (
+        path TEXT PRIMARY KEY,
+        parent TEXT NOT NULL,
+        name TEXT NOT NULL,
+        is_dir INTEGER NOT NULL,
+        size INTEGER NOT NULL,
+        mtime INTEGER NOT NULL
+      ) WITHOUT ROWID;
+      CREATE INDEX tree_parent ON tree (parent);
+      CREATE TABLE listed (dir TEXT PRIMARY KEY) WITHOUT ROWID;
       PRAGMA user_version = ${INDEX_VERSION};
     `)
   }
@@ -130,6 +155,68 @@ export class IndexStore {
     return this.db.selectObjects(
       'SELECT path, size, mtime FROM files',
     ) as unknown as ManifestEntry[]
+  }
+
+  /** The entries last recorded for `dir`, or null if it was never listed. */
+  children(dir: string): TreeRow[] | null {
+    if (this.db.selectValue('SELECT 1 FROM listed WHERE dir = ?', [dir]) === undefined) return null
+    const rows = this.db.selectObjects(
+      'SELECT name, path, is_dir, size, mtime FROM tree WHERE parent = ?',
+      [dir],
+    ) as unknown as Array<{
+      name: string
+      path: string
+      is_dir: number
+      size: number
+      mtime: number
+    }>
+    return rows.map((r) => ({
+      name: r.name,
+      path: r.path,
+      isDirectory: r.is_dir === 1,
+      size: r.size,
+      mtime: r.mtime,
+    }))
+  }
+
+  setChildren(listings: readonly TreeListing[]): void {
+    if (listings.length === 0) return
+    this.db.transaction(() => {
+      const insert = this.db.prepare(
+        'INSERT OR REPLACE INTO tree (path, parent, name, is_dir, size, mtime) VALUES (?, ?, ?, ?, ?, ?)',
+      )
+      try {
+        for (const { dir, entries } of listings) {
+          const now = new Set(entries.map((e) => e.path))
+          const before = this.db.selectObjects(
+            'SELECT path FROM tree WHERE parent = ? AND is_dir = 1',
+            [dir],
+          ) as unknown as Array<{ path: string }>
+          for (const { path } of before) if (!now.has(path)) this.forgetFolder(path)
+          this.db.exec({ sql: 'DELETE FROM tree WHERE parent = ?', bind: [dir] })
+          for (const e of entries) {
+            insert.bind([e.path, dir, e.name, e.isDirectory ? 1 : 0, e.size, e.mtime]).stepReset()
+          }
+          this.db.exec({ sql: 'INSERT OR IGNORE INTO listed (dir) VALUES (?)', bind: [dir] })
+        }
+      } finally {
+        insert.finalize()
+      }
+    })
+  }
+
+  /** Drops a folder's own row, everything recorded beneath it, and its listed marks. */
+  private forgetFolder(path: string) {
+    const prefix = `${path}/`
+    const len = prefix.length
+    this.db.exec({
+      sql: 'DELETE FROM tree WHERE path = ? OR substr(path, 1, ?) = ?',
+      bind: [path, len, prefix],
+    })
+    this.db.exec({
+      sql: 'DELETE FROM listed WHERE dir = ? OR substr(dir, 1, ?) = ?',
+      bind: [path, len, prefix],
+    })
   }
 
   links(): LinkRow[] {
