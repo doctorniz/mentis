@@ -3,3 +3,7 @@ public/mp3-recorder-worker.js
 
 # Vendored artifact — copied from node_modules by scripts/copy-pdf-worker.mjs
 public/pdf.worker.min.mjs
+
+# Tauri build output and generated schemas
+src-tauri/target/
+src-tauri/gen/

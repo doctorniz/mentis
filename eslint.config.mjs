@@ -33,6 +33,8 @@ export default tseslint.config(
   {
     ignores: [
       'out/**',
+      'src-tauri/target/**',
+      'src-tauri/gen/**',
       '.next/**',
       '.claude/**',
       'node_modules/**',

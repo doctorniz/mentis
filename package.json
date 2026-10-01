@@ -19,7 +19,10 @@
     "postinstall": "node scripts/copy-mp3-worker.mjs && node scripts/copy-pdf-worker.mjs",
     "test:run": "vitest run",
     "budgets": "node scripts/check-budgets.mjs",
-    "qa": "node scripts/qa-checklist-server.mjs"
+    "qa": "node scripts/qa-checklist-server.mjs",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.0",
@@ -108,6 +111,7 @@
   "devDependencies": {
     "@playwright/test": "^1.50.0",
     "@tailwindcss/postcss": "^4.0.0",
+    "@tauri-apps/cli": "^2.12.1",
     "@testing-library/react": "^16.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

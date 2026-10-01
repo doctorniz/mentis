@@ -27,7 +27,9 @@
             t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme:dark)').matches)
           if (dark) document.documentElement.classList.add('dark')
         } catch (e) {}
-        if ('serviceWorker' in navigator) {
+        // The desktop app ships its assets with it; a service worker would only
+        // serve stale copies after an update.
+        if ('serviceWorker' in navigator && !('__TAURI_INTERNALS__' in window)) {
           window.addEventListener('load', function () {
             navigator.serviceWorker
               .register('/sw.js', { scope: '/' })
