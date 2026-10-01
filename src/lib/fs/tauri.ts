@@ -15,11 +15,6 @@ interface NativeDirEntry extends NativeStat {
   name: string
 }
 
-/** Whether the app is running inside the Tauri desktop shell. */
-export function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
-}
-
 function join(dir: string, name: string): string {
   return dir ? `${dir}/${name}` : name
 }

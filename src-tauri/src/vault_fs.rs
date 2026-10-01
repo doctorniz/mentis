@@ -1,6 +1,8 @@
 //! File access for an open vault. Every command takes the vault's root folder
 //! and a vault-relative path; a root is only usable after the app has granted
 //! it (from a folder the user picked), and a path can never leave its root.
+//!
+//! Commands are async so they run off the UI thread.
 
 use std::collections::HashSet;
 use std::fs;
@@ -22,6 +24,12 @@ impl VaultRoots {
         let canonical = fs::canonicalize(root)?;
         self.0.lock().unwrap().insert(canonical.clone());
         Ok(canonical)
+    }
+
+    pub fn revoke(&self, root: &Path) {
+        if let Ok(canonical) = fs::canonicalize(root) {
+            self.0.lock().unwrap().remove(&canonical);
+        }
     }
 
     fn resolve(&self, root: &str, rel: &str) -> Result<PathBuf, String> {
@@ -108,8 +116,8 @@ pub struct DirEntry {
 }
 
 #[tauri::command]
-pub fn vault_read(
-    roots: State<VaultRoots>,
+pub async fn vault_read(
+    roots: State<'_, VaultRoots>,
     root: String,
     path: String,
 ) -> Result<Response, String> {
@@ -119,7 +127,7 @@ pub fn vault_read(
 
 /// The bytes travel as the raw request body; root and path as headers.
 #[tauri::command]
-pub fn vault_write(roots: State<VaultRoots>, request: Request) -> Result<(), String> {
+pub async fn vault_write(roots: State<'_, VaultRoots>, request: Request<'_>) -> Result<(), String> {
     let header = |name: &str| -> Result<String, String> {
         let raw = request
             .headers()
@@ -153,26 +161,38 @@ fn urlencoding_decode(s: &str) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn vault_exists(roots: State<VaultRoots>, root: String, path: String) -> bool {
-    roots.resolve(&root, &path).is_ok_and(|p| p.exists())
+pub async fn vault_exists(
+    roots: State<'_, VaultRoots>,
+    root: String,
+    path: String,
+) -> Result<bool, String> {
+    Ok(roots.resolve(&root, &path).is_ok_and(|p| p.exists()))
 }
 
 #[tauri::command]
-pub fn vault_stat(roots: State<VaultRoots>, root: String, path: String) -> Result<Stat, String> {
+pub async fn vault_stat(
+    roots: State<'_, VaultRoots>,
+    root: String,
+    path: String,
+) -> Result<Stat, String> {
     let full = roots.resolve(&root, &path)?;
     fs::metadata(full).map(|m| stat_of(&m)).map_err(err)
 }
 
 #[tauri::command]
-pub fn vault_mkdir(roots: State<VaultRoots>, root: String, path: String) -> Result<(), String> {
+pub async fn vault_mkdir(
+    roots: State<'_, VaultRoots>,
+    root: String,
+    path: String,
+) -> Result<(), String> {
     fs::create_dir_all(roots.resolve(&root, &path)?).map_err(err)
 }
 
 /// One call per folder, with each entry's size and times, so listing a folder
 /// never needs a round trip per file.
 #[tauri::command]
-pub fn vault_read_dir(
-    roots: State<VaultRoots>,
+pub async fn vault_read_dir(
+    roots: State<'_, VaultRoots>,
     root: String,
     path: String,
 ) -> Result<Vec<DirEntry>, String> {
@@ -196,8 +216,8 @@ pub fn vault_read_dir(
 }
 
 #[tauri::command]
-pub fn vault_rename(
-    roots: State<VaultRoots>,
+pub async fn vault_rename(
+    roots: State<'_, VaultRoots>,
     root: String,
     from: String,
     to: String,
@@ -208,8 +228,8 @@ pub fn vault_rename(
 }
 
 #[tauri::command]
-pub fn vault_copy(
-    roots: State<VaultRoots>,
+pub async fn vault_copy(
+    roots: State<'_, VaultRoots>,
     root: String,
     from: String,
     to: String,
@@ -221,7 +241,11 @@ pub fn vault_copy(
 
 /// A file, or an empty folder.
 #[tauri::command]
-pub fn vault_remove(roots: State<VaultRoots>, root: String, path: String) -> Result<(), String> {
+pub async fn vault_remove(
+    roots: State<'_, VaultRoots>,
+    root: String,
+    path: String,
+) -> Result<(), String> {
     let full = roots.resolve(&root, &path)?;
     if fs::symlink_metadata(&full).map_err(err)?.is_dir() {
         fs::remove_dir(full).map_err(err)
@@ -231,8 +255,8 @@ pub fn vault_remove(roots: State<VaultRoots>, root: String, path: String) -> Res
 }
 
 #[tauri::command]
-pub fn vault_remove_dir(
-    roots: State<VaultRoots>,
+pub async fn vault_remove_dir(
+    roots: State<'_, VaultRoots>,
     root: String,
     path: String,
 ) -> Result<(), String> {

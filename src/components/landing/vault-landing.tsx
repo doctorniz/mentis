@@ -1,17 +1,23 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Brain, FolderOpen, Info, Loader2, PlugZap } from 'lucide-react'
+import { Brain, FolderOpen, Info, Loader2, PlugZap, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   canOpenFolder,
   createBrowserVault,
+  createDesktopVault,
   forgetLastVault,
+  forgetRecentVault,
+  isDesktop,
   listBrowserVaults,
+  listRecentVaults,
   openBrowserVault,
   openFolderVault,
+  openRecentVault,
   restoreLastVault,
   type BrowserVault,
+  type RecentVault,
   type VaultSession,
 } from '@/lib/vault/session'
 
@@ -28,6 +34,8 @@ interface PendingFolder {
 export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
   const [name, setName] = useState('My Vault')
   const [vaults, setVaults] = useState<BrowserVault[]>([])
+  const [recents, setRecents] = useState<RecentVault[]>([])
+  const desktop = isDesktop()
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,9 +48,15 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
       setLoading(true)
       setError(null)
       try {
-        const list = await listBrowserVaults()
-        if (abort.signal.aborted) return
-        setVaults(list)
+        if (isDesktop()) {
+          const list = await listRecentVaults()
+          if (abort.signal.aborted) return
+          setRecents(list)
+        } else {
+          const list = await listBrowserVaults()
+          if (abort.signal.aborted) return
+          setVaults(list)
+        }
 
         const restored = await restoreLastVault(abort.signal)
         if (restored.status === 'opened') {
@@ -72,7 +86,12 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
     setBusy(true)
     setError(null)
     try {
-      onVaultReady(await createBrowserVault(name))
+      if (desktop) {
+        const session = await createDesktopVault(name)
+        if (session) onVaultReady(session)
+      } else {
+        onVaultReady(await createBrowserVault(name))
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create vault')
     } finally {
@@ -115,7 +134,7 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
     setBusy(true)
     setError(null)
     try {
-      onVaultReady(await openBrowserVault(path))
+      onVaultReady(await (desktop ? openRecentVault(path) : openBrowserVault(path)))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to open vault')
     } finally {
@@ -123,11 +142,23 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
     }
   }
 
+  async function handleForget(path: string) {
+    setError(null)
+    try {
+      await forgetRecentVault(path)
+      setRecents((list) => list.filter((v) => v.path !== path))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not remove it from the list')
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3">
         <Loader2 className="text-accent size-10 animate-spin" aria-hidden />
-        <p className="text-fg-secondary text-sm">Opening local storage…</p>
+        <p className="text-fg-secondary text-sm">
+          {desktop ? 'Opening your vault…' : 'Opening local storage…'}
+        </p>
       </div>
     )
   }
@@ -242,11 +273,47 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
               <FolderOpen className="size-4" />
               Open a folder
             </Button>
-            <p className="text-fg-muted mt-2 text-center text-xs">Chromium only</p>
+            {!desktop && <p className="text-fg-muted mt-2 text-center text-xs">Chromium only</p>}
           </div>
         )}
 
-        {vaults.length > 0 && (
+        {desktop && recents.length > 0 && (
+          <div>
+            <h2 className="text-fg-secondary mb-3 text-xs font-semibold tracking-wide uppercase">
+              Recent
+            </h2>
+            <ul className="border-border divide-border max-h-64 divide-y overflow-auto rounded-lg border">
+              {recents.map((v) => (
+                <li key={v.path} className="flex items-center">
+                  <button
+                    type="button"
+                    disabled={busy || !v.available}
+                    onClick={() => void handleOpen(v.path)}
+                    title={v.path}
+                    className="hover:bg-bg-hover text-fg flex min-w-0 flex-1 flex-col px-4 py-3 text-left text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    <span className="truncate">{v.name}</span>
+                    <span className="text-fg-muted truncate font-mono text-xs font-normal">
+                      {v.available ? v.path : `Not found: ${v.path}`}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void handleForget(v.path)}
+                    aria-label={`Remove ${v.name} from recent vaults`}
+                    title="Remove from list (the folder is not deleted)"
+                    className="text-fg-muted hover:text-fg hover:bg-bg-hover mr-2 shrink-0 rounded-md p-1.5 transition-colors"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {!desktop && vaults.length > 0 && (
           <div>
             <h2 className="text-fg-secondary mb-3 text-xs font-semibold tracking-wide uppercase">
               Open existing
