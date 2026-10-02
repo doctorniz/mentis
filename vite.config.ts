@@ -59,6 +59,9 @@ export default defineConfig(({ mode }) => {
     },
 
     define: {
+      // The desktop build leaves out the browser-only SQLite worker; the shell
+      // keeps the index natively.
+      __MENTIS_DESKTOP__: JSON.stringify(mode === 'desktop'),
       'process.env.NEXT_PUBLIC_DROPBOX_CLIENT_ID': JSON.stringify(
         env.NEXT_PUBLIC_DROPBOX_CLIENT_ID ?? '',
       ),

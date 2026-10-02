@@ -1,61 +1,48 @@
-import type { IndexOp, IndexOps, IndexRequest, IndexResponse } from './protocol'
+import { isTauri } from '@/lib/fs/platform'
+import type { IndexOp, IndexOps } from './protocol'
 
 /**
- * Main-thread handle on the index worker. The worker (and SQLite with it) is
- * started on the first request, never at import, so nothing loads until a
- * vault is open.
+ * The window's handle on the index. In the desktop app the index is SQLite in
+ * the shell, reached through one `index_call` command; in a browser it is
+ * sqlite-wasm in a worker. Either backend loads on the first request, never at
+ * import, so nothing loads until a vault is open.
  */
 
-let worker: Worker | null = null
-let nextId = 1
-const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
+let used = false
+let tail: Promise<unknown> = Promise.resolve()
 
-function getWorker(): Worker {
-  if (worker) return worker
-  worker = new Worker(new URL('./worker.ts', import.meta.url), {
-    type: 'module',
-    name: 'mentis-index',
+const native = () => __MENTIS_DESKTOP__ || isTauri()
+
+// Requests reach the shell one at a time, in the order they were made: the
+// index state (the open vault, writes after a close) depends on that order.
+function callNative<K extends IndexOp>(op: K, arg: IndexOps[K][0]): Promise<IndexOps[K][1]> {
+  const run = tail.then(async () => {
+    const { invoke } = await import('@tauri-apps/api/core')
+    return (await invoke('index_call', { op, arg })) as IndexOps[K][1]
   })
-  worker.onmessage = (event: MessageEvent<IndexResponse>) => {
-    const res = event.data
-    const entry = pending.get(res.id)
-    if (!entry) return
-    pending.delete(res.id)
-    if (res.ok) entry.resolve(res.result)
-    else entry.reject(new Error(res.error))
-  }
-  worker.onerror = (event) => {
-    event.preventDefault()
-    const error = new Error(event.message || 'Index worker failed')
-    for (const entry of pending.values()) entry.reject(error)
-    pending.clear()
-    worker?.terminate()
-    worker = null
-  }
-  // Release the database promptly on reload/close so the next page can take
-  // it over instead of falling back to an in-memory index.
-  window.addEventListener(
-    'pagehide',
-    () => {
-      worker?.terminate()
-      worker = null
-    },
-    { once: true },
-  )
-  return worker
+  tail = run.catch(() => {})
+  return run
+}
+
+type WorkerClient = typeof import('./worker-client')
+let web: Promise<WorkerClient> | null = null
+let webLoaded: WorkerClient | null = null
+
+function loadWeb(): Promise<WorkerClient> {
+  // A constant condition, so desktop builds drop the worker (and sqlite-wasm).
+  web ??= __MENTIS_DESKTOP__
+    ? Promise.reject(new Error('The browser index is not part of the desktop build'))
+    : import('./worker-client').then((m) => (webLoaded = m))
+  return web
 }
 
 export function callIndex<K extends IndexOp>(op: K, arg: IndexOps[K][0]): Promise<IndexOps[K][1]> {
-  const w = getWorker()
-  const id = nextId++
-  return new Promise((resolve, reject) => {
-    pending.set(id, { resolve: resolve as (v: unknown) => void, reject })
-    const request: IndexRequest<K> = { id, op, arg }
-    w.postMessage(request)
-  })
+  used = true
+  if (native()) return callNative(op, arg)
+  return loadWeb().then((m) => m.callWorker(op, arg))
 }
 
-/** True once a request has started the worker (so closing has something to do). */
+/** True once a request has started the index (so closing has something to do). */
 export function indexWorkerStarted(): boolean {
-  return worker !== null
+  return native() ? used : (webLoaded?.workerStarted() ?? false)
 }

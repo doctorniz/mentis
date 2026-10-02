@@ -137,3 +137,43 @@ fn vault_commands_round_trip_through_ipc() {
     assert!(!exists("notes"));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn index_operations_round_trip_through_ipc() {
+    let app = with_vault_commands(mock_builder())
+        .build(mock_context(noop_assets()))
+        .unwrap();
+    let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+    let url = webview.url().unwrap();
+    let call = |op: &str, arg: Option<Value>| {
+        let body = match arg {
+            Some(arg) => json!({ "op": op, "arg": arg }),
+            None => json!({ "op": op }),
+        };
+        get_ipc_response(
+            &webview,
+            request(&url, "index_call", InvokeBody::Json(body), &[]),
+        )
+        .map(|r| r.deserialize::<Value>().unwrap())
+    };
+
+    let vault = format!("ipc-test-{}", std::process::id());
+    let opened = call("open", Some(json!({ "vaultId": vault }))).unwrap();
+    assert_eq!(opened["fileCount"], 0);
+    call(
+        "upsert",
+        Some(json!({ "vaultId": vault, "docs": [{
+            "path": "a.md", "type": "markdown", "title": "Alpha",
+            "content": "wombats and quokkas", "tags": [], "size": 1, "mtime": 1
+        }] })),
+    )
+    .unwrap();
+    let found = call("search", Some(json!({ "query": "wombat" }))).unwrap();
+    assert_eq!(found[0]["path"], "a.md");
+    assert_eq!(call("manifest", None).unwrap().as_array().unwrap().len(), 1);
+    assert!(call("nope", None).is_err());
+
+    call("close", None).unwrap();
+}

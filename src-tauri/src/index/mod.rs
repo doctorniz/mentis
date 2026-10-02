@@ -11,10 +11,12 @@ mod titles;
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use tauri::{AppHandle, Manager, Runtime, State};
 
 pub use store::{INDEX_VERSION, IndexStore};
 
@@ -40,8 +42,13 @@ fn open_store(path: &Path) -> (IndexStore, bool) {
     if let Some(store) = try_open(path) {
         return (store, true);
     }
-    let memory = Connection::open_in_memory().and_then(IndexStore::new);
-    (memory.expect("an in-memory database always opens"), false)
+    (open_memory(), false)
+}
+
+fn open_memory() -> IndexStore {
+    Connection::open_in_memory()
+        .and_then(IndexStore::new)
+        .expect("an in-memory database always opens")
 }
 
 fn try_open(path: &Path) -> Option<IndexStore> {
@@ -64,7 +71,8 @@ fn remove_database_files(path: &Path) {
 
 /// The index of the open vault, if any, and the calls that reach it.
 pub struct IndexHost {
-    dir: PathBuf,
+    /// Where databases live; without one the index is kept in memory.
+    dir: Option<PathBuf>,
     open: Option<(String, IndexStore)>,
 }
 
@@ -132,7 +140,23 @@ fn to_json<T: serde::Serialize>(v: T) -> Result<Value, String> {
 impl IndexHost {
     /// `dir` is where index databases live, e.g. `<app data>/indexes`.
     pub fn new(dir: PathBuf) -> Self {
-        Self { dir, open: None }
+        Self {
+            dir: Some(dir),
+            open: None,
+        }
+    }
+
+    /// A host that has not been given a folder yet.
+    pub fn unplaced() -> Self {
+        Self {
+            dir: None,
+            open: None,
+        }
+    }
+
+    /// Takes effect from the next `open`.
+    pub fn place(&mut self, dir: PathBuf) {
+        self.dir = Some(dir);
     }
 
     fn vault_id(&self) -> Option<&str> {
@@ -147,7 +171,10 @@ impl IndexHost {
             "open" => {
                 let VaultArg { vault_id } = arg(op, input)?;
                 self.open = None;
-                let (store, persisted) = open_store(&self.dir.join(db_file_name(&vault_id)));
+                let (store, persisted) = match &self.dir {
+                    Some(dir) => open_store(&dir.join(db_file_name(&vault_id))),
+                    None => (open_memory(), false),
+                };
                 let file_count = store.file_count().map_err(sql)?;
                 self.open = Some((vault_id, store));
                 Ok(json!({ "persisted": persisted, "fileCount": file_count }))
@@ -229,15 +256,40 @@ impl IndexHost {
     }
 }
 
+/// The one index host the app shares between commands.
+pub type SharedHost = Arc<Mutex<IndexHost>>;
+
+/// Where this app keeps its index databases.
+pub fn index_dir<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
+    app.path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::env::temp_dir().join("mentis"))
+        .join("indexes")
+}
+
+/// One index operation from the window. The window sends them one at a time,
+/// in order; this only keeps SQLite off the async runtime's threads.
+#[tauri::command]
+pub async fn index_call(
+    op: String,
+    arg: Option<Value>,
+    host: State<'_, SharedHost>,
+) -> Result<Value, String> {
+    let host = Arc::clone(host.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut host = host.lock().unwrap_or_else(|e| e.into_inner());
+        host.call(&op, arg.unwrap_or(Value::Null))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Runs the operations without a vault open, on an in-memory store, for the
 /// shared fixtures.
 #[doc(hidden)]
 pub fn in_memory_host() -> IndexHost {
-    let mut host = IndexHost::new(PathBuf::new());
-    let store = Connection::open_in_memory()
-        .and_then(IndexStore::new)
-        .expect("an in-memory database always opens");
-    host.open = Some(("fixture".to_string(), store));
+    let mut host = IndexHost::unplaced();
+    host.open = Some(("fixture".to_string(), open_memory()));
     host
 }
 
@@ -348,7 +400,7 @@ mod tests {
 
     #[test]
     fn a_closed_index_answers_as_an_empty_one() {
-        let mut host = IndexHost::new(PathBuf::new());
+        let mut host = IndexHost::unplaced();
         assert_eq!(
             host.call("search", json!({ "query": "x" })).unwrap(),
             json!([])

@@ -12,10 +12,18 @@ use tauri::Manager;
 pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     builder
         .manage(vault_fs::VaultRoots::default())
+        .manage(index::SharedHost::new(std::sync::Mutex::new(
+            index::IndexHost::unplaced(),
+        )))
         .setup(|app| {
             let recents = vaults::Recents::load(vaults::recents_file(app.handle()));
             vaults::grant_recent(&app.state::<vault_fs::VaultRoots>(), &recents);
             app.manage(recents);
+            let dir = index::index_dir(app.handle());
+            app.state::<index::SharedHost>()
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .place(dir);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -34,6 +42,7 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             vaults::vault_create,
             vaults::vault_open_recent,
             vaults::vault_forget,
+            index::index_call,
         ])
 }
 
