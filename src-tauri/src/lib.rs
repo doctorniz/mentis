@@ -4,6 +4,8 @@ pub mod index;
 pub mod vault_fs;
 #[doc(hidden)]
 pub mod vaults;
+#[doc(hidden)]
+pub mod watch;
 
 use tauri::Manager;
 
@@ -12,6 +14,7 @@ use tauri::Manager;
 pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     builder
         .manage(vault_fs::VaultRoots::default())
+        .manage(watch::VaultWatcher::default())
         .manage(index::SharedHost::new(std::sync::Mutex::new(
             index::IndexHost::unplaced(),
         )))
@@ -43,6 +46,8 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             vaults::vault_open_recent,
             vaults::vault_forget,
             index::index_call,
+            watch::vault_watch_start,
+            watch::vault_watch_stop,
         ])
 }
 

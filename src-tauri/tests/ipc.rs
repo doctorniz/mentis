@@ -177,3 +177,59 @@ fn index_operations_round_trip_through_ipc() {
 
     call("close", None).unwrap();
 }
+
+#[test]
+fn watching_a_vault_announces_outside_changes() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::{Duration, Instant};
+    use tauri::Listener;
+
+    let app = with_vault_commands(mock_builder())
+        .build(mock_context(noop_assets()))
+        .unwrap();
+    let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+    let url = webview.url().unwrap();
+    let call = |cmd: &str, body: Value| {
+        get_ipc_response(&webview, request(&url, cmd, InvokeBody::Json(body), &[]))
+    };
+
+    let dir = std::env::temp_dir().join(format!("mentis-ipc-watch-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let root = std::fs::canonicalize(&dir)
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
+
+    // A folder the user never opened cannot be watched.
+    assert!(call("vault_watch_start", json!({ "root": root })).is_err());
+
+    app.state::<vault_fs::VaultRoots>().grant(&dir).unwrap();
+    let signals = Arc::new(AtomicUsize::new(0));
+    let seen = Arc::clone(&signals);
+    app.listen("vault-changed", move |_| {
+        seen.fetch_add(1, Ordering::SeqCst);
+    });
+    call("vault_watch_start", json!({ "root": root })).unwrap();
+    std::fs::write(dir.join("outside.md"), "written by another program").unwrap();
+
+    let until = Instant::now() + Duration::from_secs(10);
+    while signals.load(Ordering::SeqCst) == 0 && Instant::now() < until {
+        std::thread::sleep(Duration::from_millis(25));
+    }
+    assert!(
+        signals.load(Ordering::SeqCst) >= 1,
+        "no vault-changed event"
+    );
+
+    call("vault_watch_stop", json!({})).unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+    let after_stop = signals.load(Ordering::SeqCst);
+    std::fs::write(dir.join("later.md"), "x").unwrap();
+    std::thread::sleep(Duration::from_millis(800));
+    assert_eq!(signals.load(Ordering::SeqCst), after_stop);
+    let _ = std::fs::remove_dir_all(&dir);
+}

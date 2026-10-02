@@ -32,7 +32,7 @@ impl VaultRoots {
         }
     }
 
-    fn resolve(&self, root: &str, rel: &str) -> Result<PathBuf, String> {
+    pub(crate) fn resolve(&self, root: &str, rel: &str) -> Result<PathBuf, String> {
         let root = fs::canonicalize(root).map_err(|e| format!("vault folder unavailable: {e}"))?;
         if !self.0.lock().unwrap().contains(&root) {
             return Err("vault folder has not been opened".into());
