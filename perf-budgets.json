@@ -1,5 +1,5 @@
 {
-  "$comment": "Performance budgets from CLAUDE.md. Raising a number here is a deliberate change: commit it on its own, never to make a build pass. Sizes are gzipped KiB; `enforce: false` means reported but not failing. Checked by scripts/check-budgets.mjs (sizes) and tests/e2e/22-perf-report.spec.ts (timings, report-only until the Tauri build exists).",
+  "$comment": "Performance budgets from CLAUDE.md. Raising a number here is a deliberate change: commit it on its own, never to make a build pass. Sizes are gzipped KiB; `enforce: false` means reported but not failing. Checked by scripts/check-budgets.mjs (sizes), scripts/check-binary-size.mjs (the release binary, bytes), scripts/measure-cold-start.mjs (desktop cold start, in the Windows CI job) and tests/e2e/22-perf-report.spec.ts (the other timings, report-only web proxies).",
   "size": {
     "initialJs": {
       "label": "Initial JS",
@@ -21,5 +21,13 @@
     "desktopColdStartMs": 1000,
     "openNoteMs": 100,
     "firstSearchMs": 50
+  },
+  "binary": {
+    "label": "Desktop binary (release, excl. model)",
+    "maxBytes": 15000000,
+    "enforce": true
+  },
+  "timingEnforce": {
+    "desktopColdStartMs": false
   }
 }

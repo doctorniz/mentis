@@ -1,0 +1,188 @@
+// Measures desktop cold start: process spawn -> the shell (file tree, editor
+// area) is mounted. The release binary writes the time to the file named by
+// MENTIS_STARTUP_REPORT and quits (see src-tauri/src/startup.rs); this script
+// launches it repeatedly and reports the median against perf-budgets.json.
+//
+// The app reopens its last vault on launch, so the script first seeds a small
+// throwaway vault: the recent-vaults file is written directly, and the window's
+// localStorage is set once through the WebView2 debugging port.
+//
+// It uses the app's real data folders, so it refuses to run where they already
+// exist (a developer machine) unless --allow-real-profile is given, in which
+// case it moves them aside and puts them back afterwards. CI is a fresh runner.
+//
+// Usage: node scripts/measure-cold-start.mjs [--runs 5] [--exe path] [--out file.json]
+//                                            [--allow-real-profile]
+// Windows only for now (WebView2); macOS and Linux are added with their bundles.
+import { spawn, spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
+const root = path.resolve(import.meta.dirname, '..')
+const budgets = JSON.parse(fs.readFileSync(path.join(root, 'perf-budgets.json'), 'utf8'))
+const IDENTIFIER = 'app.mentis.desktop'
+const DEBUG_PORT = 9333
+const LAUNCH_TIMEOUT_MS = 45_000
+
+function arg(name, fallback) {
+  const i = process.argv.indexOf(`--${name}`)
+  return i === -1 ? fallback : process.argv[i + 1]
+}
+const flag = (name) => process.argv.includes(`--${name}`)
+
+if (process.platform !== 'win32') {
+  console.error('Cold-start measurement currently supports Windows only.')
+  process.exit(2)
+}
+
+const runs = Number(arg('runs', '5'))
+const exe = arg('exe', path.join(root, 'src-tauri', 'target', 'release', 'mentis.exe'))
+if (!fs.existsSync(exe)) {
+  console.error(`No binary at ${exe}. Run \`pnpm tauri build\` first.`)
+  process.exit(1)
+}
+
+const appData = path.join(process.env.APPDATA, IDENTIFIER)
+const webProfile = path.join(process.env.LOCALAPPDATA, IDENTIFIER)
+const existing = [appData, webProfile].filter((p) => fs.existsSync(p))
+if (existing.length > 0 && !process.env.CI && !flag('allow-real-profile')) {
+  console.error(
+    `Refusing to run: ${existing.join(' and ')} already exist and belong to an installed or dev copy of the app.\n` +
+      'Pass --allow-real-profile to move them aside for the run and restore them afterwards.',
+  )
+  process.exit(1)
+}
+
+const stamp = `bak-${process.pid}`
+const movedAside = []
+function moveAside() {
+  for (const p of existing) {
+    fs.renameSync(p, `${p}.${stamp}`)
+    movedAside.push(p)
+  }
+}
+function restore() {
+  for (const p of [appData, webProfile]) fs.rmSync(p, { recursive: true, force: true })
+  for (const p of movedAside) fs.renameSync(`${p}.${stamp}`, p)
+  movedAside.length = 0
+}
+
+function killTree(child) {
+  if (child.pid && child.exitCode === null) {
+    spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' })
+  }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+function makeVault() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mentis-cold-start-'))
+  fs.mkdirSync(path.join(dir, 'Notes', 'Projects'), { recursive: true })
+  for (let i = 1; i <= 20; i++) {
+    fs.writeFileSync(path.join(dir, 'Notes', `note-${i}.md`), `# Note ${i}\n\nSome text.\n`)
+  }
+  fs.writeFileSync(path.join(dir, 'Notes', 'Projects', 'plan.md'), '# Plan\n')
+  return fs.realpathSync(dir)
+}
+
+async function seedWindowState(vault) {
+  const { chromium } = await import('@playwright/test')
+  const child = spawn(exe, [], {
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${DEBUG_PORT}`,
+    },
+  })
+  try {
+    const deadline = Date.now() + LAUNCH_TIMEOUT_MS
+    let browser
+    while (!browser) {
+      if (Date.now() > deadline) throw new Error('the debugging port never opened')
+      try {
+        browser = await chromium.connectOverCDP(`http://127.0.0.1:${DEBUG_PORT}`)
+      } catch {
+        await sleep(300)
+      }
+    }
+    let page
+    while (!page) {
+      if (Date.now() > deadline) throw new Error('the app window never loaded')
+      page = browser
+        .contexts()
+        .flatMap((c) => c.pages())
+        .find((p) => p.url().startsWith('http'))
+      if (!page) await sleep(300)
+    }
+    await page.evaluate(
+      (v) => localStorage.setItem('mentis:active-vault-path', `tauri:${v}`),
+      vault,
+    )
+    await sleep(2500)
+  } finally {
+    killTree(child)
+    await sleep(1000)
+  }
+}
+
+async function launchOnce(report) {
+  fs.rmSync(report, { force: true })
+  const spawnedAt = Date.now()
+  const child = spawn(exe, [], {
+    stdio: 'ignore',
+    env: { ...process.env, MENTIS_STARTUP_REPORT: report },
+  })
+  const exited = new Promise((r) => child.once('exit', r))
+  const timedOut = sleep(LAUNCH_TIMEOUT_MS).then(() => 'timeout')
+  const result = await Promise.race([exited, timedOut])
+  if (result === 'timeout') {
+    killTree(child)
+    throw new Error('the app did not report that the shell was up')
+  }
+  if (!fs.existsSync(report)) throw new Error(`the app exited (${result}) without reporting`)
+  return JSON.parse(fs.readFileSync(report, 'utf8')).readyAtMs - spawnedAt
+}
+
+const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]
+
+let vault
+const samples = []
+try {
+  moveAside()
+  vault = makeVault()
+  fs.mkdirSync(appData, { recursive: true })
+  fs.writeFileSync(
+    path.join(appData, 'recent-vaults.json'),
+    JSON.stringify([{ path: vault, openedAt: Date.now() }]),
+  )
+  await seedWindowState(vault)
+  const report = path.join(os.tmpdir(), `mentis-startup-${process.pid}.json`)
+  for (let i = 0; i < runs; i++) {
+    const ms = await launchOnce(report)
+    samples.push(ms)
+    console.log(`  run ${i + 1}: ${ms} ms`)
+  }
+} catch (err) {
+  console.error(`Cold-start measurement failed: ${err.message}`)
+  process.exitCode = 1
+} finally {
+  restore()
+  if (vault) fs.rmSync(vault, { recursive: true, force: true })
+}
+
+if (samples.length === runs) {
+  const med = median(samples)
+  const limit = budgets.timing.desktopColdStartMs
+  const enforce = budgets.timingEnforce?.desktopColdStartMs === true
+  const over = med > limit
+  const status = !over ? 'ok' : enforce ? 'FAIL' : 'over (report only)'
+  const line = `Desktop cold start: median ${med} ms (min ${Math.min(...samples)}, max ${Math.max(...samples)}, ${runs} runs) / ${limit} ms  ${status}`
+  console.log(line)
+  const out = arg('out')
+  if (out)
+    fs.writeFileSync(out, JSON.stringify({ medianMs: med, samples, limitMs: limit }, null, 2))
+  if (process.env.GITHUB_STEP_SUMMARY)
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`)
+  if (over && enforce) process.exitCode = 1
+}

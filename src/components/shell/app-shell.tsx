@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { MainSidebar } from '@/components/shell/main-sidebar'
 import { MobileNavMasthead } from '@/components/shell/mobile-nav-masthead'
+import { markShellReady } from '@/lib/startup-mark'
 import { ViewRouter } from '@/components/shell/view-router'
 import { VaultSearchBootstrap } from '@/components/search/vault-search-bootstrap'
 import { KeyboardShortcutsDialog } from '@/components/shell/keyboard-shortcuts-dialog'
@@ -22,6 +23,10 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   const [settingsInitialTab, setSettingsInitialTab] = useState<
     'vault' | 'editor' | 'snapshots' | 'sync' | 'ai' | 'calendar'
   >('vault')
+
+  useEffect(() => {
+    void markShellReady()
+  }, [])
 
   useEffect(() => {
     function onOpenAiSettings() {
