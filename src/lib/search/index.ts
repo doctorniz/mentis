@@ -1,4 +1,5 @@
 import type { SearchFilters, SearchResult } from '@/types/search'
+import { toIndexFilters } from './filters'
 import { callIndex, indexWorkerStarted } from '@/core/index/client'
 import type {
   FileHash,
@@ -105,7 +106,7 @@ export function searchVault(
   filters: SearchFilters = {},
 ): Promise<SearchResult[]> {
   if (!activeVaultId) return Promise.resolve([])
-  return callIndex('search', { query: rawQuery, filters })
+  return callIndex('search', { query: rawQuery, filters: toIndexFilters(filters) })
 }
 
 /** The `limit` best-matching passages from anywhere in the vault's files, for vault chat. */

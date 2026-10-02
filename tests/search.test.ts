@@ -227,7 +227,7 @@ describe('Search Index', () => {
         mtime: Date.parse('2026-06-15T00:00:00Z'),
       }),
     ])
-    const results = store.search('item', { dateRange: { from: '2026-01-01' } })
+    const results = store.search('item', { modifiedFrom: Date.parse('2026-01-01T00:00:00Z') })
     expect(results).toHaveLength(1)
     expect(results[0]!.path).toBe('new.md')
   })

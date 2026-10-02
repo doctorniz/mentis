@@ -1,6 +1,6 @@
 import MiniSearch from 'minisearch'
 import type { Database } from '@sqlite.org/sqlite-wasm'
-import type { SearchFilters, SearchResult } from '@/types/search'
+import type { SearchResult } from '@/types/search'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import { buildSnippet } from '@/lib/search/snippet'
 import { SEARCH_CONTENT_CAP } from '@/lib/search/content-cap'
@@ -8,6 +8,7 @@ import { chunkText } from './chunk'
 import type {
   FileHash,
   IndexDocument,
+  IndexSearchFilters,
   LinkRow,
   ManifestEntry,
   PassageHit,
@@ -208,7 +209,7 @@ export class IndexStore {
   /** Drops a folder's own row, everything recorded beneath it, and its listed marks. */
   private forgetFolder(path: string) {
     const prefix = `${path}/`
-    const len = prefix.length
+    const len = [...prefix].length // SQLite's substr counts characters, not UTF-16 units
     this.db.exec({
       sql: 'DELETE FROM tree WHERE path = ? OR substr(path, 1, ?) = ?',
       bind: [path, len, prefix],
@@ -333,10 +334,13 @@ export class IndexStore {
   }
 
   /** Search with `#tag` tokens and filters; results carry snippets, not content. */
-  search(rawQuery: string, filters: SearchFilters = {}): SearchResult[] {
+  search(rawQuery: string, filters: IndexSearchFilters = {}): SearchResult[] {
     const { text, hashTags } = parseSearchQuery(rawQuery)
     const tagSet = new Set([...(filters.tags ?? []).map((t) => t.toLowerCase()), ...hashTags])
-    const merged: SearchFilters = { ...filters, tags: tagSet.size > 0 ? [...tagSet] : undefined }
+    const merged: IndexSearchFilters = {
+      ...filters,
+      tags: tagSet.size > 0 ? [...tagSet] : undefined,
+    }
 
     return this.query(text).flatMap((hit) => {
       if (!applyFilters(hit.row, merged)) return []
@@ -475,7 +479,7 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function applyFilters(row: FileRow, filters: SearchFilters): boolean {
+function applyFilters(row: FileRow, filters: IndexSearchFilters): boolean {
   if (filters.fileType !== undefined) {
     if (filters.fileType.length === 0) return false
     if (!filters.fileType.includes(row.type)) return false
@@ -496,18 +500,7 @@ function applyFilters(row: FileRow, filters: SearchFilters): boolean {
       if (!docTags.has(tag.toLowerCase())) return false
     }
   }
-  if (filters.dateRange?.from || filters.dateRange?.to) {
-    const t = row.mtime
-    if (filters.dateRange.from) {
-      const from = new Date(filters.dateRange.from)
-      from.setHours(0, 0, 0, 0)
-      if (t < from.getTime()) return false
-    }
-    if (filters.dateRange.to) {
-      const to = new Date(filters.dateRange.to)
-      to.setHours(23, 59, 59, 999)
-      if (t > to.getTime()) return false
-    }
-  }
+  if (filters.modifiedFrom !== undefined && row.mtime < filters.modifiedFrom) return false
+  if (filters.modifiedTo !== undefined && row.mtime > filters.modifiedTo) return false
   return true
 }

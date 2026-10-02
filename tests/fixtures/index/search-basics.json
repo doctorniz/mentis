@@ -1,0 +1,867 @@
+{
+  "name": "full-text search: prefixes, OR, ranking, filters, snippets",
+  "steps": [
+    {
+      "op": "upsert",
+      "arg": {
+        "vaultId": "fixture",
+        "docs": [
+          {
+            "path": "Projects/roadmap.md",
+            "type": "markdown",
+            "title": "Project roadmap",
+            "content": "The roadmap lists every project milestone for the year.",
+            "tags": [
+              "work",
+              "planning"
+            ],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "Projects/ideas.md",
+            "type": "markdown",
+            "title": "Ideas",
+            "content": "A scratchpad of ideas. One idea is a project about gardening.",
+            "tags": [
+              "work"
+            ],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "Journal/2026-03-01.md",
+            "type": "markdown",
+            "title": "Tuesday",
+            "content": "Went to the café and read about gardens. Cafe au lait was good.",
+            "tags": [
+              "personal"
+            ],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "Reading/paper.pdf",
+            "type": "pdf",
+            "title": "A paper on soil",
+            "content": "Soil microbes and nutrient cycling in gardens.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "loose.md",
+            "type": "markdown",
+            "title": "Loose note",
+            "content": "Nothing about the topic at all.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          }
+        ]
+      }
+    },
+    {
+      "op": "manifest",
+      "expect": [
+        {
+          "path": "Journal/2026-03-01.md",
+          "size": 100,
+          "mtime": 1700000000000
+        },
+        {
+          "path": "Projects/ideas.md",
+          "size": 100,
+          "mtime": 1700000000000
+        },
+        {
+          "path": "Projects/roadmap.md",
+          "size": 100,
+          "mtime": 1700000000000
+        },
+        {
+          "path": "Reading/paper.pdf",
+          "size": 100,
+          "mtime": 1700000000000
+        },
+        {
+          "path": "loose.md",
+          "size": 100,
+          "mtime": 1700000000000
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "project"
+      },
+      "expect": [
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The roadmap lists every ",
+          "snippetHit": "project",
+          "snippetAfter": " milestone for the year."
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a ",
+          "snippetHit": "project",
+          "snippetAfter": " about gardening."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "proj"
+      },
+      "expect": [
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The roadmap lists every ",
+          "snippetHit": "project",
+          "snippetAfter": " milestone for the year."
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a ",
+          "snippetHit": "project",
+          "snippetAfter": " about gardening."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "PROJECT roadmap"
+      },
+      "expect": [
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The ",
+          "snippetHit": "roadmap",
+          "snippetAfter": " lists every project milestone for the year."
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a ",
+          "snippetHit": "project",
+          "snippetAfter": " about gardening."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "garden"
+      },
+      "expect": [
+        {
+          "id": "Reading/paper.pdf",
+          "path": "Reading/paper.pdf",
+          "title": "A paper on soil",
+          "type": "pdf",
+          "matches": [],
+          "snippetBefore": "Soil microbes and nutrient cycling in ",
+          "snippetHit": "gardens",
+          "snippetAfter": "."
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a project about ",
+          "snippetHit": "gardening",
+          "snippetAfter": "."
+        },
+        {
+          "id": "Journal/2026-03-01.md",
+          "path": "Journal/2026-03-01.md",
+          "title": "Tuesday",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Went to the café and read about ",
+          "snippetHit": "gardens",
+          "snippetAfter": ". Cafe au lait was good."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "gardening ideas"
+      },
+      "expect": [
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ",
+          "snippetHit": "ideas",
+          "snippetAfter": ". One idea is a project about gardening."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "cafe"
+      },
+      "expect": [
+        {
+          "id": "Journal/2026-03-01.md",
+          "path": "Journal/2026-03-01.md",
+          "title": "Tuesday",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Went to the café and read about gardens. ",
+          "snippetHit": "Cafe",
+          "snippetAfter": " au lait was good."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "café"
+      },
+      "expect": [
+        {
+          "id": "Journal/2026-03-01.md",
+          "path": "Journal/2026-03-01.md",
+          "title": "Tuesday",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Went to the ",
+          "snippetHit": "café",
+          "snippetAfter": " and read about gardens. Cafe au lait was good."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "soil"
+      },
+      "expect": [
+        {
+          "id": "Reading/paper.pdf",
+          "path": "Reading/paper.pdf",
+          "title": "A paper on soil",
+          "type": "pdf",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "Soil",
+          "snippetAfter": " microbes and nutrient cycling in gardens."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "nothing-about"
+      },
+      "expect": [
+        {
+          "id": "loose.md",
+          "path": "loose.md",
+          "title": "Loose note",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "Nothing",
+          "snippetAfter": " about the topic at all."
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a project ",
+          "snippetHit": "about",
+          "snippetAfter": " gardening."
+        },
+        {
+          "id": "Journal/2026-03-01.md",
+          "path": "Journal/2026-03-01.md",
+          "title": "Tuesday",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Went to the café and read ",
+          "snippetHit": "about",
+          "snippetAfter": " gardens. Cafe au lait was good."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "!!!"
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": ""
+      },
+      "expect": [
+        {
+          "id": "Journal/2026-03-01.md",
+          "path": "Journal/2026-03-01.md",
+          "title": "Tuesday",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Went to the café and read about gardens. Cafe au lait was good.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a project about gardening.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The roadmap lists every project milestone for the year.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "Reading/paper.pdf",
+          "path": "Reading/paper.pdf",
+          "title": "A paper on soil",
+          "type": "pdf",
+          "matches": [],
+          "snippetBefore": "Soil microbes and nutrient cycling in gardens.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "loose.md",
+          "path": "loose.md",
+          "title": "Loose note",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Nothing about the topic at all.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "#work"
+      },
+      "expect": [
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a project about gardening.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The roadmap lists every project milestone for the year.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "#work #planning"
+      },
+      "expect": [
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The roadmap lists every project milestone for the year.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "project #planning"
+      },
+      "expect": [
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The roadmap lists every ",
+          "snippetHit": "project",
+          "snippetAfter": " milestone for the year."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "#WORK",
+        "filters": {
+          "tags": [
+            "personal"
+          ]
+        }
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "garden",
+        "filters": {
+          "fileType": [
+            "pdf"
+          ]
+        }
+      },
+      "expect": [
+        {
+          "id": "Reading/paper.pdf",
+          "path": "Reading/paper.pdf",
+          "title": "A paper on soil",
+          "type": "pdf",
+          "matches": [],
+          "snippetBefore": "Soil microbes and nutrient cycling in ",
+          "snippetHit": "gardens",
+          "snippetAfter": "."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "garden",
+        "filters": {
+          "fileType": []
+        }
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "garden",
+        "filters": {
+          "fileType": [
+            "markdown",
+            "pdf"
+          ]
+        }
+      },
+      "expect": [
+        {
+          "id": "Reading/paper.pdf",
+          "path": "Reading/paper.pdf",
+          "title": "A paper on soil",
+          "type": "pdf",
+          "matches": [],
+          "snippetBefore": "Soil microbes and nutrient cycling in ",
+          "snippetHit": "gardens",
+          "snippetAfter": "."
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a project about ",
+          "snippetHit": "gardening",
+          "snippetAfter": "."
+        },
+        {
+          "id": "Journal/2026-03-01.md",
+          "path": "Journal/2026-03-01.md",
+          "title": "Tuesday",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Went to the café and read about ",
+          "snippetHit": "gardens",
+          "snippetAfter": ". Cafe au lait was good."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "project",
+        "filters": {
+          "folder": "Projects"
+        }
+      },
+      "expect": [
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The roadmap lists every ",
+          "snippetHit": "project",
+          "snippetAfter": " milestone for the year."
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a ",
+          "snippetHit": "project",
+          "snippetAfter": " about gardening."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "project",
+        "filters": {
+          "folder": "/Projects/"
+        }
+      },
+      "expect": [
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The roadmap lists every ",
+          "snippetHit": "project",
+          "snippetAfter": " milestone for the year."
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a ",
+          "snippetHit": "project",
+          "snippetAfter": " about gardening."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "garden",
+        "filters": {
+          "folder": "Journal/2026"
+        }
+      },
+      "expect": [
+        {
+          "id": "Journal/2026-03-01.md",
+          "path": "Journal/2026-03-01.md",
+          "title": "Tuesday",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Went to the café and read about ",
+          "snippetHit": "gardens",
+          "snippetAfter": ". Cafe au lait was good."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "garden",
+        "filters": {
+          "folder": "   "
+        }
+      },
+      "expect": [
+        {
+          "id": "Reading/paper.pdf",
+          "path": "Reading/paper.pdf",
+          "title": "A paper on soil",
+          "type": "pdf",
+          "matches": [],
+          "snippetBefore": "Soil microbes and nutrient cycling in ",
+          "snippetHit": "gardens",
+          "snippetAfter": "."
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a project about ",
+          "snippetHit": "gardening",
+          "snippetAfter": "."
+        },
+        {
+          "id": "Journal/2026-03-01.md",
+          "path": "Journal/2026-03-01.md",
+          "title": "Tuesday",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Went to the café and read about ",
+          "snippetHit": "gardens",
+          "snippetAfter": ". Cafe au lait was good."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "garden",
+        "filters": {
+          "tags": [
+            "Personal"
+          ]
+        }
+      },
+      "expect": [
+        {
+          "id": "Journal/2026-03-01.md",
+          "path": "Journal/2026-03-01.md",
+          "title": "Tuesday",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Went to the café and read about ",
+          "snippetHit": "gardens",
+          "snippetAfter": ". Cafe au lait was good."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "\"quoted\" project"
+      },
+      "expect": [
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The roadmap lists every ",
+          "snippetHit": "project",
+          "snippetAfter": " milestone for the year."
+        },
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a ",
+          "snippetHit": "project",
+          "snippetAfter": " about gardening."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "road map"
+      },
+      "expect": [
+        {
+          "id": "Projects/roadmap.md",
+          "path": "Projects/roadmap.md",
+          "title": "Project roadmap",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "The ",
+          "snippetHit": "roadmap",
+          "snippetAfter": " lists every project milestone for the year."
+        }
+      ]
+    },
+    {
+      "op": "remove",
+      "arg": {
+        "vaultId": "fixture",
+        "paths": [
+          "Projects/roadmap.md",
+          "missing.md"
+        ]
+      }
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "roadmap"
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "project"
+      },
+      "expect": [
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A scratchpad of ideas. One idea is a ",
+          "snippetHit": "project",
+          "snippetAfter": " about gardening."
+        }
+      ]
+    },
+    {
+      "op": "manifest",
+      "expect": [
+        {
+          "path": "Journal/2026-03-01.md",
+          "size": 100,
+          "mtime": 1700000000000
+        },
+        {
+          "path": "Projects/ideas.md",
+          "size": 100,
+          "mtime": 1700000000000
+        },
+        {
+          "path": "Reading/paper.pdf",
+          "size": 100,
+          "mtime": 1700000000000
+        },
+        {
+          "path": "loose.md",
+          "size": 100,
+          "mtime": 1700000000000
+        }
+      ]
+    },
+    {
+      "op": "upsert",
+      "arg": {
+        "vaultId": "fixture",
+        "docs": [
+          {
+            "path": "Projects/ideas.md",
+            "type": "markdown",
+            "title": "Ideas revised",
+            "content": "Now about compost instead.",
+            "tags": [
+              "home"
+            ],
+            "size": 100,
+            "mtime": 1700000000000
+          }
+        ]
+      }
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "gardening"
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "compost"
+      },
+      "expect": [
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas revised",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Now about ",
+          "snippetHit": "compost",
+          "snippetAfter": " instead."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "#work"
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "#home"
+      },
+      "expect": [
+        {
+          "id": "Projects/ideas.md",
+          "path": "Projects/ideas.md",
+          "title": "Ideas revised",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Now about compost instead.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    }
+  ]
+}

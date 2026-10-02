@@ -1,4 +1,6 @@
 #[doc(hidden)]
+pub mod index;
+#[doc(hidden)]
 pub mod vault_fs;
 #[doc(hidden)]
 pub mod vaults;

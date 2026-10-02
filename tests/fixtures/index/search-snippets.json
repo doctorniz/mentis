@@ -1,0 +1,460 @@
+{
+  "name": "snippets: windows, ellipses, whitespace, unicode, content cap",
+  "steps": [
+    {
+      "op": "upsert",
+      "arg": {
+        "vaultId": "fixture",
+        "docs": [
+          {
+            "path": "a.md",
+            "type": "markdown",
+            "title": "Alpha",
+            "content": "lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 needle lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "b.md",
+            "type": "markdown",
+            "title": "Beta",
+            "content": "needle at the very start of the text, followed by a few words.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "c.md",
+            "type": "markdown",
+            "title": "Gamma",
+            "content": "A few words and then, at the very end, the needle",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "d.md",
+            "type": "markdown",
+            "title": "Delta",
+            "content": "  \n\n  spaced \t\t out \r\n lines\n\nwith  a needle   inside  ",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "e.md",
+            "type": "markdown",
+            "title": "Epsilon",
+            "content": "Résumé of the Ünïcödé naïve façade — needle 🙂 and 日本語のテキスト needle",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "f.md",
+            "type": "markdown",
+            "title": "Zeta",
+            "content": "This content has no relation to anything searched.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "g.md",
+            "type": "markdown",
+            "title": "Needle in the title",
+            "content": "lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "h.md",
+            "type": "markdown",
+            "title": "Eta",
+            "content": "lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lateword",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "i.md",
+            "type": "markdown",
+            "title": "Theta",
+            "content": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx tail yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "j.md",
+            "type": "markdown",
+            "title": "Iota",
+            "content": "",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          }
+        ]
+      }
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "needle"
+      },
+      "expect": [
+        {
+          "id": "e.md",
+          "path": "e.md",
+          "title": "Epsilon",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Résumé of the Ünïcödé naïve façade — ",
+          "snippetHit": "needle",
+          "snippetAfter": " 🙂 and 日本語のテキスト needle"
+        },
+        {
+          "id": "g.md",
+          "path": "g.md",
+          "title": "Needle in the title",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 …",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "d.md",
+          "path": "d.md",
+          "title": "Delta",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "spaced out lines with a ",
+          "snippetHit": "needle",
+          "snippetAfter": " inside"
+        },
+        {
+          "id": "c.md",
+          "path": "c.md",
+          "title": "Gamma",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A few words and then, at the very end, the ",
+          "snippetHit": "needle",
+          "snippetAfter": ""
+        },
+        {
+          "id": "b.md",
+          "path": "b.md",
+          "title": "Beta",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "needle",
+          "snippetAfter": " at the very start of the text, followed by a few words."
+        },
+        {
+          "id": "a.md",
+          "path": "a.md",
+          "title": "Alpha",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "…em3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 ",
+          "snippetHit": "needle",
+          "snippetAfter": " lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lor…"
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "need"
+      },
+      "expect": [
+        {
+          "id": "e.md",
+          "path": "e.md",
+          "title": "Epsilon",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Résumé of the Ünïcödé naïve façade — ",
+          "snippetHit": "needle",
+          "snippetAfter": " 🙂 and 日本語のテキスト needle"
+        },
+        {
+          "id": "g.md",
+          "path": "g.md",
+          "title": "Needle in the title",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 …",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "d.md",
+          "path": "d.md",
+          "title": "Delta",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "spaced out lines with a ",
+          "snippetHit": "needle",
+          "snippetAfter": " inside"
+        },
+        {
+          "id": "c.md",
+          "path": "c.md",
+          "title": "Gamma",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A few words and then, at the very end, the ",
+          "snippetHit": "needle",
+          "snippetAfter": ""
+        },
+        {
+          "id": "b.md",
+          "path": "b.md",
+          "title": "Beta",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "needle",
+          "snippetAfter": " at the very start of the text, followed by a few words."
+        },
+        {
+          "id": "a.md",
+          "path": "a.md",
+          "title": "Alpha",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "…em3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 ",
+          "snippetHit": "needle",
+          "snippetAfter": " lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lor…"
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "nee"
+      },
+      "expect": [
+        {
+          "id": "e.md",
+          "path": "e.md",
+          "title": "Epsilon",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Résumé of the Ünïcödé naïve façade — ",
+          "snippetHit": "needle",
+          "snippetAfter": " 🙂 and 日本語のテキスト needle"
+        },
+        {
+          "id": "g.md",
+          "path": "g.md",
+          "title": "Needle in the title",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 …",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "d.md",
+          "path": "d.md",
+          "title": "Delta",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "spaced out lines with a ",
+          "snippetHit": "needle",
+          "snippetAfter": " inside"
+        },
+        {
+          "id": "c.md",
+          "path": "c.md",
+          "title": "Gamma",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "A few words and then, at the very end, the ",
+          "snippetHit": "needle",
+          "snippetAfter": ""
+        },
+        {
+          "id": "b.md",
+          "path": "b.md",
+          "title": "Beta",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "needle",
+          "snippetAfter": " at the very start of the text, followed by a few words."
+        },
+        {
+          "id": "a.md",
+          "path": "a.md",
+          "title": "Alpha",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "…em3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 ",
+          "snippetHit": "needle",
+          "snippetAfter": " lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lor…"
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "lateword"
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "tail"
+      },
+      "expect": [
+        {
+          "id": "i.md",
+          "path": "i.md",
+          "title": "Theta",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "…xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ",
+          "snippetHit": "tail",
+          "snippetAfter": " yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy…"
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "ünïcödé"
+      },
+      "expect": [
+        {
+          "id": "e.md",
+          "path": "e.md",
+          "title": "Epsilon",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Résumé of the ",
+          "snippetHit": "Ünïcödé",
+          "snippetAfter": " naïve façade — needle 🙂 and 日本語のテキスト needle"
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "unicode"
+      },
+      "expect": [
+        {
+          "id": "e.md",
+          "path": "e.md",
+          "title": "Epsilon",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Résumé of the Ünïcödé naïve façade — needle 🙂 and 日本語のテキスト needle",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "日本語のテキスト"
+      },
+      "expect": [
+        {
+          "id": "e.md",
+          "path": "e.md",
+          "title": "Epsilon",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Résumé of the Ünïcödé naïve façade — needle 🙂 and ",
+          "snippetHit": "日本語のテキスト",
+          "snippetAfter": " needle"
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "résumé"
+      },
+      "expect": [
+        {
+          "id": "e.md",
+          "path": "e.md",
+          "title": "Epsilon",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "Résumé",
+          "snippetAfter": " of the Ünïcödé naïve façade — needle 🙂 and 日本語のテキスト needle"
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "relation anything"
+      },
+      "expect": [
+        {
+          "id": "f.md",
+          "path": "f.md",
+          "title": "Zeta",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "This content has no ",
+          "snippetHit": "relation",
+          "snippetAfter": " to anything searched."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "lorem1"
+      },
+      "expect": [
+        {
+          "id": "h.md",
+          "path": "h.md",
+          "title": "Eta",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "lorem0 ",
+          "snippetHit": "lorem1",
+          "snippetAfter": " lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 …"
+        },
+        {
+          "id": "a.md",
+          "path": "a.md",
+          "title": "Alpha",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "lorem0 ",
+          "snippetHit": "lorem1",
+          "snippetAfter": " lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 …"
+        },
+        {
+          "id": "g.md",
+          "path": "g.md",
+          "title": "Needle in the title",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "lorem0 ",
+          "snippetHit": "lorem1",
+          "snippetAfter": " lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 lorem6 lorem0 lorem1 lorem2 lorem3 lorem4 lorem5 …"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,390 @@
+{
+  "name": "typo-tolerant title search after full-text hits",
+  "steps": [
+    {
+      "op": "upsert",
+      "arg": {
+        "vaultId": "fixture",
+        "docs": [
+          {
+            "path": "Notes/quarterly-report.md",
+            "type": "markdown",
+            "title": "Quarterly report",
+            "content": "Numbers.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "Notes/holiday-plans.md",
+            "type": "markdown",
+            "title": "Holiday plans",
+            "content": "Beach.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "Notes/budget.md",
+            "type": "markdown",
+            "title": "Budget",
+            "content": "Money and the quarterly figures.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "Notes/meeting-notes.md",
+            "type": "markdown",
+            "title": "Meeting notes",
+            "content": "Agenda.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "Notes/mettings.md",
+            "type": "markdown",
+            "title": "Mettings archive",
+            "content": "Old.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "Notes/cat.md",
+            "type": "markdown",
+            "title": "cat",
+            "content": "Meow.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "Notes/Cats and dogs.md",
+            "type": "markdown",
+            "title": "Cats and dogs",
+            "content": "Pets.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          }
+        ]
+      }
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "quartrly"
+      },
+      "expect": [
+        {
+          "id": "Notes/quarterly-report.md",
+          "path": "Notes/quarterly-report.md",
+          "title": "Quarterly report",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Numbers.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "qarterly report"
+      },
+      "expect": [
+        {
+          "id": "Notes/quarterly-report.md",
+          "path": "Notes/quarterly-report.md",
+          "title": "Quarterly report",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Numbers.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "quarterly"
+      },
+      "expect": [
+        {
+          "id": "Notes/quarterly-report.md",
+          "path": "Notes/quarterly-report.md",
+          "title": "Quarterly report",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Numbers.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "Notes/budget.md",
+          "path": "Notes/budget.md",
+          "title": "Budget",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Money and the ",
+          "snippetHit": "quarterly",
+          "snippetAfter": " figures."
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "holidy"
+      },
+      "expect": [
+        {
+          "id": "Notes/holiday-plans.md",
+          "path": "Notes/holiday-plans.md",
+          "title": "Holiday plans",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Beach.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "hol"
+      },
+      "expect": [
+        {
+          "id": "Notes/holiday-plans.md",
+          "path": "Notes/holiday-plans.md",
+          "title": "Holiday plans",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Beach.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "meting"
+      },
+      "expect": [
+        {
+          "id": "Notes/meeting-notes.md",
+          "path": "Notes/meeting-notes.md",
+          "title": "Meeting notes",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Agenda.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "meting notes"
+      },
+      "expect": [
+        {
+          "id": "Notes/meeting-notes.md",
+          "path": "Notes/meeting-notes.md",
+          "title": "Meeting notes",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Agenda.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "metting"
+      },
+      "expect": [
+        {
+          "id": "Notes/mettings.md",
+          "path": "Notes/mettings.md",
+          "title": "Mettings archive",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Old.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "Notes/meeting-notes.md",
+          "path": "Notes/meeting-notes.md",
+          "title": "Meeting notes",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Agenda.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "budgt"
+      },
+      "expect": [
+        {
+          "id": "Notes/budget.md",
+          "path": "Notes/budget.md",
+          "title": "Budget",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Money and the quarterly figures.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "cut"
+      },
+      "expect": [
+        {
+          "id": "Notes/cat.md",
+          "path": "Notes/cat.md",
+          "title": "cat",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Meow.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "cu"
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "cats"
+      },
+      "expect": [
+        {
+          "id": "Notes/Cats and dogs.md",
+          "path": "Notes/Cats and dogs.md",
+          "title": "Cats and dogs",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Pets.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "Notes/cat.md",
+          "path": "Notes/cat.md",
+          "title": "cat",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Meow.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "dgos"
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "zzzzzzzz"
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "Quartrly #nothing"
+      },
+      "expect": []
+    },
+    {
+      "op": "remove",
+      "arg": {
+        "vaultId": "fixture",
+        "paths": [
+          "Notes/quarterly-report.md"
+        ]
+      }
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "quartrly"
+      },
+      "expect": []
+    },
+    {
+      "op": "upsert",
+      "arg": {
+        "vaultId": "fixture",
+        "docs": [
+          {
+            "path": "Notes/budget.md",
+            "type": "markdown",
+            "title": "Finance plan",
+            "content": "Money.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          }
+        ]
+      }
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "budgt"
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "finanse"
+      },
+      "expect": [
+        {
+          "id": "Notes/budget.md",
+          "path": "Notes/budget.md",
+          "title": "Finance plan",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "Money.",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    }
+  ]
+}

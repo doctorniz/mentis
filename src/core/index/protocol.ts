@@ -1,5 +1,17 @@
 import type { SearchFilters, SearchResult } from '@/types/search'
 
+/**
+ * Search filters as the index stores take them. The date range is already
+ * instants (epoch ms), so both stores agree whatever the time zone: callers
+ * turn the calendar days of `SearchFilters.dateRange` into instants first.
+ */
+export interface IndexSearchFilters extends Omit<SearchFilters, 'dateRange'> {
+  /** Only files modified at or after this instant. */
+  modifiedFrom?: number
+  /** Only files modified at or before this instant. */
+  modifiedTo?: number
+}
+
 /** A file's entry in the index, as produced by its file type's extractor. */
 export interface IndexDocument {
   path: string
@@ -78,7 +90,7 @@ export interface IndexOps {
   links: [void, LinkRow[]]
   upsert: [{ vaultId: string; docs: IndexDocument[] }, void]
   remove: [{ vaultId: string; paths: string[] }, void]
-  search: [{ query: string; filters?: SearchFilters }, SearchResult[]]
+  search: [{ query: string; filters?: IndexSearchFilters }, SearchResult[]]
   searchPassages: [{ query: string; limit: number }, PassageHit[]]
   /** Prune the hash cache to `files` and return the hashes still valid. */
   validHashes: [{ vaultId: string; files: ManifestEntry[] }, Record<string, string>]

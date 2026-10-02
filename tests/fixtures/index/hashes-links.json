@@ -1,0 +1,290 @@
+{
+  "name": "hash cache, links and manifest",
+  "steps": [
+    {
+      "op": "upsert",
+      "arg": {
+        "vaultId": "fixture",
+        "docs": [
+          {
+            "path": "a.md",
+            "type": "markdown",
+            "title": "a",
+            "content": "",
+            "tags": [],
+            "links": [
+              "b",
+              "c",
+              "b"
+            ],
+            "size": 10,
+            "mtime": 100
+          },
+          {
+            "path": "b.md",
+            "type": "markdown",
+            "title": "b",
+            "content": "",
+            "tags": [],
+            "links": [
+              "a"
+            ],
+            "size": 20,
+            "mtime": 200
+          },
+          {
+            "path": "c.md",
+            "type": "markdown",
+            "title": "c",
+            "content": "",
+            "tags": [],
+            "size": 30,
+            "mtime": 300
+          }
+        ]
+      }
+    },
+    {
+      "op": "links",
+      "expect": [
+        {
+          "source": "a.md",
+          "target": "b"
+        },
+        {
+          "source": "a.md",
+          "target": "c"
+        },
+        {
+          "source": "b.md",
+          "target": "a"
+        }
+      ]
+    },
+    {
+      "op": "manifest",
+      "expect": [
+        {
+          "path": "a.md",
+          "size": 10,
+          "mtime": 100
+        },
+        {
+          "path": "b.md",
+          "size": 20,
+          "mtime": 200
+        },
+        {
+          "path": "c.md",
+          "size": 30,
+          "mtime": 300
+        }
+      ]
+    },
+    {
+      "op": "upsert",
+      "arg": {
+        "vaultId": "fixture",
+        "docs": [
+          {
+            "path": "a.md",
+            "type": "markdown",
+            "title": "a",
+            "content": "",
+            "tags": [],
+            "links": [
+              "z"
+            ],
+            "size": 11,
+            "mtime": 101
+          }
+        ]
+      }
+    },
+    {
+      "op": "links",
+      "expect": [
+        {
+          "source": "a.md",
+          "target": "z"
+        },
+        {
+          "source": "b.md",
+          "target": "a"
+        }
+      ]
+    },
+    {
+      "op": "remove",
+      "arg": {
+        "vaultId": "fixture",
+        "paths": [
+          "b.md"
+        ]
+      }
+    },
+    {
+      "op": "links",
+      "expect": [
+        {
+          "source": "a.md",
+          "target": "z"
+        }
+      ]
+    },
+    {
+      "op": "manifest",
+      "expect": [
+        {
+          "path": "a.md",
+          "size": 11,
+          "mtime": 101
+        },
+        {
+          "path": "c.md",
+          "size": 30,
+          "mtime": 300
+        }
+      ]
+    },
+    {
+      "op": "validHashes",
+      "arg": {
+        "vaultId": "fixture",
+        "files": []
+      },
+      "expect": {}
+    },
+    {
+      "op": "putHashes",
+      "arg": {
+        "vaultId": "fixture",
+        "hashes": []
+      }
+    },
+    {
+      "op": "putHashes",
+      "arg": {
+        "vaultId": "fixture",
+        "hashes": [
+          {
+            "path": "a.md",
+            "size": 11,
+            "mtime": 101,
+            "hash": "aaa"
+          },
+          {
+            "path": "img.png",
+            "size": 5,
+            "mtime": 7,
+            "hash": "bbb"
+          },
+          {
+            "path": "gone.md",
+            "size": 1,
+            "mtime": 1,
+            "hash": "ccc"
+          },
+          {
+            "path": "changed.md",
+            "size": 1,
+            "mtime": 1,
+            "hash": "ddd"
+          }
+        ]
+      }
+    },
+    {
+      "op": "validHashes",
+      "arg": {
+        "vaultId": "fixture",
+        "files": [
+          {
+            "path": "a.md",
+            "size": 11,
+            "mtime": 101
+          },
+          {
+            "path": "img.png",
+            "size": 5,
+            "mtime": 7
+          },
+          {
+            "path": "changed.md",
+            "size": 2,
+            "mtime": 1
+          },
+          {
+            "path": "new.md",
+            "size": 1,
+            "mtime": 1
+          }
+        ]
+      },
+      "expect": {
+        "a.md": "aaa",
+        "img.png": "bbb"
+      }
+    },
+    {
+      "op": "validHashes",
+      "arg": {
+        "vaultId": "fixture",
+        "files": [
+          {
+            "path": "a.md",
+            "size": 11,
+            "mtime": 101
+          }
+        ]
+      },
+      "expect": {
+        "a.md": "aaa"
+      }
+    },
+    {
+      "op": "validHashes",
+      "arg": {
+        "vaultId": "fixture",
+        "files": [
+          {
+            "path": "img.png",
+            "size": 5,
+            "mtime": 7
+          }
+        ]
+      },
+      "expect": {}
+    },
+    {
+      "op": "putHashes",
+      "arg": {
+        "vaultId": "fixture",
+        "hashes": [
+          {
+            "path": "a.md",
+            "size": 12,
+            "mtime": 102,
+            "hash": "eee"
+          }
+        ]
+      }
+    },
+    {
+      "op": "validHashes",
+      "arg": {
+        "vaultId": "fixture",
+        "files": [
+          {
+            "path": "a.md",
+            "size": 12,
+            "mtime": 102
+          }
+        ]
+      },
+      "expect": {
+        "a.md": "eee"
+      }
+    }
+  ]
+}

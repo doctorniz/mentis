@@ -1,0 +1,560 @@
+{
+  "name": "chunking and passage retrieval",
+  "steps": [
+    {
+      "op": "upsert",
+      "arg": {
+        "vaultId": "fixture",
+        "docs": [
+          {
+            "path": "short.md",
+            "type": "markdown",
+            "title": "Short",
+            "content": "A short note about wombats.\n\nIt has two paragraphs about wombats.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "long.md",
+            "type": "markdown",
+            "title": "Long document",
+            "content": "alpha paragraph begins here. Sentence 0 about alpha things and other matters. Sentence 1 about alpha things and other matters. Sentence 2 about alpha things and other matters. Sentence 3 about alpha things and other matters. Sentence 4 about alpha things and other matters. Sentence 5 about alpha things and other matters. Sentence 6 about alpha things and other matters. Sentence 7 about alpha things and other matters. Sentence 8 about alpha things and other matters. Sentence 9 about alpha things and other matters. Sentence 10 about alpha things and other matters. Sentence 11 about alpha things and other matters.\n\nbeta paragraph begins here. Sentence 0 about beta things and other matters. Sentence 1 about beta things and other matters. Sentence 2 about beta things and other matters. Sentence 3 about beta things and other matters. Sentence 4 about beta things and other matters. Sentence 5 about beta things and other matters. Sentence 6 about beta things and other matters. Sentence 7 about beta things and other matters. Sentence 8 about beta things and other matters. Sentence 9 about beta things and other matters. Sentence 10 about beta things and other matters. Sentence 11 about beta things and other matters. Sentence 12 about beta things and other matters. Sentence 13 about beta things and other matters.\n\ngamma paragraph begins here. Sentence 0 about gamma things and other matters. Sentence 1 about gamma things and other matters. Sentence 2 about gamma things and other matters. Sentence 3 about gamma things and other matters. Sentence 4 about gamma things and other matters. Sentence 5 about gamma things and other matters. Sentence 6 about gamma things and other matters. Sentence 7 about gamma things and other matters. Sentence 8 about gamma things and other matters. Sentence 9 about gamma things and other matters.\n\ndelta paragraph begins here. Sentence 0 about delta things and other matters. Sentence 1 about delta things and other matters. Sentence 2 about delta things and other matters. Sentence 3 about delta things and other matters. Sentence 4 about delta things and other matters. Sentence 5 about delta things and other matters. Sentence 6 about delta things and other matters. Sentence 7 about delta things and other matters. Sentence 8 about delta things and other matters. Sentence 9 about delta things and other matters. Sentence 10 about delta things and other matters. Sentence 11 about delta things and other matters. Sentence 12 about delta things and other matters. Sentence 13 about delta things and other matters. Sentence 14 about delta things and other matters. Sentence 15 about delta things and other matters. Sentence 16 about delta things and other matters. Sentence 17 about delta things and other matters. Sentence 18 about delta things and other matters. Sentence 19 about delta things and other matters.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "oneblock.md",
+            "type": "markdown",
+            "title": "One block",
+            "content": "tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 zebra tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "sentences.md",
+            "type": "markdown",
+            "title": "Sentences",
+            "content": "This is sentence number 0 of a very long single paragraph about quokkas! This is sentence number 1 of a very long single paragraph about quokkas! This is sentence number 2 of a very long single paragraph about quokkas! This is sentence number 3 of a very long single paragraph about quokkas! This is sentence number 4 of a very long single paragraph about quokkas! This is sentence number 5 of a very long single paragraph about quokkas! This is sentence number 6 of a very long single paragraph about quokkas! This is sentence number 7 of a very long single paragraph about quokkas! This is sentence number 8 of a very long single paragraph about quokkas! This is sentence number 9 of a very long single paragraph about quokkas! This is sentence number 10 of a very long single paragraph about quokkas! This is sentence number 11 of a very long single paragraph about quokkas! This is sentence number 12 of a very long single paragraph about quokkas! This is sentence number 13 of a very long single paragraph about quokkas! This is sentence number 14 of a very long single paragraph about quokkas! This is sentence number 15 of a very long single paragraph about quokkas! This is sentence number 16 of a very long single paragraph about quokkas! This is sentence number 17 of a very long single paragraph about quokkas! This is sentence number 18 of a very long single paragraph about quokkas! This is sentence number 19 of a very long single paragraph about quokkas! This is sentence number 20 of a very long single paragraph about quokkas! This is sentence number 21 of a very long single paragraph about quokkas! This is sentence number 22 of a very long single paragraph about quokkas! This is sentence number 23 of a very long single paragraph about quokkas! This is sentence number 24 of a very long single paragraph about quokkas! This is sentence number 25 of a very long single paragraph about quokkas! This is sentence number 26 of a very long single paragraph about quokkas! This is sentence number 27 of a very long single paragraph about quokkas! This is sentence number 28 of a very long single paragraph about quokkas! This is sentence number 29 of a very long single paragraph about quokkas! This is sentence number 30 of a very long single paragraph about quokkas! This is sentence number 31 of a very long single paragraph about quokkas! This is sentence number 32 of a very long single paragraph about quokkas! This is sentence number 33 of a very long single paragraph about quokkas! This is sentence number 34 of a very long single paragraph about quokkas! This is sentence number 35 of a very long single paragraph about quokkas! This is sentence number 36 of a very long single paragraph about quokkas! This is sentence number 37 of a very long single paragraph about quokkas! This is sentence number 38 of a very long single paragraph about quokkas! This is sentence number 39 of a very long single paragraph about quokkas! This is sentence number 40 of a very long single paragraph about quokkas! This is sentence number 41 of a very long single paragraph about quokkas! This is sentence number 42 of a very long single paragraph about quokkas! This is sentence number 43 of a very long single paragraph about quokkas! This is sentence number 44 of a very long single paragraph about quokkas! This is sentence number 45 of a very long single paragraph about quokkas! This is sentence number 46 of a very long single paragraph about quokkas! This is sentence number 47 of a very long single paragraph about quokkas! This is sentence number 48 of a very long single paragraph about quokkas! This is sentence number 49 of a very long single paragraph about quokkas! This is sentence number 50 of a very long single paragraph about quokkas! This is sentence number 51 of a very long single paragraph about quokkas! This is sentence number 52 of a very long single paragraph about quokkas! This is sentence number 53 of a very long single paragraph about quokkas! This is sentence number 54 of a very long single paragraph about quokkas! This is sentence number 55 of a very long single paragraph about quokkas! This is sentence number 56 of a very long single paragraph about quokkas! This is sentence number 57 of a very long single paragraph about quokkas! This is sentence number 58 of a very long single paragraph about quokkas! This is sentence number 59 of a very long single paragraph about quokkas!",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "blank-lines.md",
+            "type": "markdown",
+            "title": "Blank lines",
+            "content": "first quokka\n  \n\t\n\nsecond quokka\n\n\n\n\nthird quokka\r\n\r\nfourth quokka\n \n fifth quokka ",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "emoji.md",
+            "type": "markdown",
+            "title": "Emoji",
+            "content": "🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 🙂 \n\n日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本  marker",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "long-word.md",
+            "type": "markdown",
+            "title": "Long word",
+            "content": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz ending",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          },
+          {
+            "path": "empty.md",
+            "type": "markdown",
+            "title": "Empty",
+            "content": "   \n\n   ",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          }
+        ]
+      }
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "wombats",
+        "limit": 5
+      },
+      "expect": [
+        {
+          "path": "short.md",
+          "title": "Short",
+          "type": "markdown",
+          "seq": 0,
+          "text": "A short note about wombats.\n\nIt has two paragraphs about wombats.",
+          "queryTerms": [
+            "wombats"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "alpha",
+        "limit": 5
+      },
+      "expect": [
+        {
+          "path": "long.md",
+          "title": "Long document",
+          "type": "markdown",
+          "seq": 0,
+          "text": "alpha paragraph begins here. Sentence 0 about alpha things and other matters. Sentence 1 about alpha things and other matters. Sentence 2 about alpha things and other matters. Sentence 3 about alpha things and other matters. Sentence 4 about alpha things and other matters. Sentence 5 about alpha things and other matters. Sentence 6 about alpha things and other matters. Sentence 7 about alpha things and other matters. Sentence 8 about alpha things and other matters. Sentence 9 about alpha things and other matters. Sentence 10 about alpha things and other matters. Sentence 11 about alpha things and other matters.\n\nbeta paragraph begins here. Sentence 0 about beta things and other matters. Sentence 1 about beta things and other matters. Sentence 2 about beta things and other matters. Sentence 3 about beta things and other matters. Sentence 4 about beta things and other matters. Sentence 5 about beta things and other matters. Sentence 6 about beta things and other matters. Sentence 7 about beta things and other matters. Sentence 8 about beta things and other matters. Sentence 9 about beta things and other matters. Sentence 10 about beta things and other matters. Sentence 11 about beta things and other matters. Sentence 12 about beta things and other matters. Sentence 13 about beta things and other matters.",
+          "queryTerms": [
+            "alpha"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "beta gamma",
+        "limit": 10
+      },
+      "expect": [
+        {
+          "path": "long.md",
+          "title": "Long document",
+          "type": "markdown",
+          "seq": 1,
+          "text": "Sentence 10 about beta things and other matters. Sentence 11 about beta things and other matters. Sentence 12 about beta things and other matters. Sentence 13 about beta things and other matters.\n\ngamma paragraph begins here. Sentence 0 about gamma things and other matters. Sentence 1 about gamma things and other matters. Sentence 2 about gamma things and other matters. Sentence 3 about gamma things and other matters. Sentence 4 about gamma things and other matters. Sentence 5 about gamma things and other matters. Sentence 6 about gamma things and other matters. Sentence 7 about gamma things and other matters. Sentence 8 about gamma things and other matters. Sentence 9 about gamma things and other matters.",
+          "queryTerms": [
+            "beta",
+            "gamma"
+          ]
+        },
+        {
+          "path": "long.md",
+          "title": "Long document",
+          "type": "markdown",
+          "seq": 0,
+          "text": "alpha paragraph begins here. Sentence 0 about alpha things and other matters. Sentence 1 about alpha things and other matters. Sentence 2 about alpha things and other matters. Sentence 3 about alpha things and other matters. Sentence 4 about alpha things and other matters. Sentence 5 about alpha things and other matters. Sentence 6 about alpha things and other matters. Sentence 7 about alpha things and other matters. Sentence 8 about alpha things and other matters. Sentence 9 about alpha things and other matters. Sentence 10 about alpha things and other matters. Sentence 11 about alpha things and other matters.\n\nbeta paragraph begins here. Sentence 0 about beta things and other matters. Sentence 1 about beta things and other matters. Sentence 2 about beta things and other matters. Sentence 3 about beta things and other matters. Sentence 4 about beta things and other matters. Sentence 5 about beta things and other matters. Sentence 6 about beta things and other matters. Sentence 7 about beta things and other matters. Sentence 8 about beta things and other matters. Sentence 9 about beta things and other matters. Sentence 10 about beta things and other matters. Sentence 11 about beta things and other matters. Sentence 12 about beta things and other matters. Sentence 13 about beta things and other matters.",
+          "queryTerms": [
+            "beta",
+            "gamma"
+          ]
+        },
+        {
+          "path": "long.md",
+          "title": "Long document",
+          "type": "markdown",
+          "seq": 2,
+          "text": "Sentence 6 about gamma things and other matters. Sentence 7 about gamma things and other matters. Sentence 8 about gamma things and other matters. Sentence 9 about gamma things and other matters.\n\ndelta paragraph begins here. Sentence 0 about delta things and other matters. Sentence 1 about delta things and other matters. Sentence 2 about delta things and other matters. Sentence 3 about delta things and other matters. Sentence 4 about delta things and other matters. Sentence 5 about delta things and other matters. Sentence 6 about delta things and other matters. Sentence 7 about delta things and other matters. Sentence 8 about delta things and other matters. Sentence 9 about delta things and other matters. Sentence 10 about delta things and other matters. Sentence 11 about delta things and other matters. Sentence 12 about delta things and other matters. Sentence 13 about delta things and other matters. Sentence 14 about delta things and other matters. Sentence 15 about delta things and other matters. Sentence 16 about delta things and other matters. Sentence 17 about delta things and other matters. Sentence 18 about delta things and other matters. Sentence 19 about delta things and other matters.",
+          "queryTerms": [
+            "beta",
+            "gamma"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "delta",
+        "limit": 3
+      },
+      "expect": [
+        {
+          "path": "long.md",
+          "title": "Long document",
+          "type": "markdown",
+          "seq": 2,
+          "text": "Sentence 6 about gamma things and other matters. Sentence 7 about gamma things and other matters. Sentence 8 about gamma things and other matters. Sentence 9 about gamma things and other matters.\n\ndelta paragraph begins here. Sentence 0 about delta things and other matters. Sentence 1 about delta things and other matters. Sentence 2 about delta things and other matters. Sentence 3 about delta things and other matters. Sentence 4 about delta things and other matters. Sentence 5 about delta things and other matters. Sentence 6 about delta things and other matters. Sentence 7 about delta things and other matters. Sentence 8 about delta things and other matters. Sentence 9 about delta things and other matters. Sentence 10 about delta things and other matters. Sentence 11 about delta things and other matters. Sentence 12 about delta things and other matters. Sentence 13 about delta things and other matters. Sentence 14 about delta things and other matters. Sentence 15 about delta things and other matters. Sentence 16 about delta things and other matters. Sentence 17 about delta things and other matters. Sentence 18 about delta things and other matters. Sentence 19 about delta things and other matters.",
+          "queryTerms": [
+            "delta"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "zebra",
+        "limit": 5
+      },
+      "expect": [
+        {
+          "path": "oneblock.md",
+          "title": "One block",
+          "type": "markdown",
+          "seq": 2,
+          "text": "tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 zebra tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4\n\ntak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5",
+          "queryTerms": [
+            "zebra"
+          ]
+        },
+        {
+          "path": "oneblock.md",
+          "title": "One block",
+          "type": "markdown",
+          "seq": 1,
+          "text": "tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0\n\ntok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 zebra tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4",
+          "queryTerms": [
+            "zebra"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "tok1 zebra tak2",
+        "limit": 8
+      },
+      "expect": [
+        {
+          "path": "oneblock.md",
+          "title": "One block",
+          "type": "markdown",
+          "seq": 2,
+          "text": "tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 zebra tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4\n\ntak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5",
+          "queryTerms": [
+            "tok1",
+            "zebra",
+            "tak2"
+          ]
+        },
+        {
+          "path": "oneblock.md",
+          "title": "One block",
+          "type": "markdown",
+          "seq": 1,
+          "text": "tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0\n\ntok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 zebra tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4",
+          "queryTerms": [
+            "tok1",
+            "zebra",
+            "tak2"
+          ]
+        },
+        {
+          "path": "oneblock.md",
+          "title": "One block",
+          "type": "markdown",
+          "seq": 3,
+          "text": "tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5\n\ntak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2 tak3 tak4 tak5 tak6 tak0 tak1 tak2",
+          "queryTerms": [
+            "tok1",
+            "zebra",
+            "tak2"
+          ]
+        },
+        {
+          "path": "oneblock.md",
+          "title": "One block",
+          "type": "markdown",
+          "seq": 0,
+          "text": "tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0 tok1 tok2 tok3 tok4 tok5 tok6 tok0",
+          "queryTerms": [
+            "tok1",
+            "zebra",
+            "tak2"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "quokkas",
+        "limit": 4
+      },
+      "expect": [
+        {
+          "path": "sentences.md",
+          "title": "Sentences",
+          "type": "markdown",
+          "seq": 1,
+          "text": "17 of a very long single paragraph about quokkas!\n\nThis is sentence number 18 of a very long single paragraph about quokkas!\n\nThis is sentence number 19 of a very long single paragraph about quokkas!\n\nThis is sentence number 20 of a very long single paragraph about quokkas!\n\nThis is sentence number 21 of a very long single paragraph about quokkas!\n\nThis is sentence number 22 of a very long single paragraph about quokkas!\n\nThis is sentence number 23 of a very long single paragraph about quokkas!\n\nThis is sentence number 24 of a very long single paragraph about quokkas!\n\nThis is sentence number 25 of a very long single paragraph about quokkas!\n\nThis is sentence number 26 of a very long single paragraph about quokkas!\n\nThis is sentence number 27 of a very long single paragraph about quokkas!\n\nThis is sentence number 28 of a very long single paragraph about quokkas!\n\nThis is sentence number 29 of a very long single paragraph about quokkas!\n\nThis is sentence number 30 of a very long single paragraph about quokkas!\n\nThis is sentence number 31 of a very long single paragraph about quokkas!\n\nThis is sentence number 32 of a very long single paragraph about quokkas!\n\nThis is sentence number 33 of a very long single paragraph about quokkas!\n\nThis is sentence number 34 of a very long single paragraph about quokkas!\n\nThis is sentence number 35 of a very long single paragraph about quokkas!\n\nThis is sentence number 36 of a very long single paragraph about quokkas!",
+          "queryTerms": [
+            "quokkas"
+          ]
+        },
+        {
+          "path": "sentences.md",
+          "title": "Sentences",
+          "type": "markdown",
+          "seq": 2,
+          "text": "34 of a very long single paragraph about quokkas!\n\nThis is sentence number 35 of a very long single paragraph about quokkas!\n\nThis is sentence number 36 of a very long single paragraph about quokkas!\n\nThis is sentence number 37 of a very long single paragraph about quokkas!\n\nThis is sentence number 38 of a very long single paragraph about quokkas!\n\nThis is sentence number 39 of a very long single paragraph about quokkas!\n\nThis is sentence number 40 of a very long single paragraph about quokkas!\n\nThis is sentence number 41 of a very long single paragraph about quokkas!\n\nThis is sentence number 42 of a very long single paragraph about quokkas!\n\nThis is sentence number 43 of a very long single paragraph about quokkas!\n\nThis is sentence number 44 of a very long single paragraph about quokkas!\n\nThis is sentence number 45 of a very long single paragraph about quokkas!\n\nThis is sentence number 46 of a very long single paragraph about quokkas!\n\nThis is sentence number 47 of a very long single paragraph about quokkas!\n\nThis is sentence number 48 of a very long single paragraph about quokkas!\n\nThis is sentence number 49 of a very long single paragraph about quokkas!\n\nThis is sentence number 50 of a very long single paragraph about quokkas!\n\nThis is sentence number 51 of a very long single paragraph about quokkas!\n\nThis is sentence number 52 of a very long single paragraph about quokkas!\n\nThis is sentence number 53 of a very long single paragraph about quokkas!",
+          "queryTerms": [
+            "quokkas"
+          ]
+        },
+        {
+          "path": "sentences.md",
+          "title": "Sentences",
+          "type": "markdown",
+          "seq": 0,
+          "text": "This is sentence number 0 of a very long single paragraph about quokkas!\n\nThis is sentence number 1 of a very long single paragraph about quokkas!\n\nThis is sentence number 2 of a very long single paragraph about quokkas!\n\nThis is sentence number 3 of a very long single paragraph about quokkas!\n\nThis is sentence number 4 of a very long single paragraph about quokkas!\n\nThis is sentence number 5 of a very long single paragraph about quokkas!\n\nThis is sentence number 6 of a very long single paragraph about quokkas!\n\nThis is sentence number 7 of a very long single paragraph about quokkas!\n\nThis is sentence number 8 of a very long single paragraph about quokkas!\n\nThis is sentence number 9 of a very long single paragraph about quokkas!\n\nThis is sentence number 10 of a very long single paragraph about quokkas!\n\nThis is sentence number 11 of a very long single paragraph about quokkas!\n\nThis is sentence number 12 of a very long single paragraph about quokkas!\n\nThis is sentence number 13 of a very long single paragraph about quokkas!\n\nThis is sentence number 14 of a very long single paragraph about quokkas!\n\nThis is sentence number 15 of a very long single paragraph about quokkas!\n\nThis is sentence number 16 of a very long single paragraph about quokkas!\n\nThis is sentence number 17 of a very long single paragraph about quokkas!\n\nThis is sentence number 18 of a very long single paragraph about quokkas!\n\nThis is sentence number 19 of a very long single paragraph about quokkas!",
+          "queryTerms": [
+            "quokkas"
+          ]
+        },
+        {
+          "path": "sentences.md",
+          "title": "Sentences",
+          "type": "markdown",
+          "seq": 3,
+          "text": "51 of a very long single paragraph about quokkas!\n\nThis is sentence number 52 of a very long single paragraph about quokkas!\n\nThis is sentence number 53 of a very long single paragraph about quokkas!\n\nThis is sentence number 54 of a very long single paragraph about quokkas!\n\nThis is sentence number 55 of a very long single paragraph about quokkas!\n\nThis is sentence number 56 of a very long single paragraph about quokkas!\n\nThis is sentence number 57 of a very long single paragraph about quokkas!\n\nThis is sentence number 58 of a very long single paragraph about quokkas!\n\nThis is sentence number 59 of a very long single paragraph about quokkas!",
+          "queryTerms": [
+            "quokkas"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "quokka",
+        "limit": 8
+      },
+      "expect": [
+        {
+          "path": "blank-lines.md",
+          "title": "Blank lines",
+          "type": "markdown",
+          "seq": 0,
+          "text": "first quokka\n\nsecond quokka\n\nthird quokka\n\nfourth quokka\n\nfifth quokka",
+          "queryTerms": [
+            "quokka"
+          ]
+        },
+        {
+          "path": "sentences.md",
+          "title": "Sentences",
+          "type": "markdown",
+          "seq": 1,
+          "text": "17 of a very long single paragraph about quokkas!\n\nThis is sentence number 18 of a very long single paragraph about quokkas!\n\nThis is sentence number 19 of a very long single paragraph about quokkas!\n\nThis is sentence number 20 of a very long single paragraph about quokkas!\n\nThis is sentence number 21 of a very long single paragraph about quokkas!\n\nThis is sentence number 22 of a very long single paragraph about quokkas!\n\nThis is sentence number 23 of a very long single paragraph about quokkas!\n\nThis is sentence number 24 of a very long single paragraph about quokkas!\n\nThis is sentence number 25 of a very long single paragraph about quokkas!\n\nThis is sentence number 26 of a very long single paragraph about quokkas!\n\nThis is sentence number 27 of a very long single paragraph about quokkas!\n\nThis is sentence number 28 of a very long single paragraph about quokkas!\n\nThis is sentence number 29 of a very long single paragraph about quokkas!\n\nThis is sentence number 30 of a very long single paragraph about quokkas!\n\nThis is sentence number 31 of a very long single paragraph about quokkas!\n\nThis is sentence number 32 of a very long single paragraph about quokkas!\n\nThis is sentence number 33 of a very long single paragraph about quokkas!\n\nThis is sentence number 34 of a very long single paragraph about quokkas!\n\nThis is sentence number 35 of a very long single paragraph about quokkas!\n\nThis is sentence number 36 of a very long single paragraph about quokkas!",
+          "queryTerms": [
+            "quokkas"
+          ]
+        },
+        {
+          "path": "sentences.md",
+          "title": "Sentences",
+          "type": "markdown",
+          "seq": 2,
+          "text": "34 of a very long single paragraph about quokkas!\n\nThis is sentence number 35 of a very long single paragraph about quokkas!\n\nThis is sentence number 36 of a very long single paragraph about quokkas!\n\nThis is sentence number 37 of a very long single paragraph about quokkas!\n\nThis is sentence number 38 of a very long single paragraph about quokkas!\n\nThis is sentence number 39 of a very long single paragraph about quokkas!\n\nThis is sentence number 40 of a very long single paragraph about quokkas!\n\nThis is sentence number 41 of a very long single paragraph about quokkas!\n\nThis is sentence number 42 of a very long single paragraph about quokkas!\n\nThis is sentence number 43 of a very long single paragraph about quokkas!\n\nThis is sentence number 44 of a very long single paragraph about quokkas!\n\nThis is sentence number 45 of a very long single paragraph about quokkas!\n\nThis is sentence number 46 of a very long single paragraph about quokkas!\n\nThis is sentence number 47 of a very long single paragraph about quokkas!\n\nThis is sentence number 48 of a very long single paragraph about quokkas!\n\nThis is sentence number 49 of a very long single paragraph about quokkas!\n\nThis is sentence number 50 of a very long single paragraph about quokkas!\n\nThis is sentence number 51 of a very long single paragraph about quokkas!\n\nThis is sentence number 52 of a very long single paragraph about quokkas!\n\nThis is sentence number 53 of a very long single paragraph about quokkas!",
+          "queryTerms": [
+            "quokkas"
+          ]
+        },
+        {
+          "path": "sentences.md",
+          "title": "Sentences",
+          "type": "markdown",
+          "seq": 0,
+          "text": "This is sentence number 0 of a very long single paragraph about quokkas!\n\nThis is sentence number 1 of a very long single paragraph about quokkas!\n\nThis is sentence number 2 of a very long single paragraph about quokkas!\n\nThis is sentence number 3 of a very long single paragraph about quokkas!\n\nThis is sentence number 4 of a very long single paragraph about quokkas!\n\nThis is sentence number 5 of a very long single paragraph about quokkas!\n\nThis is sentence number 6 of a very long single paragraph about quokkas!\n\nThis is sentence number 7 of a very long single paragraph about quokkas!\n\nThis is sentence number 8 of a very long single paragraph about quokkas!\n\nThis is sentence number 9 of a very long single paragraph about quokkas!\n\nThis is sentence number 10 of a very long single paragraph about quokkas!\n\nThis is sentence number 11 of a very long single paragraph about quokkas!\n\nThis is sentence number 12 of a very long single paragraph about quokkas!\n\nThis is sentence number 13 of a very long single paragraph about quokkas!\n\nThis is sentence number 14 of a very long single paragraph about quokkas!\n\nThis is sentence number 15 of a very long single paragraph about quokkas!\n\nThis is sentence number 16 of a very long single paragraph about quokkas!\n\nThis is sentence number 17 of a very long single paragraph about quokkas!\n\nThis is sentence number 18 of a very long single paragraph about quokkas!\n\nThis is sentence number 19 of a very long single paragraph about quokkas!",
+          "queryTerms": [
+            "quokkas"
+          ]
+        },
+        {
+          "path": "sentences.md",
+          "title": "Sentences",
+          "type": "markdown",
+          "seq": 3,
+          "text": "51 of a very long single paragraph about quokkas!\n\nThis is sentence number 52 of a very long single paragraph about quokkas!\n\nThis is sentence number 53 of a very long single paragraph about quokkas!\n\nThis is sentence number 54 of a very long single paragraph about quokkas!\n\nThis is sentence number 55 of a very long single paragraph about quokkas!\n\nThis is sentence number 56 of a very long single paragraph about quokkas!\n\nThis is sentence number 57 of a very long single paragraph about quokkas!\n\nThis is sentence number 58 of a very long single paragraph about quokkas!\n\nThis is sentence number 59 of a very long single paragraph about quokkas!",
+          "queryTerms": [
+            "quokkas"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "marker",
+        "limit": 5
+      },
+      "expect": [
+        {
+          "path": "emoji.md",
+          "title": "Emoji",
+          "type": "markdown",
+          "seq": 3,
+          "text": "日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本\n\n日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本 日本  marker",
+          "queryTerms": [
+            "marker"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "ending",
+        "limit": 5
+      },
+      "expect": [
+        {
+          "path": "long-word.md",
+          "title": "Long word",
+          "type": "markdown",
+          "seq": 3,
+          "text": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\n\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz ending",
+          "queryTerms": [
+            "ending"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "sentence",
+        "limit": 5
+      },
+      "expect": [
+        {
+          "path": "long.md",
+          "title": "Long document",
+          "type": "markdown",
+          "seq": 0,
+          "text": "alpha paragraph begins here. Sentence 0 about alpha things and other matters. Sentence 1 about alpha things and other matters. Sentence 2 about alpha things and other matters. Sentence 3 about alpha things and other matters. Sentence 4 about alpha things and other matters. Sentence 5 about alpha things and other matters. Sentence 6 about alpha things and other matters. Sentence 7 about alpha things and other matters. Sentence 8 about alpha things and other matters. Sentence 9 about alpha things and other matters. Sentence 10 about alpha things and other matters. Sentence 11 about alpha things and other matters.\n\nbeta paragraph begins here. Sentence 0 about beta things and other matters. Sentence 1 about beta things and other matters. Sentence 2 about beta things and other matters. Sentence 3 about beta things and other matters. Sentence 4 about beta things and other matters. Sentence 5 about beta things and other matters. Sentence 6 about beta things and other matters. Sentence 7 about beta things and other matters. Sentence 8 about beta things and other matters. Sentence 9 about beta things and other matters. Sentence 10 about beta things and other matters. Sentence 11 about beta things and other matters. Sentence 12 about beta things and other matters. Sentence 13 about beta things and other matters.",
+          "queryTerms": [
+            "sentence"
+          ]
+        },
+        {
+          "path": "long.md",
+          "title": "Long document",
+          "type": "markdown",
+          "seq": 2,
+          "text": "Sentence 6 about gamma things and other matters. Sentence 7 about gamma things and other matters. Sentence 8 about gamma things and other matters. Sentence 9 about gamma things and other matters.\n\ndelta paragraph begins here. Sentence 0 about delta things and other matters. Sentence 1 about delta things and other matters. Sentence 2 about delta things and other matters. Sentence 3 about delta things and other matters. Sentence 4 about delta things and other matters. Sentence 5 about delta things and other matters. Sentence 6 about delta things and other matters. Sentence 7 about delta things and other matters. Sentence 8 about delta things and other matters. Sentence 9 about delta things and other matters. Sentence 10 about delta things and other matters. Sentence 11 about delta things and other matters. Sentence 12 about delta things and other matters. Sentence 13 about delta things and other matters. Sentence 14 about delta things and other matters. Sentence 15 about delta things and other matters. Sentence 16 about delta things and other matters. Sentence 17 about delta things and other matters. Sentence 18 about delta things and other matters. Sentence 19 about delta things and other matters.",
+          "queryTerms": [
+            "sentence"
+          ]
+        },
+        {
+          "path": "long.md",
+          "title": "Long document",
+          "type": "markdown",
+          "seq": 1,
+          "text": "Sentence 10 about beta things and other matters. Sentence 11 about beta things and other matters. Sentence 12 about beta things and other matters. Sentence 13 about beta things and other matters.\n\ngamma paragraph begins here. Sentence 0 about gamma things and other matters. Sentence 1 about gamma things and other matters. Sentence 2 about gamma things and other matters. Sentence 3 about gamma things and other matters. Sentence 4 about gamma things and other matters. Sentence 5 about gamma things and other matters. Sentence 6 about gamma things and other matters. Sentence 7 about gamma things and other matters. Sentence 8 about gamma things and other matters. Sentence 9 about gamma things and other matters.",
+          "queryTerms": [
+            "sentence"
+          ]
+        },
+        {
+          "path": "sentences.md",
+          "title": "Sentences",
+          "type": "markdown",
+          "seq": 0,
+          "text": "This is sentence number 0 of a very long single paragraph about quokkas!\n\nThis is sentence number 1 of a very long single paragraph about quokkas!\n\nThis is sentence number 2 of a very long single paragraph about quokkas!\n\nThis is sentence number 3 of a very long single paragraph about quokkas!\n\nThis is sentence number 4 of a very long single paragraph about quokkas!\n\nThis is sentence number 5 of a very long single paragraph about quokkas!\n\nThis is sentence number 6 of a very long single paragraph about quokkas!\n\nThis is sentence number 7 of a very long single paragraph about quokkas!\n\nThis is sentence number 8 of a very long single paragraph about quokkas!\n\nThis is sentence number 9 of a very long single paragraph about quokkas!\n\nThis is sentence number 10 of a very long single paragraph about quokkas!\n\nThis is sentence number 11 of a very long single paragraph about quokkas!\n\nThis is sentence number 12 of a very long single paragraph about quokkas!\n\nThis is sentence number 13 of a very long single paragraph about quokkas!\n\nThis is sentence number 14 of a very long single paragraph about quokkas!\n\nThis is sentence number 15 of a very long single paragraph about quokkas!\n\nThis is sentence number 16 of a very long single paragraph about quokkas!\n\nThis is sentence number 17 of a very long single paragraph about quokkas!\n\nThis is sentence number 18 of a very long single paragraph about quokkas!\n\nThis is sentence number 19 of a very long single paragraph about quokkas!",
+          "queryTerms": [
+            "sentences"
+          ]
+        },
+        {
+          "path": "sentences.md",
+          "title": "Sentences",
+          "type": "markdown",
+          "seq": 1,
+          "text": "17 of a very long single paragraph about quokkas!\n\nThis is sentence number 18 of a very long single paragraph about quokkas!\n\nThis is sentence number 19 of a very long single paragraph about quokkas!\n\nThis is sentence number 20 of a very long single paragraph about quokkas!\n\nThis is sentence number 21 of a very long single paragraph about quokkas!\n\nThis is sentence number 22 of a very long single paragraph about quokkas!\n\nThis is sentence number 23 of a very long single paragraph about quokkas!\n\nThis is sentence number 24 of a very long single paragraph about quokkas!\n\nThis is sentence number 25 of a very long single paragraph about quokkas!\n\nThis is sentence number 26 of a very long single paragraph about quokkas!\n\nThis is sentence number 27 of a very long single paragraph about quokkas!\n\nThis is sentence number 28 of a very long single paragraph about quokkas!\n\nThis is sentence number 29 of a very long single paragraph about quokkas!\n\nThis is sentence number 30 of a very long single paragraph about quokkas!\n\nThis is sentence number 31 of a very long single paragraph about quokkas!\n\nThis is sentence number 32 of a very long single paragraph about quokkas!\n\nThis is sentence number 33 of a very long single paragraph about quokkas!\n\nThis is sentence number 34 of a very long single paragraph about quokkas!\n\nThis is sentence number 35 of a very long single paragraph about quokkas!\n\nThis is sentence number 36 of a very long single paragraph about quokkas!",
+          "queryTerms": [
+            "sentences"
+          ]
+        }
+      ]
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "!!!",
+        "limit": 5
+      },
+      "expect": []
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "",
+        "limit": 5
+      },
+      "expect": []
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "wombats",
+        "limit": 0
+      },
+      "expect": []
+    },
+    {
+      "op": "remove",
+      "arg": {
+        "vaultId": "fixture",
+        "paths": [
+          "long.md"
+        ]
+      }
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "alpha",
+        "limit": 5
+      },
+      "expect": []
+    },
+    {
+      "op": "upsert",
+      "arg": {
+        "vaultId": "fixture",
+        "docs": [
+          {
+            "path": "short.md",
+            "type": "markdown",
+            "title": "Short",
+            "content": "Replaced with text about numbats.",
+            "tags": [],
+            "size": 100,
+            "mtime": 1700000000000
+          }
+        ]
+      }
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "wombats",
+        "limit": 5
+      },
+      "expect": []
+    },
+    {
+      "op": "searchPassages",
+      "arg": {
+        "query": "numbats",
+        "limit": 5
+      },
+      "expect": [
+        {
+          "path": "short.md",
+          "title": "Short",
+          "type": "markdown",
+          "seq": 0,
+          "text": "Replaced with text about numbats.",
+          "queryTerms": [
+            "numbats"
+          ]
+        }
+      ]
+    }
+  ]
+}

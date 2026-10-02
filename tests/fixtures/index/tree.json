@@ -1,0 +1,278 @@
+{
+  "name": "folder listings: record, replace, forget vanished folders",
+  "steps": [
+    {
+      "op": "children",
+      "arg": {
+        "dir": ""
+      },
+      "expect": null
+    },
+    {
+      "op": "setChildren",
+      "arg": {
+        "vaultId": "fixture",
+        "listings": []
+      }
+    },
+    {
+      "op": "setChildren",
+      "arg": {
+        "vaultId": "fixture",
+        "listings": [
+          {
+            "dir": "",
+            "entries": [
+              {
+                "name": "Notes",
+                "path": "Notes",
+                "isDirectory": true,
+                "size": 0,
+                "mtime": 0
+              },
+              {
+                "name": "📁 Emoji",
+                "path": "📁 Emoji",
+                "isDirectory": true,
+                "size": 0,
+                "mtime": 0
+              },
+              {
+                "name": "readme.md",
+                "path": "readme.md",
+                "isDirectory": false,
+                "size": 12,
+                "mtime": 1700000000000
+              }
+            ]
+          },
+          {
+            "dir": "Notes",
+            "entries": [
+              {
+                "name": "Sub",
+                "path": "Notes/Sub",
+                "isDirectory": true,
+                "size": 0,
+                "mtime": 0
+              },
+              {
+                "name": "a.md",
+                "path": "Notes/a.md",
+                "isDirectory": false,
+                "size": 5,
+                "mtime": 1700000000001
+              }
+            ]
+          },
+          {
+            "dir": "Notes/Sub",
+            "entries": [
+              {
+                "name": "deep.md",
+                "path": "Notes/Sub/deep.md",
+                "isDirectory": false,
+                "size": 1,
+                "mtime": 2
+              }
+            ]
+          },
+          {
+            "dir": "📁 Emoji",
+            "entries": [
+              {
+                "name": "x.md",
+                "path": "📁 Emoji/x.md",
+                "isDirectory": false,
+                "size": 1,
+                "mtime": 3
+              }
+            ]
+          },
+          {
+            "dir": "Empty",
+            "entries": []
+          }
+        ]
+      }
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": ""
+      },
+      "expect": [
+        {
+          "name": "readme.md",
+          "path": "readme.md",
+          "isDirectory": false,
+          "size": 12,
+          "mtime": 1700000000000
+        },
+        {
+          "name": "Notes",
+          "path": "Notes",
+          "isDirectory": true,
+          "size": 0,
+          "mtime": 0
+        },
+        {
+          "name": "📁 Emoji",
+          "path": "📁 Emoji",
+          "isDirectory": true,
+          "size": 0,
+          "mtime": 0
+        }
+      ]
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": "Notes"
+      },
+      "expect": [
+        {
+          "name": "a.md",
+          "path": "Notes/a.md",
+          "isDirectory": false,
+          "size": 5,
+          "mtime": 1700000000001
+        },
+        {
+          "name": "Sub",
+          "path": "Notes/Sub",
+          "isDirectory": true,
+          "size": 0,
+          "mtime": 0
+        }
+      ]
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": "Notes/Sub"
+      },
+      "expect": [
+        {
+          "name": "deep.md",
+          "path": "Notes/Sub/deep.md",
+          "isDirectory": false,
+          "size": 1,
+          "mtime": 2
+        }
+      ]
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": "Empty"
+      },
+      "expect": []
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": "Never"
+      },
+      "expect": null
+    },
+    {
+      "op": "setChildren",
+      "arg": {
+        "vaultId": "fixture",
+        "listings": [
+          {
+            "dir": "Notes",
+            "entries": [
+              {
+                "name": "a.md",
+                "path": "Notes/a.md",
+                "isDirectory": false,
+                "size": 6,
+                "mtime": 1700000000002
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": "Notes"
+      },
+      "expect": [
+        {
+          "name": "a.md",
+          "path": "Notes/a.md",
+          "isDirectory": false,
+          "size": 6,
+          "mtime": 1700000000002
+        }
+      ]
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": "Notes/Sub"
+      },
+      "expect": null
+    },
+    {
+      "op": "setChildren",
+      "arg": {
+        "vaultId": "fixture",
+        "listings": [
+          {
+            "dir": "",
+            "entries": [
+              {
+                "name": "readme.md",
+                "path": "readme.md",
+                "isDirectory": false,
+                "size": 12,
+                "mtime": 1700000000000
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": ""
+      },
+      "expect": [
+        {
+          "name": "readme.md",
+          "path": "readme.md",
+          "isDirectory": false,
+          "size": 12,
+          "mtime": 1700000000000
+        }
+      ]
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": "Notes"
+      },
+      "expect": null
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": "📁 Emoji"
+      },
+      "expect": null
+    },
+    {
+      "op": "children",
+      "arg": {
+        "dir": "Empty"
+      },
+      "expect": []
+    }
+  ]
+}

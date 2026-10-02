@@ -1,0 +1,215 @@
+{
+  "name": "modified-time bounds are inclusive instants",
+  "steps": [
+    {
+      "op": "upsert",
+      "arg": {
+        "vaultId": "fixture",
+        "docs": [
+          {
+            "path": "old.md",
+            "type": "markdown",
+            "title": "Old",
+            "content": "item",
+            "tags": [],
+            "size": 100,
+            "mtime": 1759838400000
+          },
+          {
+            "path": "mid.md",
+            "type": "markdown",
+            "title": "Mid",
+            "content": "item",
+            "tags": [],
+            "size": 100,
+            "mtime": 1768478400000
+          },
+          {
+            "path": "new.md",
+            "type": "markdown",
+            "title": "New",
+            "content": "item",
+            "tags": [],
+            "size": 100,
+            "mtime": 1777118400000
+          },
+          {
+            "path": "edge.md",
+            "type": "markdown",
+            "title": "Edge",
+            "content": "item",
+            "tags": [],
+            "size": 100,
+            "mtime": 1768478400001
+          }
+        ]
+      }
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "item",
+        "filters": {
+          "modifiedFrom": 1768478400000
+        }
+      },
+      "expect": [
+        {
+          "id": "mid.md",
+          "path": "mid.md",
+          "title": "Mid",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "item",
+          "snippetAfter": ""
+        },
+        {
+          "id": "new.md",
+          "path": "new.md",
+          "title": "New",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "item",
+          "snippetAfter": ""
+        },
+        {
+          "id": "edge.md",
+          "path": "edge.md",
+          "title": "Edge",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "item",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "item",
+        "filters": {
+          "modifiedTo": 1768478400000
+        }
+      },
+      "expect": [
+        {
+          "id": "old.md",
+          "path": "old.md",
+          "title": "Old",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "item",
+          "snippetAfter": ""
+        },
+        {
+          "id": "mid.md",
+          "path": "mid.md",
+          "title": "Mid",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "item",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "item",
+        "filters": {
+          "modifiedFrom": 1768478400000,
+          "modifiedTo": 1768478400001
+        }
+      },
+      "expect": [
+        {
+          "id": "mid.md",
+          "path": "mid.md",
+          "title": "Mid",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "item",
+          "snippetAfter": ""
+        },
+        {
+          "id": "edge.md",
+          "path": "edge.md",
+          "title": "Edge",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "",
+          "snippetHit": "item",
+          "snippetAfter": ""
+        }
+      ]
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "item",
+        "filters": {
+          "modifiedFrom": 1768478400002,
+          "modifiedTo": 1768478400003
+        }
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "item",
+        "filters": {
+          "modifiedFrom": 1785758400000
+        }
+      },
+      "expect": []
+    },
+    {
+      "op": "search",
+      "arg": {
+        "query": "",
+        "filters": {
+          "modifiedFrom": 1768478400000
+        }
+      },
+      "expect": [
+        {
+          "id": "edge.md",
+          "path": "edge.md",
+          "title": "Edge",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "item",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "mid.md",
+          "path": "mid.md",
+          "title": "Mid",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "item",
+          "snippetHit": "",
+          "snippetAfter": ""
+        },
+        {
+          "id": "new.md",
+          "path": "new.md",
+          "title": "New",
+          "type": "markdown",
+          "matches": [],
+          "snippetBefore": "item",
+          "snippetHit": "",
+          "snippetAfter": ""
+        }
+      ]
+    }
+  ]
+}
