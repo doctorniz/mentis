@@ -14,6 +14,7 @@ import type { SyncManager } from '@/lib/sync/sync-manager'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { VaultSyncConfig } from '@/types/vault'
 import { toast } from '@/stores/toast'
+import { SYNC_SIGNED_IN_EVENT } from '@/lib/sync/oauth-session'
 
 interface SyncContextValue {
   status: SyncStatus
@@ -46,6 +47,14 @@ export function SyncProvider({
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [canManualSync, setCanManualSync] = useState(false)
   const prevStatusRef = useRef<SyncStatus>('idle')
+  // Bumped when sign-in finishes without a page reload (the desktop app), so the
+  // effect below looks for the new token.
+  const [signInTick, setSignInTick] = useState(0)
+  useEffect(() => {
+    const onSignedIn = () => setSignInTick((n) => n + 1)
+    window.addEventListener(SYNC_SIGNED_IN_EVENT, onSignedIn)
+    return () => window.removeEventListener(SYNC_SIGNED_IN_EVENT, onSignedIn)
+  }, [])
 
   // Primitive dependency key: excludePaths is a fresh array identity on
   // every config save; keying on the joined string avoids re-creating
@@ -140,6 +149,7 @@ export function SyncProvider({
     vaultFs,
     vaultId,
     vaultLabel,
+    signInTick,
   ])
 
   const pushFile = useCallback((path: string) => {

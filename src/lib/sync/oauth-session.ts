@@ -2,6 +2,9 @@
 
 export const DROPBOX_OAUTH_SESSION_KEY = 'mentis_sync_oauth_dropbox'
 
+/** Window event: a sync sign-in finished in place, so sync should look for its token. */
+export const SYNC_SIGNED_IN_EVENT = 'ink:sync-signed-in'
+
 export interface DropboxOAuthSession {
   /** Must match `SyncProvider` token key (`activeVaultPath` / scoped vault path). */
   vaultId: string

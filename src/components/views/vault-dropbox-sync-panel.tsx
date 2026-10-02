@@ -6,6 +6,8 @@ import { useVaultStore } from '@/stores/vault'
 import type { VaultConfig, VaultSyncConfig } from '@/types/vault'
 import { getToken, clearToken } from '@/lib/sync/token-store'
 import { stashDropboxOAuthSession } from '@/lib/sync/oauth-session'
+import { isTauri } from '@/lib/fs/platform'
+import { SYNC_SIGNED_IN_EVENT } from '@/lib/sync/oauth-session'
 
 const DEFAULT_SYNC: VaultSyncConfig = {
   provider: null,
@@ -119,9 +121,16 @@ export function VaultDropboxSyncPanel({
       const updatedConfig = mergeFullConfig(vaultConfig, nextSync)
       await saveFullConfig(updatedConfig)
       setSync(nextSync)
-      stashDropboxOAuthSession({ vaultId: activeVaultPath, remoteRoot })
       const { DropboxProvider } = await import('@/lib/sync/providers/dropbox')
       const dbx = new DropboxProvider({ clientId, vaultId: activeVaultPath, remoteRoot })
+      if (isTauri()) {
+        const { signInThroughBrowser } = await import('@/lib/sync/oauth-desktop')
+        await signInThroughBrowser(dbx)
+        setIsConnected(true)
+        window.dispatchEvent(new Event(SYNC_SIGNED_IN_EVENT))
+        return
+      }
+      stashDropboxOAuthSession({ vaultId: activeVaultPath, remoteRoot })
       window.location.href = dbx.getAuthUrl(`${window.location.origin}/auth/dropbox`)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)

@@ -13,9 +13,21 @@
  * Ollama box can override via Settings → AI → Base URL.
  */
 
+import { isTauri } from '@/lib/fs/platform'
 import type { ChatCompletionRequest, ChatProvider, ChatStreamChunk } from './types'
 
 const DEFAULT_BASE_URL = 'http://localhost:11434/v1'
+
+/**
+ * Added to "cannot reach Ollama" errors in the desktop app. A request the server
+ * refuses for its origin fails exactly like one that never connected, and
+ * Ollama only trusts some origins by default.
+ */
+export function ollamaDesktopHint(): string {
+  return isTauri()
+    ? " In the Mentis desktop app, Ollama must also allow the app's origin: set OLLAMA_ORIGINS=* (or http://tauri.localhost) and restart Ollama."
+    : ''
+}
 
 async function* streamOllama(req: ChatCompletionRequest): AsyncGenerator<ChatStreamChunk> {
   const base = (req.baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/$/, '')
@@ -47,7 +59,7 @@ async function* streamOllama(req: ChatCompletionRequest): AsyncGenerator<ChatStr
     const msg = err instanceof Error ? err.message : String(err)
     yield {
       type: 'error',
-      message: `Could not reach Ollama at ${base} — is the server running? (${msg})`,
+      message: `Could not reach Ollama at ${base} — is the server running? (${msg})${ollamaDesktopHint()}`,
     }
     return
   }

@@ -1,6 +1,8 @@
 #[doc(hidden)]
 pub mod index;
 #[doc(hidden)]
+pub mod oauth;
+#[doc(hidden)]
 pub mod vault_fs;
 #[doc(hidden)]
 pub mod vaults;
@@ -15,6 +17,7 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
     builder
         .manage(vault_fs::VaultRoots::default())
         .manage(watch::VaultWatcher::default())
+        .manage(oauth::OAuthAttempt::default())
         .manage(index::SharedHost::new(std::sync::Mutex::new(
             index::IndexHost::unplaced(),
         )))
@@ -48,6 +51,7 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             index::index_call,
             watch::vault_watch_start,
             watch::vault_watch_stop,
+            oauth::oauth_authorize,
         ])
 }
 

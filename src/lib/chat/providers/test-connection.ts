@@ -7,6 +7,7 @@
  */
 
 import type { ChatProviderId } from '@/types/chat'
+import { ollamaDesktopHint } from './ollama'
 
 export interface TestResult {
   ok: boolean
@@ -164,13 +165,13 @@ async function testOllama(_apiKey: string, baseUrl?: string): Promise<TestResult
     if (res.ok) return { ok: true }
     return {
       ok: false,
-      error: `Cannot reach Ollama at ${base}. Is \`ollama serve\` running?`,
+      error: `Cannot reach Ollama at ${base}. Is \`ollama serve\` running?${ollamaDesktopHint()}`,
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     return {
       ok: false,
-      error: `Cannot reach Ollama at ${base}: ${msg}`,
+      error: `Cannot reach Ollama at ${base}: ${msg}${ollamaDesktopHint()}`,
     }
   }
 }
