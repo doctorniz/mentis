@@ -104,10 +104,30 @@ function processReport() {
   }
   const app = list('mentis.exe')
   const web = list('msedgewebview2.exe')
+  // Whether the debugging flag reached the browser process, and whether
+  // anything (that process or another) holds the port.
+  const powershell = (command) =>
+    (
+      spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', command], {
+        encoding: 'utf8',
+      }).stdout ?? ''
+    ).trim()
+  const browserCommandLines = powershell(
+    'Get-CimInstance Win32_Process -Filter "Name=\'msedgewebview2.exe\'" | ' +
+      "Where-Object { $_.CommandLine -match '--webview-exe-name=mentis.exe' -and $_.CommandLine -notmatch '--type=' } | " +
+      'ForEach-Object { $_.CommandLine }',
+  )
+  const portOwners = powershell(
+    `Get-NetTCPConnection -LocalPort ${DEBUG_PORT} -ErrorAction SilentlyContinue | ` +
+      'ForEach-Object { "$($_.LocalAddress):$($_.LocalPort) $($_.State) pid $($_.OwningProcess) " + ' +
+      '(Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName }',
+  )
   return [
     `App processes: ${app.length ? app.map((l) => describe(l)).join('; ') : 'none'}`,
     `WebView2 processes: ${web.length}`,
     `Webview profile created: ${fs.existsSync(path.join(webProfile, 'EBWebView'))}`,
+    `WebView2 browser command line: ${browserCommandLines || 'not found'}`,
+    `Port ${DEBUG_PORT}: ${portOwners || 'nothing bound'}`,
   ]
 }
 
