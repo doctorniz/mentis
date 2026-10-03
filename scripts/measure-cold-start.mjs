@@ -87,6 +87,30 @@ function launch(env) {
   return child
 }
 
+// What was running when a launch stalled: the session the app is in (a
+// service session cannot show windows), its WebView2 processes, its profile.
+const diagnostics = []
+function processReport() {
+  const list = (image) =>
+    spawnSync('tasklist', ['/V', '/FO', 'CSV', '/NH', '/FI', `IMAGENAME eq ${image}`], {
+      encoding: 'utf8',
+    })
+      .stdout.split(/\r?\n/)
+      .filter((l) => l.startsWith('"'))
+  // Image, PID, session name, session #, status, window title.
+  const describe = (row) => {
+    const c = row.slice(1, -1).split('","')
+    return [c[0], c[1], c[2], c[3], c[5], c[8]].join(' | ')
+  }
+  const app = list('mentis.exe')
+  const web = list('msedgewebview2.exe')
+  return [
+    `App processes: ${app.length ? app.map((l) => describe(l)).join('; ') : 'none'}`,
+    `WebView2 processes: ${web.length}`,
+    `Webview profile created: ${fs.existsSync(path.join(webProfile, 'EBWebView'))}`,
+  ]
+}
+
 function webView2Version() {
   const key = 'Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
   for (const hive of [
@@ -125,7 +149,10 @@ async function seedWindowState(vault) {
       if (child.exitCode !== null) {
         throw new Error(`the app exited (code ${child.exitCode}) before its window opened`)
       }
-      if (Date.now() > deadline) throw new Error('the debugging port never opened')
+      if (Date.now() > deadline) {
+        diagnostics.push(...processReport())
+        throw new Error('the debugging port never opened')
+      }
       try {
         browser = await chromium.connectOverCDP(`http://127.0.0.1:${DEBUG_PORT}`)
       } catch {
@@ -189,6 +216,7 @@ try {
 } catch (err) {
   console.error(`Cold-start measurement failed: ${err.message}`)
   console.error(`  WebView2 runtime: ${webView2Version()}`)
+  for (const line of diagnostics) console.error(`  ${line}`)
   const output = appOutput.join('').trim()
   console.error(output ? `  App output:\n${output.slice(-4000)}` : '  The app printed nothing.')
   process.exitCode = 1
