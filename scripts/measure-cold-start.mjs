@@ -74,6 +74,33 @@ function killTree(child) {
   }
 }
 
+// The app's own output, kept so a failed run can say why.
+const appOutput = []
+function launch(env) {
+  const child = spawn(exe, [], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, ...env },
+  })
+  for (const stream of [child.stdout, child.stderr]) {
+    stream.on('data', (chunk) => appOutput.push(String(chunk)))
+  }
+  return child
+}
+
+function webView2Version() {
+  const key = 'Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+  for (const hive of [
+    `HKLM\\SOFTWARE\\WOW6432Node\\${key}`,
+    `HKLM\\SOFTWARE\\${key}`,
+    `HKCU\\Software\\${key}`,
+  ]) {
+    const out = spawnSync('reg', ['query', hive, '/v', 'pv'], { encoding: 'utf8' }).stdout ?? ''
+    const m = out.match(/pv\s+REG_SZ\s+(\S+)/)
+    if (m && m[1] !== '0.0.0.0') return m[1]
+  }
+  return 'not found'
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 function makeVault() {
@@ -88,17 +115,16 @@ function makeVault() {
 
 async function seedWindowState(vault) {
   const { chromium } = await import('@playwright/test')
-  const child = spawn(exe, [], {
-    stdio: 'ignore',
-    env: {
-      ...process.env,
-      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${DEBUG_PORT}`,
-    },
+  const child = launch({
+    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${DEBUG_PORT}`,
   })
   try {
     const deadline = Date.now() + LAUNCH_TIMEOUT_MS
     let browser
     while (!browser) {
+      if (child.exitCode !== null) {
+        throw new Error(`the app exited (code ${child.exitCode}) before its window opened`)
+      }
       if (Date.now() > deadline) throw new Error('the debugging port never opened')
       try {
         browser = await chromium.connectOverCDP(`http://127.0.0.1:${DEBUG_PORT}`)
@@ -129,10 +155,7 @@ async function seedWindowState(vault) {
 async function launchOnce(report) {
   fs.rmSync(report, { force: true })
   const spawnedAt = Date.now()
-  const child = spawn(exe, [], {
-    stdio: 'ignore',
-    env: { ...process.env, MENTIS_STARTUP_REPORT: report },
-  })
+  const child = launch({ MENTIS_STARTUP_REPORT: report })
   const exited = new Promise((r) => child.once('exit', r))
   const timedOut = sleep(LAUNCH_TIMEOUT_MS).then(() => 'timeout')
   const result = await Promise.race([exited, timedOut])
@@ -165,6 +188,9 @@ try {
   }
 } catch (err) {
   console.error(`Cold-start measurement failed: ${err.message}`)
+  console.error(`  WebView2 runtime: ${webView2Version()}`)
+  const output = appOutput.join('').trim()
+  console.error(output ? `  App output:\n${output.slice(-4000)}` : '  The app printed nothing.')
   process.exitCode = 1
 } finally {
   restore()
