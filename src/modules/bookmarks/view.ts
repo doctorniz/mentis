@@ -1,6 +1,12 @@
 import { Bookmark } from 'lucide-react'
 import type { ViewComponent, ViewDefinition } from '@/core/registries/views'
 
+declare module '@/core/registries/views' {
+  interface ViewIds {
+    bookmarks: true
+  }
+}
+
 const view: ViewDefinition = {
   id: 'bookmarks',
   label: 'Bookmarks',

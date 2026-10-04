@@ -1,3 +1,5 @@
+import { HOME_VIEW } from '@/core/registries/views'
+
 export interface VaultSyncConfig {
   provider: 'dropbox' | null
   /** Absolute Dropbox path for this vault, e.g. `/Apps/Mentis/MyVault` */
@@ -21,7 +23,8 @@ export interface VaultConfig {
   theme: 'light' | 'dark' | 'system'
   snapshots: SnapshotConfig
   autoSave: AutoSaveConfig
-  defaultView: ViewMode
+  /** View id the vault opens on. Unknown ids open the home view. */
+  defaultView: string
   /** Folder that holds templates (relative to vault root, no leading slash) */
   templateFolder: string
   /** Default destination folder for new notes/PDFs/drawings ('/' = root) */
@@ -66,32 +69,6 @@ export interface AutoSaveConfig {
   saveOnBlur: boolean
 }
 
-export enum ViewMode {
-  /**
-   * Tier-1 "whole vault" chat. Full-viewport BYO-LLM surface that can reach
-   * across every note/PDF in the vault, as opposed to the per-document chat
-   * panel that's scoped to the currently open file.
-   */
-  VaultChat = 'vault-chat',
-  Vault = 'vault',
-  /** @deprecated use ViewMode.Vault */
-  FileBrowser = 'file-browser',
-  /** @deprecated use ViewMode.Vault */
-  Notes = 'notes',
-  Search = 'search',
-  Graph = 'graph',
-  Board = 'board',
-  /** @deprecated folded into ViewMode.Organizer */
-  Tasks = 'tasks',
-  Bookmarks = 'bookmarks',
-  /** Full file browser — shows all folders including hidden system ones */
-  Files = 'files',
-  /** @deprecated folded into ViewMode.Organizer */
-  Calendar = 'calendar',
-  /** Unified organizer: Tasks, Lists, Calendars, Reminders */
-  Organizer = 'organizer',
-}
-
 /** Sub-mode within the unified Vault view (toolbar: Preview / Files) */
 export type VaultLayoutMode = 'browse' | 'tree'
 
@@ -125,7 +102,7 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
     intervalMs: 5_000,
     saveOnBlur: true,
   },
-  defaultView: ViewMode.Vault,
+  defaultView: HOME_VIEW,
   templateFolder: TEMPLATES_DIR,
   defaultNewFileFolder: '/',
   attachmentFolder: '_assets',

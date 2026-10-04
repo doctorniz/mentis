@@ -8,8 +8,8 @@ import { useVaultStore } from '@/stores/vault'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useBoardStore } from '@/stores/board'
-import { DEFAULT_VAULT_CONFIG, ViewMode } from '@/types/vault'
-import { fileTypes, titleForPath } from '@/core/registries'
+import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
+import { fileTypes, titleForPath, HOME_VIEW } from '@/core/registries'
 import type { FileTypeDefinition } from '@/core/registries/file-types'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 import { allocateUniqueFilePath } from '@/lib/notes/new-note'
@@ -76,7 +76,7 @@ export function useNewFileActions(onDone: () => void) {
         else await vaultFs.writeFile(path, content)
 
         const reveal = spec.revealInTree !== false
-        useUiStore.getState().setActiveView(ViewMode.Vault)
+        useUiStore.getState().setActiveView(HOME_VIEW)
         useUiStore.getState().setVaultMode('tree')
         if (reveal) useFileTreeStore.getState().setSelectedPath(path)
         useEditorStore.getState().openTab({
@@ -133,7 +133,7 @@ export function useNewFileActions(onDone: () => void) {
           count++
         }
         window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-        useUiStore.getState().setActiveView(ViewMode.Vault)
+        useUiStore.getState().setActiveView(HOME_VIEW)
 
         if (count === 1) {
           const def = opensAfterImport(lastPath)
@@ -167,7 +167,7 @@ export function useNewFileActions(onDone: () => void) {
     setBusy(true)
     try {
       await useBoardStore.getState().addThought(vaultFs)
-      useUiStore.getState().setActiveView(ViewMode.Board)
+      useUiStore.getState().setActiveView('board')
       window.dispatchEvent(new CustomEvent('ink:vault-changed'))
       onDone()
     } finally {

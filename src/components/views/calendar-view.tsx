@@ -17,7 +17,8 @@ import { EventDialog } from '@/components/calendar/event-dialog'
 import type { CalendarEvent } from '@/types/calendar'
 import { toDateStr } from '@/lib/calendar'
 import { listDailyNoteDates, openOrCreateDailyNote } from '@/lib/notes/daily-note'
-import { DAILY_NOTES_DIR, ViewMode } from '@/types/vault'
+import { DAILY_NOTES_DIR } from '@/types/vault'
+import { HOME_VIEW } from '@/core/registries'
 import { cn } from '@/utils/cn'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -180,7 +181,7 @@ export function CalendarView() {
         title: titleFromVaultPath(path),
         isDirty: false,
       })
-      setActiveView(ViewMode.Vault)
+      setActiveView(HOME_VIEW)
       void listDailyNoteDates(vaultFs, dailyFolder).then(setDailyNoteDates)
     },
     [vaultFs, dailyFolder, setActiveView],

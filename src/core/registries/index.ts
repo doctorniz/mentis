@@ -1,8 +1,14 @@
-import { createViewRegistry, type ViewDefinition } from '@/core/registries/views'
+import {
+  createViewRegistry,
+  HOME_VIEW,
+  type ViewDefinition,
+  type ViewId,
+} from '@/core/registries/views'
 import { createFileTypeRegistry, type FileTypeDefinition } from '@/core/registries/file-types'
 
 export type { FileTypeDefinition, FileTypeRegistry } from '@/core/registries/file-types'
-export type { ViewDefinition, ViewRegistry, ResolvedView } from '@/core/registries/views'
+export type { ViewDefinition, ViewRegistry, ResolvedView, ViewId } from '@/core/registries/views'
+export { HOME_VIEW } from '@/core/registries/views'
 
 /**
  * Every module registers itself by exporting a definition from
@@ -49,3 +55,8 @@ export const views = createViewRegistry(
     .sort()
     .map((key) => viewRegistrations[key].default),
 )
+
+/** A view id from outside the type system (a vault's config.json); home if it names no view. */
+export function viewIdOrHome(id: string | undefined): ViewId {
+  return id && views.resolve(id) ? (id as ViewId) : HOME_VIEW
+}

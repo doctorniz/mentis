@@ -12,8 +12,7 @@ import { useUiStore } from '@/stores/ui'
 import { useEditorStore } from '@/stores/editor'
 import { usePdfStore } from '@/stores/pdf'
 import { useCanvasStore } from '@/stores/canvas'
-import { ViewMode } from '@/types/vault'
-import { views } from '@/core/registries'
+import { views, HOME_VIEW } from '@/core/registries'
 
 export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   const setActiveView = useUiStore((s) => s.setActiveView)
@@ -85,7 +84,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
       if (e.key === 'f' || e.key === 'F') {
         e.preventDefault()
         // Navigate to Vault view and open the left-column search panel
-        setActiveView(ViewMode.Vault)
+        setActiveView(HOME_VIEW)
         window.dispatchEvent(new CustomEvent('ink:vault-search-open'))
         return
       }

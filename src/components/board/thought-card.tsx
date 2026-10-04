@@ -18,7 +18,7 @@ import type { BoardItem, ThoughtColor } from '@/types/board'
 import { cn } from '@/utils/cn'
 import { useUiStore } from '@/stores/ui'
 import { useEditorStore } from '@/stores/editor'
-import { ViewMode } from '@/types/vault'
+import { HOME_VIEW } from '@/core/registries'
 import { toast } from '@/stores/toast'
 
 const COLOR_CLASSES: Record<ThoughtColor, { bg: string; border: string }> = {
@@ -322,7 +322,7 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
         if (newPath) {
           useEditorStore.getState().setPendingVaultOpenPath(newPath)
           useUiStore.getState().setVaultMode('tree')
-          useUiStore.getState().setActiveView(ViewMode.Vault)
+          useUiStore.getState().setActiveView(HOME_VIEW)
         } else {
           toast.error('Could not move to vault')
         }

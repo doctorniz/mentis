@@ -1,6 +1,12 @@
 import { Sparkles } from 'lucide-react'
 import type { ViewComponent, ViewDefinition } from '@/core/registries/views'
 
+declare module '@/core/registries/views' {
+  interface ViewIds {
+    'vault-chat': true
+  }
+}
+
 const view: ViewDefinition = {
   id: 'vault-chat',
   label: 'Chat',

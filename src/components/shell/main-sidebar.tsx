@@ -24,13 +24,13 @@ import { useSync } from '@/contexts/sync-context'
 import { useUiStore, type ThemeChoice } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
 import { useVaultSession } from '@/contexts/vault-fs-context'
-import { ViewMode, DAILY_NOTES_DIR } from '@/types/vault'
+import { DAILY_NOTES_DIR } from '@/types/vault'
 import { openOrCreateDailyNote } from '@/lib/notes/daily-note'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useNewFileActions, type NewMenuItem } from '@/lib/notes/use-new-file-actions'
 import { cn } from '@/utils/cn'
-import { views } from '@/core/registries'
+import { views, HOME_VIEW } from '@/core/registries'
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -74,7 +74,7 @@ function DailyNoteDate() {
         title: titleFromVaultPath(path),
         isDirty: false,
       })
-      setActiveView(ViewMode.Vault)
+      setActiveView(HOME_VIEW)
     } finally {
       setBusy(false)
     }
@@ -153,7 +153,7 @@ export function MainSidebar({
       accent: 'text-red-500',
       order: 60,
       action: () => {
-        useUiStore.getState().setActiveView(ViewMode.Board)
+        useUiStore.getState().setActiveView('board')
         setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
         closeNew()
       },

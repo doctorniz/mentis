@@ -25,10 +25,10 @@ import { useVaultStore } from '@/stores/vault'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
-import { ViewMode, DAILY_NOTES_DIR } from '@/types/vault'
+import { DAILY_NOTES_DIR } from '@/types/vault'
 import { openOrCreateDailyNote } from '@/lib/notes/daily-note'
 import { cn } from '@/utils/cn'
-import { views } from '@/core/registries'
+import { views, HOME_VIEW } from '@/core/registries'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
@@ -73,7 +73,7 @@ function DailyNoteDate({ onClose }: { onClose: () => void }) {
         title: titleFromVaultPath(path),
         isDirty: false,
       })
-      setActiveView(ViewMode.Vault)
+      setActiveView(HOME_VIEW)
       onClose()
     } finally {
       setBusy(false)
@@ -156,7 +156,7 @@ export function MobileNavMasthead({
       accent: 'text-red-500',
       order: 60,
       action: () => {
-        useUiStore.getState().setActiveView(ViewMode.Board)
+        useUiStore.getState().setActiveView('board')
         setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
         closeMenu()
       },

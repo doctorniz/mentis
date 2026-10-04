@@ -7,14 +7,13 @@ import { useEditorStore } from '@/stores/editor'
 import { useUiStore } from '@/stores/ui'
 import { Button } from '@/components/ui/button'
 
-import { ViewMode } from '@/types/vault'
 import {
   buildNoteGraph,
   filterGraphByFolder,
   graphFolders,
   type GraphData,
 } from '@/lib/graph/build-graph'
-import { fileTypes } from '@/core/registries'
+import { fileTypes, HOME_VIEW } from '@/core/registries'
 import { resolveLinkEdges } from '@/lib/links/resolve-edges'
 import { reconcileSoon } from '@/lib/search/build-vault-index'
 import { getIndexLinks, getIndexManifest, whenSearchIndexOpen } from '@/lib/search/index'
@@ -120,7 +119,7 @@ export function GraphView() {
           : ('markdown' as const)
 
       openTab({ id: nodeId, path: nodeId, type, title, isDirty: false })
-      setActiveView(ViewMode.Vault)
+      setActiveView(HOME_VIEW)
       setVaultMode('tree')
     },
     [openTab, setActiveView, setVaultMode],
@@ -158,7 +157,7 @@ export function GraphView() {
           variant="ghost"
           size="sm"
           className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
-          onClick={() => setActiveView(ViewMode.Vault)}
+          onClick={() => setActiveView(HOME_VIEW)}
           aria-label="Back to vault"
           title="Back to Vault"
         >

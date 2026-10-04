@@ -1,6 +1,15 @@
 import { Vault } from 'lucide-react'
 import type { ViewComponent, ViewDefinition } from '@/core/registries/views'
 
+declare module '@/core/registries/views' {
+  interface ViewIds {
+    vault: true
+    'file-browser': true
+    notes: true
+    search: true
+  }
+}
+
 const view: ViewDefinition = {
   id: 'vault',
   label: 'Vault',

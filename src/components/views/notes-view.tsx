@@ -21,7 +21,6 @@ import { lazyEditorFor, preloadEditor } from '@/core/registries/lazy-editor'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
-import { ViewMode } from '@/types/vault'
 import { Button } from '@/components/ui/button'
 import {
   MOBILE_NAV_MEDIA_QUERY,
@@ -417,7 +416,7 @@ function NotesViewInner() {
     onGraphOpen: () => {
       manualTreeToggleRef.current = true
       setNotesTreeExpanded(false)
-      setActiveView(ViewMode.Graph)
+      setActiveView('graph')
     },
   }
 
@@ -486,7 +485,7 @@ function NotesViewInner() {
             variant="ghost"
             size="sm"
             className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
-            onClick={() => setActiveView(ViewMode.Graph)}
+            onClick={() => setActiveView('graph')}
             aria-label="Open graph"
             title="Graph"
           >

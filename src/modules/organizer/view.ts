@@ -1,6 +1,14 @@
 import { CalendarCheck } from 'lucide-react'
 import type { ViewComponent, ViewDefinition } from '@/core/registries/views'
 
+declare module '@/core/registries/views' {
+  interface ViewIds {
+    organizer: true
+    tasks: true
+    calendar: true
+  }
+}
+
 const view: ViewDefinition = {
   id: 'organizer',
   label: 'Organizer',

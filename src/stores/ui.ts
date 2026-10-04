@@ -1,20 +1,21 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
-import { ViewMode, type VaultLayoutMode } from '@/types/vault'
+import type { VaultLayoutMode } from '@/types/vault'
+import { HOME_VIEW, type ViewId } from '@/core/registries/views'
 import { useVaultStore } from '@/stores/vault'
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
 
 interface UiState {
   /** A view id or legacy alias from the view registry. */
-  activeView: string
+  activeView: ViewId
   vaultMode: VaultLayoutMode
   isSidebarOpen: boolean
   sidebarWidth: number
   theme: ThemeChoice
   activeModal: string | null
 
-  setActiveView: (view: string) => void
+  setActiveView: (view: ViewId) => void
   setVaultMode: (mode: VaultLayoutMode) => void
   /** Restore `vaultMode` from `localStorage` for the active vault path (call when vault opens or path changes). */
   hydrateVaultLayoutForActiveVault: () => void
@@ -58,7 +59,7 @@ function readStoredVaultMode(): VaultLayoutMode {
 
 export const useUiStore = create<UiState>()(
   immer((set) => ({
-    activeView: ViewMode.Vault,
+    activeView: HOME_VIEW,
     vaultMode: readStoredVaultMode(),
     isSidebarOpen: true,
     sidebarWidth: 260,

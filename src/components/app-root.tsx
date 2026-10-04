@@ -11,7 +11,7 @@ import { useVaultStore } from '@/stores/vault'
 import { useUiStore } from '@/stores/ui'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
-import { ViewMode } from '@/types/vault'
+import { HOME_VIEW, viewIdOrHome } from '@/core/registries'
 import { forgetLastVault } from '@/lib/vault/session'
 import { clearSearchIndex } from '@/lib/search/index'
 import { clearVaultChatSession } from '@/lib/chat/vault-chat-session'
@@ -57,7 +57,7 @@ export function AppRoot() {
       fileCount: 0,
       lastOpened: new Date().toISOString(),
     })
-    useUiStore.getState().setActiveView(config.defaultView ?? ViewMode.Vault)
+    useUiStore.getState().setActiveView(viewIdOrHome(config.defaultView))
 
     if (navigator.storage?.persist) {
       navigator.storage.persist().catch(() => {})
@@ -74,7 +74,7 @@ export function AppRoot() {
     useVaultStore.getState().reset()
     useEditorStore.getState().closeAllTabs()
     useFileTreeStore.getState().setSelectedPath(null)
-    useUiStore.getState().setActiveView(ViewMode.Vault)
+    useUiStore.getState().setActiveView(HOME_VIEW)
   }, [])
 
   return (

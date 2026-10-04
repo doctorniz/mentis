@@ -11,7 +11,7 @@ import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
 import { DEFAULT_CHAT_SETTINGS, type ChatSettings } from '@/types/chat'
-import { ViewMode } from '@/types/vault'
+import { HOME_VIEW } from '@/core/registries'
 import { cn } from '@/utils/cn'
 
 import { ChatInput } from './chat-input'
@@ -46,7 +46,7 @@ export function ChatPanel({
 
   const openVaultPath = useCallback(
     async (path: string) => {
-      useUiStore.getState().setActiveView(ViewMode.Vault)
+      useUiStore.getState().setActiveView(HOME_VIEW)
       useFileTreeStore.getState().setSelectedPath(path)
       useEditorStore.getState().addRecentFile(path)
       const { detectEditorTabType } = await import('@/lib/notes/editor-tab-from-path')

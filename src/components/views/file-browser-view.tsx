@@ -19,7 +19,6 @@ import { useFileBrowserStore } from '@/stores/file-browser'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
-import { ViewMode } from '@/types/vault'
 import type { FbFileItem, FbSortField, FbViewMode } from '@/types/file-browser'
 import {
   collectBrowserFiles,
@@ -29,7 +28,7 @@ import {
 import { toast } from '@/stores/toast'
 import { removeSearchDocument, searchVault } from '@/lib/search/index'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
-import { fileTypes } from '@/core/registries'
+import { fileTypes, HOME_VIEW } from '@/core/registries'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import type { SearchResult } from '@/types/search'
 import { Button } from '@/components/ui/button'
@@ -165,7 +164,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
   }, [searchDebounced])
 
   function openSearchResult(r: SearchResult) {
-    useUiStore.getState().setActiveView(ViewMode.Vault)
+    useUiStore.getState().setActiveView(HOME_VIEW)
     useUiStore.getState().setVaultMode('tree')
     useFileTreeStore.getState().setSelectedPath(r.path)
     useEditorStore.getState().addRecentFile(r.path)
@@ -349,7 +348,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
       setCurrentFolder(item.path)
       return
     }
-    useUiStore.getState().setActiveView(ViewMode.Vault)
+    useUiStore.getState().setActiveView(HOME_VIEW)
     useUiStore.getState().setVaultMode('tree')
     useFileTreeStore.getState().setSelectedPath(item.path)
     useEditorStore.getState().addRecentFile(item.path)

@@ -16,9 +16,26 @@ import type { LucideIcon } from 'lucide-react'
 
 export type ViewComponent = ComponentType<Record<string, unknown>>
 
+/**
+ * Every view id and alias, declared by the module that owns it:
+ *
+ *     declare module '@/core/registries/views' {
+ *       interface ViewIds { graph: true }
+ *     }
+ *
+ * so a mistyped id is a compile error, and core never names a module.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ViewIds {}
+
+export type ViewId = keyof ViewIds
+
+/** The view a vault opens on, and the one shown for an unknown id. */
+export const HOME_VIEW: ViewId = 'vault'
+
 export interface ViewAlias {
   /** An old id that still routes to this view (saved state, deep links). */
-  id: string
+  id: ViewId
   /** Props the view renders with when reached through this alias. */
   props?: Record<string, unknown>
   /** Highlight the view's nav item while the alias is active (default true). */
@@ -26,7 +43,7 @@ export interface ViewAlias {
 }
 
 export interface ViewDefinition {
-  id: string
+  id: ViewId
   label: string
   icon: LucideIcon
   /** Lazily loaded view. Loaded when first shown, or preloaded when idle. */
@@ -34,7 +51,7 @@ export interface ViewDefinition {
   /** Show in the nav, at this position; `shortcut` is the Ctrl+<digit>. */
   nav?: { order: number; shortcut?: string }
   /** For views outside the nav: the nav item to highlight while shown. */
-  highlights?: string
+  highlights?: ViewId
   aliases?: readonly ViewAlias[]
 }
 

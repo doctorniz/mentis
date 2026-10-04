@@ -1,6 +1,12 @@
 import { GitFork } from 'lucide-react'
 import type { ViewComponent, ViewDefinition } from '@/core/registries/views'
 
+declare module '@/core/registries/views' {
+  interface ViewIds {
+    graph: true
+  }
+}
+
 const view: ViewDefinition = {
   id: 'graph',
   label: 'Graph',

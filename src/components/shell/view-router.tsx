@@ -1,7 +1,6 @@
 import { Suspense, useEffect } from 'react'
 import { useUiStore } from '@/stores/ui'
-import { ViewMode } from '@/types/vault'
-import { views } from '@/core/registries'
+import { views, HOME_VIEW } from '@/core/registries'
 import { lazyViewFor, preloadViewsWhenIdle } from '@/core/registries/lazy-view'
 
 /**
@@ -14,7 +13,7 @@ export function ViewRouter() {
 
   useEffect(() => preloadViewsWhenIdle(), [])
 
-  const resolved = views.resolve(activeView) ?? views.resolve(ViewMode.Vault)
+  const resolved = views.resolve(activeView) ?? views.resolve(HOME_VIEW)
   if (!resolved) return null
   const View = lazyViewFor(resolved.def)
 

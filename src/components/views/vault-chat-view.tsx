@@ -63,7 +63,7 @@ import {
   type ChatSettings,
   type ChatThread,
 } from '@/types/chat'
-import { ViewMode } from '@/types/vault'
+import { HOME_VIEW } from '@/core/registries'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
 
@@ -842,7 +842,7 @@ function VaultChatMessageRow({ message }: { message: ChatMessageT }) {
 
   const openPath = useCallback(
     async (path: string) => {
-      useUiStore.getState().setActiveView(ViewMode.Vault)
+      useUiStore.getState().setActiveView(HOME_VIEW)
       useFileTreeStore.getState().setSelectedPath(path)
       useEditorStore.getState().addRecentFile(path)
       const { detectEditorTabType } = await import('@/lib/notes/editor-tab-from-path')
