@@ -35,6 +35,11 @@ async function openAt(root: string, name: string): Promise<VaultSession> {
   return { rootFs: fs, vaultFs: fs, vaultPath, config }
 }
 
+/** The vault CI's cold-start measurement asks to open, if any (src-tauri/src/startup.rs). */
+export function startupVault(): Promise<string | null> {
+  return invoke<string | null>('startup_vault').catch(() => null)
+}
+
 export function listRecentVaults(): Promise<RecentVault[]> {
   return invoke<RecentVault[]>('vault_recent')
 }

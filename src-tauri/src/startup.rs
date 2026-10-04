@@ -2,13 +2,19 @@
 //! window's "shell is up" signal writes the wall-clock time there and quits;
 //! the launcher compares it with the time it spawned the process. Without the
 //! variable the signal does nothing.
+//!
+//! A measured launch may also name the vault to open in `MENTIS_STARTUP_VAULT`,
+//! for a fresh profile with no remembered vault. It is ignored unless a report
+//! was asked for, and the folder must still be in the recent list to open.
 
+use std::ffi::OsString;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use tauri::{AppHandle, Runtime};
 
 pub const REPORT_ENV: &str = "MENTIS_STARTUP_REPORT";
+pub const VAULT_ENV: &str = "MENTIS_STARTUP_VAULT";
 
 /// Writes `{"readyAtMs": <unix ms>}` to `report`, if one was asked for.
 /// Returns whether a report was written.
@@ -28,6 +34,17 @@ pub fn startup_ready<R: Runtime>(app: AppHandle<R>) {
     if write_report(requested.as_deref().map(Path::new), now) {
         app.exit(0);
     }
+}
+
+/// The vault a measured launch asked for. Nothing unless a report was asked for too.
+fn measured_vault(report: Option<OsString>, vault: Option<OsString>) -> Option<String> {
+    report?;
+    vault?.into_string().ok().filter(|v| !v.is_empty())
+}
+
+#[tauri::command]
+pub fn startup_vault() -> Option<String> {
+    measured_vault(std::env::var_os(REPORT_ENV), std::env::var_os(VAULT_ENV))
 }
 
 #[cfg(test)]
@@ -55,5 +72,20 @@ mod tests {
             .join("mentis-no-such-dir")
             .join("r.json");
         assert!(!write_report(Some(&missing), 1));
+    }
+
+    #[test]
+    fn a_vault_is_only_named_for_a_measured_launch() {
+        assert_eq!(measured_vault(None, Some("C:/V".into())), None);
+        assert_eq!(
+            measured_vault(Some("r.json".into()), Some("C:/V".into())),
+            Some("C:/V".to_string())
+        );
+    }
+
+    #[test]
+    fn a_measured_launch_without_a_vault_names_none() {
+        assert_eq!(measured_vault(Some("r.json".into()), None), None);
+        assert_eq!(measured_vault(Some("r.json".into()), Some("".into())), None);
     }
 }

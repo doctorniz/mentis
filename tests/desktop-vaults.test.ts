@@ -11,6 +11,7 @@ const dirs = new Set<string>()
 const shell = {
   picked: null as string | null,
   recent: [] as string[],
+  startupVault: null as string | null,
   calls: [] as string[],
 }
 
@@ -33,6 +34,8 @@ vi.mock('@tauri-apps/api/core', () => ({
         case 'vault_open_recent':
           if (!shell.recent.includes(a.path) || !dirs.has(a.path)) throw 'not available'
           return a.path
+        case 'startup_vault':
+          return shell.startupVault
         case 'vault_recent':
           return shell.recent.map((path) => ({ path, name: path, available: dirs.has(path) }))
         case 'vault_exists':
@@ -70,6 +73,7 @@ describe('desktop vaults', () => {
     dirs.clear()
     shell.picked = null
     shell.recent = []
+    shell.startupVault = null
     shell.calls = []
     localStorage.clear()
     ;(window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {}
@@ -121,6 +125,30 @@ describe('desktop vaults', () => {
     localStorage.setItem(ACTIVE, 'tauri:C:/Gone')
     expect((await session.restoreLastVault()).status).toBe('none')
     expect(localStorage.getItem(ACTIVE)).toBeNull()
+  })
+
+  it('opens the vault a measured launch names when none is remembered', async () => {
+    dirs.add('C:/Measured')
+    shell.recent = ['C:/Measured']
+    shell.startupVault = 'C:/Measured'
+    const restored = await session.restoreLastVault()
+    expect(restored.status).toBe('opened')
+    expect(localStorage.getItem(ACTIVE)).toBe('tauri:C:/Measured')
+  })
+
+  it('opens nothing when none is remembered and no launch vault is named', async () => {
+    expect((await session.restoreLastVault()).status).toBe('none')
+    expect(shell.calls).toEqual(['startup_vault'])
+  })
+
+  it('does not ask for a launch vault when one is remembered', async () => {
+    shell.picked = 'C:/V'
+    await session.openFolderVault()
+    shell.calls = []
+    shell.startupVault = 'C:/Measured'
+    const restored = await session.restoreLastVault()
+    expect(restored.status === 'opened' && restored.session.vaultPath).toBe('tauri:C:/V')
+    expect(shell.calls).not.toContain('startup_vault')
   })
 
   it('ignores a stored browser vault id', async () => {

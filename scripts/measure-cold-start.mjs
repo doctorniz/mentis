@@ -3,9 +3,10 @@
 // MENTIS_STARTUP_REPORT and quits (see src-tauri/src/startup.rs); this script
 // launches it repeatedly and reports the median against perf-budgets.json.
 //
-// The app reopens its last vault on launch, so the script first seeds a small
-// throwaway vault: the recent-vaults file is written directly, and the window's
-// localStorage is set once through the WebView2 debugging port.
+// Each launch opens a small throwaway vault: the script writes it into the
+// recent-vaults file and names it in MENTIS_STARTUP_VAULT, which the app honours
+// only alongside MENTIS_STARTUP_REPORT. One untimed launch first creates the
+// webview profile, so the timed runs start from an installed, used app.
 //
 // It uses the app's real data folders, so it refuses to run where they already
 // exist (a developer machine) unless --allow-real-profile is given, in which
@@ -22,7 +23,6 @@ import path from 'node:path'
 const root = path.resolve(import.meta.dirname, '..')
 const budgets = JSON.parse(fs.readFileSync(path.join(root, 'perf-budgets.json'), 'utf8'))
 const IDENTIFIER = 'app.mentis.desktop'
-const DEBUG_PORT = 9333
 const LAUNCH_TIMEOUT_MS = 45_000
 
 function arg(name, fallback) {
@@ -104,30 +104,10 @@ function processReport() {
   }
   const app = list('mentis.exe')
   const web = list('msedgewebview2.exe')
-  // Whether the debugging flag reached the browser process, and whether
-  // anything (that process or another) holds the port.
-  const powershell = (command) =>
-    (
-      spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', command], {
-        encoding: 'utf8',
-      }).stdout ?? ''
-    ).trim()
-  const browserCommandLines = powershell(
-    'Get-CimInstance Win32_Process -Filter "Name=\'msedgewebview2.exe\'" | ' +
-      "Where-Object { $_.CommandLine -match '--webview-exe-name=mentis.exe' -and $_.CommandLine -notmatch '--type=' } | " +
-      'ForEach-Object { $_.CommandLine }',
-  )
-  const portOwners = powershell(
-    `Get-NetTCPConnection -LocalPort ${DEBUG_PORT} -ErrorAction SilentlyContinue | ` +
-      'ForEach-Object { "$($_.LocalAddress):$($_.LocalPort) $($_.State) pid $($_.OwningProcess) " + ' +
-      '(Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName }',
-  )
   return [
     `App processes: ${app.length ? app.map((l) => describe(l)).join('; ') : 'none'}`,
     `WebView2 processes: ${web.length}`,
     `Webview profile created: ${fs.existsSync(path.join(webProfile, 'EBWebView'))}`,
-    `WebView2 browser command line: ${browserCommandLines || 'not found'}`,
-    `Port ${DEBUG_PORT}: ${portOwners || 'nothing bound'}`,
   ]
 }
 
@@ -157,56 +137,15 @@ function makeVault() {
   return fs.realpathSync(dir)
 }
 
-async function seedWindowState(vault) {
-  const { chromium } = await import('@playwright/test')
-  const child = launch({
-    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${DEBUG_PORT}`,
-  })
-  try {
-    const deadline = Date.now() + LAUNCH_TIMEOUT_MS
-    let browser
-    while (!browser) {
-      if (child.exitCode !== null) {
-        throw new Error(`the app exited (code ${child.exitCode}) before its window opened`)
-      }
-      if (Date.now() > deadline) {
-        diagnostics.push(...processReport())
-        throw new Error('the debugging port never opened')
-      }
-      try {
-        browser = await chromium.connectOverCDP(`http://127.0.0.1:${DEBUG_PORT}`)
-      } catch {
-        await sleep(300)
-      }
-    }
-    let page
-    while (!page) {
-      if (Date.now() > deadline) throw new Error('the app window never loaded')
-      page = browser
-        .contexts()
-        .flatMap((c) => c.pages())
-        .find((p) => p.url().startsWith('http'))
-      if (!page) await sleep(300)
-    }
-    await page.evaluate(
-      (v) => localStorage.setItem('mentis:active-vault-path', `tauri:${v}`),
-      vault,
-    )
-    await sleep(2500)
-  } finally {
-    killTree(child)
-    await sleep(1000)
-  }
-}
-
-async function launchOnce(report) {
+async function launchOnce(report, vault) {
   fs.rmSync(report, { force: true })
   const spawnedAt = Date.now()
-  const child = launch({ MENTIS_STARTUP_REPORT: report })
+  const child = launch({ MENTIS_STARTUP_REPORT: report, MENTIS_STARTUP_VAULT: vault })
   const exited = new Promise((r) => child.once('exit', r))
   const timedOut = sleep(LAUNCH_TIMEOUT_MS).then(() => 'timeout')
   const result = await Promise.race([exited, timedOut])
   if (result === 'timeout') {
+    diagnostics.push(...processReport())
     killTree(child)
     throw new Error('the app did not report that the shell was up')
   }
@@ -226,10 +165,10 @@ try {
     path.join(appData, 'recent-vaults.json'),
     JSON.stringify([{ path: vault, openedAt: Date.now() }]),
   )
-  await seedWindowState(vault)
   const report = path.join(os.tmpdir(), `mentis-startup-${process.pid}.json`)
+  await launchOnce(report, vault)
   for (let i = 0; i < runs; i++) {
-    const ms = await launchOnce(report)
+    const ms = await launchOnce(report, vault)
     samples.push(ms)
     console.log(`  run ${i + 1}: ${ms} ms`)
   }

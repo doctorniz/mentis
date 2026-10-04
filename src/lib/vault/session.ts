@@ -154,10 +154,13 @@ export async function restoreLastVault(signal?: AbortSignal): Promise<RestoreRes
   const stored = getStoredActiveVaultPath()
 
   if (isTauri()) {
-    const { DESKTOP_ID_PREFIX } = await desktop()
-    if (!stored?.startsWith(DESKTOP_ID_PREFIX)) return none
+    const { DESKTOP_ID_PREFIX, startupVault } = await desktop()
+    // Nothing remembered: a measured cold start may name the vault instead.
+    const measured = stored ? null : await startupVault()
+    const target = measured ? `${DESKTOP_ID_PREFIX}${measured}` : stored
+    if (!target?.startsWith(DESKTOP_ID_PREFIX)) return none
     try {
-      const session = await openRecentVault(stored.slice(DESKTOP_ID_PREFIX.length))
+      const session = await openRecentVault(target.slice(DESKTOP_ID_PREFIX.length))
       return signal?.aborted ? none : { status: 'opened', session }
     } catch {
       await forgetLastVault()
