@@ -62,8 +62,12 @@ function moveAside() {
     movedAside.push(p)
   }
 }
+// The app quits itself, but its WebView2 processes take a moment longer to
+// exit and still hold profile files, so deleting retries on EBUSY.
+const LINGERING = { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }
+
 function restore() {
-  for (const p of [appData, webProfile]) fs.rmSync(p, { recursive: true, force: true })
+  for (const p of [appData, webProfile]) fs.rmSync(p, LINGERING)
   for (const p of movedAside) fs.renameSync(`${p}.${stamp}`, p)
   movedAside.length = 0
 }
@@ -181,7 +185,7 @@ try {
   process.exitCode = 1
 } finally {
   restore()
-  if (vault) fs.rmSync(vault, { recursive: true, force: true })
+  if (vault) fs.rmSync(vault, LINGERING)
 }
 
 if (samples.length === runs) {
