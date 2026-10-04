@@ -62,8 +62,8 @@ function moveAside() {
     movedAside.push(p)
   }
 }
-// The app quits itself, but its WebView2 processes take a moment longer to
-// exit and still hold profile files, so deleting retries on EBUSY.
+// Even after settleWebview, Windows can hold a just-closed file briefly, so
+// deleting retries while files are busy.
 const LINGERING = { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }
 
 function restore() {
@@ -76,6 +76,45 @@ function killTree(child) {
   if (child.pid && child.exitCode === null) {
     spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' })
   }
+}
+
+// The app's WebView2 processes outlive it after it quits, and a launch that
+// finds them still running attaches to them instead of starting cold. They
+// are found by the profile folder on their command line.
+function webviewPids() {
+  const profile = webProfile.replaceAll("'", "''")
+  const out =
+    spawnSync(
+      'powershell',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        'Get-CimInstance Win32_Process -Filter "Name=\'msedgewebview2.exe\'" | ' +
+          `Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${profile}') } | ` +
+          'ForEach-Object { $_.ProcessId }',
+      ],
+      { encoding: 'utf8' },
+    ).stdout ?? ''
+  return out.split(/\s+/).filter(Boolean)
+}
+
+const WEBVIEW_EXIT_TIMEOUT_MS = 15_000
+
+/** Waits for the webview to exit, then ends whatever is left. Says what it had to do. */
+async function settleWebview() {
+  const start = Date.now()
+  let pids = webviewPids()
+  if (pids.length === 0) return ''
+  while (pids.length && Date.now() - start < WEBVIEW_EXIT_TIMEOUT_MS) {
+    await sleep(250)
+    pids = webviewPids()
+  }
+  for (const pid of pids) spawnSync('taskkill', ['/PID', pid, '/T', '/F'], { stdio: 'ignore' })
+  const waited = Date.now() - start
+  return pids.length
+    ? `webview still running after ${waited} ms, ended ${pids.length} processes`
+    : `webview exited ${waited} ms after the app`
 }
 
 // The app's own output, kept so a failed run can say why.
@@ -151,11 +190,15 @@ async function launchOnce(report, vault) {
   if (result === 'timeout') {
     diagnostics.push(...processReport())
     killTree(child)
+    await settleWebview()
     throw new Error('the app did not report that the shell was up')
   }
+  const settled = await settleWebview()
   if (!fs.existsSync(report)) throw new Error(`the app exited (${result}) without reporting`)
-  return JSON.parse(fs.readFileSync(report, 'utf8')).readyAtMs - spawnedAt
+  return { ms: JSON.parse(fs.readFileSync(report, 'utf8')).readyAtMs - spawnedAt, settled }
 }
+
+const note = (settled) => (settled ? `  (${settled})` : '')
 
 const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]
 
@@ -170,11 +213,12 @@ try {
     JSON.stringify([{ path: vault, openedAt: Date.now() }]),
   )
   const report = path.join(os.tmpdir(), `mentis-startup-${process.pid}.json`)
-  await launchOnce(report, vault)
+  const warm = await launchOnce(report, vault)
+  console.log(`  warm-up: ${warm.ms} ms, not counted${note(warm.settled)}`)
   for (let i = 0; i < runs; i++) {
-    const ms = await launchOnce(report, vault)
+    const { ms, settled } = await launchOnce(report, vault)
     samples.push(ms)
-    console.log(`  run ${i + 1}: ${ms} ms`)
+    console.log(`  run ${i + 1}: ${ms} ms${note(settled)}`)
   }
 } catch (err) {
   console.error(`Cold-start measurement failed: ${err.message}`)
@@ -184,6 +228,7 @@ try {
   console.error(output ? `  App output:\n${output.slice(-4000)}` : '  The app printed nothing.')
   process.exitCode = 1
 } finally {
+  await settleWebview()
   restore()
   if (vault) fs.rmSync(vault, LINGERING)
 }
