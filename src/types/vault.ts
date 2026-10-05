@@ -20,7 +20,6 @@ export interface VaultSyncConfig {
 export interface VaultConfig {
   name: string
   version: number
-  theme: 'light' | 'dark' | 'system'
   snapshots: SnapshotConfig
   autoSave: AutoSaveConfig
   /** View id the vault opens on. Unknown ids open the home view. */
@@ -91,7 +90,6 @@ export const SEARCH_INDEX_FILE = `${MENTIS_DIR}/search-index.json`
 export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   name: 'My Vault',
   version: 1,
-  theme: 'system',
   snapshots: {
     enabled: true,
     maxPerFile: 5,

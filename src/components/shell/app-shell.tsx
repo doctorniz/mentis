@@ -1,27 +1,31 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { MainSidebar } from '@/components/shell/main-sidebar'
 import { MobileNavMasthead } from '@/components/shell/mobile-nav-masthead'
 import { markShellReady } from '@/lib/startup-mark'
 import { ViewRouter } from '@/components/shell/view-router'
 import { VaultSearchBootstrap } from '@/components/search/vault-search-bootstrap'
 import { KeyboardShortcutsDialog } from '@/components/shell/keyboard-shortcuts-dialog'
-import { SettingsDialog } from '@/components/shell/settings-dialog'
 import { useUiStore } from '@/stores/ui'
 import { useEditorStore } from '@/stores/editor'
 import { usePdfStore } from '@/stores/pdf'
 import { useCanvasStore } from '@/stores/canvas'
 import { views, HOME_VIEW } from '@/core/registries'
 
+// Settings are loaded the first time they are opened, and stay mounted after.
+const SettingsDialog = lazy(() =>
+  import('@/components/shell/settings-dialog').then((m) => ({ default: m.SettingsDialog })),
+)
+
 export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   const setActiveView = useUiStore((s) => s.setActiveView)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsInitialTab, setSettingsInitialTab] = useState<
-    'vault' | 'editor' | 'snapshots' | 'sync' | 'ai' | 'calendar'
-  >('vault')
+  const [settingsInitialTab, setSettingsInitialTab] = useState('vault')
+  const [settingsMounted, setSettingsMounted] = useState(false)
+  if (settingsOpen && !settingsMounted) setSettingsMounted(true)
 
   useEffect(() => {
     void markShellReady()
@@ -121,14 +125,18 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         <ViewRouter />
       </main>
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={(o) => {
-          setSettingsOpen(o)
-          if (!o) setSettingsInitialTab('vault')
-        }}
-        initialTab={settingsInitialTab}
-      />
+      {settingsMounted && (
+        <Suspense fallback={null}>
+          <SettingsDialog
+            open={settingsOpen}
+            onOpenChange={(o) => {
+              setSettingsOpen(o)
+              if (!o) setSettingsInitialTab('vault')
+            }}
+            initialTab={settingsInitialTab}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

@@ -48,6 +48,10 @@ export function PdfViewer({ path }: { path: string }) {
   const { vaultFs } = useVaultSession()
   const syncPush = useSyncPush()
   const autoSaveConfig = useVaultStore((s) => s.config?.autoSave ?? DEFAULT_VAULT_CONFIG.autoSave)
+  const snapshotConfig = useVaultStore((s) => s.config?.snapshots ?? DEFAULT_VAULT_CONFIG.snapshots)
+  const pageStyle = useVaultStore(
+    (s) => s.config?.pdfPageStyle ?? DEFAULT_VAULT_CONFIG.pdfPageStyle,
+  )
   const setDocument = usePdfStore((s) => s.setDocument)
   const currentPage = usePdfStore((s) => s.currentPage)
   const setCurrentPage = usePdfStore((s) => s.setCurrentPage)
@@ -280,18 +284,18 @@ export function PdfViewer({ path }: { path: string }) {
 
   /* Snapshot on first edit in this session */
   useEffect(() => {
-    if (!hasUnsavedChanges || hasSessionSnapshot) return
+    if (!hasUnsavedChanges || hasSessionSnapshot || !snapshotConfig.enabled) return
     void (async () => {
       try {
         await createSnapshot(vaultFs, path)
-        await pruneSnapshots(vaultFs, { enabled: true, maxPerFile: 5, retentionDays: 30 })
+        await pruneSnapshots(vaultFs, snapshotConfig)
         setHasSessionSnapshot(true)
       } catch (e) {
         console.error('Snapshot failed', e)
         toast.warning('Could not create PDF snapshot')
       }
     })()
-  }, [hasUnsavedChanges, hasSessionSnapshot, vaultFs, path, setHasSessionSnapshot])
+  }, [hasUnsavedChanges, hasSessionSnapshot, snapshotConfig, vaultFs, path, setHasSessionSnapshot])
 
   /* Auto-save: vault interval + optional blur */
   useEffect(() => {
@@ -343,16 +347,16 @@ export function PdfViewer({ path }: { path: string }) {
 
   const handleInsertBlank = useCallback(
     (beforeIndex: number) => {
-      const opts: PdfNewPageOptions = { style: 'blank', size: 'a4' }
+      const opts: PdfNewPageOptions = { style: pageStyle, size: 'a4' }
       void applyPageOp((b) => insertBlankPage(b, beforeIndex, opts))
     },
-    [applyPageOp],
+    [applyPageOp, pageStyle],
   )
 
   const handleAddPage = useCallback(() => {
-    const opts: PdfNewPageOptions = { style: 'blank', size: 'a4' }
+    const opts: PdfNewPageOptions = { style: pageStyle, size: 'a4' }
     void applyPageOp((b) => appendBlankPage(b, opts))
-  }, [applyPageOp])
+  }, [applyPageOp, pageStyle])
 
   const handleDeletePage = useCallback(
     (index: number) => {

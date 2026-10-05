@@ -5,9 +5,16 @@ import {
   type ViewId,
 } from '@/core/registries/views'
 import { createFileTypeRegistry, type FileTypeDefinition } from '@/core/registries/file-types'
+import { createSettingsRegistry, type SettingsSection } from '@/core/registries/settings'
 
 export type { FileTypeDefinition, FileTypeRegistry } from '@/core/registries/file-types'
 export type { ViewDefinition, ViewRegistry, ResolvedView, ViewId } from '@/core/registries/views'
+export type {
+  SettingsField,
+  SettingsPanelProps,
+  SettingsSection,
+  SettingsTab,
+} from '@/core/registries/settings'
 export { HOME_VIEW } from '@/core/registries/views'
 
 /**
@@ -60,3 +67,15 @@ export const views = createViewRegistry(
 export function viewIdOrHome(id: string | undefined): ViewId {
   return id && views.resolve(id) ? (id as ViewId) : HOME_VIEW
 }
+
+const settingsRegistrations = import.meta.glob<{ default: readonly SettingsSection[] }>(
+  '/src/modules/*/settings.ts',
+  { eager: true },
+)
+
+/** Every settings section, discovered from `src/modules/<name>/settings.ts`. */
+export const settings = createSettingsRegistry(
+  Object.keys(settingsRegistrations)
+    .sort()
+    .flatMap((key) => settingsRegistrations[key].default),
+)
