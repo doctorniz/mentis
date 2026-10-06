@@ -16,7 +16,7 @@ import { test, expect, navigateTo, waitForView, waitForAutoSave } from './fixtur
 async function openBoard(page: import('@playwright/test').Page) {
   await navigateTo(page, 'board')
   await page.waitForTimeout(600)
-  await expect(page.getByRole('heading', { name: 'Board' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Capture' })).toBeVisible()
 }
 
 /** Create a thought via the toolbar button and wait for editor to mount. */

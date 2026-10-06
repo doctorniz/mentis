@@ -33,6 +33,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [paletteContexts, setPaletteContexts] = useState<Partial<CommandScopes>>({})
   const [paletteMounted, setPaletteMounted] = useState(false)
+  const [paletteQuery, setPaletteQuery] = useState('')
   if (paletteOpen && !paletteMounted) setPaletteMounted(true)
 
   const paletteShell = useMemo(
@@ -49,6 +50,17 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
 
   useEffect(() => {
     void markShellReady()
+  }, [])
+
+  // `>` typed first in a capture bar opens the palette with what follows it.
+  useEffect(() => {
+    function onOpenPalette(e: Event) {
+      setPaletteQuery((e as CustomEvent<{ query?: string }>).detail?.query ?? '')
+      setPaletteContexts({})
+      setPaletteOpen(true)
+    }
+    window.addEventListener('ink:open-command-palette', onOpenPalette)
+    return () => window.removeEventListener('ink:open-command-palette', onOpenPalette)
   }, [])
 
   useEffect(() => {
@@ -93,6 +105,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         e.preventDefault()
         // Capture what the palette can act on (a focused editor) before it takes focus.
         setPaletteContexts(currentCommandContexts())
+        setPaletteQuery('')
         setPaletteOpen((o) => !o)
         return
       }
@@ -158,6 +171,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
             open={paletteOpen}
             onOpenChange={setPaletteOpen}
             contexts={paletteContexts}
+            initialQuery={paletteQuery}
             shell={paletteShell}
           />
         </Suspense>

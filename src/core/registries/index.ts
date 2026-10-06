@@ -7,6 +7,7 @@ import {
 import { createFileTypeRegistry, type FileTypeDefinition } from '@/core/registries/file-types'
 import { createSettingsRegistry, type SettingsSection } from '@/core/registries/settings'
 import { createCommandRegistry, type AnyCommand } from '@/core/registries/commands'
+import { createCaptureRegistry, type CaptureDestination } from '@/core/registries/capture'
 import { useUiStore } from '@/stores/ui'
 
 export type { FileTypeDefinition, FileTypeRegistry } from '@/core/registries/file-types'
@@ -129,3 +130,15 @@ export const commands = createCommandRegistry([
     .sort()
     .flatMap((key) => commandRegistrations[key].default),
 ])
+
+const captureRegistrations = import.meta.glob<{ default: readonly CaptureDestination[] }>(
+  '/src/modules/*/capture.ts',
+  { eager: true },
+)
+
+/** Every capture destination, discovered from `src/modules/<name>/capture.ts`. */
+export const captureDestinations = createCaptureRegistry(
+  Object.keys(captureRegistrations)
+    .sort()
+    .flatMap((key) => captureRegistrations[key].default),
+)

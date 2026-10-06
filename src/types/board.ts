@@ -1,5 +1,4 @@
 export type BoardItemType = 'thought' | 'audio'
-// Future: | 'bookmark' | 'list' | 'reminder' | 'task'
 
 export type ThoughtColor = 'yellow' | 'blue' | 'pink' | 'green' | 'purple' | 'white'
 

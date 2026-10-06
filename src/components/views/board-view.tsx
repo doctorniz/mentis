@@ -10,6 +10,7 @@ import { useBoardStore } from '@/stores/board'
 import type { ThoughtColor } from '@/types/board'
 import { THOUGHT_COLORS } from '@/types/board'
 import { cn } from '@/utils/cn'
+import { CaptureBar } from '@/modules/capture/capture-bar'
 
 const COLOR_DOT: Record<ThoughtColor, string> = {
   yellow: 'bg-amber-400',
@@ -145,7 +146,7 @@ export function BoardView() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <div className="border-border bg-bg-secondary flex shrink-0 items-center justify-between border-b px-4 py-2.5">
-        <h1 className="text-fg text-sm font-semibold">Board</h1>
+        <h1 className="text-fg text-sm font-semibold">Capture</h1>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -233,6 +234,9 @@ export function BoardView() {
           </div>
         )}
       </div>
+
+      {/* Where captures are reviewed: the same bar as everywhere, docked. */}
+      <CaptureBar placement="bottom" onRecord={() => setIsRecording(true)} />
     </div>
   )
 }

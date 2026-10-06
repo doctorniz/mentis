@@ -9,7 +9,7 @@ declare module '@/core/registries/views' {
 
 const view: ViewDefinition = {
   id: 'board',
-  label: 'Board',
+  label: 'Capture',
   icon: LayoutGrid,
   component: () =>
     import('@/components/views/board-view').then((m) => ({

@@ -111,11 +111,11 @@ test.describe('2.1 — View Switching', () => {
   })
 
   test('2.1.12 Sidebar nav icons highlight active state', async ({ vaultPage: page }) => {
-    // Press Ctrl+2 to go to Board — its nav button gets accent styling
+    // Press Ctrl+2 to go to Capture (the board) — its nav button gets accent styling
     await page.keyboard.press('Control+2')
     await page.waitForTimeout(800)
 
-    const boardBtn = page.locator('nav[aria-label="Main views"] button', { hasText: 'Board' })
+    const boardBtn = page.locator('nav[aria-label="Main views"] button', { hasText: 'Capture' })
     await expect(boardBtn).toBeVisible({ timeout: 5000 })
     expect((await boardBtn.getAttribute('class')) ?? '').toContain('accent')
 

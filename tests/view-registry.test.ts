@@ -83,7 +83,7 @@ describe('registered views', () => {
     expect(views.nav().map((v) => [v.id, v.label, v.nav?.shortcut])).toEqual([
       ['vault-chat', 'Chat', '0'],
       ['vault', 'Vault', '1'],
-      ['board', 'Board', '2'],
+      ['board', 'Capture', '2'],
       ['organizer', 'Organizer', '3'],
       ['bookmarks', 'Bookmarks', '4'],
       ['files', 'Files', '5'],

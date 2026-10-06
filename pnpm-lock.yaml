@@ -173,6 +173,9 @@ importers:
       buffer:
         specifier: ^5.7.1
         version: 5.7.1
+      chrono-node:
+        specifier: ^2.10.2
+        version: 2.10.2
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
@@ -2705,6 +2708,10 @@ packages:
   chownr@3.0.0:
     resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
     engines: {node: '>=18'}
+
+  chrono-node@2.10.2:
+    resolution: {integrity: sha512-xBCwGGmodF2YVtzE7/8ewNDajbCg72jgZHyOXvhkuQiYhIQ1KbqyXJJJw2fLaQ603LL4oMVhOyjckEBve45S4w==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   class-variance-authority@0.7.1:
     resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
@@ -7628,6 +7635,8 @@ snapshots:
     optional: true
 
   chownr@3.0.0: {}
+
+  chrono-node@2.10.2: {}
 
   class-variance-authority@0.7.1:
     dependencies:

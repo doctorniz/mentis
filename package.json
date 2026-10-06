@@ -82,6 +82,7 @@
     "@tiptap/suggestion": "^2.27.2",
     "@xyflow/react": "^12.10.2",
     "buffer": "^5.7.1",
+    "chrono-node": "^2.10.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "fabric": "^6.5.0",

@@ -8,7 +8,7 @@ import { exportTasksAsIcs } from '@/lib/tasks/ical'
 import { useTasksStore } from '@/stores/tasks'
 import { TaskListSidebar } from '@/components/tasks/task-list-sidebar'
 import { TaskRow } from '@/components/tasks/task-row'
-import { QuickAddBar } from '@/components/tasks/quick-add-bar'
+import { CaptureBar } from '@/modules/capture/capture-bar'
 import { TaskDetailDialog } from '@/components/tasks/task-detail-dialog'
 import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import type { TaskItem } from '@/types/tasks'
@@ -137,8 +137,13 @@ export function TasksView() {
           </div>
         </div>
 
-        {/* Quick add */}
-        <QuickAddBar />
+        {/* Quick add: the capture bar, bound to tasks in the list being shown. `/` still picks another destination. */}
+        <CaptureBar
+          boundDestination="task"
+          scope={{ list: activeFilter === 'all' ? activeList : null }}
+          immediate
+          placeholder="Add a task..."
+        />
 
         {/* Task list */}
         <div className="min-h-0 flex-1 overflow-y-auto">

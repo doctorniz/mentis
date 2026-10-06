@@ -35,6 +35,8 @@ interface BoardState {
 
   loadBoard: (fs: FileSystemAdapter) => Promise<void>
   addThought: (fs: FileSystemAdapter, color?: ThoughtColor) => Promise<BoardItem>
+  /** Save a thought that already has its text (capture), without opening it for editing. */
+  captureThought: (fs: FileSystemAdapter, text: string) => Promise<BoardItem>
   addAudioThought: (
     fs: FileSystemAdapter,
     audioBytes: Uint8Array,
@@ -115,6 +117,21 @@ export const useBoardStore = create<BoardState>()(
       set((s) => {
         s.items.unshift(item)
         s.activeItemPath = path
+      })
+      return item
+    },
+
+    captureThought: async (fs, text) => {
+      const exists = await fs.exists(BOARD_DIR)
+      if (!exists) await fs.mkdir(BOARD_DIR)
+
+      const path = `${BOARD_DIR}/${generateBoardFilename()}`
+      const raw = serializeBoardItem(defaultFrontmatter(), `${text}\n`)
+      await fs.writeTextFile(path, raw)
+
+      const item = parseBoardItem(path, raw)
+      set((s) => {
+        s.items.unshift(item)
       })
       return item
     },

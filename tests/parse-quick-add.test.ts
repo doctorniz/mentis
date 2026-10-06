@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { parseQuickAdd } from '@/lib/tasks/parse-quick-add'
+import { parseQuickAdd } from '@/modules/organizer/parse-quick-add'
 
 describe('parseQuickAdd natural language', () => {
   beforeEach(() => {

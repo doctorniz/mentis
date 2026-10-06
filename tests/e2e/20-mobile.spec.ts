@@ -36,7 +36,7 @@ test.describe('20 — Mobile (Pixel 5)', () => {
         },
       },
       {
-        label: 'Board',
+        label: 'Capture',
         probe: async () => {
           await expect(
             page

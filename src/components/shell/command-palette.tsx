@@ -29,6 +29,8 @@ export interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void
   /** Contexts captured when the palette was opened, before it took focus. */
   contexts: Partial<CommandScopes>
+  /** Text already typed, e.g. after `>` in a capture bar. */
+  initialQuery?: string
   shell: Pick<GlobalCommandContext, 'openSettings' | 'openShortcuts' | 'closeVault'>
 }
 
@@ -39,7 +41,13 @@ function openFile(path: string) {
 }
 
 /** Ctrl+K: run a command, or open a file by name. Loaded the first time it opens. */
-export function CommandPalette({ open, onOpenChange, contexts, shell }: CommandPaletteProps) {
+export function CommandPalette({
+  open,
+  onOpenChange,
+  contexts,
+  initialQuery = '',
+  shell,
+}: CommandPaletteProps) {
   const { vaultFs } = useVaultSession()
   const { createFile } = useNewFileActions(() => {})
   const [query, setQuery] = useState('')
@@ -50,7 +58,7 @@ export function CommandPalette({ open, onOpenChange, contexts, shell }: CommandP
   // File names come from the index's manifest: no disk walk.
   useEffect(() => {
     if (!open) return
-    setQuery('')
+    setQuery(initialQuery)
     setSelected(0)
     if (!isSearchIndexOpen()) return
     let cancelled = false
@@ -62,7 +70,7 @@ export function CommandPalette({ open, onOpenChange, contexts, shell }: CommandP
     return () => {
       cancelled = true
     }
-  }, [open])
+  }, [open, initialQuery])
 
   const global: GlobalCommandContext = useMemo(
     () => ({
