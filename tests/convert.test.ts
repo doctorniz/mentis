@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import JSZip from 'jszip'
 import type { FileSystemAdapter } from '@/lib/fs'
-import { canConvert, convertLabel, convertVaultFile, freePath } from '@/core/convert/convert-file'
+import { canConvert, convertLabel, convertVaultFile } from '@/core/convert/convert-file'
+import { freePath } from '@/lib/fs/unique-path'
 import convertDocx, { htmlToMarkdown } from '@/modules/docx/convert'
 import convertPptx, { pptxToSlidesMarkdown } from '@/modules/pptx/convert'
 

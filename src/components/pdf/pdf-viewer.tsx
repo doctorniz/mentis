@@ -5,6 +5,7 @@ import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 import { usePdfStore } from '@/stores/pdf'
 import { useVaultStore } from '@/stores/vault'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { uniqueVaultPath } from '@/lib/fs/unique-path'
 import { useSyncPush } from '@/contexts/sync-context'
 import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
 import { loadPdfjs } from '@/lib/pdf/pdfjs-loader'
@@ -413,7 +414,9 @@ export function PdfViewer({ path }: { path: string }) {
               ? `p${indices[0]! + 1}`
               : `p${indices[0]! + 1}-${indices[indices.length - 1]! + 1}`
           const newName = `${stem} (${label}).pdf`
-          const newPath = dir ? `${dir}/${newName}` : newName
+          // Extracting the same pages again keeps both files.
+          const newPath = await uniqueVaultPath(vaultFs, dir ? `${dir}/${newName}` : newName)
+          const savedName = newPath.split('/').pop() ?? newName
 
           await vaultFs.writeFile(newPath, new Uint8Array(newBytes))
           window.dispatchEvent(new CustomEvent('ink:vault-changed'))
@@ -422,12 +425,12 @@ export function PdfViewer({ path }: { path: string }) {
             id: crypto.randomUUID(),
             path: newPath,
             type: 'pdf',
-            title: `${stem} (${label})`,
+            title: savedName.replace(/\.pdf$/i, ''),
             isDirty: false,
           })
 
           toast.success(
-            `Saved ${indices.length} page${indices.length > 1 ? 's' : ''} as ${newName}`,
+            `Saved ${indices.length} page${indices.length > 1 ? 's' : ''} as ${savedName}`,
           )
         } catch (e) {
           console.error('Extract pages failed', e)

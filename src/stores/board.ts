@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { uniqueVaultPath } from '@/lib/fs/unique-path'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { BoardItem, ThoughtColor } from '@/types/board'
 import {
@@ -13,20 +14,6 @@ import {
   boardBodyIsImageOnly,
   boardExportBasenamePreferTitle,
 } from '@/lib/board'
-
-async function uniquifyVaultBasename(fs: FileSystemAdapter, basename: string): Promise<string> {
-  if (!(await fs.exists(basename))) return basename
-  const extMatch = /\.[^.]+$/i.exec(basename)
-  const ext = extMatch ? extMatch[0] : ''
-  const stem = ext ? basename.slice(0, -ext.length) : basename
-  let suffix = 1
-  let candidate = `${stem} (${suffix})${ext}`
-  while (await fs.exists(candidate)) {
-    suffix++
-    candidate = `${stem} (${suffix})${ext}`
-  }
-  return candidate
-}
 
 interface BoardState {
   items: BoardItem[]
@@ -285,7 +272,7 @@ export const useBoardStore = create<BoardState>()(
           const extMatch = /\.[^.]+$/i.exec(assetFile)
           const extWithDot = extMatch ? extMatch[0] : '.mp3'
           const base = boardExportBasenamePreferTitle(item.title, assetFile, extWithDot)
-          const destPath = await uniquifyVaultBasename(fs, base)
+          const destPath = await uniqueVaultPath(fs, base)
           await fs.writeFile(destPath, bytes)
           try {
             await fs.remove(audioRel)
@@ -311,7 +298,7 @@ export const useBoardStore = create<BoardState>()(
           const extMatch = /\.[^.]+$/i.exec(assetFile)
           const extWithDot = extMatch ? extMatch[0] : '.png'
           const base = boardExportBasenamePreferTitle(item.title, assetFile, extWithDot)
-          const destPath = await uniquifyVaultBasename(fs, base)
+          const destPath = await uniqueVaultPath(fs, base)
           await fs.writeFile(destPath, bytes)
           try {
             await fs.remove(imgPath)
@@ -333,13 +320,7 @@ export const useBoardStore = create<BoardState>()(
         if (title && destName !== srcName && (await fs.exists(destName))) {
           destName = srcName
         }
-        let destPath = destName
-        let suffix = 1
-        while (await fs.exists(destPath)) {
-          const stem = destName.replace(/\.md$/i, '')
-          destPath = `${stem} (${suffix}).md`
-          suffix++
-        }
+        const destPath = await uniqueVaultPath(fs, destName)
 
         let updatedContent = content
         const assetRe = /(_mentis\/_thoughts\/_assets\/[^\s)]+)/g

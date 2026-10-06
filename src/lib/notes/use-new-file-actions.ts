@@ -68,7 +68,7 @@ export function useNewFileActions(onDone: () => void) {
         const stem = `${spec.stem} ${new Date().toISOString().slice(0, 10)}`
         const dir = defaultDir()
         const rawPath = dir ? `${dir}/${stem}${spec.suffix}` : `${stem}${spec.suffix}`
-        const path = await allocateUniqueFilePath(vaultFs, rawPath)
+        const path = await allocateUniqueFilePath(vaultFs, rawPath, spec.suffix)
         const title = titleForPath(path)
         const makeContent = (await spec.content()).default
         const content = await makeContent({ title })
@@ -126,7 +126,11 @@ export function useNewFileActions(onDone: () => void) {
         let lastPath = ''
         for (const file of fileArr) {
           const buf = new Uint8Array(await file.arrayBuffer())
-          const dest = dir ? `${dir}/${file.name}` : file.name
+          // A file of the same name is already there: keep both, never overwrite.
+          const dest = await allocateUniqueFilePath(
+            vaultFs,
+            dir ? `${dir}/${file.name}` : file.name,
+          )
           await vaultFs.writeFile(dest, buf)
           if (isIndexableTextPath(dest)) await reindexFilePath(vaultFs, dest)
           lastPath = dest

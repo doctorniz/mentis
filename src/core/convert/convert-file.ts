@@ -1,23 +1,11 @@
 import { fileTypes } from '@/core/registries'
 import type { FileSystemAdapter } from '@/lib/fs'
 import { saveAsset } from '@/lib/notes/assets'
+import { freePath } from '@/lib/fs/unique-path'
 
 function splitPath(path: string): { dir: string; name: string } {
   const i = path.lastIndexOf('/')
   return { dir: i === -1 ? '' : path.slice(0, i + 1), name: i === -1 ? path : path.slice(i + 1) }
-}
-
-/** The first of `Name<suffix>`, `Name 2<suffix>`, … that `exists` says is free. */
-export async function freePath(
-  dir: string,
-  stem: string,
-  suffix: string,
-  exists: (path: string) => Promise<boolean>,
-): Promise<string> {
-  for (let n = 1; ; n++) {
-    const path = `${dir}${n === 1 ? stem : `${stem} ${n}`}${suffix}`
-    if (!(await exists(path))) return path
-  }
 }
 
 export function canConvert(path: string): boolean {
