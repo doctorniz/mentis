@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'mentis-v2'
+const CACHE_NAME = 'mentis-v3'
 
 const PRECACHE_URLS = ['/', '/manifest.json', '/icon.svg']
 
@@ -39,6 +39,23 @@ function handleImmutable(request) {
 }
 
 /**
+ * Pages: network-first, cache only when offline. A cached page names the
+ * hashed scripts of the build it came from, and a new deploy removes those,
+ * so serving it first would load a build whose scripts are gone.
+ */
+function handleNavigation(request) {
+  return fetch(request)
+    .then((response) => {
+      if (response.ok) {
+        const clone = response.clone()
+        caches.open(CACHE_NAME).then((c) => c.put(request, clone))
+      }
+      return response
+    })
+    .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
+}
+
+/**
  * Everything else: stale-while-revalidate.
  * Serve cache immediately (if available) and refresh in background.
  * On cache miss, wait for the network response.
@@ -63,6 +80,11 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin !== self.location.origin) return
   if (event.request.method !== 'GET') return
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(handleNavigation(event.request))
+    return
+  }
 
   if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/_next/static/')) {
     event.respondWith(handleImmutable(event.request))
