@@ -255,7 +255,6 @@ function NotesViewInner() {
   // frontmatter via `MarkdownNoteEditor.ensureChatAssetId`; PDFs use
   // `_mentis/_chats/index.json`. The asset id is resolved eagerly
   // whenever the active tab changes so chat is ready without a toggle.
-  const editorHandleRef = useRef<FileEditorHandle | null>(null)
   const [chatAssetIdByPath, setChatAssetIdByPath] = useState<Record<string, string>>({})
 
   const onMarkdownChatAssetIdFromDisk = useCallback((notePath: string, chatAssetId: string) => {
@@ -264,21 +263,20 @@ function NotesViewInner() {
     )
   }, [])
 
-  // Auto-ensure chatAssetId for the active markdown tab.
-  useEffect(() => {
-    if (!activeTab || activeDef?.layout?.chat !== 'editor') return
-    // Wait a tick for the editor ref to be set by the MarkdownNoteEditor mount.
-    const timer = setTimeout(() => {
-      const id = editorHandleRef.current?.ensureChatAssetId?.()
+  // Ensure chatAssetId for the active markdown tab once its editor is mounted.
+  // The editor is loaded lazily, so its handle arrives whenever the chunk does;
+  // this ref callback runs at that moment, and again for the next tab's path.
+  const editorChatPath = activeDef?.layout?.chat === 'editor' ? activeTab?.path : undefined
+  const setEditorHandle = useCallback(
+    (handle: FileEditorHandle | null) => {
+      if (!handle || !editorChatPath) return
+      const id = handle.ensureChatAssetId?.()
       if (id) {
-        setChatAssetIdByPath((m) => (m[activeTab.path] === id ? m : { ...m, [activeTab.path]: id }))
+        setChatAssetIdByPath((m) => (m[editorChatPath] === id ? m : { ...m, [editorChatPath]: id }))
       }
-    }, 50)
-    return () => clearTimeout(timer)
-    // activeTab's object identity changes on unrelated tab mutations (e.g. autosave
-    // dirty-flag); depend on path/type only or the debounce resets on every edit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab?.path, activeTab?.type])
+    },
+    [editorChatPath],
+  )
 
   // Auto-ensure chatAssetId for the active PDF tab.
   useEffect(() => {
@@ -440,7 +438,7 @@ function NotesViewInner() {
           linkTargets={markdownPaths}
           onEditorReady={setActiveEditorInstance}
           onChatAssetIdFromDisk={onMarkdownChatAssetIdFromDisk}
-          handleRef={editorHandleRef}
+          handleRef={setEditorHandle}
         />
       </Suspense>
     ) : null
