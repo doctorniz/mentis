@@ -2,7 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import type { SuggestionProps } from '@tiptap/suggestion'
-import type { SlashItem } from '@/lib/editor/slash-items'
+import type { SlashItem } from '@/lib/editor/slash-command-extension'
 import { cn } from '@/utils/cn'
 
 export type SlashCommandListProps = SuggestionProps<SlashItem, SlashItem>

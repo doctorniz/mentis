@@ -6,9 +6,18 @@ import {
 } from '@/core/registries/views'
 import { createFileTypeRegistry, type FileTypeDefinition } from '@/core/registries/file-types'
 import { createSettingsRegistry, type SettingsSection } from '@/core/registries/settings'
+import { createCommandRegistry, type AnyCommand } from '@/core/registries/commands'
+import { useUiStore } from '@/stores/ui'
 
 export type { FileTypeDefinition, FileTypeRegistry } from '@/core/registries/file-types'
 export type { ViewDefinition, ViewRegistry, ResolvedView, ViewId } from '@/core/registries/views'
+export type {
+  AnyCommand,
+  CommandDefinition,
+  CommandScope,
+  CommandScopes,
+  GlobalCommandContext,
+} from '@/core/registries/commands'
 export type {
   SettingsField,
   SettingsPanelProps,
@@ -79,3 +88,44 @@ export const settings = createSettingsRegistry(
     .sort()
     .flatMap((key) => settingsRegistrations[key].default),
 )
+
+const commandRegistrations = import.meta.glob<{ default: readonly AnyCommand[] }>(
+  '/src/modules/*/commands.ts',
+  { eager: true },
+)
+
+/** "Go to <view>" for every view in the nav, with its Ctrl+digit. */
+const viewCommands: AnyCommand[] = views.nav().map((v) => ({
+  id: `view.${v.id}`,
+  title: `Go to ${v.label}`,
+  keywords: ['view', 'switch', v.id],
+  icon: v.icon,
+  shortcut: v.nav?.shortcut ? `Ctrl+${v.nav.shortcut}` : undefined,
+  scope: 'global',
+  run: () => useUiStore.getState().setActiveView(v.id),
+}))
+
+/** "New <type>" for every file type that can be created. */
+const newFileCommands: AnyCommand[] = fileTypes.all().flatMap((def): AnyCommand[] =>
+  def.createNew
+    ? [
+        {
+          id: `new.${def.id}`,
+          title: `New ${def.createNew.label.toLowerCase()}`,
+          keywords: ['create', 'new', 'file', def.label],
+          icon: def.createNew.menu.icon,
+          scope: 'global',
+          run: (ctx) => ctx.createFile(def.id),
+        },
+      ]
+    : [],
+)
+
+/** Every command: views, new files, then each module's, discovered from `src/modules/<name>/commands.ts`. */
+export const commands = createCommandRegistry([
+  ...viewCommands,
+  ...newFileCommands,
+  ...Object.keys(commandRegistrations)
+    .sort()
+    .flatMap((key) => commandRegistrations[key].default),
+])

@@ -4,12 +4,13 @@ import { ReactRenderer } from '@tiptap/react'
 import { Suggestion } from '@tiptap/suggestion'
 import type { SuggestionProps } from '@tiptap/suggestion'
 import { SlashCommandList } from '@/components/notes/slash-command-list'
-import type { SlashItem } from '@/lib/editor/slash-items'
-import { filterSlashItems } from '@/lib/editor/slash-items'
+import { commands } from '@/core/registries'
+import type { CommandDefinition } from '@/core/registries/commands'
 
 export const inkSlashPluginKey = new PluginKey('inkSlash')
 
-export type { SlashItem } from '@/lib/editor/slash-items'
+/** A slash-menu entry: one of the markdown editor's registered commands. */
+export type SlashItem = CommandDefinition<'markdown-editor'>
 
 function placeSlashMenu(
   el: HTMLElement,
@@ -40,9 +41,9 @@ export const inkSlashCommands = Extension.create({
         allowedPrefixes: [' ', '\n'],
         allowSpaces: false,
         command: ({ editor, range, props }) => {
-          props.command({ editor, range })
+          void props.run({ editor, range })
         },
-        items: ({ query }) => filterSlashItems(query),
+        items: ({ query }) => commands.inScope('markdown-editor', query),
         render: () => {
           let renderer: ReactRenderer | null = null
           // Escape dismisses the menu but the Suggestion plugin stays

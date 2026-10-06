@@ -42,6 +42,7 @@ import { FindReplaceBar } from '@/components/notes/find-replace-bar'
 import { countWords } from '@/lib/notes/word-count'
 import { pendingMarkdownSaves } from '@/lib/notes/pending-saves'
 import { useSyncPush } from '@/contexts/sync-context'
+import { provideCommandContext } from '@/core/registries/commands'
 
 /** Flatten a FileEntry tree into vault-relative paths (files only, no dirs) */
 function flattenFilePaths(entry: FileEntry | null, depth = 0): string[] {
@@ -439,6 +440,18 @@ export const MarkdownNoteEditor = forwardRef<
       onEditorReadyRef.current?.(editor)
       return () => onEditorReadyRef.current?.(null)
     }
+  }, [editor])
+
+  // Offer this editor to the command palette while it has focus. The range is
+  // empty, at the selection, so a command acts on the selection instead of
+  // deleting it (slash commands delete their `/query` through `range`).
+  useEffect(() => {
+    if (!editor) return
+    return provideCommandContext('markdown-editor', () => {
+      if (editor.isDestroyed || !editor.isFocused) return null
+      const at = editor.state.selection.from
+      return { editor, range: { from: at, to: at } }
+    })
   }, [editor])
 
   // Imperative handle for the chat panel: mint `chatAssetId` on demand
