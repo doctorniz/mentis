@@ -177,6 +177,8 @@ export function useNewFileActions(onDone: () => void) {
 
   return {
     fileTypeMenuItems,
+    /** Create a file of this type in the default folder and open it. */
+    createFile,
     createThought,
     importFiles,
     busy,

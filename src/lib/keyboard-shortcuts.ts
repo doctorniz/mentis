@@ -11,6 +11,7 @@ export interface KeyboardShortcut {
 
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: 's', ctrl: true, description: 'Save current file', category: 'Global' },
+  { key: 'k', ctrl: true, description: 'Open the command palette', category: 'Global' },
   { key: 'n', ctrl: true, description: 'Open the New menu', category: 'Global' },
   { key: 'f', ctrl: true, description: 'Search the vault', category: 'Global' },
   // Ctrl+<digit> view switching, straight from the view registry.

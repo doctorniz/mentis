@@ -1,6 +1,6 @@
 'use client'
 
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { MainSidebar } from '@/components/shell/main-sidebar'
 import { MobileNavMasthead } from '@/components/shell/mobile-nav-masthead'
 import { markShellReady } from '@/lib/startup-mark'
@@ -12,10 +12,14 @@ import { useEditorStore } from '@/stores/editor'
 import { usePdfStore } from '@/stores/pdf'
 import { useCanvasStore } from '@/stores/canvas'
 import { views, HOME_VIEW } from '@/core/registries'
+import { currentCommandContexts, type CommandScopes } from '@/core/registries/commands'
 
 // Settings are loaded the first time they are opened, and stay mounted after.
 const SettingsDialog = lazy(() =>
   import('@/components/shell/settings-dialog').then((m) => ({ default: m.SettingsDialog })),
+)
+const CommandPalette = lazy(() =>
+  import('@/components/shell/command-palette').then((m) => ({ default: m.CommandPalette })),
 )
 
 export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
@@ -26,6 +30,22 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   const [settingsInitialTab, setSettingsInitialTab] = useState('vault')
   const [settingsMounted, setSettingsMounted] = useState(false)
   if (settingsOpen && !settingsMounted) setSettingsMounted(true)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [paletteContexts, setPaletteContexts] = useState<Partial<CommandScopes>>({})
+  const [paletteMounted, setPaletteMounted] = useState(false)
+  if (paletteOpen && !paletteMounted) setPaletteMounted(true)
+
+  const paletteShell = useMemo(
+    () => ({
+      openSettings: (tab = 'vault') => {
+        setSettingsInitialTab(tab)
+        setSettingsOpen(true)
+      },
+      openShortcuts: () => setShortcutsOpen(true),
+      closeVault: onCloseVault,
+    }),
+    [onCloseVault],
+  )
 
   useEffect(() => {
     void markShellReady()
@@ -69,6 +89,13 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
 
       if (!mod) return
 
+      if (e.key === 'k' || e.key === 'K') {
+        e.preventDefault()
+        // Capture what the palette can act on (a focused editor) before it takes focus.
+        setPaletteContexts(currentCommandContexts())
+        setPaletteOpen((o) => !o)
+        return
+      }
       if (e.key === '\\') {
         e.preventDefault()
         toggleSidebar()
@@ -125,6 +152,16 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         <ViewRouter />
       </main>
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      {paletteMounted && (
+        <Suspense fallback={null}>
+          <CommandPalette
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            contexts={paletteContexts}
+            shell={paletteShell}
+          />
+        </Suspense>
+      )}
       {settingsMounted && (
         <Suspense fallback={null}>
           <SettingsDialog
