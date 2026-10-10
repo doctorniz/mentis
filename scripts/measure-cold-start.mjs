@@ -198,12 +198,36 @@ async function launchOnce(report, vault) {
   return { ms: JSON.parse(fs.readFileSync(report, 'utf8')).readyAtMs - spawnedAt, settled }
 }
 
+/**
+ * One capture-overlay measurement: the app shows its overlay itself once the
+ * overlay page is ready and reports trigger-to-painted time, then quits
+ * (MENTIS_OVERLAY_REPORT, src-tauri/src/overlay.rs). The OS's hotkey dispatch
+ * is not part of it.
+ */
+async function overlayOnce(report) {
+  fs.rmSync(report, { force: true })
+  const child = launch({ MENTIS_OVERLAY_REPORT: report })
+  const exited = new Promise((r) => child.once('exit', r))
+  const result = await Promise.race([exited, sleep(LAUNCH_TIMEOUT_MS).then(() => 'timeout')])
+  if (result === 'timeout') {
+    killTree(child)
+    await settleWebview()
+    throw new Error('the app did not report that the overlay was shown')
+  }
+  const settled = await settleWebview()
+  if (!fs.existsSync(report)) throw new Error(`the app exited (${result}) without reporting`)
+  return { ms: JSON.parse(fs.readFileSync(report, 'utf8')).shownMs, settled }
+}
+
+const OVERLAY_RUNS = 3
+
 const note = (settled) => (settled ? `  (${settled})` : '')
 
 const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]
 
 let vault
 const samples = []
+const overlaySamples = []
 try {
   moveAside()
   vault = makeVault()
@@ -220,6 +244,19 @@ try {
     samples.push(ms)
     console.log(`  run ${i + 1}: ${ms} ms${note(settled)}`)
   }
+
+  // Separate, so an overlay failure cannot hide the cold-start result.
+  try {
+    const overlayReport = path.join(os.tmpdir(), `mentis-overlay-${process.pid}.json`)
+    for (let i = 0; i < OVERLAY_RUNS; i++) {
+      const { ms, settled } = await overlayOnce(overlayReport)
+      overlaySamples.push(ms)
+      console.log(`  overlay ${i + 1}: ${ms} ms${note(settled)}`)
+    }
+  } catch (err) {
+    console.error(`Capture overlay measurement failed: ${err.message}`)
+    process.exitCode = 1
+  }
 } catch (err) {
   console.error(`Cold-start measurement failed: ${err.message}`)
   console.error(`  WebView2 runtime: ${webView2Version()}`)
@@ -233,18 +270,27 @@ try {
   if (vault) fs.rmSync(vault, LINGERING)
 }
 
-if (samples.length === runs) {
-  const med = median(samples)
-  const limit = budgets.timing.desktopColdStartMs
-  const enforce = budgets.timingEnforce?.desktopColdStartMs === true
+/** Print a timing against its budget; fail only if that budget is enforced. */
+function reportTiming(label, xs, key) {
+  const med = median(xs)
+  const limit = budgets.timing[key]
+  const enforce = budgets.timingEnforce?.[key] === true
   const over = med > limit
   const status = !over ? 'ok' : enforce ? 'FAIL' : 'over (report only)'
-  const line = `Desktop cold start: median ${med} ms (min ${Math.min(...samples)}, max ${Math.max(...samples)}, ${runs} runs) / ${limit} ms  ${status}`
+  const line = `${label}: median ${med} ms (min ${Math.min(...xs)}, max ${Math.max(...xs)}, ${xs.length} runs) / ${limit} ms  ${status}`
   console.log(line)
-  const out = arg('out')
-  if (out)
-    fs.writeFileSync(out, JSON.stringify({ medianMs: med, samples, limitMs: limit }, null, 2))
   if (process.env.GITHUB_STEP_SUMMARY)
     fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`)
   if (over && enforce) process.exitCode = 1
+  return { medianMs: med, samples: xs, limitMs: limit }
+}
+
+if (samples.length === runs) {
+  const coldStart = reportTiming('Desktop cold start', samples, 'desktopColdStartMs')
+  const overlay =
+    overlaySamples.length === OVERLAY_RUNS
+      ? reportTiming('Capture overlay shown', overlaySamples, 'captureOverlayMs')
+      : undefined
+  const out = arg('out')
+  if (out) fs.writeFileSync(out, JSON.stringify({ ...coldStart, overlay }, null, 2))
 }

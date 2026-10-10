@@ -19,6 +19,7 @@
   },
   "timing": {
     "desktopColdStartMs": 1000,
+    "captureOverlayMs": 100,
     "openNoteMs": 100,
     "firstSearchMs": 50
   },
@@ -28,6 +29,7 @@
     "enforce": true
   },
   "timingEnforce": {
-    "desktopColdStartMs": false
+    "desktopColdStartMs": false,
+    "captureOverlayMs": false
   }
 }

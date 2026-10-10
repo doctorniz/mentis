@@ -31,6 +31,14 @@ export interface CaptureBarProps {
   placement?: 'top' | 'bottom'
   /** Start a voice thought. The mic shows only when the host view can record. */
   onRecord?: () => void
+  /** Focus the field now, and again whenever this number changes (the overlay being shown). */
+  focusSignal?: number
+  /** After a save: where it went, and whether Ctrl/⌘+Enter asked to stay open. */
+  onSaved?: (result: WriteResult, info: { destination: string; stay: boolean }) => void
+  /** Esc in an empty bar (the overlay hides). */
+  onEscapeEmpty?: () => void
+  /** A destination's confirmation dialog opened or closed. */
+  onConfirmingChange?: (open: boolean) => void
 }
 
 const UNDO_MS = 10_000
@@ -58,6 +66,10 @@ export function CaptureBar({
   placeholder,
   placement = 'top',
   onRecord,
+  focusSignal,
+  onSaved,
+  onEscapeEmpty,
+  onConfirmingChange,
 }: CaptureBarProps) {
   const { vaultFs } = useVaultSession()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -93,6 +105,12 @@ export function CaptureBar({
   )
 
   useEffect(() => destination.preload?.(), [destination])
+  useEffect(() => {
+    if (focusSignal !== undefined) inputRef.current?.focus()
+  }, [focusSignal])
+  useEffect(() => onConfirmingChange?.(confirming !== null), [confirming, onConfirmingChange])
+  /** Set by Ctrl/⌘+Enter: save and stay open for the next capture. */
+  const stayRef = useRef(false)
   useEffect(() => setPickerIndex(0), [text])
 
   useEffect(() => {
@@ -167,7 +185,7 @@ export function CaptureBar({
       }
       const result = await target.write(parsed.values, full)
       if (!result) return
-      finishSaved(result)
+      finishSaved(result, target)
     } catch (err) {
       console.error(`Capture to ${target.label} failed:`, err)
       toast.error(`Could not save to ${target.label}`)
@@ -176,10 +194,11 @@ export function CaptureBar({
     }
   }
 
-  function finishSaved(result: WriteResult) {
+  function finishSaved(result: WriteResult, target: CaptureDestination) {
     setText('')
     setPicked(null)
     setSaved(result.message ? result : null)
+    onSaved?.(result, { destination: target.id, stay: stayRef.current })
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -198,10 +217,12 @@ export function CaptureBar({
     }
     if (e.key === 'Enter') {
       e.preventDefault()
+      stayRef.current = e.ctrlKey || e.metaKey
       void commit()
     } else if (e.key === 'Escape') {
       if (text) setText('')
       else if (picked) setPicked(null)
+      else onEscapeEmpty?.()
     } else if (e.key === 'Backspace' && !text && picked) {
       setPicked(null)
     }
@@ -367,8 +388,9 @@ export function CaptureBar({
           <CaptureConfirmDialog
             {...confirming}
             onSaved={(result) => {
+              const target = confirming.destination
               setConfirming(null)
-              finishSaved(result)
+              finishSaved(result, target)
               inputRef.current?.focus()
             }}
             onCancel={() => {

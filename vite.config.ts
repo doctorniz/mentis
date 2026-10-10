@@ -91,6 +91,8 @@ export default defineConfig(({ mode }) => {
         input: {
           main: path.resolve(__dirname, 'index.html'),
           authDropbox: path.resolve(__dirname, 'auth/dropbox.html'),
+          // The desktop capture overlay's own page: the bar, without the app shell.
+          capture: path.resolve(__dirname, 'capture.html'),
         },
         output: {
           manualChunks(id) {

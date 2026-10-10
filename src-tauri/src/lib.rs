@@ -3,6 +3,8 @@ pub mod index;
 #[doc(hidden)]
 pub mod oauth;
 #[doc(hidden)]
+pub mod overlay;
+#[doc(hidden)]
 pub mod startup;
 #[doc(hidden)]
 pub mod vault_fs;
@@ -24,14 +26,7 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             index::IndexHost::unplaced(),
         )))
         .setup(|app| {
-            let recents = vaults::Recents::load(vaults::recents_file(app.handle()));
-            vaults::grant_recent(&app.state::<vault_fs::VaultRoots>(), &recents);
-            app.manage(recents);
-            let dir = index::index_dir(app.handle());
-            app.state::<index::SharedHost>()
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .place(dir);
+            setup_vault_state(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -56,12 +51,45 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             oauth::oauth_authorize,
             startup::startup_ready,
             startup::startup_vault,
+            overlay::capture_hotkey_status,
+            overlay::overlay_hide,
+            overlay::overlay_set_height,
+            overlay::overlay_open_main,
+            overlay::overlay_ready,
+            overlay::overlay_visible,
         ])
+}
+
+/// Load the recent vaults (granting their folders) and place the index.
+fn setup_vault_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    let recents = vaults::Recents::load(vaults::recents_file(app));
+    vaults::grant_recent(&app.state::<vault_fs::VaultRoots>(), &recents);
+    app.manage(recents);
+    let dir = index::index_dir(app);
+    app.state::<index::SharedHost>()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .place(dir);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    with_vault_commands(tauri::Builder::default().plugin(tauri_plugin_dialog::init()))
+    // Single instance first: a second launch shows the running app instead of
+    // starting another process that would fight it for the capture hotkey.
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            overlay::show_main(app)
+        }))
+        .plugin(tauri_plugin_dialog::init())
+        .manage(overlay::Measurement::from_env())
+        .on_window_event(overlay::on_window_event);
+    // A builder keeps one setup closure, the last given, so this one does both.
+    with_vault_commands(builder)
+        .setup(|app| {
+            setup_vault_state(app.handle());
+            overlay::setup(app.handle())?;
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running Mentis");
 }

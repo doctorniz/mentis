@@ -8,6 +8,10 @@ import { ViewRouter } from '@/components/shell/view-router'
 import { VaultSearchBootstrap } from '@/components/search/vault-search-bootstrap'
 import { KeyboardShortcutsDialog } from '@/components/shell/keyboard-shortcuts-dialog'
 import { useUiStore } from '@/stores/ui'
+import { toast } from '@/stores/toast'
+import { useVaultSession } from '@/contexts/vault-fs-context'
+import { isTauri } from '@/lib/fs/platform'
+import type { FileSystemAdapter } from '@/lib/fs/types'
 import { useEditorStore } from '@/stores/editor'
 import { usePdfStore } from '@/stores/pdf'
 import { useCanvasStore } from '@/stores/canvas'
@@ -18,11 +22,52 @@ import { currentCommandContexts, type CommandScopes } from '@/core/registries/co
 const SettingsDialog = lazy(() =>
   import('@/components/shell/settings-dialog').then((m) => ({ default: m.SettingsDialog })),
 )
+let hotkeyChecked = false
+
+/** Say once per launch when another app already holds the capture hotkey. */
+async function warnIfHotkeyTaken() {
+  if (hotkeyChecked) return
+  hotkeyChecked = true
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    const status = await invoke<{ label: string; registered: boolean }>('capture_hotkey_status')
+    if (!status.registered) {
+      toast.warning(
+        `${status.label} is already used by another app, so the capture hotkey is off. ` +
+          'Use New capture in the Mentis tray menu instead.',
+        12_000,
+      )
+    }
+  } catch {
+    /* no tray process to ask (a measurement run) */
+  }
+}
+
+/** Reload the store a capture from the overlay window wrote into, so open views show it. */
+async function refreshAfterCapture(vaultFs: FileSystemAdapter, destination?: string) {
+  switch (destination) {
+    case 'thought':
+      await (await import('@/stores/board')).useBoardStore.getState().loadBoard(vaultFs)
+      break
+    case 'task':
+      await (await import('@/stores/tasks')).useTasksStore.getState().loadTasks(vaultFs)
+      break
+    case 'calendar':
+      await (await import('@/stores/calendar')).useCalendarStore.getState().loadEvents(vaultFs)
+      break
+    case 'bookmark':
+      await (await import('@/stores/bookmarks')).useBookmarksStore.getState().loadBookmarks(vaultFs)
+      break
+  }
+  window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+}
+
 const CommandPalette = lazy(() =>
   import('@/components/shell/command-palette').then((m) => ({ default: m.CommandPalette })),
 )
 
 export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
+  const { vaultFs } = useVaultSession()
   const setActiveView = useUiStore((s) => s.setActiveView)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -62,6 +107,33 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
     window.addEventListener('ink:open-command-palette', onOpenPalette)
     return () => window.removeEventListener('ink:open-command-palette', onOpenPalette)
   }, [])
+
+  // Desktop: the capture overlay is another window. Refresh what it saved
+  // into, and open the palette when its bar hands over a `>` command.
+  useEffect(() => {
+    if (!isTauri()) return
+    let stop = false
+    const unlisten: Array<() => void> = []
+    void import('@tauri-apps/api/event').then(async ({ listen }) => {
+      const offSaved = await listen<{ destination?: string }>('capture-saved', (e) => {
+        void refreshAfterCapture(vaultFs, e.payload.destination)
+      })
+      const offPalette = await listen<string>('open-command-palette', (e) => {
+        window.dispatchEvent(
+          new CustomEvent('ink:open-command-palette', { detail: { query: e.payload ?? '' } }),
+        )
+      })
+      if (stop) {
+        offSaved()
+        offPalette()
+      } else unlisten.push(offSaved, offPalette)
+    })
+    void warnIfHotkeyTaken()
+    return () => {
+      stop = true
+      unlisten.forEach((off) => off())
+    }
+  }, [vaultFs])
 
   useEffect(() => {
     function onOpenAiSettings() {
