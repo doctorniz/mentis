@@ -125,14 +125,18 @@ export function resolveDateToken(token: string, now: Date = new Date()): string 
  * `>token` dates. The last one that resolves wins; one that does not resolve
  * is not a date, so it stays in the text.
  */
-export function extractExplicitDate(text: CaptureText, now?: Date): string | undefined {
+export function extractExplicitDate(
+  text: CaptureText,
+  now?: Date,
+  field = 'due',
+): string | undefined {
   let winner: { m: RegExpExecArray; date: string } | undefined
   for (const m of text.matchAll(DATE_RE)) {
     const date = resolveDateToken(m[1]!, now)
     if (date) winner = { m, date }
   }
   if (!winner) return undefined
-  text.claim(...sigilRange(winner.m), 'due')
+  text.claim(...sigilRange(winner.m), field)
   return winner.date
 }
 
@@ -172,11 +176,15 @@ export function extractRecurrence(text: CaptureText): Recurrence | undefined {
 }
 
 /** `on monday`, `this friday`, `next tuesday`: the next such day. The first phrase wins. */
-export function extractWeekday(text: CaptureText, now: Date = new Date()): string | undefined {
+export function extractWeekday(
+  text: CaptureText,
+  now: Date = new Date(),
+  field = 'due',
+): string | undefined {
   for (const m of text.matchAll(SINGULAR_DAY_RE)) {
     const dow = dayWordToDow(m[1]!)
     if (dow == null) continue
-    text.claim(...wholeRange(m), 'due')
+    text.claim(...wholeRange(m), field)
     return formatLocalDate(nextWeekdayOnOrAfter(now, dow))
   }
   return undefined

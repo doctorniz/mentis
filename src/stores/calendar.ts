@@ -19,6 +19,9 @@ interface EventOpts {
   location?: string
   url?: string
   body?: string
+  tz?: string
+  repeat?: CalendarEvent['repeat']
+  alert?: number
 }
 
 interface CalendarState {
@@ -93,6 +96,9 @@ export const useCalendarStore = create<CalendarState>()(
         color: opts.color,
         ...(opts.location ? { location: opts.location } : {}),
         ...(opts.url ? { url: opts.url } : {}),
+        ...(opts.tz ? { tz: opts.tz } : {}),
+        ...(opts.repeat ? { repeat: opts.repeat } : {}),
+        ...(opts.alert != null ? { alert: opts.alert } : {}),
       })
 
       const filename = generateEventFilename()
@@ -119,6 +125,10 @@ export const useCalendarStore = create<CalendarState>()(
         color: opts.color,
         ...(opts.location ? { location: opts.location } : {}),
         ...(opts.url ? { url: opts.url } : {}),
+        // Fields the event editor does not show yet are kept as they were.
+        ...((opts.tz ?? existing.tz) ? { tz: opts.tz ?? existing.tz } : {}),
+        ...((opts.repeat ?? existing.repeat) ? { repeat: opts.repeat ?? existing.repeat } : {}),
+        ...((opts.alert ?? existing.alert) != null ? { alert: opts.alert ?? existing.alert } : {}),
         created: existing.created,
       })
 

@@ -26,14 +26,14 @@ function hostnameLabel(url: string): string {
 // Free tier: 50 req/day (generous for personal use).
 const MICROLINK_API = 'https://api.microlink.io'
 
+/** What a bookmark shows before (or without) a fetch: the hostname and its favicon. */
+export function fallbackOgMetadata(url: string): OgMetadata {
+  return { title: hostnameLabel(url), description: '', ogImage: '', favicon: faviconUrl(url) }
+}
+
 export async function fetchOgMetadata(url: string): Promise<OgMetadata> {
-  const favicon = faviconUrl(url)
-  const fallback: OgMetadata = {
-    title: hostnameLabel(url),
-    description: '',
-    ogImage: '',
-    favicon,
-  }
+  const fallback = fallbackOgMetadata(url)
+  const favicon = fallback.favicon
 
   try {
     const controller = new AbortController()

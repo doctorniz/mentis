@@ -8,7 +8,7 @@ import {
   serializeBookmark,
   generateBookmarkFilename,
 } from '@/lib/bookmarks'
-import { fetchOgMetadata } from '@/lib/bookmarks/og-fetch'
+import { fallbackOgMetadata, fetchOgMetadata } from '@/lib/bookmarks/og-fetch'
 
 interface BookmarksState {
   items: BookmarkItem[]
@@ -22,6 +22,8 @@ interface BookmarksState {
     url: string,
     meta?: Partial<BookmarkFrontmatter>,
     category?: string | null,
+    /** false: save at once with `meta` and the hostname, without waiting on a metadata fetch. */
+    fetchMeta?: boolean,
   ) => Promise<BookmarkItem>
   updateBookmark: (
     fs: FileSystemAdapter,
@@ -105,7 +107,7 @@ export const useBookmarksStore = create<BookmarksState>()(
       }
     },
 
-    addBookmark: async (fs, url, meta, category) => {
+    addBookmark: async (fs, url, meta, category, fetchMeta = true) => {
       const exists = await fs.exists(BOOKMARKS_DIR)
       if (!exists) await fs.mkdir(BOOKMARKS_DIR)
 
@@ -115,15 +117,15 @@ export const useBookmarksStore = create<BookmarksState>()(
         if (!catExists) await fs.mkdir(dir)
       }
 
-      const og = await fetchOgMetadata(url)
+      const og = fetchMeta ? await fetchOgMetadata(url) : fallbackOgMetadata(url)
 
       const now = new Date().toISOString()
       const fm: BookmarkFrontmatter = {
         url,
         title: meta?.title || og.title,
         description: meta?.description ?? og.description,
-        favicon: og.favicon,
-        ogImage: og.ogImage,
+        favicon: meta?.favicon || og.favicon,
+        ogImage: meta?.ogImage || og.ogImage,
         tags: meta?.tags ?? [],
         created: now,
         modified: now,

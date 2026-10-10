@@ -55,6 +55,12 @@ export interface CalendarEventFrontmatter {
   location?: string
   /** URL associated with the event — video call link, ticket, etc. (optional) */
   url?: string
+  /** IANA timezone the times were entered in, e.g. `Europe/London`. */
+  tz?: string
+  /** Stored for when the calendar can repeat events; not acted on yet. */
+  repeat?: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  /** Minutes before the start to alert; stored for when reminders exist, not acted on yet. */
+  alert?: number
   created: string
   modified: string
   [key: string]: unknown
@@ -74,6 +80,12 @@ export interface CalendarEvent {
   location?: string
   /** URL — video call, event page, etc. (optional) */
   url?: string
+  /** IANA timezone the times were entered in, e.g. `Europe/London`. */
+  tz?: string
+  /** Stored for when the calendar can repeat events; not acted on yet. */
+  repeat?: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  /** Minutes before the start to alert; stored for when reminders exist, not acted on yet. */
+  alert?: number
   created: string
   modified: string
 }

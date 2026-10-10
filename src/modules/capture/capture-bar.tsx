@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Mic, SendHorizontal, X } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { captureDestinations } from '@/core/registries'
@@ -8,9 +8,16 @@ import {
   type CaptureDestination,
   type ParseResult,
   type PreviewChip,
+  type WriteResult,
 } from '@/core/registries/capture'
 import { toast } from '@/stores/toast'
 import { cn } from '@/utils/cn'
+
+// The confirmation step loads the first time a destination needs it.
+const CaptureConfirmDialog = lazy(() => import('./confirm-dialog'))
+
+/** Input that is nothing but a link: pasting one means bookmarking it. */
+const URL_ONLY = /^\s*(https?:\/\/|www\.)\S+\s*$/i
 
 export interface CaptureBarProps {
   /** Skip the picker and hide the sigil: everything goes here unless `/` picks another. */
@@ -59,14 +66,24 @@ export function CaptureBar({
   const [picked, setPicked] = useState<CaptureDestination | null>(null)
   const [pickerIndex, setPickerIndex] = useState(0)
   const [busy, setBusy] = useState(false)
-  const [saved, setSaved] = useState<{ message: string; undo?: () => Promise<void> } | null>(null)
+  const [saved, setSaved] = useState<WriteResult | null>(null)
+  /** A destination's confirmation step, open with what was typed. */
+  const [confirming, setConfirming] = useState<{
+    destination: CaptureDestination
+    input: string
+    parsed: ParseResult
+    ctx: CaptureContext
+  } | null>(null)
   const [fullParse, setFullParse] = useState<{ text: string; result: ParseResult } | null>(null)
 
   const bound = boundDestination ? captureDestinations.get(boundDestination) : undefined
   const fallback = bound ?? captureDestinations.get(DEFAULT_CAPTURE_DESTINATION)!
   const pickerOpen = !picked && text.startsWith('/') && !/\s/.test(text)
   const pickerItems = pickerOpen ? captureDestinations.search(text.slice(1)) : []
-  const destination = picked ?? fallback
+  // A lone URL typed where nothing is bound goes to bookmarks, skipping the picker.
+  const urlTarget =
+    !picked && !bound && URL_ONLY.test(text) ? captureDestinations.get('bookmark') : undefined
+  const destination = picked ?? urlTarget ?? fallback
 
   // Context identity changes only with what it carries.
   const scopeKey = JSON.stringify(scope ?? {})
@@ -139,27 +156,30 @@ export function CaptureBar({
   async function commit() {
     if (busy || !text.trim()) return
     const target = destination
-    // A destination that asks for confirmation commits directly only from a bar bound to it as immediate.
-    if (!target.immediate && !(immediate && target === bound)) {
-      // Confirmation modals are not built yet, and every registered destination is immediate.
-      toast.info(`${target.label} needs a confirmation step that is not available yet`)
-      return
-    }
     setBusy(true)
     try {
       const full = { ...ctx, now: new Date() }
       const parsed = await target.parse(text, full)
+      // A destination that asks for confirmation skips it only from a bar bound to it as immediate.
+      if (!target.immediate && !(immediate && target === bound)) {
+        setConfirming({ destination: target, input: text, parsed, ctx: full })
+        return
+      }
       const result = await target.write(parsed.values, full)
       if (!result) return
-      setText('')
-      setPicked(null)
-      setSaved(result.message ? { message: result.message, undo: result.undo } : null)
+      finishSaved(result)
     } catch (err) {
       console.error(`Capture to ${target.label} failed:`, err)
       toast.error(`Could not save to ${target.label}`)
     } finally {
       setBusy(false)
     }
+  }
+
+  function finishSaved(result: WriteResult) {
+    setText('')
+    setPicked(null)
+    setSaved(result.message ? result : null)
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -275,6 +295,21 @@ export function CaptureBar({
       {saved && (
         <p className="text-fg-muted mt-1.5 pl-6 text-xs" role="status">
           {saved.message}
+          {saved.open && (
+            <>
+              {' · '}
+              <button
+                type="button"
+                onClick={() => {
+                  saved.open?.()
+                  setSaved(null)
+                }}
+                className="text-accent hover:underline"
+              >
+                Open
+              </button>
+            </>
+          )}
           {saved.undo && (
             <>
               {' · '}
@@ -326,6 +361,23 @@ export function CaptureBar({
             )
           })}
         </div>
+      )}
+      {confirming && (
+        <Suspense fallback={null}>
+          <CaptureConfirmDialog
+            {...confirming}
+            onSaved={(result) => {
+              setConfirming(null)
+              finishSaved(result)
+              inputRef.current?.focus()
+            }}
+            onCancel={() => {
+              // Cancelling keeps what was typed.
+              setConfirming(null)
+              inputRef.current?.focus()
+            }}
+          />
+        </Suspense>
       )}
     </div>
   )

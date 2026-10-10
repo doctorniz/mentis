@@ -4,6 +4,7 @@ import type { CalendarEvent, CalendarEventFrontmatter, CalendarEventColor } from
 export const CALENDAR_DIR = '_mentis/_calendar'
 
 const H1_RE = /^#\s+(.+)$/m
+const REPEATS = ['daily', 'weekly', 'monthly', 'yearly']
 
 function safeColor(raw: unknown): CalendarEventColor {
   const valid: CalendarEventColor[] = ['violet', 'sky', 'emerald', 'amber', 'rose', 'slate']
@@ -18,6 +19,11 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
 
   const location = typeof fm.location === 'string' && fm.location ? fm.location : undefined
   const url = typeof fm.url === 'string' && fm.url ? fm.url : undefined
+  const tz = typeof fm.tz === 'string' && fm.tz ? fm.tz : undefined
+  const repeat = REPEATS.includes(fm.repeat as never)
+    ? (fm.repeat as CalendarEventFrontmatter['repeat'])
+    : undefined
+  const alert = typeof fm.alert === 'number' && fm.alert >= 0 ? fm.alert : undefined
 
   return {
     path,
@@ -30,6 +36,9 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
     color: safeColor(fm.color),
     ...(location ? { location } : {}),
     ...(url ? { url } : {}),
+    ...(tz ? { tz } : {}),
+    ...(repeat ? { repeat } : {}),
+    ...(alert != null ? { alert } : {}),
     created: (fm.created as string) ?? new Date().toISOString(),
     modified: (fm.modified as string) ?? new Date().toISOString(),
   }

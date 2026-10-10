@@ -25,6 +25,8 @@ export function preloadDates(): void {
 export interface DateCapacity {
   time: boolean
   range: boolean
+  /** A further condition a result must meet to be taken. */
+  accept?: (result: ParsedResult) => boolean
 }
 
 /**
@@ -42,6 +44,7 @@ export async function extractNaturalDate(
   for (const result of parse(text.unclaimed, now, { forwardDate: true })) {
     if (result.start.isCertain('hour') && !capacity.time) continue
     if (result.end && !capacity.range) continue
+    if (capacity.accept && !capacity.accept(result)) continue
     text.claim(result.index, result.index + result.text.length, field)
     return { date: formatLocalDate(result.start.date()), result }
   }

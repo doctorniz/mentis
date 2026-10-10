@@ -37,7 +37,37 @@ export interface WriteResult {
   /** Shown after saving, with Undo when `undo` is given. */
   message?: string
   undo?: () => Promise<void>
+  /** Offered beside the message: creating a note usually means writing in it. */
+  open?: () => void
 }
+
+interface FieldBase {
+  /** The key in the values; a parse span with this field name marks it auto-filled. */
+  key: string
+  label: string
+  hint?: string
+  required?: boolean
+  visible?: (values: Record<string, unknown>) => boolean
+}
+
+/** One field of a destination's confirmation dialog. */
+export type CaptureFieldSpec = FieldBase &
+  (
+    | { kind: 'text' | 'url' | 'textarea'; placeholder?: string }
+    | { kind: 'date' | 'toggle' | 'tags' | 'folder' }
+    | {
+        kind: 'datetime'
+        /** Show a date only (all-day), keeping the value as YYYY-MM-DD. */
+        dateOnly?: (values: Record<string, unknown>) => boolean
+      }
+    | { kind: 'select'; options: readonly { value: string; label: string }[] }
+    | {
+        /** Pick an existing name or type a new one. Empty means `emptyLabel`. */
+        kind: 'combobox'
+        options: (ctx: CaptureContext) => Promise<string[]>
+        emptyLabel: string
+      }
+  )
 
 export interface CaptureDestination {
   id: string
@@ -55,6 +85,14 @@ export interface CaptureDestination {
   /** The full parse, natural-language dates included. */
   parse(input: string, ctx: CaptureContext): Promise<ParseResult>
   preview?(values: Record<string, unknown>): readonly PreviewChip[]
+  /** The value key the unparsed text fills (the title or body), marked auto-filled too. */
+  residualField?: string
+  /** The confirmation dialog's fields. Needed when `immediate` is false. */
+  fields?(values: Record<string, unknown>, ctx: CaptureContext): readonly CaptureFieldSpec[]
+  /** A message when the values cannot be saved yet, e.g. an end before the start. */
+  validate?(values: Record<string, unknown>): string | null
+  /** Best-effort extra values fetched while the dialog is open (a page title). Never blocks saving. */
+  enrich?(values: Record<string, unknown>): Promise<Record<string, unknown>>
   /** Write the values. Resolves to null when there is nothing to save (no title). */
   write(values: Record<string, unknown>, ctx: CaptureContext): Promise<WriteResult | null>
   /** Load whatever `parse` needs, ahead of the first use. */

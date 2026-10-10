@@ -67,4 +67,62 @@ test.describe('26 — Capture', () => {
     await expect(palette).toBeHidden()
     await expect(bar(page)).toHaveValue('')
   })
+
+  test('26.5 /cal confirms with the parse highlighted, and blocks an end before the start', async ({
+    vaultPage: page,
+  }) => {
+    await navigateTo(page, 'board')
+    await bar(page).fill('/cal Dentist tomorrow at 7pm')
+    await bar(page).press('Enter')
+
+    const dialog = page.getByRole('dialog', { name: 'Calendar' })
+    await expect(dialog).toBeVisible({ timeout: 10_000 })
+    await expect(dialog.getByLabel('What was understood').locator('mark')).toHaveText(
+      'tomorrow at 7pm',
+    )
+    await expect(dialog.getByLabel('Title')).toHaveValue('Dentist')
+    await expect(dialog.getByLabel('Starts')).toHaveValue(`${localDate(1)}T19:00`)
+    await expect(dialog.locator('[data-autofilled="start"]')).toBeVisible()
+
+    await dialog.getByLabel('Ends').fill(`${localDate(1)}T18:00`)
+    await expect(dialog.locator('[data-autofilled="start"]')).toBeVisible()
+    await dialog.getByRole('button', { name: 'Save' }).click()
+    await expect(dialog.getByRole('alert')).toHaveText('Ends must be after Starts')
+
+    await dialog.getByLabel('Ends').fill(`${localDate(1)}T20:00`)
+    await dialog.getByRole('button', { name: 'Save' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('status')).toContainText('Added to Calendar')
+  })
+
+  test('26.6 A pasted link goes straight to the bookmark dialog', async ({ vaultPage: page }) => {
+    await navigateTo(page, 'board')
+    await bar(page).fill('https://example.com/article')
+    await bar(page).press('Enter')
+
+    const dialog = page.getByRole('dialog', { name: 'Bookmark' })
+    await expect(dialog).toBeVisible({ timeout: 10_000 })
+    await expect(dialog.getByLabel('URL')).toHaveValue('https://example.com/article')
+    await expect(dialog.getByLabel('Title')).not.toHaveValue('')
+    await dialog.getByRole('button', { name: 'Save' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('status')).toContainText('Saved to Bookmarks')
+  })
+
+  test('26.7 Esc asks before discarding edits, and keeps what was typed', async ({
+    vaultPage: page,
+  }) => {
+    await navigateTo(page, 'board')
+    await bar(page).fill('/cal Team lunch friday 1pm')
+    await bar(page).press('Enter')
+    const dialog = page.getByRole('dialog', { name: 'Calendar' })
+    await expect(dialog).toBeVisible({ timeout: 10_000 })
+
+    await dialog.getByLabel('Location').fill('Canteen')
+    await page.keyboard.press('Escape')
+    await expect(dialog.getByRole('alert')).toContainText('Discard your changes?')
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(bar(page)).toHaveValue('Team lunch friday 1pm')
+  })
 })

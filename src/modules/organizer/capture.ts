@@ -3,6 +3,7 @@ import type { CaptureDestination, ParseResult, PreviewChip } from '@/core/regist
 import { extractNaturalDate, preloadDates } from '@/core/capture/dates'
 import { PRIORITY_LABELS, WEEKDAY_LABEL, type TaskPriority } from '@/types/tasks'
 import { parseQuickAddText, type QuickAddResult } from './parse-quick-add'
+import { calendarDestination } from './calendar-capture'
 
 const PRIORITY_TONE: Record<TaskPriority, PreviewChip['tone']> = {
   1: 'urgent',
@@ -80,4 +81,4 @@ const task: CaptureDestination = {
   },
 }
 
-export default [task]
+export default [task, calendarDestination]
