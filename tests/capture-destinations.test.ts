@@ -192,6 +192,51 @@ describe('journal destination', () => {
   })
 })
 
+describe('journal template and tabs', () => {
+  const journal = captureDestinations.get('journal')!
+  const TEMPLATE =
+    '---\ndefaultTab: Work\n---\n## Morning\n\n## Work\n\nStarted {{weekday}} {{date}}\n'
+  beforeEach(() => {
+    useVaultStore.setState({
+      config: { ...DEFAULT_VAULT_CONFIG, journalTemplate: 'Day.md', journalTimestamps: false },
+    })
+    useEditorStore.setState({ tabs: [] })
+  })
+
+  it("offers the template's tabs and picks its default tab", async () => {
+    const { fs } = memVault({ '_mentis/templates/Day.md': TEMPLATE })
+    const r = await journal.parse('Fixed the bug', { ...ctx, vaultFs: fs })
+    expect(r.values).toMatchObject({ tab: 'Work', tabOptions: ['Morning', 'Work'] })
+  })
+
+  it('creates the day from the template, variables filled, and writes under the tab', async () => {
+    const { fs, store } = memVault({ '_mentis/templates/Day.md': TEMPLATE })
+    await journal.write(
+      { date: '2026-10-06', tab: 'Work', entry: 'Fixed the bug' },
+      { ...ctx, vaultFs: fs },
+    )
+    const day = store.get('_mentis/_journals/2026-10-06.md')!
+    expect(day).toContain('tags: [daily]')
+    expect(day).not.toContain('defaultTab')
+    expect(day).toContain('## Morning\n\n## Work\n\nStarted Tuesday 2026-10-06\n\nFixed the bug\n')
+  })
+
+  it("adds a tab the day does not have, leaving an existing day's other text alone", async () => {
+    const existing = '# Tue\n\n## Morning\n\nRan.\n'
+    const { fs, store } = memVault({
+      '_mentis/templates/Day.md': TEMPLATE,
+      '_mentis/_journals/2026-10-06.md': existing,
+    })
+    await journal.write(
+      { date: '2026-10-06', tab: 'Evening', entry: 'Read.' },
+      { ...ctx, vaultFs: fs },
+    )
+    expect(store.get('_mentis/_journals/2026-10-06.md')).toBe(
+      '# Tue\n\n## Morning\n\nRan.\n\n## Evening\n\nRead.\n',
+    )
+  })
+})
+
 describe('chat destination', () => {
   it('needs no confirmation', () => {
     expect(captureDestinations.bySigil('/chat')?.immediate).toBe(true)

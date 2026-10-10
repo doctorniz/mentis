@@ -33,6 +33,8 @@ import { setSlashDialogHandlers } from '@/lib/editor/slash-dialog-bridge'
 import { listTemplates, readTemplate, type NoteTemplate } from '@/lib/notes/template-store'
 import { markdownToTiptapJSON } from '@/lib/editor/markdown-bridge'
 import { parseNote } from '@/lib/markdown'
+import { fillTemplate } from '@/lib/notes/template-vars'
+import { useEditorStore } from '@/stores/editor'
 import { useVaultStore } from '@/stores/vault'
 import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
 import { toast } from '@/stores/toast'
@@ -249,7 +251,9 @@ export function NoteEditorToolbar({
     try {
       const raw = await readTemplate(vaultFs, filename, templateFolder)
       const { content: body } = parseNote(filename, raw)
-      const json = markdownToTiptapJSON(body)
+      const { tabs, activeTabId } = useEditorStore.getState()
+      const title = tabs.find((t) => t.id === activeTabId)?.title ?? ''
+      const json = markdownToTiptapJSON(fillTemplate(body, { date: new Date(), title }))
       editor
         .chain()
         .focus()

@@ -42,6 +42,12 @@ const sections: readonly SettingsSection[] = [
     // The folder moves existing notes, so it changes only through its Move button.
     panel: () => import('./daily-notes-folder-setting'),
   },
+  {
+    id: 'markdown.journal-template',
+    tab: 'Editor',
+    order: 23,
+    panel: () => import('./journal-template-setting'),
+  },
 ]
 
 export default sections

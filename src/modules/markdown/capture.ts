@@ -8,7 +8,8 @@ import { formatLocalDate } from '@/lib/tasks/recurrence'
 import { useEditorStore } from '@/stores/editor'
 import { useUiStore } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
-import { DAILY_NOTES_DIR, DEFAULT_VAULT_CONFIG } from '@/types/vault'
+import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
+import type { FileSystemAdapter } from '@/lib/fs/types'
 
 const LAST_NOTEBOOK_KEY = 'mentis:capture-last-notebook'
 
@@ -115,7 +116,11 @@ const note: CaptureDestination = {
         import('@/lib/markdown'),
       ])
       const raw = await readTemplate(vaultFs, String(v.template), config().templateFolder)
-      templateBody = parseNote(String(v.template), raw).content.trim()
+      const { fillTemplate } = await import('@/lib/notes/template-vars')
+      templateBody = fillTemplate(parseNote(String(v.template), raw).content, {
+        date: new Date(),
+        title,
+      }).trim()
     }
     const tags = Array.isArray(v.tags) ? (v.tags as string[]) : []
     const body = String(v.body ?? '').trim()
@@ -137,14 +142,46 @@ const note: CaptureDestination = {
   },
 }
 
-async function parseJournalInput(input: string, now: Date, natural: boolean): Promise<ParseResult> {
+/** The tabs to offer for a day, and the one to pick: the template's and the day's own. */
+async function journalTabsFor(vaultFs: FileSystemAdapter, date: string) {
+  try {
+    const [{ readJournalTemplate, journalPath, defaultJournalTab }, sections] = await Promise.all([
+      import('@/lib/journal'),
+      import('@/lib/journal/sections'),
+    ])
+    const template = await readJournalTemplate(vaultFs, config())
+    const path = journalPath(config(), dayFrom(date))
+    const raw = (await vaultFs.exists(path)) ? await vaultFs.readTextFile(path) : null
+    const dayTabs = raw === null ? [] : sections.journalTabs(sections.splitJournal(raw))
+    const tabs = [...new Set([...(template?.tabs ?? []), ...dayTabs])]
+    return {
+      tab: defaultJournalTab(raw, template),
+      tabs: tabs.length ? tabs : [sections.NOTES_TAB],
+    }
+  } catch {
+    return { tab: 'Notes', tabs: ['Notes'] }
+  }
+}
+
+function dayFrom(date: string): Date {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number]
+  return new Date(y, m - 1, d)
+}
+
+async function parseJournalInput(
+  input: string,
+  now: Date,
+  vaultFs: FileSystemAdapter,
+): Promise<ParseResult> {
   const text = new CaptureText(input)
   let date = extractExplicitDate(text, now, 'date')
-  if (!date && natural) {
+  if (!date) {
     date = (await extractNaturalDate(text, { time: false, range: false }, 'date', now))?.date
   }
+  const day = date ?? formatLocalDate(now)
+  const { tab, tabs } = await journalTabsFor(vaultFs, day)
   return {
-    values: { date: date ?? formatLocalDate(now), entry: text.residual() },
+    values: { date: day, tab, tabOptions: tabs, entry: text.residual() },
     matchedSpans: text.spans,
     residual: text.residual(),
   }
@@ -153,8 +190,9 @@ async function parseJournalInput(input: string, now: Date, natural: boolean): Pr
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /**
- * An entry appended to a day's journal, creating the day's note first if
- * needed. Entries start with the time they were added unless that setting is
+ * An entry appended to a tab of a day's journal, creating the day from the
+ * journal template first if needed, and the tab's heading if the day lacks
+ * it. Entries start with the time they were added unless that setting is
  * off. A journal open in a tab is not written behind the editor's back.
  */
 const journal: CaptureDestination = {
@@ -168,35 +206,45 @@ const journal: CaptureDestination = {
   residualField: 'entry',
   preload: preloadDates,
   parseNow: () => ({ values: {}, matchedSpans: [], residual: '' }),
-  parse: (input, { now }) => parseJournalInput(input, now, true),
-  fields: () => [
+  parse: (input, { now, vaultFs }) => parseJournalInput(input, now, vaultFs),
+  fields: (values) => [
     { key: 'date', label: 'Date', kind: 'date', required: true },
+    {
+      key: 'tab',
+      label: 'Tab',
+      kind: 'combobox',
+      required: true,
+      emptyLabel: 'Notes',
+      // A name the day does not have yet adds it as a new section.
+      options: async () => (values.tabOptions as string[] | undefined) ?? ['Notes'],
+    },
     { key: 'entry', label: 'Entry', kind: 'textarea', required: true },
   ],
   async write(v, { vaultFs }) {
     const entry = String(v.entry ?? '').trim()
     if (!entry) return null
-    const [y, m, d] = String(v.date).split('-').map(Number) as [number, number, number]
-    const day = new Date(y, m - 1, d)
-    const { openOrCreateDailyNote, todayDailyNotePath } = await import('@/lib/notes/daily-note')
-    const folder = trimSlashes(config().dailyNotesFolder ?? DAILY_NOTES_DIR) || DAILY_NOTES_DIR
-    const path = todayDailyNotePath(day, folder)
+    const day = dayFrom(String(v.date))
+    const tab = String(v.tab ?? '').trim() || 'Notes'
+    const [{ openOrCreateJournal, journalPath }, { appendToTab }] = await Promise.all([
+      import('@/lib/journal'),
+      import('@/lib/journal/sections'),
+    ])
+    const path = journalPath(config(), day)
     if (useEditorStore.getState().tabs.some((t) => t.path === path)) {
       throw new Error(
         `The journal for ${v.date} is open in a tab. Add the entry there, or close it first.`,
       )
     }
-    await openOrCreateDailyNote(vaultFs, day, folder)
+    await openOrCreateJournal(vaultFs, day, config())
     const now = new Date()
     const stamp =
       config().journalTimestamps !== false
         ? `**${pad(now.getHours())}:${pad(now.getMinutes())}** — `
         : ''
-    const existing = await vaultFs.readTextFile(path)
-    const sep = existing.endsWith('\n\n') ? '' : existing.endsWith('\n') ? '\n' : '\n\n'
-    await vaultFs.writeTextFile(path, `${existing}${sep}${stamp}${entry}\n`)
+    const raw = await vaultFs.readTextFile(path)
+    await vaultFs.writeTextFile(path, appendToTab(raw, tab, `${stamp}${entry}`))
     window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-    return { message: `Added to Journal · ${v.date}` }
+    return { message: `Added to Journal · ${v.date} · ${tab}` }
   },
 }
 

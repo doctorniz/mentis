@@ -46,12 +46,14 @@ export async function openOrCreateDailyNote(
   fs: FileSystemAdapter,
   date = new Date(),
   folder = DAILY_NOTES_DIR,
+  /** Written after the date header when the note is created (the journal template). */
+  body = '',
 ): Promise<string> {
   const dir = folder.replace(/^\/+|\/+$/g, '') || DAILY_NOTES_DIR
   const path = todayDailyNotePath(date, dir)
   if (await fs.exists(path)) return path
   await fs.mkdir(dir)
-  await fs.writeTextFile(path, dailyNoteContent(date))
+  await fs.writeTextFile(path, dailyNoteContent(date) + body)
   return path
 }
 
