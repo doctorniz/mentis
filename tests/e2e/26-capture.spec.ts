@@ -125,4 +125,54 @@ test.describe('26 — Capture', () => {
     await expect(dialog).toBeHidden()
     await expect(bar(page)).toHaveValue('Team lunch friday 1pm')
   })
+
+  test('26.8 /note confirms, writes the note and offers to open it', async ({
+    vaultPage: page,
+  }) => {
+    await navigateTo(page, 'board')
+    await bar(page).fill('/note Kitchen ideas #home')
+    await bar(page).press('Enter')
+
+    const dialog = page.getByRole('dialog', { name: 'Note' })
+    await expect(dialog).toBeVisible({ timeout: 10_000 })
+    await expect(dialog.getByLabel('Title')).toHaveValue('Kitchen ideas')
+    await expect(dialog.getByLabel('Tags')).toHaveValue('#home')
+    await dialog.getByLabel('Body').fill('Open shelving')
+    await dialog.getByRole('button', { name: 'Save' }).click()
+
+    const status = page.getByRole('status')
+    await expect(status).toContainText('Note created · Kitchen ideas')
+    await status.getByRole('button', { name: 'Open' }).click()
+    await expect(page.locator('.tiptap').first()).toContainText('Open shelving', {
+      timeout: 10_000,
+    })
+  })
+
+  test('26.9 /journal appends to the day', async ({ vaultPage: page }) => {
+    await navigateTo(page, 'board')
+    await bar(page).fill('/journal Long walk by the river')
+    await bar(page).press('Enter')
+
+    const dialog = page.getByRole('dialog', { name: 'Journal' })
+    await expect(dialog).toBeVisible({ timeout: 10_000 })
+    await expect(dialog.getByLabel('Date')).toHaveValue(localDate(0))
+    await expect(dialog.getByLabel('Entry')).toHaveValue('Long walk by the river')
+    await page.keyboard.press('Control+Enter')
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('status')).toContainText(`Added to Journal · ${localDate(0)}`)
+  })
+
+  test('26.10 /chat goes to vault chat; unconfigured, the message waits in the box', async ({
+    vaultPage: page,
+  }) => {
+    await navigateTo(page, 'board')
+    await bar(page).fill('/chat What did I decide about the kitchen?')
+    await bar(page).press('Enter')
+    // The box's placeholder depends on the provider's state, so find it by its place.
+    await expect(page.locator('main textarea').first()).toHaveValue(
+      // insertText ends with a newline.
+      /^What did I decide about the kitchen\?\s*$/,
+      { timeout: 10_000 },
+    )
+  })
 })

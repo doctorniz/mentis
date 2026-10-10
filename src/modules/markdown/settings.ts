@@ -30,6 +30,14 @@ const sections: readonly SettingsSection[] = [
         get: (c) => c.dailyNotesEnabled !== false,
         set: (_, dailyNotesEnabled) => ({ dailyNotesEnabled }),
       },
+      {
+        id: 'journalTimestamps',
+        kind: 'toggle',
+        label: 'Timestamp entries added from capture',
+        hint: 'Each /journal entry starts with the time it was added.',
+        get: (c) => c.journalTimestamps !== false,
+        set: (_, journalTimestamps) => ({ journalTimestamps }),
+      },
     ],
     // The folder moves existing notes, so it changes only through its Move button.
     panel: () => import('./daily-notes-folder-setting'),

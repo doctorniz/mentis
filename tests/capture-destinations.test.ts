@@ -1,4 +1,9 @@
-import { describe, expect, it } from 'vitest'
+// @vitest-environment happy-dom
+import { beforeEach, describe, expect, it } from 'vitest'
+import type { FileSystemAdapter } from '@/lib/fs/types'
+import { useEditorStore } from '@/stores/editor'
+import { useVaultStore } from '@/stores/vault'
+import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
 import type { CaptureContext } from '@/core/registries/capture'
 import { captureDestinations } from '@/core/registries'
 
@@ -82,5 +87,113 @@ describe('bookmark destination', () => {
     const r = await bm.parse('www.example.org', ctx)
     expect(r.values.url).toBe('https://www.example.org')
     expect(bm.validate!({ url: 'example' })).toMatch(/full link/)
+  })
+})
+
+/** Just enough of a vault for the destinations' writes. */
+function memVault(files: Record<string, string> = {}) {
+  const store = new Map(Object.entries(files))
+  const dirs = new Set<string>()
+  const fs = {
+    exists: async (p: string) => store.has(p) || dirs.has(p),
+    mkdir: async (p: string) => void dirs.add(p),
+    readTextFile: async (p: string) => {
+      const v = store.get(p)
+      if (v == null) throw new Error(`missing ${p}`)
+      return v
+    },
+    writeTextFile: async (p: string, c: string) => void store.set(p, c),
+    readdir: async () => [],
+  } as unknown as FileSystemAdapter
+  return { fs, store }
+}
+
+describe('note destination', () => {
+  const note = captureDestinations.get('note')!
+  beforeEach(() => {
+    localStorage.clear()
+    useVaultStore.setState({ config: { ...DEFAULT_VAULT_CONFIG } })
+  })
+
+  it('takes the title from the text and #tags into frontmatter', async () => {
+    const r = await note.parse('Kitchen ideas #home #reno', ctx)
+    expect(r.values).toMatchObject({ title: 'Kitchen ideas', tags: ['home', 'reno'], body: '' })
+  })
+
+  it('writes into the notebook, naming a collision " 2", and offers Open', async () => {
+    const { fs, store } = memVault({ 'Projects/Plan.md': 'old' })
+    const result = await note.write(
+      { title: 'Plan', notebook: 'Projects', template: '', body: 'First step', tags: ['work'] },
+      { ...ctx, vaultFs: fs },
+    )
+    const written = store.get('Projects/Plan 2.md')!
+    expect(written).toContain('title: "Plan"')
+    expect(written).toContain('tags: ["work"]')
+    expect(written).toContain('First step')
+    expect(store.get('Projects/Plan.md')).toBe('old')
+    expect(result?.message).toBe('Note created · Plan 2')
+    expect(typeof result?.open).toBe('function')
+  })
+
+  it('puts the template body before what was typed', async () => {
+    const { fs, store } = memVault({
+      '_mentis/templates/Meeting.md': '---\ntitle: Meeting\n---\n## Agenda\n',
+    })
+    await note.write(
+      { title: 'Sync', notebook: '', template: 'Meeting.md', body: 'Notes', tags: [] },
+      { ...ctx, vaultFs: fs },
+    )
+    const written = store.get('Sync.md')!
+    expect(written.indexOf('## Agenda')).toBeLessThan(written.indexOf('Notes'))
+    expect(written).not.toContain('title: Meeting')
+  })
+})
+
+describe('journal destination', () => {
+  const journal = captureDestinations.get('journal')!
+  beforeEach(() => {
+    useVaultStore.setState({ config: { ...DEFAULT_VAULT_CONFIG } })
+    useEditorStore.setState({ tabs: [] })
+  })
+
+  it('reads an explicit or natural date, else today', async () => {
+    expect((await journal.parse('walked >2026-10-01', ctx)).values).toMatchObject({
+      date: '2026-10-01',
+      entry: 'walked',
+    })
+    expect((await journal.parse('slept badly yesterday', ctx)).values.date).toBe('2026-10-05')
+    expect((await journal.parse('good day', ctx)).values.date).toBe('2026-10-06')
+  })
+
+  it("creates the day's note if needed and appends a timestamped entry", async () => {
+    const { fs, store } = memVault()
+    await journal.write({ date: '2026-10-06', entry: 'Long walk' }, { ...ctx, vaultFs: fs })
+    const day = store.get('_mentis/_journals/2026-10-06.md')!
+    expect(day).toMatch(/\*\*\d{2}:\d{2}\*\* — Long walk\n$/)
+  })
+
+  it('appends without a timestamp when that setting is off', async () => {
+    useVaultStore.setState({ config: { ...DEFAULT_VAULT_CONFIG, journalTimestamps: false } })
+    const { fs, store } = memVault({ '_mentis/_journals/2026-10-06.md': '# Tue\n' })
+    await journal.write({ date: '2026-10-06', entry: 'Quiet' }, { ...ctx, vaultFs: fs })
+    expect(store.get('_mentis/_journals/2026-10-06.md')).toBe('# Tue\n\nQuiet\n')
+  })
+
+  it("refuses while that day's journal is open in a tab, so the editor cannot overwrite it", async () => {
+    const path = '_mentis/_journals/2026-10-06.md'
+    useEditorStore.setState({
+      tabs: [{ id: 't', path, type: 'markdown', title: '2026-10-06', isDirty: false }],
+    })
+    const { fs, store } = memVault({ [path]: 'kept' })
+    await expect(
+      journal.write({ date: '2026-10-06', entry: 'x' }, { ...ctx, vaultFs: fs }),
+    ).rejects.toThrow(/open in a tab/)
+    expect(store.get(path)).toBe('kept')
+  })
+})
+
+describe('chat destination', () => {
+  it('needs no confirmation', () => {
+    expect(captureDestinations.bySigil('/chat')?.immediate).toBe(true)
   })
 })

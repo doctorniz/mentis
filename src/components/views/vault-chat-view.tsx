@@ -484,6 +484,34 @@ export function VaultChatView() {
     [apiKey, settings, sendMessage, vaultFs],
   )
 
+  // A first message from capture (`/chat`). Once the view knows whether chat
+  // is set up, it is sent in a new thread; if it cannot be sent, it waits in
+  // the composer instead of being lost.
+  const pendingPrompt = useVaultChatStore((s) => s.pendingPrompt)
+  useEffect(() => {
+    if (!pendingPrompt || !initialized || !keyChecked || isStreaming) return
+    // The same conditions that disable the composer: a provider, its key, and a loaded local model.
+    const canSend = !!apiKey && !providerMissing && !keyMissing && !deviceNeedsModel
+    if (!canSend && !composerRef.current) return
+    useVaultChatStore.getState().setPendingPrompt(null)
+    if (canSend) {
+      void createThread().then(() => handleSend(pendingPrompt))
+    } else {
+      composerRef.current?.insertText(pendingPrompt)
+    }
+  }, [
+    pendingPrompt,
+    initialized,
+    keyChecked,
+    isStreaming,
+    apiKey,
+    providerMissing,
+    keyMissing,
+    deviceNeedsModel,
+    createThread,
+    handleSend,
+  ])
+
   const handleNewThread = useCallback(async () => {
     if (isStreaming) return
     await createThread()

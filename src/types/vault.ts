@@ -46,6 +46,8 @@ export interface VaultConfig {
    * Free-form; the folder is created on first use.
    */
   dailyNotesFolder: string
+  /** Start each journal entry added from capture with its time (`**14:32** — `). Defaults to true. */
+  journalTimestamps: boolean
   /** Cloud sync settings (Dropbox); self-hosted sync may be added later */
   sync?: VaultSyncConfig
   /**
@@ -107,4 +109,5 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   pdfPageStyle: 'blank',
   dailyNotesEnabled: true,
   dailyNotesFolder: '_mentis/_journals',
+  journalTimestamps: true,
 }

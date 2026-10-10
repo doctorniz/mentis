@@ -65,8 +65,11 @@ interface VaultChatState {
   isStreaming: boolean
   abort: AbortController | null
   error: string | null
+  /** A first message handed over by capture (`/chat`), sent once the view is ready. */
+  pendingPrompt: string | null
 
   init: (args: InitArgs) => Promise<void>
+  setPendingPrompt: (prompt: string | null) => void
   reset: () => void
   selectThread: (threadId: string) => void
   createThread: () => Promise<ChatThread>
@@ -92,6 +95,12 @@ export const useVaultChatStore = create<VaultChatState>()(
     isStreaming: false,
     abort: null,
     error: null,
+    pendingPrompt: null,
+
+    setPendingPrompt: (prompt) =>
+      set((s) => {
+        s.pendingPrompt = prompt
+      }),
 
     init: async ({ vaultFs, vaultPath }) => {
       // Cancel anything still streaming from a previous vault session.
