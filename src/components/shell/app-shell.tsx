@@ -65,6 +65,9 @@ async function refreshAfterCapture(vaultFs: FileSystemAdapter, destination?: str
     case 'bookmark':
       await (await import('@/stores/bookmarks')).useBookmarksStore.getState().loadBookmarks(vaultFs)
       break
+    case 'list':
+      await (await import('@/stores/lists')).useListsStore.getState().loadLists(vaultFs)
+      break
   }
   window.dispatchEvent(new CustomEvent('ink:vault-changed'))
 }

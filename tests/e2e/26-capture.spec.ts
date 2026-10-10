@@ -175,4 +175,34 @@ test.describe('26 — Capture', () => {
       { timeout: 10_000 },
     )
   })
+
+  test('26.11 /list adds an item, creating the list when the name is new', async ({
+    vaultPage: page,
+  }) => {
+    await navigateTo(page, 'board')
+    await bar(page).fill('/list Oat milk')
+    await bar(page).press('Enter')
+
+    const dialog = page.getByRole('dialog', { name: 'List' })
+    await expect(dialog).toBeVisible({ timeout: 10_000 })
+    await expect(dialog.getByLabel('Item')).toHaveValue('Oat milk')
+    await dialog.getByLabel('List').fill('Groceries')
+    await expect(dialog.getByText('Creates “Groceries”')).toBeVisible()
+    await dialog.getByLabel('Note').fill('2 cartons')
+    await dialog.getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByRole('status')).toContainText('Added to Groceries')
+
+    // A second item goes to the same list, which the dialog now offers by default.
+    await bar(page).fill('/list Bananas')
+    await bar(page).press('Enter')
+    await expect(dialog.getByLabel('List')).toHaveValue('Groceries')
+    await dialog.getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByRole('status')).toContainText('Added to Groceries')
+
+    await page.keyboard.press('Control+3')
+    await page.getByRole('button', { name: 'Lists', exact: true }).first().click()
+    await page.getByRole('button', { name: /Groceries/ }).click()
+    await expect(page.getByLabel('Item', { exact: true })).toHaveCount(2)
+    await expect(page.getByText('2 cartons')).toBeVisible()
+  })
 })
