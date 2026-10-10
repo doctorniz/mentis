@@ -235,7 +235,7 @@ export function TaskListSidebar({
               }
             }}
             autoFocus
-            placeholder="List name"
+            placeholder="Project name"
             className="border-border bg-bg-secondary text-fg placeholder:text-fg-muted/40 focus:ring-accent/40 mx-1 rounded-lg border px-2.5 py-1.5 text-sm outline-none focus:ring-1"
           />
         ) : (
@@ -245,7 +245,7 @@ export function TaskListSidebar({
             className="text-fg-muted hover:text-fg hover:bg-bg-hover flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors"
           >
             <Plus className="size-3.5 shrink-0" />
-            <span>Add list</span>
+            <span>Add project</span>
           </button>
         )}
       </div>

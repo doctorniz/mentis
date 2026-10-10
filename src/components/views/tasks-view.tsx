@@ -98,7 +98,7 @@ export function TasksView() {
       <div className="hidden md:block">
         <TaskListSidebar onNavigate={handleNavClick} />
       </div>
-      <MobileDrawer open={sidebarOpen} onOpenChange={setSidebarOpen} title="Task lists">
+      <MobileDrawer open={sidebarOpen} onOpenChange={setSidebarOpen} title="Projects">
         <TaskListSidebar onNavigate={handleNavClick} className="w-full border-r-0" />
       </MobileDrawer>
 
@@ -109,7 +109,7 @@ export function TasksView() {
             type="button"
             onClick={() => setSidebarOpen((o) => !o)}
             className="text-fg-muted hover:text-fg -ml-0.5 shrink-0 rounded-lg p-1.5 transition-colors md:hidden"
-            aria-label="Open task lists"
+            aria-label="Open projects"
           >
             <CheckSquare className="size-4" />
           </button>

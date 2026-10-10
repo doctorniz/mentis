@@ -198,14 +198,14 @@ test.describe('7 — Task Manager', () => {
       await expect(taskText).not.toBeVisible({ timeout: 5_000 })
     })
 
-    test('7.3.7 create custom list — subfolder created', async ({ vaultPage: page }) => {
-      // Click "Add list" in the sidebar
-      const addListBtn = page.getByText('Add list')
+    test('7.3.7 create a project — subfolder created', async ({ vaultPage: page }) => {
+      // Click "Add project" in the sidebar (task groupings are Projects)
+      const addListBtn = page.getByText('Add project')
       await addListBtn.click()
       await page.waitForTimeout(300)
 
-      // Fill in the new list name
-      const listInput = page.getByPlaceholder('List name')
+      // Fill in the new project name
+      const listInput = page.getByPlaceholder('Project name')
       await listInput.fill('My Project')
       await listInput.press('Enter')
       await page.waitForTimeout(1_000)
