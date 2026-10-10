@@ -16,51 +16,43 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use serde::Serialize;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder,
     WindowEvent,
 };
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+
+use crate::app_settings::{
+    DEFAULT_HOTKEY, SharedAppSettings, hotkey_label, parse_hotkey, settings_file,
+};
 
 pub const OVERLAY: &str = "capture";
 pub const MAIN: &str = "main";
 pub const REPORT_ENV: &str = "MENTIS_OVERLAY_REPORT";
+/// Passed when the app is started at login: start in the tray, window hidden.
+pub const HIDDEN_ARG: &str = "--hidden";
 
 const WIDTH: f64 = 640.0;
 const INITIAL_HEIGHT: f64 = 64.0;
 /// How long after launch the overlay window is created.
 const CREATE_AFTER: Duration = Duration::from_millis(1500);
 
-/// The default capture hotkey: Ctrl+Shift+Space, ⌘⇧Space on macOS.
-pub fn capture_shortcut() -> Shortcut {
-    #[cfg(target_os = "macos")]
-    let mods = Modifiers::SUPER | Modifiers::SHIFT;
-    #[cfg(not(target_os = "macos"))]
-    let mods = Modifiers::CONTROL | Modifiers::SHIFT;
-    Shortcut::new(Some(mods), Code::Space)
-}
-
 /// Whether the capture hotkey is registered, for the main window to tell the user.
-#[derive(Default, serde::Serialize, Clone)]
+#[derive(Default, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct HotkeyStatus {
+    /// The hotkey as stored, e.g. `CmdOrCtrl+Shift+Space`.
+    pub hotkey: String,
     /// The hotkey as shown to the user, e.g. `Ctrl+Shift+Space`.
     pub label: String,
     pub registered: bool,
 }
 
 pub struct SharedHotkeyStatus(pub Mutex<HotkeyStatus>);
-
-fn shortcut_label() -> String {
-    if cfg!(target_os = "macos") {
-        "⌘⇧Space"
-    } else {
-        "Ctrl+Shift+Space"
-    }
-    .to_string()
-}
 
 /// A pending latency measurement: where to report, and when the show was triggered.
 #[derive(Default)]
@@ -163,27 +155,47 @@ fn build_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     build_tray(app)?;
 
-    let shortcut = capture_shortcut();
+    let settings = SharedAppSettings::load(settings_file(app));
+    // A stored hotkey that no longer parses falls back to the default.
+    let stored = settings.get().hotkey().to_string();
+    let hotkey = if parse_hotkey(&stored).is_ok() {
+        stored
+    } else {
+        DEFAULT_HOTKEY.to_string()
+    };
+    app.manage(settings);
+
+    // Only the capture hotkey is ever registered, so any press of one is it.
     app.plugin(
         tauri_plugin_global_shortcut::Builder::new()
-            .with_handler(move |app, pressed, event| {
-                if pressed == &shortcut && event.state() == ShortcutState::Pressed {
+            .with_handler(|app, _, event| {
+                if event.state() == ShortcutState::Pressed {
                     toggle_overlay(app);
                 }
             })
             .build(),
     )?;
-    let registered = match app.global_shortcut().register(shortcut) {
-        Ok(()) => true,
-        Err(err) => {
+    let registered = match parse_hotkey(&hotkey).map(|s| app.global_shortcut().register(s)) {
+        Ok(Ok(())) => true,
+        Ok(Err(err)) => {
             eprintln!("Capture hotkey unavailable: {err}");
+            false
+        }
+        Err(err) => {
+            eprintln!("{err}");
             false
         }
     };
     app.manage(SharedHotkeyStatus(Mutex::new(HotkeyStatus {
-        label: shortcut_label(),
+        label: hotkey_label(&hotkey),
+        hotkey,
         registered,
     })));
+
+    // Launched at login: wait in the tray. Otherwise show the window.
+    if !std::env::args().any(|a| a == HIDDEN_ARG) {
+        show_main(app);
+    }
 
     let handle = app.clone();
     std::thread::spawn(move || {
@@ -220,10 +232,87 @@ pub fn overlay_hide<R: Runtime>(app: AppHandle<R>) {
     }
 }
 
-/// Whether the capture hotkey works, so the app can say when another app holds it.
+/// What the Desktop settings show, and what the app checks at launch.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopSettings {
+    hotkey: HotkeyStatus,
+    launch_at_login: bool,
+    login_prompt_answered: bool,
+}
+
 #[tauri::command]
-pub fn capture_hotkey_status(status: State<'_, SharedHotkeyStatus>) -> HotkeyStatus {
-    status.0.lock().unwrap_or_else(|e| e.into_inner()).clone()
+pub fn desktop_settings_get<R: Runtime>(app: AppHandle<R>) -> DesktopSettings {
+    let hotkey = app
+        .state::<SharedHotkeyStatus>()
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+    DesktopSettings {
+        hotkey,
+        launch_at_login: app.autolaunch().is_enabled().unwrap_or(false),
+        login_prompt_answered: app.state::<SharedAppSettings>().get().login_prompt_answered,
+    }
+}
+
+/// Use `hotkey` (none: the default) for capture. If another app holds it,
+/// the previous hotkey stays and the error says so.
+#[tauri::command]
+pub fn capture_hotkey_set<R: Runtime>(
+    app: AppHandle<R>,
+    hotkey: Option<String>,
+) -> Result<HotkeyStatus, String> {
+    let wanted = hotkey.unwrap_or_else(|| DEFAULT_HOTKEY.to_string());
+    let next = parse_hotkey(&wanted)?;
+    let shortcuts = app.global_shortcut();
+    let state = app.state::<SharedHotkeyStatus>();
+    let mut status = state.0.lock().unwrap_or_else(|e| e.into_inner());
+    let previous = parse_hotkey(&status.hotkey).ok();
+    if let Some(previous) = previous.filter(|_| status.registered) {
+        let _ = shortcuts.unregister(previous);
+    }
+    if let Err(err) = shortcuts.register(next) {
+        eprintln!("Capture hotkey unavailable: {err}");
+        if status.registered {
+            status.registered = previous.is_some_and(|p| shortcuts.register(p).is_ok());
+        }
+        return Err(format!(
+            "{} is already used by another app",
+            hotkey_label(&wanted)
+        ));
+    }
+    status.label = hotkey_label(&wanted);
+    status.registered = true;
+    let stored = (wanted != DEFAULT_HOTKEY).then(|| wanted.clone());
+    status.hotkey = wanted;
+    app.state::<SharedAppSettings>()
+        .update(|s| s.capture_hotkey = stored)
+        .map_err(|e| format!("The hotkey works but could not be saved: {e}"))?;
+    Ok(status.clone())
+}
+
+/// Start Mentis at login (hidden, in the tray) or stop doing so. Answers the prompt.
+#[tauri::command]
+pub fn launch_at_login_set<R: Runtime>(app: AppHandle<R>, enabled: bool) -> Result<bool, String> {
+    let autolaunch = app.autolaunch();
+    if enabled {
+        autolaunch.enable()
+    } else {
+        autolaunch.disable()
+    }
+    .map_err(|e| format!("Could not change launch at login: {e}"))?;
+    login_prompt_answer(app.clone())?;
+    autolaunch.is_enabled().map_err(|e| e.to_string())
+}
+
+/// The launch-at-login prompt was answered (or dismissed): do not ask again.
+#[tauri::command]
+pub fn login_prompt_answer<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    app.state::<SharedAppSettings>()
+        .update(|s| s.login_prompt_answered = true)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 /// The overlay sizes itself to its content; only the height changes.
@@ -283,15 +372,6 @@ pub fn overlay_visible<R: Runtime>(app: AppHandle<R>, measurement: State<'_, Mea
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn the_default_hotkey_is_ctrl_or_cmd_shift_space() {
-        let s = capture_shortcut();
-        assert_eq!(s.key, Code::Space);
-        assert!(s.mods.contains(Modifiers::SHIFT));
-        #[cfg(not(target_os = "macos"))]
-        assert!(s.mods.contains(Modifiers::CONTROL));
-    }
 
     #[test]
     fn a_report_records_the_latency() {

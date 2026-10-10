@@ -86,6 +86,8 @@ export interface SettingsSection {
   fields?: readonly SettingsField[]
   /** Rendered after `fields`. Loaded when its tab is first shown. */
   panel?: () => Promise<{ default: ComponentType<SettingsPanelProps> }>
+  /** Shown only where this holds, e.g. in the desktop app. A tab with no sections left is hidden. */
+  when?: () => boolean
 }
 
 export interface SettingsTab {
@@ -95,6 +97,7 @@ export interface SettingsTab {
 }
 
 export interface SettingsRegistry {
+  /** The tabs, without sections whose `when` fails, and without tabs left empty. */
   tabs(): readonly SettingsTab[]
 }
 
@@ -120,5 +123,10 @@ export function createSettingsRegistry(sections: readonly SettingsSection[]): Se
     sections: list,
   }))
 
-  return { tabs: () => tabs }
+  return {
+    tabs: () =>
+      tabs
+        .map((t) => ({ ...t, sections: t.sections.filter((s) => !s.when || s.when()) }))
+        .filter((t) => t.sections.length > 0),
+  }
 }

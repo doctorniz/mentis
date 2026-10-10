@@ -1,4 +1,6 @@
 #[doc(hidden)]
+pub mod app_settings;
+#[doc(hidden)]
 pub mod index;
 #[doc(hidden)]
 pub mod oauth;
@@ -51,7 +53,10 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             oauth::oauth_authorize,
             startup::startup_ready,
             startup::startup_vault,
-            overlay::capture_hotkey_status,
+            overlay::desktop_settings_get,
+            overlay::capture_hotkey_set,
+            overlay::launch_at_login_set,
+            overlay::login_prompt_answer,
             overlay::overlay_hide,
             overlay::overlay_set_height,
             overlay::overlay_open_main,
@@ -81,6 +86,10 @@ pub fn run() {
             overlay::show_main(app)
         }))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec![overlay::HIDDEN_ARG]),
+        ))
         .manage(overlay::Measurement::from_env())
         .on_window_event(overlay::on_window_event);
     // A builder keeps one setup closure, the last given, so this one does both.

@@ -12,7 +12,9 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Mentis",
+        "visible": false,
         "width": 1280,
         "height": 800,
         "minWidth": 360,

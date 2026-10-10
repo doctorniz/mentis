@@ -9,6 +9,7 @@ import { VaultSearchBootstrap } from '@/components/search/vault-search-bootstrap
 import { KeyboardShortcutsDialog } from '@/components/shell/keyboard-shortcuts-dialog'
 import { useUiStore } from '@/stores/ui'
 import { toast } from '@/stores/toast'
+import type { DesktopSettings } from '@/modules/desktop/shell'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { isTauri } from '@/lib/fs/platform'
 import type { FileSystemAdapter } from '@/lib/fs/types'
@@ -22,26 +23,32 @@ import { currentCommandContexts, type CommandScopes } from '@/core/registries/co
 const SettingsDialog = lazy(() =>
   import('@/components/shell/settings-dialog').then((m) => ({ default: m.SettingsDialog })),
 )
-let hotkeyChecked = false
+let desktopChecked = false
 
-/** Say once per launch when another app already holds the capture hotkey. */
-async function warnIfHotkeyTaken() {
-  if (hotkeyChecked) return
-  hotkeyChecked = true
+/**
+ * Once per launch: the desktop settings decide whether to ask about launch
+ * at login (first launch), or to say that another app holds the hotkey.
+ */
+async function checkDesktopOnce(): Promise<DesktopSettings | null> {
+  if (desktopChecked) return null
+  desktopChecked = true
   try {
-    const { invoke } = await import('@tauri-apps/api/core')
-    const status = await invoke<{ label: string; registered: boolean }>('capture_hotkey_status')
-    if (!status.registered) {
+    const { getDesktopSettings } = await import('@/modules/desktop/shell')
+    const settings = await getDesktopSettings()
+    if (settings.loginPromptAnswered && !settings.hotkey.registered) {
       toast.warning(
-        `${status.label} is already used by another app, so the capture hotkey is off. ` +
-          'Use New capture in the Mentis tray menu instead.',
+        `${settings.hotkey.label} is already used by another app, so the capture hotkey is off. ` +
+          'Choose another in Settings › Desktop, or use New capture in the tray menu.',
         12_000,
       )
     }
+    return settings.loginPromptAnswered ? null : settings
   } catch {
-    /* no tray process to ask (a measurement run) */
+    return null
   }
 }
+
+const LoginPrompt = lazy(() => import('@/components/shell/login-prompt'))
 
 /** Reload the store a capture from the overlay window wrote into, so open views show it. */
 async function refreshAfterCapture(vaultFs: FileSystemAdapter, destination?: string) {
@@ -79,6 +86,8 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   const [paletteContexts, setPaletteContexts] = useState<Partial<CommandScopes>>({})
   const [paletteMounted, setPaletteMounted] = useState(false)
   const [paletteQuery, setPaletteQuery] = useState('')
+  /** The first-launch question about launch at login, when it is still unanswered. */
+  const [loginPrompt, setLoginPrompt] = useState<DesktopSettings | null>(null)
   if (paletteOpen && !paletteMounted) setPaletteMounted(true)
 
   const paletteShell = useMemo(
@@ -128,7 +137,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         offPalette()
       } else unlisten.push(offSaved, offPalette)
     })
-    void warnIfHotkeyTaken()
+    void checkDesktopOnce().then((s) => s && setLoginPrompt(s))
     return () => {
       stop = true
       unlisten.forEach((off) => off())
@@ -237,6 +246,11 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         <ViewRouter />
       </main>
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      {loginPrompt && (
+        <Suspense fallback={null}>
+          <LoginPrompt settings={loginPrompt} onDone={() => setLoginPrompt(null)} />
+        </Suspense>
+      )}
       {paletteMounted && (
         <Suspense fallback={null}>
           <CommandPalette
