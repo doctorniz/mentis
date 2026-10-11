@@ -1,10 +1,9 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import { AppShell } from '@/components/shell/app-shell'
 import { ErrorBoundary } from '@/components/shell/error-boundary'
 import { VaultLanding } from '@/components/landing/vault-landing'
-import { AboutOverlay } from '@/components/landing/about-overlay'
 import { VaultFsProvider, type VaultSessionValue } from '@/contexts/vault-fs-context'
 import { SyncProvider } from '@/contexts/sync-context'
 import { useVaultStore } from '@/stores/vault'
@@ -17,6 +16,11 @@ import { clearSearchIndex } from '@/lib/search/index'
 import { clearVaultChatSession } from '@/lib/chat/vault-chat-session'
 import { useVaultChatStore } from '@/stores/vault-chat'
 import { Toaster } from '@/components/ui/toaster'
+
+// Shown only when asked for from the landing page, so not part of startup.
+const AboutOverlay = lazy(() =>
+  import('@/components/landing/about-overlay').then((m) => ({ default: m.AboutOverlay })),
+)
 
 function SyncProviderBridge({
   session,
@@ -82,7 +86,9 @@ export function AppRoot() {
       <Toaster />
       {!session ? (
         showAbout ? (
-          <AboutOverlay onBack={() => setShowAbout(false)} />
+          <Suspense fallback={null}>
+            <AboutOverlay onBack={() => setShowAbout(false)} />
+          </Suspense>
         ) : (
           <VaultLanding onVaultReady={handleVaultReady} onShowAbout={() => setShowAbout(true)} />
         )
