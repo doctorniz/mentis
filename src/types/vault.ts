@@ -50,6 +50,8 @@ export interface VaultConfig {
   journalTimestamps: boolean
   /** File name of the journal template in the templates folder; '' for none. */
   journalTemplate: string
+  /** Time (`HH:mm`) to prompt for the day's journal while it is unwritten; '' for off. */
+  journalPrompt: string
   /** Cloud sync settings (Dropbox); self-hosted sync may be added later */
   sync?: VaultSyncConfig
   /**
@@ -113,4 +115,5 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   dailyNotesFolder: '_mentis/_journals',
   journalTimestamps: true,
   journalTemplate: '',
+  journalPrompt: '',
 }

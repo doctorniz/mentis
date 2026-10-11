@@ -4,9 +4,12 @@ import { isTauri } from '@/lib/fs/platform'
 import { getReminderRows, putReminderRows } from '@/lib/search'
 import { useTasksStore } from '@/stores/tasks'
 import { useCalendarStore } from '@/stores/calendar'
+import { useVaultStore } from '@/stores/vault'
 import { toDateTimeStr } from '@/lib/calendar'
 import { describeReminder, readReminderRows, reminderId, reminderTime } from './sources'
-import { requestOpen } from './open'
+import { openReminder } from './actions'
+import { REMINDERS_CHANGED } from './events'
+import { journalPromptRows, loadJournalPromptState } from './journal-prompt'
 
 /**
  * Delivers reminders while a vault is open. The occurrences come from the
@@ -75,7 +78,7 @@ function showSystemNotification(row: ReminderRow) {
     })
     n.onclick = () => {
       window.focus()
-      requestOpen(row.kind, row.path)
+      openReminder(row)
       n.close()
     }
   } catch {
@@ -145,14 +148,23 @@ export function startReminders(
 
   async function reconcile(): Promise<ReminderRow[]> {
     const now = Date.now()
-    const next = await readReminderRows(
+    const fromFiles = await readReminderRows(
       vaultFs,
       new Date(now - MISSED_REACH),
       new Date(now + AHEAD),
     )
+    const config = useVaultStore.getState().config
+    const journal = config
+      ? await journalPromptRows(vaultFs, config, loadJournalPromptState(vaultKey), new Date(now))
+      : []
+    const next = [...fromFiles, ...journal].sort(
+      (a, b) => a.at.localeCompare(b.at) || a.path.localeCompare(b.path),
+    )
     if (stopped) return next
     adopt(next)
-    void putReminderRows(next).catch(() => {})
+    void putReminderRows(next)
+      .then(() => window.dispatchEvent(new CustomEvent(REMINDERS_CHANGED)))
+      .catch(() => {})
     return next
   }
 
@@ -186,6 +198,7 @@ export function startReminders(
   cleanups.push(() => window.removeEventListener('ink:vault-changed', onVaultChanged))
   cleanups.push(useTasksStore.subscribe((s, p) => s.items !== p.items && reconcileSoon()))
   cleanups.push(useCalendarStore.subscribe((s, p) => s.events !== p.events && reconcileSoon()))
+  cleanups.push(useVaultStore.subscribe((s, p) => s.config !== p.config && reconcileSoon()))
   const refresh = setInterval(reconcileSoon, REFRESH)
   cleanups.push(() => clearInterval(refresh))
 

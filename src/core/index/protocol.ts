@@ -74,13 +74,13 @@ export interface PassageHit {
 
 /** One reminder occurrence, derived from a task or event file. */
 export interface ReminderRow {
-  kind: 'task' | 'event'
-  /** The file the reminder belongs to. */
+  kind: 'task' | 'event' | 'journal'
+  /** The file the reminder belongs to (for the journal prompt, the day's journal to be). */
   path: string
   title: string
   /** When to remind, local `YYYY-MM-DDTHH:mm`. */
   at: string
-  /** What the reminder is about: the due day or the event's start. */
+  /** What the reminder is about: the task's time, the event's start, or the prompt's time. */
   about: string
 }
 

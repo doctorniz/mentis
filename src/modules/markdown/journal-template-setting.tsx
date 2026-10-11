@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { SettingsPanelProps } from '@/core/registries/settings'
 import { useVaultSession } from '@/contexts/vault-fs-context'
-import { INPUT_CLS, Row } from '@/components/settings/fields'
+import { INPUT_CLS, Row, Toggle } from '@/components/settings/fields'
 import { listTemplates, type NoteTemplate } from '@/lib/notes/template-store'
 import { readJournalTemplate } from '@/lib/journal'
 import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
+
+/** Suggested when the evening prompt is first turned on. */
+const DEFAULT_PROMPT_TIME = '21:00'
 
 /**
  * Which template new journal days start from. Its `##` headings become the
@@ -32,6 +35,7 @@ export default function JournalTemplateSetting({ config, update }: SettingsPanel
   if (config.dailyNotesEnabled === false) return null
   const chosen = config.journalTemplate ?? ''
   const missing = chosen && !templates.some((t) => t.filename === chosen)
+  const prompt = config.journalPrompt ?? ''
 
   return (
     <div className="divide-border divide-y">
@@ -59,6 +63,26 @@ export default function JournalTemplateSetting({ config, update }: SettingsPanel
             </option>
           ))}
         </select>
+      </Row>
+      <Row
+        label="Evening prompt"
+        hint="A reminder to write, at this time, on days with no journal yet."
+      >
+        <div className="flex items-center gap-2">
+          {prompt && (
+            <input
+              type="time"
+              aria-label="Evening prompt time"
+              value={prompt}
+              onChange={(e) => e.target.value && update({ journalPrompt: e.target.value })}
+              className={`${INPUT_CLS} w-32`}
+            />
+          )}
+          <Toggle
+            checked={Boolean(prompt)}
+            onChange={(on) => update({ journalPrompt: on ? DEFAULT_PROMPT_TIME : '' })}
+          />
+        </div>
       </Row>
     </div>
   )

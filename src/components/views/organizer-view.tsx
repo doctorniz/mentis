@@ -1,16 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Bell, CalendarDays, CheckSquare, List, Loader2 } from 'lucide-react'
+import { Bell, CalendarDays, CheckSquare, List } from 'lucide-react'
 import { TasksView } from '@/components/views/tasks-view'
 import { ListsPanel } from '@/components/lists/lists-panel'
 import { CalendarView } from '@/components/views/calendar-view'
-import { TaskRow } from '@/components/tasks/task-row'
-import { TaskDetailDialog } from '@/components/tasks/task-detail-dialog'
-import { useTasksStore } from '@/stores/tasks'
-import { useVaultSession } from '@/contexts/vault-fs-context'
-import { buildTaskTree } from '@/lib/tasks'
-import type { TaskItem } from '@/types/tasks'
+import { RemindersPanel, useReminderRows } from '@/components/reminders/reminders-panel'
+import { groupReminders } from '@/lib/reminders/group'
 import { cn } from '@/utils/cn'
 import { OPEN_REMINDER_EVENT, pendingOpenKind } from '@/lib/reminders/open'
 
@@ -22,70 +18,6 @@ const TABS: { id: OrganizerTab; label: string; icon: typeof CheckSquare }[] = [
   { id: 'calendars', label: 'Calendar', icon: CalendarDays },
   { id: 'reminders', label: 'Reminders', icon: Bell },
 ]
-
-// ─── Reminders panel ─────────────────────────────────────────────────────────
-
-function RemindersPanel() {
-  const { vaultFs } = useVaultSession()
-  const items = useTasksStore((s) => s.items)
-  const loading = useTasksStore((s) => s.loading)
-  const loadTasks = useTasksStore((s) => s.loadTasks)
-  const [editTask, setEditTask] = useState<TaskItem | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
-
-  useEffect(() => {
-    void loadTasks(vaultFs)
-  }, [vaultFs, loadTasks])
-
-  const withDue = useMemo(() => {
-    const pool = items
-      .filter((i) => i.due && i.status !== 'done' && i.status !== 'cancelled')
-      .slice()
-      .sort((a, b) => {
-        if (a.due && b.due) return a.due.localeCompare(b.due)
-        return a.due ? -1 : 1
-      })
-    return buildTaskTree(pool)
-  }, [items])
-
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="border-border bg-bg-secondary flex shrink-0 items-center border-b px-4 py-2.5">
-        <h1 className="text-fg text-sm font-semibold">Reminders</h1>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="flex h-full items-center justify-center">
-            <Loader2 className="text-fg-muted size-6 animate-spin" />
-          </div>
-        ) : withDue.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3">
-            <Bell className="text-fg-muted/30 size-10" />
-            <p className="text-fg-muted text-sm">No upcoming reminders.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col py-1">
-            {withDue.map((task) => (
-              <TaskRow
-                key={task.path}
-                item={task}
-                onEdit={(t) => {
-                  setEditTask(t)
-                  setDialogOpen(true)
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <TaskDetailDialog open={dialogOpen} onOpenChange={setDialogOpen} task={editTask} />
-    </div>
-  )
-}
-
-// ─── OrganizerView ───────────────────────────────────────────────────────────
 
 const LS_KEY = 'ink-organizer-tab'
 
@@ -104,6 +36,12 @@ export function OrganizerView({ initialTab }: { initialTab?: OrganizerTab }) {
       /* noop */
     }
   }
+
+  const reminders = useReminderRows()
+  const missedCount = useMemo(
+    () => groupReminders(reminders.rows, reminders.now).missed.length,
+    [reminders.rows, reminders.now],
+  )
 
   // A reminder's Open: show the tab that holds its item, which then opens it.
   useEffect(() => {
@@ -133,6 +71,14 @@ export function OrganizerView({ initialTab }: { initialTab?: OrganizerTab }) {
             )}
           >
             {label}
+            {id === 'reminders' && missedCount > 0 && (
+              <span
+                className="bg-accent/10 text-accent ml-1.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
+                aria-label={`${missedCount} missed`}
+              >
+                {missedCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -142,7 +88,7 @@ export function OrganizerView({ initialTab }: { initialTab?: OrganizerTab }) {
         {activeTab === 'tasks' && <TasksView />}
         {activeTab === 'lists' && <ListsPanel />}
         {activeTab === 'calendars' && <CalendarView />}
-        {activeTab === 'reminders' && <RemindersPanel />}
+        {activeTab === 'reminders' && <RemindersPanel {...reminders} />}
       </div>
     </div>
   )

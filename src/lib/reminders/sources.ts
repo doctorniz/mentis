@@ -48,6 +48,7 @@ export const reminderTime = (r: Pick<ReminderRow, 'at'>) => parseEventDate(r.at)
 
 /** A line saying what the reminder is about, for a notification or a card. */
 export function describeReminder(r: ReminderRow, now = new Date()): string {
+  if (r.kind === 'journal') return 'Nothing written today yet'
   const when = parseEventDate(r.about)
   if (!when) return r.kind === 'event' ? 'Event' : 'Task'
   const time = when.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })

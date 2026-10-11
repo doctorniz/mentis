@@ -142,3 +142,59 @@ test.describe('29 — Reminders: delivery', () => {
     await expect(page.getByText(/You missed/)).toBeHidden()
   })
 })
+
+test.describe('29 — Reminders: tab', () => {
+  const openRemindersTab = async (page: import('@playwright/test').Page) => {
+    await page.keyboard.press('Control+3')
+    await page
+      .getByRole('button', { name: /^Reminders/ })
+      .first()
+      .click()
+  }
+
+  test('29.5 The tab lists missed and upcoming reminders; Done clears the missed one', async ({
+    vaultPage: page,
+  }) => {
+    const past = new Date(Date.now() - 30 * 60_000)
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(10, 0, 0, 0)
+    await writeVaultFile(page, '_mentis/_tasks/late.md', taskFile('Renew passport', local(past)))
+    await writeVaultFile(page, '_mentis/_tasks/next.md', taskFile('Book flights', local(tomorrow)))
+    await openRemindersTab(page)
+
+    const missed = page.getByRole('region', { name: 'Missed' })
+    await expect(missed.getByText('Renew passport')).toBeVisible({ timeout: 15_000 })
+    await expect(
+      page.getByRole('region', { name: 'Tomorrow' }).getByText('Book flights'),
+    ).toBeVisible()
+    await expect(page.getByLabel('1 missed')).toBeVisible()
+
+    await missed.getByRole('button', { name: 'Done' }).click()
+    await expect(missed).toBeHidden()
+    await expect(page.getByLabel('1 missed')).toBeHidden({ timeout: 10_000 })
+    await expect
+      .poll(() => readVaultFile(page, '_mentis/_tasks/late.md'), { timeout: 10_000 })
+      .toMatch(/reminderAck: /)
+  })
+
+  test('29.6 The evening prompt shows until the day has a journal', async ({ vaultPage: page }) => {
+    await page.keyboard.press('Control+,')
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('tab', { name: 'Editor' }).click()
+    await dialog
+      .locator('div.flex.items-start', { hasText: 'Evening prompt' })
+      .getByRole('switch')
+      .click()
+    // A time already past today, so the prompt is due at once.
+    await dialog.getByLabel('Evening prompt time').fill('00:00')
+    await dialog.getByRole('button', { name: 'Done' }).click()
+
+    await openRemindersTab(page)
+    const prompt = page.getByText('Write today’s journal')
+    await expect(prompt).toBeVisible({ timeout: 15_000 })
+
+    await writeVaultFile(page, `_mentis/_journals/${ymd(new Date())}.md`, '# Today\n\nWritten.\n')
+    await expect(prompt).toBeHidden({ timeout: 15_000 })
+  })
+})
