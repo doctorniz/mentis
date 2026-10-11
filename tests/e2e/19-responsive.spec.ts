@@ -23,7 +23,7 @@ test.describe('19 — Responsive layout consistency', () => {
       await navigateTo(page, 'tasks')
 
       // Desktop sidebar hidden; section-icon trigger shown
-      const trigger = page.getByRole('button', { name: 'Open task lists' })
+      const trigger = page.getByRole('button', { name: 'Open projects' })
       await expect(trigger).toBeVisible()
       await expect(page.getByRole('button', { name: 'Inbox' })).toBeHidden()
 
@@ -41,7 +41,7 @@ test.describe('19 — Responsive layout consistency', () => {
     await navigateTo(page, 'tasks')
 
     await expect(page.getByRole('button', { name: 'Inbox' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Open task lists' })).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Open projects' })).toBeHidden()
   })
 
   test('19.3 Bookmarks: drawer below md with Bookmark icon trigger', async ({

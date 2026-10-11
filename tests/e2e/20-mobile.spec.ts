@@ -106,11 +106,11 @@ test.describe('20 — Mobile (Pixel 5)', () => {
     await expect(page.locator('.tiptap').first()).toBeVisible({ timeout: 15_000 })
   })
 
-  test('20.4 Task lists drawer works with touch', async ({ vaultPage: page }) => {
+  test('20.4 Projects drawer works with touch', async ({ vaultPage: page }) => {
     await mastheadNavigate(page, 'Organizer')
     await page.getByRole('button', { name: 'Tasks', exact: true }).tap()
 
-    await page.getByRole('button', { name: 'Open task lists' }).tap()
+    await page.getByRole('button', { name: 'Open projects' }).tap()
     const drawer = page.getByRole('dialog')
     await expect(drawer).toBeVisible()
     await drawer.getByRole('button', { name: 'Inbox' }).tap()
