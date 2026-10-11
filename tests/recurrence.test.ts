@@ -24,6 +24,9 @@ function baseTask(partial: Partial<TaskItem>): TaskItem {
     order: 0,
     repeat: null,
     repeatWeekday: null,
+    remind: null,
+    reminderAck: null,
+    snoozeUntil: null,
     children: [],
     ...partial,
   }

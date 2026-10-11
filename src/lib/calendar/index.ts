@@ -24,6 +24,8 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
     ? (fm.repeat as CalendarEventFrontmatter['repeat'])
     : undefined
   const alert = typeof fm.alert === 'number' && fm.alert >= 0 ? fm.alert : undefined
+  const reminderAck = typeof fm.reminderAck === 'string' && fm.reminderAck ? fm.reminderAck : undefined
+  const snoozeUntil = typeof fm.snoozeUntil === 'string' && fm.snoozeUntil ? fm.snoozeUntil : undefined
 
   return {
     path,
@@ -39,6 +41,8 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
     ...(tz ? { tz } : {}),
     ...(repeat ? { repeat } : {}),
     ...(alert != null ? { alert } : {}),
+    ...(reminderAck ? { reminderAck } : {}),
+    ...(snoozeUntil ? { snoozeUntil } : {}),
     created: (fm.created as string) ?? new Date().toISOString(),
     modified: (fm.modified as string) ?? new Date().toISOString(),
   }

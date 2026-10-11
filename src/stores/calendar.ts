@@ -129,6 +129,9 @@ export const useCalendarStore = create<CalendarState>()(
         ...((opts.tz ?? existing.tz) ? { tz: opts.tz ?? existing.tz } : {}),
         ...((opts.repeat ?? existing.repeat) ? { repeat: opts.repeat ?? existing.repeat } : {}),
         ...((opts.alert ?? existing.alert) != null ? { alert: opts.alert ?? existing.alert } : {}),
+        // Done / Snooze state belongs to the alerts; an edit keeps it.
+        ...(existing.reminderAck ? { reminderAck: existing.reminderAck } : {}),
+        ...(existing.snoozeUntil ? { snoozeUntil: existing.snoozeUntil } : {}),
         created: existing.created,
       })
 

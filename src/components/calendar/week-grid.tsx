@@ -265,7 +265,7 @@ export function WeekGrid({
                     <div className="flex w-full flex-col gap-0.5">
                       {allDay.map((ev) => (
                         <button
-                          key={ev.path}
+                          key={`${ev.path}@${ev.start}`}
                           type="button"
                           onClick={() => onEventClick(ev)}
                           className={cn(
@@ -356,7 +356,7 @@ export function WeekGrid({
                     ))}
                     {timedEvs.map((ev) => (
                       <TimedEventBlock
-                        key={ev.path}
+                        key={`${ev.path}@${ev.start}`}
                         event={ev}
                         onClick={(evt) => {
                           onEventClick(evt)

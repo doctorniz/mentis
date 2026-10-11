@@ -151,7 +151,7 @@ export function CalendarGrid({
                     <div className="flex flex-col gap-0.5 overflow-hidden">
                       {dayEvents.slice(0, 3).map((ev) => (
                         <button
-                          key={ev.path}
+                          key={`${ev.path}@${ev.start}`}
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()

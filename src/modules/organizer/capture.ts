@@ -1,6 +1,7 @@
 import { CheckSquare } from 'lucide-react'
 import type { CaptureDestination, ParseResult, PreviewChip } from '@/core/registries/capture'
 import { extractNaturalDate, preloadDates } from '@/core/capture/dates'
+import { toDateTimeStr } from '@/lib/calendar'
 import { PRIORITY_LABELS, WEEKDAY_LABEL, type TaskPriority } from '@/types/tasks'
 import { parseQuickAddText, type QuickAddResult } from './parse-quick-add'
 import { calendarDestination } from './calendar-capture'
@@ -44,14 +45,33 @@ const task: CaptureDestination = {
   },
   async parse(input, { now, scope }) {
     const { result, text } = parseQuickAddText(input, now)
+    let remind: string | undefined
     if (!result.due) {
-      const natural = await extractNaturalDate(text, { time: false, range: false }, 'due', now)
+      // A natural date, and with a time ("tomorrow 9am") the reminder too.
+      const natural = await extractNaturalDate(text, { time: true, range: false }, 'due', now)
       if (natural) {
         result.due = natural.date
-        result.title = text.residual()
+        if (natural.result.start.isCertain('hour'))
+          remind = toDateTimeStr(natural.result.start.date())
       }
+    } else {
+      // A date was given another way (>friday, every monday): a bare time is that day's reminder.
+      const time = await extractNaturalDate(
+        text,
+        {
+          time: true,
+          range: false,
+          accept: (r) => r.start.isCertain('hour') && !r.start.isCertain('day'),
+        },
+        'remind',
+        now,
+      )
+      if (time) remind = `${result.due}T${toDateTimeStr(time.result.start.date()).slice(11)}`
     }
-    return toParseResult(result, text.spans, scope.list)
+    result.title = text.residual()
+    const parsed = toParseResult(result, text.spans, scope.list)
+    if (remind) parsed.values.remind = remind
+    return parsed
   },
   preview(values) {
     const v = values as unknown as QuickAddResult
@@ -60,6 +80,8 @@ const task: CaptureDestination = {
       chips.push({ text: PRIORITY_LABELS[v.priority], tone: PRIORITY_TONE[v.priority] })
     for (const tag of v.tags ?? []) chips.push({ text: `#${tag}`, tone: 'tag' })
     if (v.due) chips.push({ text: v.due, tone: 'date' })
+    const remind = (values as { remind?: string }).remind
+    if (remind) chips.push({ text: `Remind ${remind.slice(11)}`, tone: 'date' })
     if (v.repeat === 'weekly' && v.repeatWeekday != null)
       chips.push({ text: `Weekly · ${WEEKDAY_LABEL[v.repeatWeekday]}`, tone: 'repeat' })
     return chips
@@ -76,6 +98,7 @@ const task: CaptureDestination = {
       tags: v.tags,
       repeat: v.repeat,
       repeatWeekday: v.repeatWeekday,
+      remind: (values as { remind?: string }).remind,
     })
     return {}
   },

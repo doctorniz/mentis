@@ -47,6 +47,12 @@ export interface TaskFrontmatter {
   /** CalDAV-style weekly repeat; `repeatWeekday` uses `Date#getDay()` (0=Sun … 6=Sat). */
   repeat?: 'weekly' | ''
   repeatWeekday?: number
+  /** When to remind, local `YYYY-MM-DDTHH:mm`. On a repeating task, its time of day applies to each occurrence. */
+  remind?: string
+  /** Every reminder occurrence up to this time has been dealt with (Done). */
+  reminderAck?: string
+  /** Remind again at this time (Snooze). */
+  snoozeUntil?: string
   [key: string]: unknown
 }
 
@@ -67,5 +73,8 @@ export interface TaskItem {
   order: number
   repeat: 'weekly' | null
   repeatWeekday: number | null
+  remind: string | null
+  reminderAck: string | null
+  snoozeUntil: string | null
   children: TaskItem[]
 }

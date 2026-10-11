@@ -61,6 +61,10 @@ export interface CalendarEventFrontmatter {
   repeat?: 'daily' | 'weekly' | 'monthly' | 'yearly'
   /** Minutes before the start to alert; stored for when reminders exist, not acted on yet. */
   alert?: number
+  /** Every alert up to this time has been dealt with (Done). */
+  reminderAck?: string
+  /** Alert again at this time (Snooze). */
+  snoozeUntil?: string
   created: string
   modified: string
   [key: string]: unknown
@@ -86,6 +90,10 @@ export interface CalendarEvent {
   repeat?: 'daily' | 'weekly' | 'monthly' | 'yearly'
   /** Minutes before the start to alert; stored for when reminders exist, not acted on yet. */
   alert?: number
+  /** Every alert up to this time has been dealt with (Done). */
+  reminderAck?: string
+  /** Alert again at this time (Snooze). */
+  snoozeUntil?: string
   created: string
   modified: string
 }

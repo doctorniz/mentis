@@ -6,6 +6,30 @@ export const TASKS_DIR = '_mentis/_tasks'
 
 const H1_RE = /^#\s+(.+)$/m
 
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/** A date-time field as local `YYYY-MM-DDTHH:mm`, or null. YAML may have read one with seconds as a Date. */
+function localDateTimeField(value: unknown): string | null {
+  if (value instanceof Date) {
+    return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}T${pad2(value.getHours())}:${pad2(value.getMinutes())}`
+  }
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, 16) : null
+}
+
+/** The reminder fields to write: kept from the task, changed by `patch`, empty ones left out. */
+export function reminderFields(
+  existing: Pick<TaskItem, 'remind' | 'reminderAck' | 'snoozeUntil'>,
+  patch: Partial<TaskFrontmatter> = {},
+): Partial<TaskFrontmatter> {
+  const pick = (key: 'remind' | 'reminderAck' | 'snoozeUntil') =>
+    patch[key] !== undefined ? String(patch[key] ?? '') : (existing[key] ?? '')
+  return Object.fromEntries(
+    (['remind', 'reminderAck', 'snoozeUntil'] as const)
+      .map((k) => [k, pick(k)] as const)
+      .filter(([, v]) => v),
+  )
+}
+
 export function parseTaskItem(path: string, raw: string): TaskItem {
   const { data, content } = matter(raw)
   const fm = data as Partial<TaskFrontmatter>
@@ -44,6 +68,9 @@ export function parseTaskItem(path: string, raw: string): TaskItem {
     order: (fm.order as number) ?? 0,
     repeat: repeatFm && repeatWeekday != null ? repeatFm : null,
     repeatWeekday: repeatFm && repeatWeekday != null ? repeatWeekday : null,
+    remind: localDateTimeField(fm.remind),
+    reminderAck: localDateTimeField(fm.reminderAck),
+    snoozeUntil: localDateTimeField(fm.snoozeUntil),
     children: [],
   }
 }
@@ -214,6 +241,7 @@ export function mergeTaskFrontmatterForSave(
     tags: patch.tags ?? existing.tags,
     parent: patch.parent !== undefined ? String(patch.parent) : (existing.parent ?? '') || '',
     order: patch.order ?? existing.order,
+    ...reminderFields(existing, patch),
   }
 
   if (weekly) {

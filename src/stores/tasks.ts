@@ -8,6 +8,7 @@ import {
   serializeTask,
   generateTaskFilename,
   defaultTaskFrontmatter,
+  reminderFields,
   bodyFromTitle,
   mergeTaskFrontmatterForSave,
 } from '@/lib/tasks'
@@ -34,6 +35,8 @@ interface TasksState {
       parent?: string
       repeat?: 'weekly'
       repeatWeekday?: number
+      /** When to remind, local `YYYY-MM-DDTHH:mm`. */
+      remind?: string
     },
   ) => Promise<TaskItem>
   updateTask: (
@@ -134,6 +137,7 @@ export const useTasksStore = create<TasksState>()(
         due: opts?.due ?? '',
         tags: opts?.tags ?? [],
         parent: opts?.parent ?? '',
+        ...(opts?.remind ? { remind: opts.remind } : {}),
         ...(opts?.repeat === 'weekly' && opts.repeatWeekday != null
           ? { repeat: 'weekly' as const, repeatWeekday: opts.repeatWeekday }
           : {}),
@@ -204,6 +208,7 @@ export const useTasksStore = create<TasksState>()(
         tags: existing.tags,
         parent: existing.parent ?? '',
         order: existing.order,
+        ...reminderFields(existing),
       }
 
       if (existing.repeat === 'weekly' && existing.repeatWeekday != null) {

@@ -86,11 +86,26 @@ describe('task destination parse', () => {
     expect(r.values.title).toBe('pay rent in three weeks')
   })
 
-  it('keeps times and ranges a task cannot store in the title', async () => {
+  it('turns a time into the reminder, on the due day', async () => {
     const timed = await parse('dentist friday at 7pm')
-    expect(timed.values.due).toBeUndefined()
-    expect(timed.values.title).toBe('dentist friday at 7pm')
+    expect(timed.values).toMatchObject({
+      title: 'dentist',
+      due: '2026-10-09',
+      remind: '2026-10-09T19:00',
+    })
+  })
 
+  it('reads a bare time after another way of giving the day as that day’s reminder', async () => {
+    const weekly = await parse('standup every monday 9am')
+    expect(weekly.values).toMatchObject({
+      title: 'standup',
+      repeat: 'weekly',
+      due: '2026-10-12',
+      remind: '2026-10-12T09:00',
+    })
+  })
+
+  it('keeps ranges a task cannot store in the title', async () => {
     const range = await parse('conference 12-14 nov')
     expect(range.values.due).toBeUndefined()
     expect(range.values.title).toBe('conference 12-14 nov')

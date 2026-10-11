@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useCalendarStore } from '@/stores/calendar'
@@ -14,6 +14,7 @@ import { DayGrid } from '@/components/calendar/day-grid'
 import { EventDialog } from '@/components/calendar/event-dialog'
 import type { CalendarEvent } from '@/types/calendar'
 import { toDateStr } from '@/lib/calendar'
+import { expandEvents } from '@/lib/calendar/recurrence'
 import { listDailyNoteDates } from '@/lib/notes/daily-note'
 import { DAILY_NOTES_DIR } from '@/types/vault'
 import { cn } from '@/utils/cn'
@@ -115,6 +116,12 @@ export function CalendarView() {
 
   // Reference date — the "current" date in view
   const [refDate, setRefDate] = useState(new Date())
+  // Repeating events, expanded for the weeks around the date shown (enough for any view).
+  const shownEvents = useMemo(() => {
+    const from = new Date(refDate.getFullYear(), refDate.getMonth(), -7)
+    const to = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 7)
+    return expandEvents(events, toDateStr(from), toDateStr(to))
+  }, [events, refDate])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null)
@@ -165,8 +172,9 @@ export function CalendarView() {
     useJournalStore.getState().openDay(dateStr)
   }, [])
 
+  // An occurrence of a repeating event opens the series it belongs to.
   const handleEventClick = useCallback((ev: CalendarEvent) => {
-    setEditEvent(ev)
+    setEditEvent(useCalendarStore.getState().events.find((e) => e.path === ev.path) ?? ev)
     setClickedDate(undefined)
     setDialogOpen(true)
   }, [])
@@ -280,7 +288,7 @@ export function CalendarView() {
         <CalendarGrid
           year={refDate.getFullYear()}
           month={refDate.getMonth()}
-          events={events}
+          events={shownEvents}
           tasks={tasks}
           dailyNoteDates={dailyNoteDates}
           onDayClick={handleDayClick}
@@ -290,7 +298,7 @@ export function CalendarView() {
       ) : viewMode === 'week' ? (
         <WeekGrid
           referenceDate={refDate}
-          events={events}
+          events={shownEvents}
           tasks={tasks}
           dailyNoteDates={dailyNoteDates}
           onDayClick={handleDayClick}
@@ -301,7 +309,7 @@ export function CalendarView() {
       ) : (
         <DayGrid
           date={refDate}
-          events={events}
+          events={shownEvents}
           tasks={tasks}
           dailyNoteDates={dailyNoteDates}
           onAddEvent={handleDayClick}

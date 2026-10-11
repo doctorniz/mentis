@@ -33,6 +33,7 @@ export function TaskDetailDialog({
   const [body, setBody] = useState('')
   const [priority, setPriority] = useState<TaskPriority>(3)
   const [due, setDue] = useState('')
+  const [remind, setRemind] = useState('')
   const [list, setList] = useState('')
   const [tags, setTags] = useState('')
   const [saving, setSaving] = useState(false)
@@ -58,6 +59,7 @@ export function TaskDetailDialog({
     setBody(bodyWithoutH1)
     setPriority(task.priority)
     setDue(task.due ?? '')
+    setRemind(task.remind ?? '')
     setList(task.list ?? '')
     setTags(task.tags.join(', '))
     setSubtaskTitle('')
@@ -78,11 +80,15 @@ export function TaskDetailDialog({
         ? `\n${body}\n`
         : '\n'
 
+    // A new reminder time starts fresh: an old Done or Snooze must not swallow it.
+    const remindChanged = (remind || null) !== (task.remind ?? null)
     await updateTask(vaultFs, task.path, {
       priority,
       due: due || '',
       tags: tagList,
       body: fullBody,
+      remind: remind || '',
+      ...(remindChanged ? { reminderAck: '', snoozeUntil: '' } : {}),
     })
 
     const newList = list || null
@@ -93,7 +99,7 @@ export function TaskDetailDialog({
 
     setSaving(false)
     onOpenChange(false)
-  }, [task, title, body, priority, due, list, tags, vaultFs, updateTask, onOpenChange])
+  }, [task, title, body, priority, due, remind, list, tags, vaultFs, updateTask, onOpenChange])
 
   const handleDelete = useCallback(async () => {
     if (!task) return
@@ -191,10 +197,41 @@ export function TaskDetailDialog({
               </div>
             </div>
 
+            {/* Reminder */}
+            <div className="min-w-0">
+              <label
+                htmlFor="task-remind"
+                className="text-fg-secondary mb-1 block text-xs font-medium"
+              >
+                Remind
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="task-remind"
+                  type="datetime-local"
+                  value={remind}
+                  onChange={(e) => setRemind(e.target.value)}
+                  className="border-border bg-bg-secondary text-fg focus:ring-accent/40 min-w-0 flex-1 rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1"
+                />
+                {remind && (
+                  <button
+                    type="button"
+                    onClick={() => setRemind('')}
+                    className="text-fg-muted hover:text-fg text-xs"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {remind && task?.repeat === 'weekly' && (
+                <p className="text-fg-muted mt-1 text-xs">Every week at this time.</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
               {/* List */}
               <div className="min-w-0">
-                <label className="text-fg-secondary mb-1 block text-xs font-medium">List</label>
+                <label className="text-fg-secondary mb-1 block text-xs font-medium">Project</label>
                 <select
                   value={list}
                   onChange={(e) => setList(e.target.value)}
