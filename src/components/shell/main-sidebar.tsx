@@ -23,14 +23,10 @@ import { Button } from '@/components/ui/button'
 import { useSync } from '@/contexts/sync-context'
 import { useUiStore, type ThemeChoice } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
-import { useVaultSession } from '@/contexts/vault-fs-context'
-import { DAILY_NOTES_DIR } from '@/types/vault'
-import { openOrCreateDailyNote } from '@/lib/notes/daily-note'
-import { useEditorStore } from '@/stores/editor'
-import { useFileTreeStore } from '@/stores/file-tree'
+import { useJournalStore } from '@/stores/journal'
 import { useNewFileActions, type NewMenuItem } from '@/lib/notes/use-new-file-actions'
 import { cn } from '@/utils/cn'
-import { views, HOME_VIEW } from '@/core/registries'
+import { views } from '@/core/registries'
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -38,14 +34,11 @@ const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'dark', label: 'Dark', icon: Moon },
 ]
 
-/** Sidebar date pill — opens (or creates) today's daily note on click. */
+/** Sidebar date pill — opens today in the journal view. */
 function DailyNoteDate() {
-  const { vaultFs } = useVaultSession()
-  const setActiveView = useUiStore((s) => s.setActiveView)
   const config = useVaultStore((s) => s.config)
   const [busy, setBusy] = useState(false)
 
-  const folder = config?.dailyNotesFolder ?? DAILY_NOTES_DIR
   const enabled = config?.dailyNotesEnabled !== false
 
   if (!enabled) return null
@@ -61,20 +54,7 @@ function DailyNoteDate() {
     if (busy) return
     setBusy(true)
     try {
-      const path = await openOrCreateDailyNote(vaultFs, now, folder)
-      const { detectEditorTabType, titleFromVaultPath } =
-        await import('@/lib/notes/editor-tab-from-path')
-      const type = await detectEditorTabType(vaultFs, path)
-      useFileTreeStore.getState().setSelectedPath(path)
-      useEditorStore.getState().addRecentFile(path)
-      useEditorStore.getState().openTab({
-        id: crypto.randomUUID(),
-        path,
-        type,
-        title: titleFromVaultPath(path),
-        isDirty: false,
-      })
-      setActiveView(HOME_VIEW)
+      useJournalStore.getState().openDay()
     } finally {
       setBusy(false)
     }

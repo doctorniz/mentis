@@ -6,9 +6,7 @@ import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useCalendarStore } from '@/stores/calendar'
 import { useTasksStore } from '@/stores/tasks'
 import { useVaultStore } from '@/stores/vault'
-import { useEditorStore } from '@/stores/editor'
-import { useFileTreeStore } from '@/stores/file-tree'
-import { useUiStore } from '@/stores/ui'
+import { useJournalStore } from '@/stores/journal'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { CalendarGrid } from '@/components/calendar/calendar-grid'
 import { WeekGrid } from '@/components/calendar/week-grid'
@@ -16,9 +14,8 @@ import { DayGrid } from '@/components/calendar/day-grid'
 import { EventDialog } from '@/components/calendar/event-dialog'
 import type { CalendarEvent } from '@/types/calendar'
 import { toDateStr } from '@/lib/calendar'
-import { listDailyNoteDates, openOrCreateDailyNote } from '@/lib/notes/daily-note'
+import { listDailyNoteDates } from '@/lib/notes/daily-note'
 import { DAILY_NOTES_DIR } from '@/types/vault'
-import { HOME_VIEW } from '@/core/registries'
 import { cn } from '@/utils/cn'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -91,7 +88,6 @@ export function CalendarView() {
   const events = useCalendarStore((s) => s.events)
   const loading = useCalendarStore((s) => s.loading)
   const config = useVaultStore((s) => s.config)
-  const setActiveView = useUiStore((s) => s.setActiveView)
 
   const loadTasks = useTasksStore((s) => s.loadTasks)
   const tasks = useTasksStore((s) => s.items)
@@ -164,28 +160,10 @@ export function CalendarView() {
     setDialogOpen(true)
   }, [])
 
-  const handleDailyNoteClick = useCallback(
-    async (dateStr: string) => {
-      const [y, m, d] = dateStr.split('-').map(Number) as [number, number, number]
-      const date = new Date(y, m - 1, d)
-      const path = await openOrCreateDailyNote(vaultFs, date, dailyFolder)
-      const { detectEditorTabType, titleFromVaultPath } =
-        await import('@/lib/notes/editor-tab-from-path')
-      const type = await detectEditorTabType(vaultFs, path)
-      useFileTreeStore.getState().setSelectedPath(path)
-      useEditorStore.getState().addRecentFile(path)
-      useEditorStore.getState().openTab({
-        id: crypto.randomUUID(),
-        path,
-        type,
-        title: titleFromVaultPath(path),
-        isDirty: false,
-      })
-      setActiveView(HOME_VIEW)
-      void listDailyNoteDates(vaultFs, dailyFolder).then(setDailyNoteDates)
-    },
-    [vaultFs, dailyFolder, setActiveView],
-  )
+  // The day's journal opens in the journal view; it is created when first written in.
+  const handleDailyNoteClick = useCallback((dateStr: string) => {
+    useJournalStore.getState().openDay(dateStr)
+  }, [])
 
   const handleEventClick = useCallback((ev: CalendarEvent) => {
     setEditEvent(ev)
