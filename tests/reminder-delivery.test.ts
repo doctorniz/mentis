@@ -76,21 +76,21 @@ describe('settleReminder', () => {
       reminderAck: '2026-10-12T09:01',
       snoozeUntil: '2026-10-12T09:11',
     })
-    let { data, content } = matter(files['_mentis/_tasks/a.md'])
-    expect(data).toMatchObject({
+    const first = matter(files['_mentis/_tasks/a.md'])
+    expect(first.data).toMatchObject({
       uid: 'x1',
       custom: 'kept',
       remind: '2026-10-12T09:00',
       reminderAck: '2026-10-12T09:01',
       snoozeUntil: '2026-10-12T09:11',
     })
-    expect(content).toContain('# Call mum')
+    expect(first.content).toContain('# Call mum')
 
     await settleReminder(fs, '_mentis/_tasks/a.md', {
       reminderAck: '2026-10-12T09:12',
       snoozeUntil: '',
     })
-    ;({ data } = matter(files['_mentis/_tasks/a.md']))
+    const { data } = matter(files['_mentis/_tasks/a.md'])
     expect(data.reminderAck).toBe('2026-10-12T09:12')
     expect('snoozeUntil' in data).toBe(false)
 
