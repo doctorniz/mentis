@@ -72,6 +72,9 @@ async function refreshAfterCapture(vaultFs: FileSystemAdapter, destination?: str
   window.dispatchEvent(new CustomEvent('ink:vault-changed'))
 }
 
+// Reminders start once the shell is up, so their code is not part of startup.
+const ReminderHost = lazy(() => import('@/components/reminders/reminder-host'))
+
 const CommandPalette = lazy(() =>
   import('@/components/shell/command-palette').then((m) => ({ default: m.CommandPalette })),
 )
@@ -105,8 +108,17 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
     [onCloseVault],
   )
 
+  const [remindersReady, setRemindersReady] = useState(false)
+
   useEffect(() => {
     void markShellReady()
+    const start = () => setRemindersReady(true)
+    if (typeof requestIdleCallback === 'function') {
+      const id = requestIdleCallback(start, { timeout: 3000 })
+      return () => cancelIdleCallback(id)
+    }
+    const id = setTimeout(start, 1000)
+    return () => clearTimeout(id)
   }, [])
 
   // `>` typed first in a capture bar opens the palette with what follows it.
@@ -249,6 +261,11 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         <ViewRouter />
       </main>
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      {remindersReady && (
+        <Suspense fallback={null}>
+          <ReminderHost />
+        </Suspense>
+      )}
       {loginPrompt && (
         <Suspense fallback={null}>
           <LoginPrompt settings={loginPrompt} onDone={() => setLoginPrompt(null)} />

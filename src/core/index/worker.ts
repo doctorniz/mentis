@@ -135,6 +135,10 @@ const handlers: { [K in IndexOp]: Handler<K> } = {
   setChildren: ({ vaultId, listings }) => {
     if (vaultId === openVaultId) store?.setChildren(listings)
   },
+  reminders: ({ from, to }) => store?.reminders(from, to) ?? [],
+  setReminders: ({ vaultId, rows }) => {
+    if (vaultId === openVaultId) store?.setReminders(rows)
+  },
 }
 
 let queue: Promise<void> = Promise.resolve()

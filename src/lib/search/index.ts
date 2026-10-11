@@ -8,6 +8,7 @@ import type {
   ManifestEntry,
   OpenResult,
   PassageHit,
+  ReminderRow,
   TreeListing,
   TreeRow,
 } from '@/core/index/protocol'
@@ -68,6 +69,18 @@ export function getTreeChildren(dir: string): Promise<TreeRow[] | null> {
 export function putTreeListings(listings: TreeListing[]): Promise<void> {
   if (!activeVaultId || listings.length === 0) return Promise.resolve()
   return callIndex('setChildren', { vaultId: activeVaultId, listings })
+}
+
+/** Recorded reminder occurrences with `from <= at < to`, earliest first. */
+export function getReminderRows(from: string, to: string): Promise<ReminderRow[]> {
+  if (!indexIsOpen) return Promise.resolve([])
+  return callIndex('reminders', { from, to })
+}
+
+/** Replace the recorded reminder occurrences. */
+export function putReminderRows(rows: ReminderRow[]): Promise<void> {
+  if (!activeVaultId) return Promise.resolve()
+  return callIndex('setReminders', { vaultId: activeVaultId, rows })
 }
 
 export function getIndexManifest(): Promise<ManifestEntry[]> {

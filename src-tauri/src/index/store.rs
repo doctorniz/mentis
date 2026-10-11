@@ -14,7 +14,7 @@ use super::titles::TitleIndex;
 
 /// Bump when the schema or what an extractor produces changes; an index built
 /// by another version is dropped and rebuilt. Kept equal to the TypeScript store's.
-pub const INDEX_VERSION: i64 = 5;
+pub const INDEX_VERSION: i64 = 6;
 
 /// Content kept in the full-text table (`SEARCH_CONTENT_CAP` in `content-cap.ts`).
 const SEARCH_CONTENT_CAP: usize = 14_000;
@@ -69,6 +69,17 @@ pub struct FileHash {
     pub size: f64,
     pub mtime: f64,
     pub hash: String,
+}
+
+/// One reminder occurrence, derived from a task or event file.
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+pub struct ReminderRow {
+    pub kind: String,
+    pub path: String,
+    pub title: String,
+    /// Local `YYYY-MM-DDTHH:mm`, which sorts as it reads.
+    pub at: String,
+    pub about: String,
 }
 
 #[derive(Serialize)]
@@ -225,6 +236,38 @@ impl IndexStore {
                     ])?;
                 }
                 tx.execute("INSERT OR IGNORE INTO listed (dir) VALUES (?)", [dir])?;
+            }
+        }
+        tx.commit()
+    }
+
+    /// Reminder occurrences with `from <= at < to`, earliest first.
+    pub fn reminders(&self, from: &str, to: &str) -> rusqlite::Result<Vec<ReminderRow>> {
+        let mut stmt = self.db.prepare(
+            "SELECT kind, path, title, at, about FROM reminders WHERE at >= ?1 AND at < ?2 ORDER BY at, path",
+        )?;
+        let rows = stmt.query_map(params![from, to], |r| {
+            Ok(ReminderRow {
+                kind: r.get(0)?,
+                path: r.get(1)?,
+                title: r.get(2)?,
+                at: r.get(3)?,
+                about: r.get(4)?,
+            })
+        })?;
+        rows.collect()
+    }
+
+    /// Replace every recorded reminder occurrence.
+    pub fn set_reminders(&mut self, rows: &[ReminderRow]) -> rusqlite::Result<()> {
+        let tx = self.db.transaction()?;
+        tx.execute("DELETE FROM reminders", [])?;
+        {
+            let mut insert = tx.prepare(
+                "INSERT OR REPLACE INTO reminders (at, path, kind, title, about) VALUES (?1, ?2, ?3, ?4, ?5)",
+            )?;
+            for r in rows {
+                insert.execute(params![r.at, r.path, r.kind, r.title, r.about])?;
             }
         }
         tx.commit()
@@ -574,6 +617,7 @@ fn migrate(db: &Connection) -> rusqlite::Result<()> {
         DROP TABLE IF EXISTS links;
         DROP TABLE IF EXISTS tree;
         DROP TABLE IF EXISTS listed;
+        DROP TABLE IF EXISTS reminders;
         CREATE TABLE files (
           id INTEGER PRIMARY KEY,
           path TEXT NOT NULL UNIQUE,
@@ -615,6 +659,14 @@ fn migrate(db: &Connection) -> rusqlite::Result<()> {
         ) WITHOUT ROWID;
         CREATE INDEX tree_parent ON tree (parent);
         CREATE TABLE listed (dir TEXT PRIMARY KEY) WITHOUT ROWID;
+        CREATE TABLE reminders (
+          at TEXT NOT NULL,
+          path TEXT NOT NULL,
+          kind TEXT NOT NULL,
+          title TEXT NOT NULL,
+          about TEXT NOT NULL,
+          PRIMARY KEY (at, path)
+        ) WITHOUT ROWID;
         PRAGMA user_version = {INDEX_VERSION};
         "
     ))

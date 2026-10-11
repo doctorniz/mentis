@@ -12,6 +12,7 @@ import type {
   LinkRow,
   ManifestEntry,
   PassageHit,
+  ReminderRow,
   TreeListing,
   TreeRow,
 } from './protocol'
@@ -54,7 +55,7 @@ import type {
  * Bump when the schema or what an extractor produces changes: an index built
  * by another version is dropped and rebuilt from the files.
  */
-export const INDEX_VERSION = 5
+export const INDEX_VERSION = 6
 
 // bm25 weights in fts column order: title, content, tags.
 const BM25 = 'bm25(fts, 3.0, 1.0, 2.0)'
@@ -103,6 +104,7 @@ export class IndexStore {
       DROP TABLE IF EXISTS links;
       DROP TABLE IF EXISTS tree;
       DROP TABLE IF EXISTS listed;
+      DROP TABLE IF EXISTS reminders;
       CREATE TABLE files (
         id INTEGER PRIMARY KEY,
         path TEXT NOT NULL UNIQUE,
@@ -144,6 +146,14 @@ export class IndexStore {
       ) WITHOUT ROWID;
       CREATE INDEX tree_parent ON tree (parent);
       CREATE TABLE listed (dir TEXT PRIMARY KEY) WITHOUT ROWID;
+      CREATE TABLE reminders (
+        at TEXT NOT NULL,
+        path TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        about TEXT NOT NULL,
+        PRIMARY KEY (at, path)
+      ) WITHOUT ROWID;
       PRAGMA user_version = ${INDEX_VERSION};
     `)
   }
@@ -217,6 +227,27 @@ export class IndexStore {
     this.db.exec({
       sql: 'DELETE FROM listed WHERE dir = ? OR substr(dir, 1, ?) = ?',
       bind: [path, len, prefix],
+    })
+  }
+
+  reminders(from: string, to: string): ReminderRow[] {
+    return this.db.selectObjects(
+      'SELECT kind, path, title, at, about FROM reminders WHERE at >= ? AND at < ? ORDER BY at, path',
+      [from, to],
+    ) as unknown as ReminderRow[]
+  }
+
+  setReminders(rows: readonly ReminderRow[]): void {
+    this.db.transaction(() => {
+      this.db.exec('DELETE FROM reminders')
+      const insert = this.db.prepare(
+        'INSERT OR REPLACE INTO reminders (at, path, kind, title, about) VALUES (?, ?, ?, ?, ?)',
+      )
+      try {
+        for (const r of rows) insert.bind([r.at, r.path, r.kind, r.title, r.about]).stepReset()
+      } finally {
+        insert.finalize()
+      }
     })
   }
 

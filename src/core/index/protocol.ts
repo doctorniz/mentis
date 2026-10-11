@@ -72,6 +72,18 @@ export interface PassageHit {
   queryTerms: string[]
 }
 
+/** One reminder occurrence, derived from a task or event file. */
+export interface ReminderRow {
+  kind: 'task' | 'event'
+  /** The file the reminder belongs to. */
+  path: string
+  title: string
+  /** When to remind, local `YYYY-MM-DDTHH:mm`. */
+  at: string
+  /** What the reminder is about: the due day or the event's start. */
+  about: string
+}
+
 export interface OpenResult {
   /**
    * False when the database could not be kept on disk (for example another tab
@@ -99,6 +111,10 @@ export interface IndexOps {
   children: [{ dir: string }, TreeRow[] | null]
   /** Replace what is recorded for each folder listed; folders that vanished are forgotten with their contents. */
   setChildren: [{ vaultId: string; listings: TreeListing[] }, void]
+  /** Reminder occurrences with `from <= at < to`, earliest first. */
+  reminders: [{ from: string; to: string }, ReminderRow[]]
+  /** Replace every recorded reminder occurrence. */
+  setReminders: [{ vaultId: string; rows: ReminderRow[] }, void]
 }
 
 export type IndexOp = keyof IndexOps

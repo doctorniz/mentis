@@ -57,9 +57,9 @@ export interface CalendarEventFrontmatter {
   url?: string
   /** IANA timezone the times were entered in, e.g. `Europe/London`. */
   tz?: string
-  /** Stored for when the calendar can repeat events; not acted on yet. */
+  /** How the event repeats from its start. */
   repeat?: 'daily' | 'weekly' | 'monthly' | 'yearly'
-  /** Minutes before the start to alert; stored for when reminders exist, not acted on yet. */
+  /** Minutes before the start to remind (all-day events: before 09:00 on the day). */
   alert?: number
   /** Every alert up to this time has been dealt with (Done). */
   reminderAck?: string
@@ -86,9 +86,9 @@ export interface CalendarEvent {
   url?: string
   /** IANA timezone the times were entered in, e.g. `Europe/London`. */
   tz?: string
-  /** Stored for when the calendar can repeat events; not acted on yet. */
+  /** How the event repeats from its start. */
   repeat?: 'daily' | 'weekly' | 'monthly' | 'yearly'
-  /** Minutes before the start to alert; stored for when reminders exist, not acted on yet. */
+  /** Minutes before the start to remind (all-day events: before 09:00 on the day). */
   alert?: number
   /** Every alert up to this time has been dealt with (Done). */
   reminderAck?: string

@@ -15,6 +15,7 @@ import { EventDialog } from '@/components/calendar/event-dialog'
 import type { CalendarEvent } from '@/types/calendar'
 import { toDateStr } from '@/lib/calendar'
 import { expandEvents } from '@/lib/calendar/recurrence'
+import { OPEN_REMINDER_EVENT, takeOpen } from '@/lib/reminders/open'
 import { listDailyNoteDates } from '@/lib/notes/daily-note'
 import { DAILY_NOTES_DIR } from '@/types/vault'
 import { cn } from '@/utils/cn'
@@ -178,6 +179,21 @@ export function CalendarView() {
     setClickedDate(undefined)
     setDialogOpen(true)
   }, [])
+
+  // A reminder's Open: show the event once it is loaded.
+  useEffect(() => {
+    function openRequested() {
+      const path = takeOpen('event', (p) => events.some((e) => e.path === p))
+      const ev = path && events.find((e) => e.path === path)
+      if (!ev) return
+      setEditEvent(ev)
+      setClickedDate(undefined)
+      setDialogOpen(true)
+    }
+    openRequested()
+    window.addEventListener(OPEN_REMINDER_EVENT, openRequested)
+    return () => window.removeEventListener(OPEN_REMINDER_EVENT, openRequested)
+  }, [events])
 
   // ── "Today" button visibility ───────────────────────────────────────────────
 

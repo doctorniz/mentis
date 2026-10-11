@@ -12,6 +12,7 @@ import { useVaultSession } from '@/contexts/vault-fs-context'
 import { buildTaskTree } from '@/lib/tasks'
 import type { TaskItem } from '@/types/tasks'
 import { cn } from '@/utils/cn'
+import { OPEN_REMINDER_EVENT, pendingOpenKind } from '@/lib/reminders/open'
 
 export type OrganizerTab = 'tasks' | 'lists' | 'calendars' | 'reminders'
 
@@ -103,6 +104,17 @@ export function OrganizerView({ initialTab }: { initialTab?: OrganizerTab }) {
       /* noop */
     }
   }
+
+  // A reminder's Open: show the tab that holds its item, which then opens it.
+  useEffect(() => {
+    function openRequested() {
+      const kind = pendingOpenKind()
+      if (kind) setActiveTab(kind === 'task' ? 'tasks' : 'calendars')
+    }
+    openRequested()
+    window.addEventListener(OPEN_REMINDER_EVENT, openRequested)
+    return () => window.removeEventListener(OPEN_REMINDER_EVENT, openRequested)
+  }, [])
 
   return (
     <div className="flex h-full min-h-0 flex-col">

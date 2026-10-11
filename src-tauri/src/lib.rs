@@ -7,6 +7,8 @@ pub mod oauth;
 #[doc(hidden)]
 pub mod overlay;
 #[doc(hidden)]
+pub mod reminders;
+#[doc(hidden)]
 pub mod startup;
 #[doc(hidden)]
 pub mod vault_fs;
@@ -62,6 +64,7 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             overlay::overlay_open_main,
             overlay::overlay_ready,
             overlay::overlay_visible,
+            reminders::reminders_schedule,
         ])
 }
 
@@ -86,6 +89,7 @@ pub fn run() {
             overlay::show_main(app)
         }))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![overlay::HIDDEN_ARG]),
@@ -97,6 +101,7 @@ pub fn run() {
         .setup(|app| {
             setup_vault_state(app.handle());
             overlay::setup(app.handle())?;
+            reminders::setup(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())

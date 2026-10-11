@@ -138,14 +138,12 @@ export const calendarDestination: CaptureDestination = {
       label: 'Repeat',
       kind: 'select',
       options: REPEAT_OPTIONS,
-      hint: 'Saved with the event. The calendar does not repeat events yet.',
     },
     {
       key: 'alert',
       label: 'Alert',
       kind: 'select',
       options: ALERT_OPTIONS,
-      hint: 'Saved with the event. Alerts are not sent yet.',
     },
   ],
   validate(v) {

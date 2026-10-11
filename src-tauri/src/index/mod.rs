@@ -121,6 +121,17 @@ struct DirArg {
 }
 
 #[derive(Deserialize)]
+struct RangeArg {
+    from: String,
+    to: String,
+}
+
+#[derive(Deserialize)]
+struct RowsArg {
+    rows: Vec<store::ReminderRow>,
+}
+
+#[derive(Deserialize)]
 struct ListingsArg {
     listings: Vec<store::TreeListing>,
 }
@@ -218,7 +229,14 @@ impl IndexHost {
                     None => Ok(Value::Null),
                 }
             }
-            "upsert" | "remove" | "putHashes" | "setChildren" | "validHashes" => {
+            "reminders" => {
+                let RangeArg { from, to } = arg(op, input)?;
+                match &self.open {
+                    Some((_, s)) => to_json(s.reminders(&from, &to).map_err(sql)?),
+                    None => Ok(json!([])),
+                }
+            }
+            "upsert" | "remove" | "putHashes" | "setChildren" | "setReminders" | "validHashes" => {
                 let VaultArg { vault_id } = arg(op, input.clone())?;
                 if self.vault_id() != Some(vault_id.as_str()) {
                     return Ok(if op == "validHashes" {
@@ -240,6 +258,9 @@ impl IndexHost {
                         .map_err(sql)?,
                     "setChildren" => store
                         .set_children(&arg::<ListingsArg>(op, input)?.listings)
+                        .map_err(sql)?,
+                    "setReminders" => store
+                        .set_reminders(&arg::<RowsArg>(op, input)?.rows)
                         .map_err(sql)?,
                     _ => {
                         return to_json(
@@ -417,5 +438,33 @@ mod tests {
         let mut host = in_memory_host();
         assert!(host.call("nope", Value::Null).is_err());
         assert!(host.call("search", json!({ "limit": 1 })).is_err());
+    }
+
+    #[test]
+    fn reminders_are_replaced_whole_and_read_by_range() {
+        let mut host = in_memory_host();
+        host.call("open", json!({ "vaultId": "v" })).unwrap();
+        let row = |at: &str, path: &str| json!({ "kind": "task", "path": path, "title": "T", "at": at, "about": "2026-10-12" });
+        let set = |host: &mut IndexHost, rows: Value| {
+            host.call("setReminders", json!({ "vaultId": "v", "rows": rows }))
+                .unwrap()
+        };
+        set(
+            &mut host,
+            json!([
+                row("2026-10-12T09:00", "b.md"),
+                row("2026-10-11T09:00", "a.md")
+            ]),
+        );
+        let range = json!({ "from": "2026-10-11T00:00", "to": "2026-10-12T09:00" });
+        assert_eq!(
+            host.call("reminders", range.clone()).unwrap(),
+            json!([row("2026-10-11T09:00", "a.md")])
+        );
+        set(&mut host, json!([row("2026-10-11T10:00", "c.md")]));
+        assert_eq!(
+            host.call("reminders", range).unwrap(),
+            json!([row("2026-10-11T10:00", "c.md")])
+        );
     }
 }

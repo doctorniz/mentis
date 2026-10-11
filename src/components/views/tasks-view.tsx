@@ -12,6 +12,7 @@ import { CaptureBar } from '@/modules/capture/capture-bar'
 import { TaskDetailDialog } from '@/components/tasks/task-detail-dialog'
 import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import type { TaskItem } from '@/types/tasks'
+import { OPEN_REMINDER_EVENT, takeOpen } from '@/lib/reminders/open'
 
 function downloadFile(content: string, filename: string, mime: string) {
   const blob = new Blob([content], { type: mime })
@@ -35,6 +36,20 @@ export function TasksView() {
   const [editTask, setEditTask] = useState<TaskItem | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // A reminder's Open: show the task once it is loaded.
+  useEffect(() => {
+    function openRequested() {
+      const path = takeOpen('task', (p) => items.some((t) => t.path === p))
+      const task = path && items.find((t) => t.path === path)
+      if (!task) return
+      setEditTask(task)
+      setDialogOpen(true)
+    }
+    openRequested()
+    window.addEventListener(OPEN_REMINDER_EVENT, openRequested)
+    return () => window.removeEventListener(OPEN_REMINDER_EVENT, openRequested)
+  }, [items])
 
   useEffect(() => {
     void loadTasks(vaultFs)
