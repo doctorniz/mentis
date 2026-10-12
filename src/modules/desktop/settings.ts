@@ -1,5 +1,5 @@
 import type { SettingsSection } from '@/core/registries/settings'
-import { isTauri } from '@/lib/fs/platform'
+import { isDesktopApp } from '@/lib/fs/platform'
 
 /** Desktop-only settings: they belong to this machine, so they live outside the vault. */
 const sections: readonly SettingsSection[] = [
@@ -8,7 +8,7 @@ const sections: readonly SettingsSection[] = [
     tab: 'Desktop',
     order: 70,
     title: 'Capture from anywhere',
-    when: isTauri,
+    when: isDesktopApp,
     panel: () => import('./settings-panel'),
   },
 ]

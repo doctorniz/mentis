@@ -2,6 +2,10 @@
 //! and a vault-relative path; a root is only usable after the app has granted
 //! it (from a folder the user picked), and a path can never leave its root.
 //!
+//! A root is either a folder path or, on Android, a folder picked through the
+//! Storage Access Framework (`content://…`, see `saf`); the commands take
+//! both, so the window does not need to know which.
+//!
 //! Commands are async so they run off the UI thread.
 
 use std::collections::HashSet;
@@ -15,29 +19,59 @@ use serde::Serialize;
 use tauri::State;
 use tauri::ipc::{InvokeBody, Request, Response};
 
+use crate::saf::{self, Saf};
+
 #[derive(Default)]
-pub struct VaultRoots(Mutex<HashSet<PathBuf>>);
+pub struct VaultRoots {
+    folders: Mutex<HashSet<PathBuf>>,
+    picked: Mutex<HashSet<String>>,
+}
+
+/// Where a vault path lives: a file on disk, or a document in a picked tree.
+pub(crate) enum Target {
+    Local(PathBuf),
+    Saf { tree: String, path: String },
+}
 
 impl VaultRoots {
     /// Lets commands use `root`. Called only for folders the user chose.
     pub fn grant(&self, root: &Path) -> io::Result<PathBuf> {
         let canonical = fs::canonicalize(root)?;
-        self.0.lock().unwrap().insert(canonical.clone());
+        self.folders.lock().unwrap().insert(canonical.clone());
         Ok(canonical)
     }
 
-    pub fn revoke(&self, root: &Path) {
-        if let Ok(canonical) = fs::canonicalize(root) {
-            self.0.lock().unwrap().remove(&canonical);
+    /// Lets commands use a picked SAF root.
+    pub fn grant_picked(&self, root: &str) {
+        self.picked.lock().unwrap().insert(root.to_string());
+    }
+
+    pub fn revoke(&self, root: &str) {
+        if saf::is_saf(root) {
+            self.picked.lock().unwrap().remove(root);
+        } else if let Ok(canonical) = fs::canonicalize(root) {
+            self.folders.lock().unwrap().remove(&canonical);
         }
     }
 
     pub(crate) fn resolve(&self, root: &str, rel: &str) -> Result<PathBuf, String> {
         let root = fs::canonicalize(root).map_err(|e| format!("vault folder unavailable: {e}"))?;
-        if !self.0.lock().unwrap().contains(&root) {
+        if !self.folders.lock().unwrap().contains(&root) {
             return Err("vault folder has not been opened".into());
         }
         resolve_in(&root, rel)
+    }
+
+    pub(crate) fn target(&self, root: &str, rel: &str) -> Result<Target, String> {
+        if !saf::is_saf(root) {
+            return self.resolve(root, rel).map(Target::Local);
+        }
+        if !self.picked.lock().unwrap().contains(root) {
+            return Err("vault folder has not been opened".into());
+        }
+        saf::check_rel(rel)?;
+        let (tree, path) = saf::split(root, rel);
+        Ok(Target::Saf { tree, path })
     }
 }
 
@@ -98,6 +132,32 @@ pub struct Stat {
     birthtime: Option<f64>,
 }
 
+/// Run a SAF call on a blocking thread. Each one waits on Android's document
+/// provider; on the async runtime's few workers that would cap how many the
+/// indexer can keep in flight.
+async fn on_saf_thread<T: Send + 'static>(
+    saf: &Saf,
+    f: impl FnOnce(&dyn saf::SafBackend) -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    let saf = saf.clone();
+    tauri::async_runtime::spawn_blocking(move || f(saf.get()?))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn stat_of_saf(s: saf::SafStat) -> Stat {
+    Stat {
+        size: s.size,
+        is_directory: s.is_directory,
+        mtime: s.mtime,
+        birthtime: None,
+    }
+}
+
+fn not_found(path: &str) -> String {
+    format!("not found: {path}")
+}
+
 fn stat_of(meta: &fs::Metadata) -> Stat {
     Stat {
         size: meta.len(),
@@ -118,16 +178,25 @@ pub struct DirEntry {
 #[tauri::command]
 pub async fn vault_read(
     roots: State<'_, VaultRoots>,
+    saf: State<'_, Saf>,
     root: String,
     path: String,
 ) -> Result<Response, String> {
-    let full = roots.resolve(&root, &path)?;
-    fs::read(full).map(Response::new).map_err(err)
+    match roots.target(&root, &path)? {
+        Target::Local(full) => fs::read(full).map(Response::new).map_err(err),
+        Target::Saf { tree, path } => {
+            on_saf_thread(&saf, move |b| saf::read(b, &tree, &path).map(Response::new)).await
+        }
+    }
 }
 
 /// The bytes travel as the raw request body; root and path as headers.
 #[tauri::command]
-pub async fn vault_write(roots: State<'_, VaultRoots>, request: Request<'_>) -> Result<(), String> {
+pub async fn vault_write(
+    roots: State<'_, VaultRoots>,
+    saf: State<'_, Saf>,
+    request: Request<'_>,
+) -> Result<(), String> {
     let header = |name: &str| -> Result<String, String> {
         let raw = request
             .headers()
@@ -136,11 +205,24 @@ pub async fn vault_write(roots: State<'_, VaultRoots>, request: Request<'_>) -> 
             .ok_or_else(|| format!("missing {name}"))?;
         urlencoding_decode(raw)
     };
-    let full = roots.resolve(&header("x-vault-root")?, &header("x-vault-path")?)?;
-    let InvokeBody::Raw(bytes) = request.body() else {
-        return Err("expected raw bytes".into());
+    let target = roots.target(&header("x-vault-root")?, &header("x-vault-path")?)?;
+    // Android's bridge delivers the bytes as a JSON array rather than raw.
+    let json_bytes;
+    let bytes: &[u8] = match request.body() {
+        InvokeBody::Raw(bytes) => bytes,
+        InvokeBody::Json(value) => {
+            json_bytes = serde_json::from_value::<Vec<u8>>(value.clone())
+                .map_err(|_| "expected bytes".to_string())?;
+            &json_bytes
+        }
     };
-    fs::write(full, bytes).map_err(err)
+    match target {
+        Target::Local(full) => fs::write(full, bytes).map_err(err),
+        Target::Saf { tree, path } => {
+            let bytes = bytes.to_vec();
+            on_saf_thread(&saf, move |b| saf::write(b, &tree, &path, &bytes)).await
+        }
+    }
 }
 
 fn urlencoding_decode(s: &str) -> Result<String, String> {
@@ -163,29 +245,50 @@ fn urlencoding_decode(s: &str) -> Result<String, String> {
 #[tauri::command]
 pub async fn vault_exists(
     roots: State<'_, VaultRoots>,
+    saf: State<'_, Saf>,
     root: String,
     path: String,
 ) -> Result<bool, String> {
-    Ok(roots.resolve(&root, &path).is_ok_and(|p| p.exists()))
+    Ok(match roots.target(&root, &path) {
+        Ok(Target::Local(full)) => full.exists(),
+        Ok(Target::Saf { tree, path }) => on_saf_thread(&saf, move |b| b.stat(&tree, &path))
+            .await?
+            .is_some(),
+        Err(_) => false,
+    })
 }
 
 #[tauri::command]
 pub async fn vault_stat(
     roots: State<'_, VaultRoots>,
+    saf: State<'_, Saf>,
     root: String,
     path: String,
 ) -> Result<Stat, String> {
-    let full = roots.resolve(&root, &path)?;
-    fs::metadata(full).map(|m| stat_of(&m)).map_err(err)
+    match roots.target(&root, &path)? {
+        Target::Local(full) => fs::metadata(full).map(|m| stat_of(&m)).map_err(err),
+        Target::Saf { tree, path } => {
+            on_saf_thread(&saf, move |b| {
+                b.stat(&tree, &path)?
+                    .map(stat_of_saf)
+                    .ok_or_else(|| not_found(&path))
+            })
+            .await
+        }
+    }
 }
 
 #[tauri::command]
 pub async fn vault_mkdir(
     roots: State<'_, VaultRoots>,
+    saf: State<'_, Saf>,
     root: String,
     path: String,
 ) -> Result<(), String> {
-    fs::create_dir_all(roots.resolve(&root, &path)?).map_err(err)
+    match roots.target(&root, &path)? {
+        Target::Local(full) => fs::create_dir_all(full).map_err(err),
+        Target::Saf { tree, path } => saf.get()?.mkdirs(&tree, &path),
+    }
 }
 
 /// One call per folder, with each entry's size and times, so listing a folder
@@ -193,10 +296,23 @@ pub async fn vault_mkdir(
 #[tauri::command]
 pub async fn vault_read_dir(
     roots: State<'_, VaultRoots>,
+    saf: State<'_, Saf>,
     root: String,
     path: String,
 ) -> Result<Vec<DirEntry>, String> {
-    let full = roots.resolve(&root, &path)?;
+    let full = match roots.target(&root, &path)? {
+        Target::Local(full) => full,
+        Target::Saf { tree, path } => {
+            let entries = on_saf_thread(&saf, move |b| b.list(&tree, &path)).await?;
+            return Ok(entries
+                .into_iter()
+                .map(|e| DirEntry {
+                    name: e.name,
+                    stat: stat_of_saf(e.stat),
+                })
+                .collect());
+        }
+    };
     let mut out = Vec::new();
     for entry in fs::read_dir(full).map_err(err)? {
         let entry = entry.map_err(err)?;
@@ -218,35 +334,63 @@ pub async fn vault_read_dir(
 #[tauri::command]
 pub async fn vault_rename(
     roots: State<'_, VaultRoots>,
+    saf: State<'_, Saf>,
     root: String,
     from: String,
     to: String,
 ) -> Result<(), String> {
-    let from = roots.resolve(&root, &from)?;
-    let to = roots.resolve(&root, &to)?;
-    fs::rename(from, to).map_err(err)
+    match (roots.target(&root, &from)?, roots.target(&root, &to)?) {
+        (Target::Local(from), Target::Local(to)) => fs::rename(from, to).map_err(err),
+        (Target::Saf { tree, path: from }, Target::Saf { path: to, .. }) => {
+            saf.get()?.rename(&tree, &from, &to)
+        }
+        _ => Err("cannot move between vaults".into()),
+    }
 }
 
 #[tauri::command]
 pub async fn vault_copy(
     roots: State<'_, VaultRoots>,
+    saf: State<'_, Saf>,
     root: String,
     from: String,
     to: String,
 ) -> Result<(), String> {
-    let from = roots.resolve(&root, &from)?;
-    let to = roots.resolve(&root, &to)?;
-    fs::copy(from, to).map(|_| ()).map_err(err)
+    match (roots.target(&root, &from)?, roots.target(&root, &to)?) {
+        (Target::Local(from), Target::Local(to)) => fs::copy(from, to).map(|_| ()).map_err(err),
+        (Target::Saf { tree, path: from }, Target::Saf { path: to, .. }) => {
+            on_saf_thread(&saf, move |b| {
+                let bytes = saf::read(b, &tree, &from)?;
+                saf::write(b, &tree, &to, &bytes)
+            })
+            .await
+        }
+        _ => Err("cannot copy between vaults".into()),
+    }
 }
 
 /// A file, or an empty folder.
 #[tauri::command]
 pub async fn vault_remove(
     roots: State<'_, VaultRoots>,
+    saf: State<'_, Saf>,
     root: String,
     path: String,
 ) -> Result<(), String> {
-    let full = roots.resolve(&root, &path)?;
+    let full = match roots.target(&root, &path)? {
+        Target::Local(full) => full,
+        Target::Saf { tree, path } => {
+            let backend = saf.get()?;
+            let stat = backend
+                .stat(&tree, &path)?
+                .ok_or_else(|| not_found(&path))?;
+            // Only an empty folder, as on disk.
+            if stat.is_directory && !backend.list(&tree, &path)?.is_empty() {
+                return Err(format!("folder is not empty: {path}"));
+            }
+            return backend.delete(&tree, &path);
+        }
+    };
     if fs::symlink_metadata(&full).map_err(err)?.is_dir() {
         fs::remove_dir(full).map_err(err)
     } else {
@@ -257,13 +401,17 @@ pub async fn vault_remove(
 #[tauri::command]
 pub async fn vault_remove_dir(
     roots: State<'_, VaultRoots>,
+    saf: State<'_, Saf>,
     root: String,
     path: String,
 ) -> Result<(), String> {
     if path.trim_matches('/').is_empty() {
         return Err("refusing to remove the vault folder itself".into());
     }
-    fs::remove_dir_all(roots.resolve(&root, &path)?).map_err(err)
+    match roots.target(&root, &path)? {
+        Target::Local(full) => fs::remove_dir_all(full).map_err(err),
+        Target::Saf { tree, path } => saf.get()?.delete(&tree, &path),
+    }
 }
 
 #[cfg(test)]

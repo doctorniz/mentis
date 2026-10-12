@@ -36,8 +36,12 @@ const DAY = 86_400_000
 const MISSED_REACH = 7 * DAY
 /** How far ahead occurrences are worked out and recorded. */
 const AHEAD = 30 * DAY
-/** How far ahead the desktop shell is told about. */
-const SHELL_AHEAD = 2 * DAY
+/**
+ * How far ahead the shell is told about. The desktop shell's thread runs
+ * while the app does; a phone shows what it was handed even when the app is
+ * not running, so it is handed everything known.
+ */
+const SHELL_AHEAD = __MENTIS_MOBILE__ ? AHEAD : 2 * DAY
 const TICK = 30_000
 /** Work the occurrences out again this often, so the window moves on. */
 const REFRESH = 60 * 60_000

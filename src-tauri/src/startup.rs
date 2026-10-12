@@ -4,7 +4,10 @@
 //! variable the signal does nothing.
 //!
 //! A measured launch may also name the vault to open in `MENTIS_STARTUP_VAULT`,
-//! for a fresh profile with no remembered vault. It is ignored unless a report
+//! for a fresh profile with no remembered vault.
+//!
+//! On Android the signal also reports the activity fully drawn, so Android
+//! logs the cold-start time ("Fully drawn … +Nms") from process start. It is ignored unless a report
 //! was asked for, and the folder must still be in the recent list to open.
 
 use std::ffi::OsString;
@@ -27,6 +30,15 @@ fn write_report(report: Option<&Path>, now_ms: u128) -> bool {
 
 #[tauri::command]
 pub fn startup_ready<R: Runtime>(app: AppHandle<R>) {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        if let Some(shell) = app.try_state::<android::Shell<R>>() {
+            let _ = shell
+                .0
+                .run_mobile_plugin::<serde_json::Value>("fullyDrawn", ());
+        }
+    }
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_millis());
@@ -45,6 +57,28 @@ fn measured_vault(report: Option<OsString>, vault: Option<OsString>) -> Option<S
 #[tauri::command]
 pub fn startup_vault() -> Option<String> {
     measured_vault(std::env::var_os(REPORT_ENV), std::env::var_os(VAULT_ENV))
+}
+
+#[cfg(target_os = "android")]
+mod android {
+    pub struct Shell<R: tauri::Runtime>(pub tauri::plugin::PluginHandle<R>);
+}
+
+/// Registers the Kotlin side of the app's activity hooks (`ShellPlugin.kt`).
+#[cfg(mobile)]
+pub fn init<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    tauri::plugin::Builder::new("mentis-shell")
+        .setup(|app, api| {
+            #[cfg(target_os = "android")]
+            {
+                use tauri::Manager;
+                let handle = api.register_android_plugin("app.mentis", "ShellPlugin")?;
+                app.manage(android::Shell(handle));
+            }
+            let _ = (app, api);
+            Ok(())
+        })
+        .build()
 }
 
 #[cfg(test)]

@@ -12,6 +12,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
+use tauri_plugin_opener::OpenerExt;
 
 use serde::Serialize;
 use tauri::State;
@@ -181,7 +182,8 @@ fn is_expected_authorize_url(url: &str) -> bool {
 pub struct OAuthAttempt(Mutex<Option<Arc<AtomicBool>>>);
 
 #[tauri::command]
-pub async fn oauth_authorize(
+pub async fn oauth_authorize<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     attempt: State<'_, OAuthAttempt>,
     auth_url: String,
     state: String,
@@ -203,7 +205,10 @@ pub async fn oauth_authorize(
     }
     tauri::async_runtime::spawn_blocking(move || {
         let listener = bind()?;
-        tauri_plugin_opener::open_url(&auth_url, None::<&str>)
+        // Through the plugin, which on a phone hands the address to the
+        // browser app; a bare `open` cannot start one there.
+        app.opener()
+            .open_url(&auth_url, None::<&str>)
             .map_err(|e| format!("cannot open the browser: {e}"))?;
         await_callback(&listener, &state, WAIT, &cancel)
     })

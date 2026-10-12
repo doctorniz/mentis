@@ -25,10 +25,18 @@ strsim = "0.11.1"
 regex = "1.13.1"
 notify = "8.2"
 tauri-plugin-opener = "2"
+tauri-plugin-notification = "2"
+
+# The tray, the capture hotkey, one running copy and launch at login are
+# desktop things; the mobile app leaves them out.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
-tauri-plugin-notification = "2"
+
+# A reminder's time, as the notification plugin schedules it on a phone.
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+time = "0.3"
 
 [profile.release]
 codegen-units = 1

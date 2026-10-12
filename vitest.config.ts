@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config'
 import path from 'path'
 
 export default defineConfig({
-  define: { __MENTIS_DESKTOP__: false },
+  define: { __MENTIS_DESKTOP__: false, __MENTIS_MOBILE__: false },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

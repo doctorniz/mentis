@@ -104,8 +104,11 @@ async function fileToDocument(
 const BATCH = 25
 /** Folders recorded per request to the index. */
 const TREE_BATCH = 200
-/** Files read and in flight to the extract worker at once. */
-const IN_FLIGHT = 3
+/**
+ * Files read and in flight to the extract worker at once. On a phone each
+ * read waits on Android's document provider, so more of them overlap.
+ */
+const IN_FLIGHT = __MENTIS_MOBILE__ ? 8 : 3
 
 /**
  * Bring the index up to date with the vault: list it (metadata only), then

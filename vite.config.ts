@@ -59,9 +59,12 @@ export default defineConfig(({ mode }) => {
     },
 
     define: {
-      // The desktop build leaves out the browser-only SQLite worker; the shell
-      // keeps the index natively.
-      __MENTIS_DESKTOP__: JSON.stringify(mode === 'desktop'),
+      // The app builds (desktop and mobile) leave out the browser-only SQLite
+      // worker; the shell keeps the index natively.
+      __MENTIS_DESKTOP__: JSON.stringify(mode === 'desktop' || mode === 'mobile'),
+      // The mobile app also leaves out what only a desktop has (the tray, the
+      // capture hotkey, launch at login).
+      __MENTIS_MOBILE__: JSON.stringify(mode === 'mobile'),
       'process.env.NEXT_PUBLIC_DROPBOX_CLIENT_ID': JSON.stringify(
         env.NEXT_PUBLIC_DROPBOX_CLIENT_ID ?? '',
       ),

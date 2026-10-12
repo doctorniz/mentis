@@ -42,7 +42,18 @@ export function VaultSearchBootstrap() {
         window.dispatchEvent(
           new CustomEvent('ink:search-index-reconciled', { detail: { ...result, persisted } }),
         )
-        if (isTauri()) {
+        if (__MENTIS_MOBILE__) {
+          // A picked folder on a phone cannot be watched: look again whenever
+          // the app comes back, as other apps (sync, a file manager) may have
+          // changed it meanwhile.
+          const onVisible = () => {
+            if (document.visibilityState !== 'visible') return
+            window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+            reconcileSoon(vaultFs)
+          }
+          document.addEventListener('visibilitychange', onVisible)
+          stopWatching = () => document.removeEventListener('visibilitychange', onVisible)
+        } else if (isTauri()) {
           const { watchDesktopVault } = await import('@/lib/vault/watch')
           const stop = await watchDesktopVault(vaultPath, () => {
             window.dispatchEvent(new CustomEvent('ink:vault-changed'))

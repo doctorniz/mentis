@@ -11,7 +11,7 @@ import { useUiStore } from '@/stores/ui'
 import { toast } from '@/stores/toast'
 import type { DesktopSettings } from '@/modules/desktop/shell'
 import { useVaultSession } from '@/contexts/vault-fs-context'
-import { isTauri } from '@/lib/fs/platform'
+import { isDesktopApp } from '@/lib/fs/platform'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import { useEditorStore } from '@/stores/editor'
 import { usePdfStore } from '@/stores/pdf'
@@ -135,7 +135,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   // Desktop: the capture overlay is another window. Refresh what it saved
   // into, and open the palette when its bar hands over a `>` command.
   useEffect(() => {
-    if (!isTauri()) return
+    if (!isDesktopApp()) return
     let stop = false
     const unlisten: Array<() => void> = []
     void import('@tauri-apps/api/event').then(async ({ listen }) => {
