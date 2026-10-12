@@ -9,11 +9,11 @@ class MainActivity : TauriActivity() {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     // Started to show something (a reminder's item, a share): keep it for the app.
-    if (savedInstanceState == null) Inbox.accept(intent)
+    if (savedInstanceState == null) Inbox.accept(this, intent)
   }
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
-    Inbox.accept(intent)
+    Inbox.accept(this, intent)
   }
 }

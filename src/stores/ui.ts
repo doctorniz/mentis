@@ -19,12 +19,18 @@ interface UiState {
    * view takes it, so a request made while switching to it is not lost.
    */
   vaultSearchRequested: boolean
+  /** Capture was asked for from outside (a shortcut, the widget): focus the shown capture bar. */
+  captureFocusRequested: boolean
 
   setActiveView: (view: ViewId) => void
   /** Show the vault view with its search panel open. */
   requestVaultSearch: () => void
   /** The vault view: take a pending search request. */
   takeVaultSearchRequest: () => boolean
+  /** Show `view` with its capture bar focused. */
+  requestCaptureFocus: (view: ViewId) => void
+  /** A capture bar on screen: take a pending focus request. */
+  takeCaptureFocusRequest: () => boolean
   setVaultMode: (mode: VaultLayoutMode) => void
   /** Restore `vaultMode` from `localStorage` for the active vault path (call when vault opens or path changes). */
   hydrateVaultLayoutForActiveVault: () => void
@@ -75,6 +81,21 @@ export const useUiStore = create<UiState>()(
     theme: readStoredTheme(),
     activeModal: null,
     vaultSearchRequested: false,
+    captureFocusRequested: false,
+
+    requestCaptureFocus: (view) =>
+      set((state) => {
+        state.captureFocusRequested = true
+        state.activeView = view
+      }),
+
+    takeCaptureFocusRequest: () => {
+      if (!get().captureFocusRequested) return false
+      set((state) => {
+        state.captureFocusRequested = false
+      })
+      return true
+    },
 
     requestVaultSearch: () =>
       set((state) => {

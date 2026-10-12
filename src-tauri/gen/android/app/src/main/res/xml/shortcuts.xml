@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the Mentis icon: open straight into capture, a new task or today's journal. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="capture"
+        android:enabled="true"
+        android:icon="@drawable/ic_capture"
+        android:shortcutShortLabel="@string/shortcut_capture">
+        <intent
+            android:action="app.mentis.CAPTURE"
+            android:targetPackage="app.mentis"
+            android:targetClass="app.mentis.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="task"
+        android:enabled="true"
+        android:icon="@drawable/ic_task"
+        android:shortcutShortLabel="@string/shortcut_task">
+        <intent
+            android:action="app.mentis.NEW_TASK"
+            android:targetPackage="app.mentis"
+            android:targetClass="app.mentis.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="journal"
+        android:enabled="true"
+        android:icon="@drawable/ic_journal"
+        android:shortcutShortLabel="@string/shortcut_journal">
+        <intent
+            android:action="app.mentis.JOURNAL"
+            android:targetPackage="app.mentis"
+            android:targetClass="app.mentis.MainActivity" />
+    </shortcut>
+</shortcuts>

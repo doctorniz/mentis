@@ -93,6 +93,30 @@ pub async fn inbox_take<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Val
     serde_json::from_str(taken["entries"].as_str().unwrap_or("[]")).map_err(|e| e.to_string())
 }
 
+/// A file shared to the app, copied into its cache (`shared/`) by `Inbox.kt`:
+/// its bytes, once — the copy is removed. Nothing outside that folder.
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn inbox_read_file<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+) -> Result<tauri::ipc::Response, String> {
+    use tauri::Manager;
+    let shared = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| e.to_string())?
+        .join("shared");
+    let shared = std::fs::canonicalize(&shared).map_err(|e| e.to_string())?;
+    let file = std::fs::canonicalize(&path).map_err(|e| e.to_string())?;
+    if !file.starts_with(&shared) {
+        return Err("not a shared file".into());
+    }
+    let bytes = std::fs::read(&file).map_err(|e| e.to_string())?;
+    let _ = std::fs::remove_file(&file);
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 /// Send the app to the background, as the back button does with nothing left
 /// to go back to. Phones only.
 #[cfg(mobile)]

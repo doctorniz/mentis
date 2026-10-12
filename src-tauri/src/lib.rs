@@ -66,6 +66,8 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             startup::app_to_background,
             #[cfg(mobile)]
             startup::inbox_take,
+            #[cfg(mobile)]
+            startup::inbox_read_file,
             #[cfg(desktop)]
             overlay::desktop_settings_get,
             #[cfg(desktop)]

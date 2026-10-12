@@ -73,6 +73,9 @@ async function refreshAfterCapture(vaultFs: FileSystemAdapter, destination?: str
   window.dispatchEvent(new CustomEvent('ink:vault-changed'))
 }
 
+// The phone app's way in from other apps (shares, shortcuts, a reminder's item).
+const ShareHost = lazy(() => import('@/modules/capture/share-host'))
+
 // Reminders start once the shell is up, so their code is not part of startup.
 const ReminderHost = lazy(() => import('@/components/reminders/reminder-host'))
 
@@ -118,20 +121,6 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
     let cancelled = false
     void import('@/lib/browser/touch-shell').then(({ startTouchShell }) => {
       if (!cancelled) stop = startTouchShell()
-    })
-    return () => {
-      cancelled = true
-      stop?.()
-    }
-  }, [])
-
-  // The phone app: open what Android asked for (a reminder's item, a share).
-  useEffect(() => {
-    if (!__MENTIS_MOBILE__) return
-    let stop: (() => void) | null = null
-    let cancelled = false
-    void import('@/components/shell/launch-inbox').then(({ startLaunchInbox }) => {
-      if (!cancelled) stop = startLaunchInbox()
     })
     return () => {
       cancelled = true
@@ -293,6 +282,11 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
       {remindersReady && (
         <Suspense fallback={null}>
           <ReminderHost />
+        </Suspense>
+      )}
+      {__MENTIS_MOBILE__ && (
+        <Suspense fallback={null}>
+          <ShareHost />
         </Suspense>
       )}
       {loginPrompt && (

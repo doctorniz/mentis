@@ -12,6 +12,7 @@ import {
 } from '@/core/registries/capture'
 import { toast } from '@/stores/toast'
 import { cn } from '@/utils/cn'
+import { useUiStore } from '@/stores/ui'
 
 // The confirmation step loads the first time a destination needs it.
 const CaptureConfirmDialog = lazy(() => import('./confirm-dialog'))
@@ -87,6 +88,13 @@ export function CaptureBar({
     ctx: CaptureContext
   } | null>(null)
   const [fullParse, setFullParse] = useState<{ text: string; result: ParseResult } | null>(null)
+
+  // Capture asked for from outside the view (a phone shortcut): the bar on screen takes it.
+  const focusRequested = useUiStore((s) => s.captureFocusRequested)
+  useEffect(() => {
+    if (!focusRequested || !inputRef.current?.offsetParent) return
+    if (useUiStore.getState().takeCaptureFocusRequest()) inputRef.current.focus()
+  }, [focusRequested])
 
   const bound = boundDestination ? captureDestinations.get(boundDestination) : undefined
   const fallback = bound ?? captureDestinations.get(DEFAULT_CAPTURE_DESTINATION)!

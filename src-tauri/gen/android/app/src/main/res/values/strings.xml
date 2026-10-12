@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">"Mentis"</string>
     <string name="main_activity_title">"Mentis"</string>
+    <string name="shortcut_capture">Capture</string>
+    <string name="shortcut_task">New task</string>
+    <string name="shortcut_journal">Today\'s journal</string>
+    <string name="widget_label">Capture</string>
+    <string name="widget_description">Open Mentis straight into capture</string>
+    <string name="tile_label">Capture</string>
 </resources>

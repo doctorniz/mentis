@@ -54,6 +54,24 @@ Alarms are exact: `USE_EXACT_ALARM` (Android 13+, allowed for reminder and
 calendar apps) and `SCHEDULE_EXACT_ALARM` up to Android 12. Without them
 Android may deliver a reminder up to an hour late.
 
+## Shares and quick capture
+
+Android hands the app things to show through the activity's intents; `Inbox.kt`
+keeps them until the web app takes them (`launch-inbox.ts`, on start and when
+the app comes back), and `src/modules/capture/share-host.tsx` acts on them:
+
+- **Shared text** goes straight to Thoughts, with Undo — unless it holds a
+  link, which opens the Bookmark confirmation, prefilled (the sharing app's
+  subject as the title).
+- **Shared images** are copied into the app's cache while Android's grant to
+  read them lasts, then saved to the vault's attachments folder
+  (`attachmentFolder`, `_assets` by default); `inbox_read_file` reads each copy
+  once and removes it.
+- **App shortcuts** (long-press the icon; `res/xml/shortcuts.xml`): Capture,
+  New task, Today's journal. **Widget** and **Quick Settings tile**
+  (`QuickCapture.kt`): open straight into capture. The capture bar on screen
+  takes the focus request (`requestCaptureFocus` in the UI store).
+
 ## Touch
 
 Narrow screens (the phone app and the web app on a phone) share one layout:
