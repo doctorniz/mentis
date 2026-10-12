@@ -14,6 +14,20 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// Release signing with the Play upload key: from the environment in CI
+// (.github/workflows/android-release.yml), or from keystore.properties next to
+// this project locally (git-ignored). Without either, release builds are
+// unsigned. See docs/ANDROID.md.
+val keystoreProperties = Properties().apply {
+    val propFile = rootProject.file("keystore.properties")
+    if (propFile.exists()) {
+        propFile.inputStream().use { load(it) }
+    }
+}
+fun signingValue(env: String, property: String): String? =
+    System.getenv(env)?.takeIf { it.isNotEmpty() } ?: keystoreProperties.getProperty(property)
+val releaseStoreFile = signingValue("ANDROID_KEYSTORE_PATH", "storeFile")
+
 android {
     compileSdk = 37
     namespace = "app.mentis"
@@ -24,6 +38,16 @@ android {
         targetSdk = 37
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    }
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = signingValue("ANDROID_KEYSTORE_PASSWORD", "storePassword")
+                keyAlias = signingValue("ANDROID_KEY_ALIAS", "keyAlias")
+                keyPassword = signingValue("ANDROID_KEY_PASSWORD", "keyPassword")
+            }
+        }
     }
     buildTypes {
         getByName("debug") {
@@ -39,6 +63,7 @@ android {
             }
         }
         getByName("release") {
+            if (releaseStoreFile != null) signingConfig = signingConfigs.getByName("release")
             optimization {
                enable = true
             }

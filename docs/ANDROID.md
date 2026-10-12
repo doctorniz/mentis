@@ -144,3 +144,55 @@ adb shell am force-stop app.mentis && adb logcat -c
 adb shell am start -W -n app.mentis/.MainActivity
 adb logcat -d | grep "Fully drawn"
 ```
+
+## Releasing
+
+Google Play holds the key the app is signed with (Play App Signing); Mentis
+signs what it uploads with an **upload key**. CI signs releases with it, from
+GitHub secrets; the key never enters the repo (`*.jks`, `*.keystore` and
+`keystore.properties` are ignored).
+
+### Once: the upload key and the secrets
+
+1. Make the upload key, and keep the file and both passwords somewhere safe
+   (a password manager). If it is ever lost or leaked, Play can reset an upload
+   key; it cannot reset an app signing key, which is why Play holds that one.
+
+   ```bash
+   keytool -genkeypair -v -keystore mentis-upload.jks -alias upload      -keyalg RSA -keysize 2048 -validity 10000
+   ```
+
+2. In GitHub, Settings › Secrets and variables › Actions, add:
+
+   | Secret                      | Value                                     |
+   | --------------------------- | ----------------------------------------- |
+   | `ANDROID_KEYSTORE_BASE64`   | `base64 -w0 mentis-upload.jks` (one line) |
+   | `ANDROID_KEYSTORE_PASSWORD` | the keystore password                     |
+   | `ANDROID_KEY_ALIAS`         | `upload`                                  |
+   | `ANDROID_KEY_PASSWORD`      | the key password                          |
+
+3. Create the app in the Play Console (application id `app.mentis`) and turn on
+   Play App Signing. The first upload is made by hand there.
+
+To sign locally instead, put a `keystore.properties` next to
+`src-tauri/gen/android/build.gradle.kts`:
+
+```properties
+storeFile=C:/path/to/mentis-upload.jks
+storePassword=…
+keyAlias=upload
+keyPassword=…
+```
+
+### Each release
+
+1. Set the same version in `package.json`, `src-tauri/tauri.conf.json` and
+   `src-tauri/Cargo.toml` (e.g. `0.2.0`), and merge it.
+2. Tag it and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
+3. `android-release.yml` checks the tag matches the version, builds the bundle
+   and an APK for all four CPU types (64- and 32-bit ARM, x86_64, x86), signs
+   them, and attaches them to a GitHub release.
+4. Upload `mentis-v0.2.0.aab` in the Play Console.
+
+The Play version code comes from the version: `major × 1,000,000 + minor ×
+1,000 + patch` (0.2.0 → 2000), so every new version uploads above the last.

@@ -1,0 +1,85 @@
+name: Android release
+
+# Push a version tag (v0.2.0) to build the Play bundle and an APK, signed with
+# the upload key, and attach them to a GitHub release. Upload the .aab in the
+# Play Console. Setup: docs/ANDROID.md, "Releasing".
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    env:
+      NDK_VERSION: 27.1.12297006
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The tag names the app's version
+        run: node scripts/check-release-version.mjs "$GITHUB_REF_NAME"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Android NDK and Rust targets
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" > /dev/null
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+          rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-android-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: cargo-android-
+
+      - name: Upload key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::The ANDROID_KEYSTORE_BASE64 secret is not set (docs/ANDROID.md, Releasing)."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+
+      - name: Build the signed bundle and APK (all four CPU types)
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: pnpm exec tauri android build --ci --aab --apk
+
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          out=src-tauri/gen/android/app/build/outputs
+          cp "$out/bundle/universalRelease/app-universal-release.aab" "mentis-$GITHUB_REF_NAME.aab"
+          cp "$out/apk/universal/release/app-universal-release.apk" "mentis-$GITHUB_REF_NAME.apk"
+          gh release create "$GITHUB_REF_NAME" --title "Mentis $GITHUB_REF_NAME" --generate-notes \
+            "mentis-$GITHUB_REF_NAME.aab" "mentis-$GITHUB_REF_NAME.apk"
