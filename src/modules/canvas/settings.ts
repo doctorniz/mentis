@@ -18,6 +18,15 @@ const sections: readonly SettingsSection[] = [
       },
     ],
   },
+  {
+    // Palm rejection for the canvas and PDF ink; only where there is a touch screen.
+    id: 'canvas.pen',
+    tab: 'Editor',
+    order: 30,
+    title: 'Pen',
+    when: () => typeof matchMedia === 'function' && matchMedia('(any-pointer: coarse)').matches,
+    panel: () => import('./pen-setting'),
+  },
 ]
 
 export default sections

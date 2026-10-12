@@ -68,6 +68,30 @@ export interface InterpolatedStamp {
   x: number
   y: number
   pressure: number
+  /** Pen tilt in degrees (Pointer Events `tiltX` / `tiltY`); 0 for an upright pen, a mouse or a finger. */
+  tiltX?: number
+  tiltY?: number
+}
+
+/** How far a pen tilts before the tip is fully on its side, in degrees. */
+const FULL_TILT = 60
+/** A fully tilted tip is this many times longer than it is wide. */
+const MAX_STRETCH = 3
+
+/**
+ * The brush tip for a pen held at a tilt, as a pencil laid on its side: the
+ * tip grows longer along the direction the pen leans (`stretch`, 1 upright),
+ * turned to that direction (`angle`, radians) and lighter (`shade`, an alpha
+ * factor, 1 upright).
+ */
+export function tiltShape(tiltX = 0, tiltY = 0): { stretch: number; angle: number; shade: number } {
+  const t = Math.min(1, Math.hypot(tiltX, tiltY) / FULL_TILT)
+  if (t === 0) return { stretch: 1, angle: 0, shade: 1 }
+  return {
+    stretch: 1 + (MAX_STRETCH - 1) * t,
+    angle: Math.atan2(tiltY, tiltX),
+    shade: 1 - 0.35 * t,
+  }
 }
 
 /**
@@ -79,7 +103,8 @@ export interface InterpolatedStamp {
 export function interpolateStroke(points: StrokePoint[], spacingPx: number): InterpolatedStamp[] {
   if (points.length === 0) return []
   if (points.length === 1) {
-    return [{ x: points[0].x, y: points[0].y, pressure: points[0].pressure }]
+    const p = points[0]
+    return [{ x: p.x, y: p.y, pressure: p.pressure, tiltX: p.tiltX, tiltY: p.tiltY }]
   }
 
   const stamps: InterpolatedStamp[] = []
@@ -101,9 +126,11 @@ export function interpolateStroke(points: StrokePoint[], spacingPx: number): Int
       const t = s / steps
       const pt = catmullRomPoint(p0, p1, p2, p3, t)
       const press = lerp(p1.pressure, p2.pressure, t)
+      const tiltX = lerp(p1.tiltX ?? 0, p2.tiltX ?? 0, t)
+      const tiltY = lerp(p1.tiltY ?? 0, p2.tiltY ?? 0, t)
 
       if (stamps.length === 0) {
-        stamps.push({ x: pt.x, y: pt.y, pressure: press })
+        stamps.push({ x: pt.x, y: pt.y, pressure: press, tiltX, tiltY })
         distAccum = 0
         continue
       }
@@ -113,7 +140,7 @@ export function interpolateStroke(points: StrokePoint[], spacingPx: number): Int
       distAccum += d
 
       if (distAccum >= spacingPx) {
-        stamps.push({ x: pt.x, y: pt.y, pressure: press })
+        stamps.push({ x: pt.x, y: pt.y, pressure: press, tiltX, tiltY })
         distAccum = 0
       }
     }

@@ -22,6 +22,8 @@ import type {
   PdfTextComment,
 } from '@/types/pdf'
 import { fabricPathCommandsToPdfPoints } from '@/lib/pdf/fabric-path-to-pdf-points'
+import { fingersDraw, isPenEraser, notePointer } from '@/lib/browser/pen'
+import { inkTouched } from '@/lib/pdf/ink-hit'
 
 interface Props {
   page: PDFPageProxy
@@ -53,6 +55,8 @@ export function PdfPageCanvas({
   const textColor = usePdfStore((s) => s.textColor)
   const strokeWidth = usePdfStore((s) => s.strokeWidth)
   const addAnnotation = usePdfStore((s) => s.addAnnotation)
+  const removeAnnotation = usePdfStore((s) => s.removeAnnotation)
+  const pageRef = useRef<HTMLDivElement>(null)
 
   const vp = page.getViewport({ scale: zoom })
   const w = Math.floor(vp.width)
@@ -464,8 +468,103 @@ export function PdfPageCanvas({
     }
   }, [activeTool, signatureDataUrl, pageIndex, zoom, addAnnotation])
 
+  // Drawing with a pen: the pen's eraser end removes the ink it passes over,
+  // and once a pen is in use a finger scrolls the page instead of drawing.
+  // Both are caught before Fabric sees the input.
+  useEffect(() => {
+    const el = pageRef.current
+    if (!el || activeTool !== PdfTool.Draw) return
+
+    const pagePoint = (e: { clientX: number; clientY: number }) => {
+      const box = el.getBoundingClientRect()
+      return { x: (e.clientX - box.left) / zoom, y: (e.clientY - box.top) / zoom }
+    }
+    const erased = new Set<string>()
+    const eraseAt = (e: PointerEvent) => {
+      const inks = existingAnnotations.filter(
+        (a): a is PdfInkAnnotation => a.type === PdfAnnotationType.Ink && !erased.has(a.id),
+      )
+      for (const ink of inkTouched(inks, pagePoint(e), 6 / zoom)) {
+        erased.add(ink.id)
+        removeAnnotation(ink.id)
+      }
+    }
+
+    let erasing: number | null = null
+    // A pen also sends touch events (Fabric draws from them); they are not a finger.
+    let penDown = false
+    const onPointerDown = (e: PointerEvent) => {
+      notePointer(e.pointerType)
+      penDown = e.pointerType === 'pen'
+      if (!isPenEraser(e)) return
+      // Cancelling the pen's pointerdown also stops the mouse events Fabric draws from.
+      e.preventDefault()
+      e.stopPropagation()
+      erasing = e.pointerId
+      el.setPointerCapture?.(e.pointerId)
+      eraseAt(e)
+    }
+    const onPointerMove = (e: PointerEvent) => {
+      if (erasing !== e.pointerId) return
+      e.stopPropagation()
+      eraseAt(e)
+    }
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType === 'pen') penDown = false
+      if (erasing !== e.pointerId) return
+      e.stopPropagation()
+      erasing = null
+    }
+
+    // A finger, when fingers don't draw: scroll the page by hand (the
+    // drawing layer blocks the browser's own touch scrolling).
+    let finger: { x: number; y: number; scroller: HTMLElement | null } | null = null
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0]
+      const stylus =
+        penDown || (t as (Touch & { touchType?: string }) | undefined)?.touchType === 'stylus'
+      if (!t || stylus || fingersDraw() || e.touches.length !== 1) return
+      e.stopPropagation()
+      e.preventDefault()
+      finger = { x: t.clientX, y: t.clientY, scroller: scrollParent(el) }
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      if (!finger) return
+      e.stopPropagation()
+      e.preventDefault()
+      const t = e.touches[0]!
+      finger.scroller?.scrollBy(finger.x - t.clientX, finger.y - t.clientY)
+      finger.x = t.clientX
+      finger.y = t.clientY
+    }
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!finger) return
+      e.stopPropagation()
+      finger = null
+    }
+
+    const capture = { capture: true }
+    const active = { capture: true, passive: false }
+    el.addEventListener('pointerdown', onPointerDown, capture)
+    el.addEventListener('pointermove', onPointerMove, capture)
+    el.addEventListener('pointerup', onPointerUp, capture)
+    el.addEventListener('pointercancel', onPointerUp, capture)
+    el.addEventListener('touchstart', onTouchStart, active)
+    el.addEventListener('touchmove', onTouchMove, active)
+    el.addEventListener('touchend', onTouchEnd, capture)
+    return () => {
+      el.removeEventListener('pointerdown', onPointerDown, capture)
+      el.removeEventListener('pointermove', onPointerMove, capture)
+      el.removeEventListener('pointerup', onPointerUp, capture)
+      el.removeEventListener('pointercancel', onPointerUp, capture)
+      el.removeEventListener('touchstart', onTouchStart, active)
+      el.removeEventListener('touchmove', onTouchMove, active)
+      el.removeEventListener('touchend', onTouchEnd, capture)
+    }
+  }, [activeTool, zoom, existingAnnotations, removeAnnotation])
+
   return (
-    <div className="relative" style={{ width: w, height: h }}>
+    <div ref={pageRef} className="relative" style={{ width: w, height: h }}>
       <canvas
         ref={renderRef}
         className="absolute inset-0"
@@ -482,4 +581,19 @@ export function PdfPageCanvas({
       />
     </div>
   )
+}
+
+/** The nearest ancestor that scrolls. */
+function scrollParent(el: HTMLElement): HTMLElement | null {
+  for (let n = el.parentElement; n; n = n.parentElement) {
+    const { overflowY, overflowX } = getComputedStyle(n)
+    const scrolls = (v: string) => v === 'auto' || v === 'scroll'
+    if (
+      (scrolls(overflowY) && n.scrollHeight > n.clientHeight) ||
+      (scrolls(overflowX) && n.scrollWidth > n.clientWidth)
+    ) {
+      return n
+    }
+  }
+  return null
 }

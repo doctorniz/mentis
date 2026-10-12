@@ -1,6 +1,6 @@
 import { Container, Graphics, Sprite, Texture, type Application, type RenderTexture } from 'pixi.js'
 import type { BrushSettings, SnapshotRegion } from '@/types/canvas'
-import type { InterpolatedStamp } from '@/lib/canvas/math'
+import { tiltShape, type InterpolatedStamp } from '@/lib/canvas/math'
 
 /**
  * Renders brush stamps into a target RenderTexture.
@@ -125,6 +125,7 @@ export class BrushSystem {
 
       const sprite = this.getPooledEraserSprite(i)
       sprite.position.set(stamp.x, stamp.y)
+      sprite.rotation = 0
       sprite.width = diameter
       sprite.height = diameter
 
@@ -215,14 +216,17 @@ export class BrushSystem {
       const stamp = stamps[i]
       const radius = (settings.size / 2) * Math.max(0.2, stamp.pressure)
       const diameter = Math.max(1, radius * 2)
-      const alpha = Math.max(0.1, stamp.pressure)
+      // A tilted pen shades like a pencil on its side: a longer, lighter tip.
+      const tilt = tiltShape(stamp.tiltX, stamp.tiltY)
+      const alpha = Math.max(0.1, stamp.pressure) * tilt.shade
 
       const sprite = this.getPooledBrushSprite(i, mask)
       sprite.texture = mask
       sprite.tint = tint
       sprite.alpha = alpha
       sprite.position.set(stamp.x, stamp.y)
-      sprite.width = diameter
+      sprite.rotation = tilt.angle
+      sprite.width = diameter * tilt.stretch
       sprite.height = diameter
 
       this.brushBatchContainer.addChild(sprite)

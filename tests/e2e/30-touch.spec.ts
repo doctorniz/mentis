@@ -158,3 +158,118 @@ test.describe('30 — Touch', () => {
       .toEqual(['Charger', 'Socks', 'Passport'])
   })
 })
+
+/* ------------------------------------------------------------------ */
+/*  Pen: tilt and palm rejection on the canvas                         */
+/* ------------------------------------------------------------------ */
+
+async function openCanvas(page: Page) {
+  // The engine registers itself on this hook so tests can read pixels.
+  await page.evaluate(() => {
+    ;(window as unknown as { __mentisTest?: object }).__mentisTest = {}
+  })
+  await page.keyboard.press('Control+n')
+  await page.getByRole('dialog').getByRole('button', { name: 'Canvas', exact: true }).tap()
+  await expect(page.getByText('Loading canvas…')).toBeHidden({ timeout: 15_000 })
+  await page.waitForTimeout(800)
+}
+
+/** Painted pixels on the active layer, and how wide the painted area is. */
+async function layerInk(page: Page): Promise<{ px: number; width: number }> {
+  return page.evaluate(() => {
+    const eng = (window as any).__mentisTest?.canvasEngine
+    const layer = eng.layerManager.getActiveLayer()
+    const canvas = eng.layerManager.extractLayerCanvas(layer.id)
+    const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+    let px = 0
+    let minX = Infinity
+    let maxX = -1
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 8) {
+        px++
+        const x = (i / 4) % canvas.width
+        minX = Math.min(minX, x)
+        maxX = Math.max(maxX, x)
+      }
+    }
+    return { px, width: px ? maxX - minX + 1 : 0 }
+  })
+}
+
+/** A pen stroke straight down from `from`, with the given tilt. */
+async function penStroke(page: Page, from: Point, length: number, tiltX = 0) {
+  const cdp = await page.context().newCDPSession(page)
+  const pen = { pointerType: 'pen' as const, force: 0.8, tiltX, tiltY: 0 }
+  await cdp.send('Input.dispatchMouseEvent', {
+    type: 'mousePressed',
+    x: from.x,
+    y: from.y,
+    button: 'left',
+    buttons: 1,
+    clickCount: 1,
+    ...pen,
+  })
+  for (let i = 1; i <= 12; i++) {
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: from.x,
+      y: from.y + (length * i) / 12,
+      button: 'left',
+      buttons: 1,
+      ...pen,
+    })
+  }
+  await cdp.send('Input.dispatchMouseEvent', {
+    type: 'mouseReleased',
+    x: from.x,
+    y: from.y + length,
+    button: 'left',
+    buttons: 0,
+    clickCount: 1,
+    ...pen,
+  })
+  await cdp.detach()
+  await page.waitForTimeout(300)
+}
+
+test.describe('30 — Pen', () => {
+  test('30.6 A tilted pen shades a wider line than an upright one', async ({ vaultPage: page }) => {
+    await openCanvas(page)
+    const b = await box(page, page.locator('[class*="overflow-hidden"] canvas').first())
+    await penStroke(page, { x: b.x + b.width * 0.3, y: b.y + 40 }, 120)
+    const upright = await layerInk(page)
+    expect(upright.px).toBeGreaterThan(0)
+
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => layerInk(page).then((s) => s.px)).toBe(0)
+    await penStroke(page, { x: b.x + b.width * 0.3, y: b.y + 40 }, 120, 60)
+    const tilted = await layerInk(page)
+    expect(tilted.width).toBeGreaterThan(upright.width * 2)
+  })
+
+  test('30.8 Before any pen, a finger draws', async ({ vaultPage: page }) => {
+    await openCanvas(page)
+    const b = await box(page, page.locator('[class*="overflow-hidden"] canvas').first())
+    await touchDrag(
+      page,
+      { x: b.x + b.width * 0.6, y: b.y + 60 },
+      { x: b.x + b.width * 0.6, y: b.y + 200 },
+    )
+    await expect.poll(() => layerInk(page).then((s) => s.px)).toBeGreaterThan(0)
+  })
+
+  test('30.7 Once a pen is used, a finger pans instead of drawing', async ({ vaultPage: page }) => {
+    await openCanvas(page)
+    const b = await box(page, page.locator('[class*="overflow-hidden"] canvas').first())
+    await penStroke(page, { x: b.x + b.width * 0.3, y: b.y + 40 }, 80)
+    const afterPen = await layerInk(page)
+    expect(afterPen.px).toBeGreaterThan(0)
+
+    await touchDrag(
+      page,
+      { x: b.x + b.width * 0.6, y: b.y + 60 },
+      { x: b.x + b.width * 0.6, y: b.y + 200 },
+    )
+    expect((await layerInk(page)).px).toBe(afterPen.px)
+  })
+})

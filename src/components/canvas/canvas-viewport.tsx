@@ -12,6 +12,7 @@ import {
   clampRegion,
 } from '@/components/canvas/selection-ops'
 import type { CanvasTool, BrushSettings, LayerSnapshot } from '@/types/canvas'
+import { fingersDraw, isPenEraser, notePointer } from '@/lib/browser/pen'
 
 interface CanvasViewportProps {
   engineRef: React.RefObject<CanvasEngine | null>
@@ -188,6 +189,7 @@ export function CanvasViewport({ engineRef, containerRef, ready }: CanvasViewpor
 
       const el = e.currentTarget
       el.setPointerCapture(e.pointerId)
+      notePointer(e.pointerType)
 
       // ---- Two-finger pinch-zoom / pan (touch only) ----
       if (e.pointerType === 'touch') {
@@ -225,10 +227,14 @@ export function CanvasViewport({ engineRef, containerRef, ready }: CanvasViewpor
 
       activePointerRef.current = e.pointerId
 
-      const tool = useCanvasStore.getState().activeTool
+      // The pen's eraser end erases, whatever tool is chosen.
+      const tool = isPenEraser(e) ? 'eraser' : useCanvasStore.getState().activeTool
       const rect = el.getBoundingClientRect()
 
-      if (tool === 'pan' || e.button === 1 || (e.altKey && tool !== 'eyedropper')) {
+      // With a pen in use, a finger (or a resting palm) pans rather than draws.
+      const fingerPans = e.pointerType === 'touch' && !fingersDraw()
+
+      if (tool === 'pan' || fingerPans || e.button === 1 || (e.altKey && tool !== 'eyedropper')) {
         // Pan with middle click, alt+click, or pan tool
         engine.viewportController.beginPan(e.clientX, e.clientY)
         return

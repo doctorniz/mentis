@@ -1,5 +1,5 @@
 import type { StrokePoint, BrushSettings } from '@/types/canvas'
-import { interpolateStroke } from '@/lib/canvas/math'
+import { interpolateStroke, tiltShape } from '@/lib/canvas/math'
 import type { BrushSystem } from '@/lib/canvas/brush-system'
 import type { LayerManager } from '@/lib/canvas/layer-manager'
 
@@ -80,8 +80,9 @@ export class StrokeEngine {
 
   private trackPoint(point: StrokePoint, settings: BrushSettings): void {
     // Full radius regardless of pressure/hardness — soft masks bleed to
-    // the edge of the stamp quad; +4 covers antialiasing.
-    const pad = settings.size / 2 + 4
+    // the edge of the stamp quad; +4 covers antialiasing. A tilted pen
+    // stretches the tip along its lean.
+    const pad = (settings.size / 2) * tiltShape(point.tiltX, point.tiltY).stretch + 4
     this.boundsMinX = Math.min(this.boundsMinX, point.x - pad)
     this.boundsMinY = Math.min(this.boundsMinY, point.y - pad)
     this.boundsMaxX = Math.max(this.boundsMaxX, point.x + pad)

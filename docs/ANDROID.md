@@ -90,6 +90,28 @@ Narrow screens (the phone app and the web app on a phone) share one layout:
 - Android back (`touch-shell.ts`): closes the open dialog or sheet, then steps
   back through views visited, then sends the app to the background.
 
+## Pen
+
+Shared by the canvas and PDF ink (`src/lib/browser/pen.ts`):
+
+- **Palm rejection.** Settings › Editor › Pen › _Draw with_, kept on the
+  device: _Automatic_ (fingers draw until a pen is used, then only scroll and
+  zoom for the session), _Pen only_, or _Pen and finger_. On a phone a pen also
+  sends touch events; the PDF layer tells them from a finger (`touchType`,
+  and the pen's pointerdown just before).
+- **Pressure** sets the canvas brush's size and strength (as before). PDF ink
+  stays one width per stroke, as standard `/Ink` annotations are.
+- **Tilt** shades like a pencil on its side: the canvas brush tip lengthens
+  (up to 3×) towards the lean and lightens (`tiltShape` in
+  `src/lib/canvas/math.ts`).
+- **Eraser end** (or eraser button): erases on the canvas with the eraser
+  size; in a PDF it removes the ink strokes it passes over (`inkTouched`).
+
+`adb shell input stylus swipe …` sends pen input to the emulator (no tilt or
+pressure); the e2e tests send pen input with pressure and tilt through the
+DevTools protocol (`Input.dispatchMouseEvent` with `pointerType: 'pen'`),
+which cannot press the eraser button.
+
 ## Building and running
 
 ```bash
