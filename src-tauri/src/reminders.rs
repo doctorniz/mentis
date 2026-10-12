@@ -31,6 +31,13 @@ pub struct Due {
     pub at_ms: i64,
     pub title: String,
     pub body: String,
+    /// The occurrence, so a phone can settle it from its notification.
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default)]
+    pub path: String,
+    #[serde(default)]
+    pub at: String,
 }
 
 #[cfg(desktop)]
@@ -153,6 +160,9 @@ mod tests {
             at_ms,
             title: "T".into(),
             body: String::new(),
+            kind: String::new(),
+            path: String::new(),
+            at: String::new(),
         }
     }
 
@@ -192,76 +202,59 @@ mod tests {
 }
 
 #[cfg(mobile)]
-pub use mobile::{Schedule, setup};
+pub use mobile::setup;
 
 #[cfg(mobile)]
 pub mod mobile {
-    use std::sync::Mutex;
+    //! On a phone the app is stopped in the background, so reminders are handed
+    //! to Android (`Reminders.kt`): exact alarms, and notifications whose Snooze
+    //! and Done work without opening the app. Those choices wait in Kotlin until
+    //! the app takes them (`reminders_take_actions`) and writes them to files.
 
-    use tauri::{AppHandle, Manager, Runtime, State};
-    use tauri_plugin_notification::{NotificationExt, PermissionState, Schedule as When};
+    use serde_json::{Value, json};
+    use tauri::{AppHandle, Runtime};
+    use tauri_plugin_notification::{NotificationExt, PermissionState};
 
     use super::Due;
+    use crate::startup::shell_call;
 
-    /// The ids of the notifications handed to the system, to cancel on replace.
-    #[derive(Default)]
-    pub struct Schedule(Mutex<Vec<i32>>);
-
-    /// A stable notification id for an occurrence (FNV-1a, kept positive).
-    pub(super) fn notification_id(id: &str) -> i32 {
-        let mut h: u32 = 0x811c_9dc5;
-        for b in id.bytes() {
-            h ^= u32::from(b);
-            h = h.wrapping_mul(0x0100_0193);
-        }
-        (h & 0x7fff_ffff) as i32
-    }
-
-    /// Replace the reminders the system will show. Asks for permission to
-    /// notify the first time there is something to show.
+    /// Replace the reminders Android will show. Asks for permission to notify
+    /// the first time there is something to show.
     #[tauri::command]
-    pub fn reminders_schedule<R: Runtime>(
+    pub async fn reminders_schedule<R: Runtime>(
         app: AppHandle<R>,
         items: Vec<Due>,
-        schedule: State<'_, Schedule>,
+        vault: Option<String>,
     ) -> Result<(), String> {
-        let notifications = app.notification();
-        let mut scheduled = schedule.0.lock().unwrap_or_else(|e| e.into_inner());
-        if !scheduled.is_empty() {
-            let _ = notifications.cancel(std::mem::take(&mut *scheduled));
+        if !items.is_empty() {
+            let notifications = app.notification();
+            if matches!(
+                notifications.permission_state(),
+                Ok(PermissionState::Prompt | PermissionState::PromptWithRationale)
+            ) {
+                let _ = notifications.request_permission();
+            }
         }
-        if items.is_empty() {
-            return Ok(());
-        }
-        if matches!(
-            notifications.permission_state(),
-            Ok(PermissionState::Prompt | PermissionState::PromptWithRationale)
-        ) {
-            let _ = notifications.request_permission();
-        }
-        for due in items {
-            let id = notification_id(&due.id);
-            let date =
-                time::OffsetDateTime::from_unix_timestamp_nanos(i128::from(due.at_ms) * 1_000_000)
-                    .map_err(|e| e.to_string())?;
-            notifications
-                .builder()
-                .id(id)
-                .title(&due.title)
-                .body(&due.body)
-                .schedule(When::At {
-                    date,
-                    repeating: false,
-                    allow_while_idle: true,
-                })
-                .show()
-                .map_err(|e| e.to_string())?;
-            scheduled.push(id);
-        }
-        Ok(())
+        let items: Vec<Value> = items
+            .into_iter()
+            .map(|d| {
+                let mut v = serde_json::to_value(d).unwrap_or_default();
+                v["vault"] = json!(vault);
+                v
+            })
+            .collect();
+        let payload = json!({ "items": serde_json::to_string(&items).map_err(|e| e.to_string())? });
+        shell_call::<_, Value>(&app, "scheduleReminders", payload).map(|_| ())
     }
 
-    pub fn setup<R: Runtime>(app: &AppHandle<R>) {
-        app.manage(Schedule::default());
+    /// Snooze and Done chosen from notifications since the app last asked, each
+    /// `{item, action, whenMs, untilMs?}`.
+    #[tauri::command]
+    pub async fn reminders_take_actions<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+        let taken: Value = shell_call(&app, "takeReminderActions", json!({}))?;
+        let raw = taken["actions"].as_str().unwrap_or("[]");
+        serde_json::from_str(raw).map_err(|e| e.to_string())
     }
+
+    pub fn setup<R: Runtime>(_: &AppHandle<R>) {}
 }

@@ -37,10 +37,18 @@ inside the picked folder), kept in the recent list with a display name.
 
 ## Reminders
 
-The app is stopped in the background, so `reminders_schedule` hands each
-reminder to Android (the notification plugin's scheduled notifications, via
-AlarmManager) instead of the desktop's timer thread. Android asks for
-permission to notify the first time there is something to schedule.
+The app is stopped in the background, so reminders are handed to Android
+(`Reminders.kt`, through `ShellPlugin.scheduleReminders`): exact alarms that
+post a notification with **Snooze 10 min** and **Done**. Those buttons work
+without opening the app — the notification goes away, a snooze is alarmed
+again, and the choice waits in Kotlin until the app next runs, when it is
+written into the item's file as if chosen then
+(`src/lib/reminders/notification-actions.ts`). Tapping the notification opens
+the item. The schedule is kept so it is set again after a reboot.
+
+The notification plugin is used only to ask permission to notify. On the
+phone the app shows no in-app card for a reminder that falls due while it is
+in the background, and no "missed" summary: Android delivered them.
 
 Alarms are exact: `USE_EXACT_ALARM` (Android 13+, allowed for reminder and
 calendar apps) and `SCHEDULE_EXACT_ALARM` up to Android 12. Without them

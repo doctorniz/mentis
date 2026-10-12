@@ -64,6 +64,8 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             startup::startup_vault,
             #[cfg(mobile)]
             startup::app_to_background,
+            #[cfg(mobile)]
+            startup::inbox_take,
             #[cfg(desktop)]
             overlay::desktop_settings_get,
             #[cfg(desktop)]
@@ -86,6 +88,8 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             reminders::reminders_schedule,
             #[cfg(mobile)]
             reminders::mobile::reminders_schedule,
+            #[cfg(mobile)]
+            reminders::mobile::reminders_take_actions,
         ])
 }
 

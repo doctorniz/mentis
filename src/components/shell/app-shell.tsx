@@ -125,6 +125,20 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
     }
   }, [])
 
+  // The phone app: open what Android asked for (a reminder's item, a share).
+  useEffect(() => {
+    if (!__MENTIS_MOBILE__) return
+    let stop: (() => void) | null = null
+    let cancelled = false
+    void import('@/components/shell/launch-inbox').then(({ startLaunchInbox }) => {
+      if (!cancelled) stop = startLaunchInbox()
+    })
+    return () => {
+      cancelled = true
+      stop?.()
+    }
+  }, [])
+
   useEffect(() => {
     void markShellReady()
     const start = () => setRemindersReady(true)

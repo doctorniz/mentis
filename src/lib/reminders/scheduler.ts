@@ -141,9 +141,13 @@ export function startReminders(
         atMs: reminderTime(r),
         title: r.title || 'Reminder',
         body: describeReminder(r),
+        // A phone settles a reminder from its notification: it needs the occurrence.
+        kind: r.kind,
+        path: r.path,
+        at: r.at,
       }))
     const { invoke } = await import('@tauri-apps/api/core')
-    await invoke('reminders_schedule', { items })
+    await invoke('reminders_schedule', { items, vault: vaultKey })
   }
 
   function adopt(next: ReminderRow[]) {

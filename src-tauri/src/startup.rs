@@ -59,6 +59,40 @@ pub fn startup_vault() -> Option<String> {
     measured_vault(std::env::var_os(REPORT_ENV), std::env::var_os(VAULT_ENV))
 }
 
+/// Call a command of `ShellPlugin.kt` (Android). Elsewhere there is none.
+#[cfg(mobile)]
+pub(crate) fn shell_call<R: Runtime, T: serde::de::DeserializeOwned>(
+    app: &AppHandle<R>,
+    command: &str,
+    payload: serde_json::Value,
+) -> Result<T, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let shell = app
+            .try_state::<android::Shell<R>>()
+            .ok_or("the app shell is not ready")?;
+        shell
+            .0
+            .run_mobile_plugin::<T>(command, payload)
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, command, payload);
+        Err("not available on this platform".into())
+    }
+}
+
+/// What Android asked the app to show since it last asked: a reminder's item,
+/// a share, a shortcut. Phones only.
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn inbox_take<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
+    let taken: serde_json::Value = shell_call(&app, "takeInbox", serde_json::json!({}))?;
+    serde_json::from_str(taken["entries"].as_str().unwrap_or("[]")).map_err(|e| e.to_string())
+}
+
 /// Send the app to the background, as the back button does with nothing left
 /// to go back to. Phones only.
 #[cfg(mobile)]

@@ -32,14 +32,43 @@ export default function ReminderHost() {
   useEffect(() => {
     setDue([])
     setMissed([])
-    return startReminders(vaultFs, vaultPath, {
-      onDue: (rows) =>
-        setDue((d) => [
-          ...d.filter((x) => !rows.some((r) => reminderId(r) === reminderId(x))),
-          ...rows,
-        ]),
-      onMissed: (rows) => setMissed(rows),
-    })
+    // The phone app: Android shows reminders even while the app is closed, so
+    // none are missed; Snooze and Done chosen there are written first.
+    const phone = isTauri() && __MENTIS_MOBILE__
+    let stop: (() => void) | null = null
+    let cancelled = false
+    const takeChoices = () =>
+      import('@/lib/reminders/notification-actions')
+        .then(({ applyNotificationActions }) => applyNotificationActions(vaultFs, vaultPath))
+        .then((ids) => {
+          const settled = new Set(ids)
+          setDue((d) => d.filter((r) => !settled.has(reminderId(r))))
+        })
+        .catch((e) => console.warn('[reminders] applying notification choices failed:', e))
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void takeChoices()
+    }
+    void (async () => {
+      if (phone) await takeChoices()
+      if (cancelled) return
+      stop = startReminders(vaultFs, vaultPath, {
+        onDue: (rows) => {
+          // Away from the phone app, Android's notification is the reminder.
+          if (phone && document.visibilityState !== 'visible') return
+          setDue((d) => [
+            ...d.filter((x) => !rows.some((r) => reminderId(r) === reminderId(x))),
+            ...rows,
+          ])
+        },
+        onMissed: (rows) => !phone && setMissed(rows),
+      })
+    })()
+    if (phone) document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      stop?.()
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [vaultFs, vaultPath])
 
   const settle = useCallback(
