@@ -11,7 +11,7 @@ import { test, expect } from './fixtures'
  */
 
 async function openMastheadMenu(page: Page) {
-  await page.getByRole('button', { name: 'Open menu' }).tap()
+  await page.getByTestId('mobile-tab-bar').getByRole('button', { name: 'More', exact: true }).tap()
   await expect(page.getByRole('dialog')).toBeVisible()
 }
 

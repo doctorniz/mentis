@@ -64,7 +64,7 @@ export function OrganizerView({ initialTab }: { initialTab?: OrganizerTab }) {
             type="button"
             onClick={() => switchTab(id)}
             className={cn(
-              'relative px-4 py-2.5 text-sm font-medium transition-colors',
+              'relative px-4 py-2.5 text-sm font-medium transition-colors pointer-coarse:py-3.5',
               activeTab === id
                 ? 'text-fg after:bg-accent after:absolute after:inset-x-0 after:bottom-0 after:h-[2px]'
                 : 'text-fg-secondary hover:text-fg',

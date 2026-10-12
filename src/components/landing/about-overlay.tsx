@@ -271,7 +271,7 @@ const FEATURES: {
 
 export function AboutOverlay({ onBack }: { onBack: () => void }) {
   return (
-    <div className="bg-bg-secondary flex min-h-screen flex-col">
+    <div className="bg-bg-secondary safe-top safe-bottom flex min-h-screen flex-col">
       {/* Top bar */}
       <div className="border-border bg-bg-secondary/80 sticky top-0 z-10 flex items-center gap-3 border-b px-4 py-3 backdrop-blur-sm">
         <button

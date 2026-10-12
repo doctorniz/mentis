@@ -59,6 +59,23 @@ pub fn startup_vault() -> Option<String> {
     measured_vault(std::env::var_os(REPORT_ENV), std::env::var_os(VAULT_ENV))
 }
 
+/// Send the app to the background, as the back button does with nothing left
+/// to go back to. Phones only.
+#[cfg(mobile)]
+#[tauri::command]
+pub fn app_to_background<R: Runtime>(app: AppHandle<R>) {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        if let Some(shell) = app.try_state::<android::Shell<R>>() {
+            let _ = shell
+                .0
+                .run_mobile_plugin::<serde_json::Value>("moveTaskToBack", ());
+        }
+    }
+    let _ = app;
+}
+
 #[cfg(target_os = "android")]
 mod android {
     pub struct Shell<R: tauri::Runtime>(pub tauri::plugin::PluginHandle<R>);

@@ -62,6 +62,8 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             oauth::oauth_authorize,
             startup::startup_ready,
             startup::startup_vault,
+            #[cfg(mobile)]
+            startup::app_to_background,
             #[cfg(desktop)]
             overlay::desktop_settings_get,
             #[cfg(desktop)]

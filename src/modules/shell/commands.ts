@@ -10,7 +10,6 @@ import {
   Sun,
 } from 'lucide-react'
 import type { AnyCommand } from '@/core/registries/commands'
-import { HOME_VIEW } from '@/core/registries/views'
 import { useUiStore } from '@/stores/ui'
 
 /** App-wide actions. The shortcuts shown are bound in `app-shell.tsx`. */
@@ -22,10 +21,7 @@ const commands: AnyCommand[] = [
     icon: Search,
     shortcut: 'Ctrl+F',
     scope: 'global',
-    run: () => {
-      useUiStore.getState().setActiveView(HOME_VIEW)
-      window.dispatchEvent(new CustomEvent('ink:vault-search-open'))
-    },
+    run: () => useUiStore.getState().requestVaultSearch(),
   },
   {
     id: 'shell.settings',

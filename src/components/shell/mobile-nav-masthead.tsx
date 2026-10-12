@@ -6,7 +6,6 @@ import {
   Camera,
   ChevronDown,
   FileStack,
-  Menu,
   Mic,
   Monitor,
   Moon,
@@ -26,6 +25,7 @@ import { useJournalStore } from '@/stores/journal'
 import { cn } from '@/utils/cn'
 import { views } from '@/core/registries'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
+import { OPEN_MAIN_MENU_EVENT } from '@/components/shell/mobile-tab-bar'
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -116,7 +116,13 @@ export function MobileNavMasthead({
       }
     }
     window.addEventListener('ink:open-new-popover', onOpenNewPopover)
-    return () => window.removeEventListener('ink:open-new-popover', onOpenNewPopover)
+    // The tab bar's More.
+    const onOpenMenu = () => setOpen(true)
+    window.addEventListener(OPEN_MAIN_MENU_EVENT, onOpenMenu)
+    return () => {
+      window.removeEventListener('ink:open-new-popover', onOpenNewPopover)
+      window.removeEventListener(OPEN_MAIN_MENU_EVENT, onOpenMenu)
+    }
   }, [])
 
   // File types come from their modules (createNew.menu.order); the rest are
@@ -163,21 +169,10 @@ export function MobileNavMasthead({
       className="border-border bg-bg flex shrink-0 items-center gap-2 border-b px-2 py-2 md:hidden"
     >
       <Dialog.Root open={open} onOpenChange={handleOpenChange}>
-        <Dialog.Trigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="size-9 shrink-0 p-0"
-            aria-label="Open menu"
-          >
-            <Menu className="size-5" aria-hidden />
-          </Button>
-        </Dialog.Trigger>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-[240] bg-black/40" />
           <Dialog.Content
-            className="border-border bg-sidebar-bg fixed top-0 left-0 z-[241] flex h-full w-[min(100vw-2rem,320px)] flex-col border-r shadow-xl outline-none"
+            className="border-border bg-sidebar-bg safe-top safe-bottom fixed top-0 left-0 z-[241] flex h-full w-[min(100vw-2rem,320px)] flex-col border-r shadow-xl outline-none"
             aria-describedby={undefined}
           >
             <Dialog.Title className="sr-only">Main menu</Dialog.Title>

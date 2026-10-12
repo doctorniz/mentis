@@ -61,7 +61,7 @@ export function DayGrid({
   const timedEvents = dayEvents.filter((ev) => !ev.allDay)
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div className="flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto">
       {/* Date header */}
       <div
         className={cn(
@@ -119,7 +119,12 @@ export function DayGrid({
             <p className="text-fg-muted mb-2 text-xs font-medium tracking-wide uppercase">Events</p>
             <div className="flex flex-col gap-1.5">
               {timedEvents.map((ev) => (
-                <EventCard key={`${ev.path}@${ev.start}`} event={ev} onClick={onEventClick} showTime />
+                <EventCard
+                  key={`${ev.path}@${ev.start}`}
+                  event={ev}
+                  onClick={onEventClick}
+                  showTime
+                />
               ))}
             </div>
           </section>

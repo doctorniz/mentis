@@ -3,6 +3,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { MainSidebar } from '@/components/shell/main-sidebar'
 import { MobileNavMasthead } from '@/components/shell/mobile-nav-masthead'
+import { MobileTabBar } from '@/components/shell/mobile-tab-bar'
 import { markShellReady } from '@/lib/startup-mark'
 import { ViewRouter } from '@/components/shell/view-router'
 import { VaultSearchBootstrap } from '@/components/search/vault-search-bootstrap'
@@ -16,7 +17,7 @@ import type { FileSystemAdapter } from '@/lib/fs/types'
 import { useEditorStore } from '@/stores/editor'
 import { usePdfStore } from '@/stores/pdf'
 import { useCanvasStore } from '@/stores/canvas'
-import { views, HOME_VIEW } from '@/core/registries'
+import { views } from '@/core/registries'
 import { currentCommandContexts, type CommandScopes } from '@/core/registries/commands'
 
 // Settings are loaded the first time they are opened, and stay mounted after.
@@ -109,6 +110,20 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   )
 
   const [remindersReady, setRemindersReady] = useState(false)
+
+  // Touch screens: swipe-down to close, and the Android back button.
+  useEffect(() => {
+    if (!window.matchMedia('(pointer: coarse)').matches && !__MENTIS_MOBILE__) return
+    let stop: (() => void) | null = null
+    let cancelled = false
+    void import('@/lib/browser/touch-shell').then(({ startTouchShell }) => {
+      if (!cancelled) stop = startTouchShell()
+    })
+    return () => {
+      cancelled = true
+      stop?.()
+    }
+  }, [])
 
   useEffect(() => {
     void markShellReady()
@@ -224,8 +239,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
       if (e.key === 'f' || e.key === 'F') {
         e.preventDefault()
         // Navigate to Vault view and open the left-column search panel
-        setActiveView(HOME_VIEW)
-        window.dispatchEvent(new CustomEvent('ink:vault-search-open'))
+        useUiStore.getState().requestVaultSearch()
         return
       }
 
@@ -241,7 +255,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   }, [setActiveView, toggleSidebar])
 
   return (
-    <div className="bg-bg flex h-screen w-full overflow-hidden">
+    <div className="bg-bg safe-top safe-x md:safe-bottom flex h-screen w-full overflow-hidden">
       <MainSidebar
         onCloseVault={onCloseVault}
         onOpenSettings={() => {
@@ -259,6 +273,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         />
         <VaultSearchBootstrap />
         <ViewRouter />
+        <MobileTabBar />
       </main>
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       {remindersReady && (

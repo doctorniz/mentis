@@ -62,7 +62,7 @@ export default function ReminderHost() {
     <div
       aria-live="polite"
       aria-label="Reminders"
-      className="fixed top-4 right-4 left-4 z-[9998] flex flex-col items-end gap-2 sm:left-auto"
+      className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-4 left-4 z-[9998] flex flex-col items-end gap-2 sm:left-auto"
     >
       {missed.length > 0 && (
         <section

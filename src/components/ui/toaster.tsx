@@ -42,7 +42,7 @@ export function Toaster() {
     <div
       aria-live="polite"
       aria-label="Notifications"
-      className="fixed right-4 bottom-4 z-[9999] flex flex-col-reverse gap-2"
+      className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-4 z-[9999] flex flex-col-reverse gap-2 md:bottom-4 md:left-auto"
       style={{ maxWidth: 380 }}
     >
       {toasts.map((t) => {
@@ -58,6 +58,18 @@ export function Toaster() {
           >
             <Icon className={cn('mt-0.5 size-5 shrink-0', ICON_STYLES[t.variant])} aria-hidden />
             <p className="flex-1 text-sm leading-snug">{t.message}</p>
+            {t.action && (
+              <button
+                type="button"
+                onClick={() => {
+                  t.action!.run()
+                  dismiss(t.id)
+                }}
+                className="text-accent -my-1 shrink-0 rounded px-2 py-1 text-sm font-semibold hover:underline"
+              >
+                {t.action.label}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => dismiss(t.id)}

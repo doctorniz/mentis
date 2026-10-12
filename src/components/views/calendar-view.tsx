@@ -16,6 +16,7 @@ import type { CalendarEvent } from '@/types/calendar'
 import { toDateStr } from '@/lib/calendar'
 import { expandEvents } from '@/lib/calendar/recurrence'
 import { OPEN_REMINDER_EVENT, takeOpen } from '@/lib/reminders/open'
+import { useSwipe } from '@/lib/browser/use-swipe'
 import { listDailyNoteDates } from '@/lib/notes/daily-note'
 import { DAILY_NOTES_DIR } from '@/types/vault'
 import { cn } from '@/utils/cn'
@@ -180,6 +181,9 @@ export function CalendarView() {
     setDialogOpen(true)
   }, [])
 
+  // Touch: swipe left for the next day, week or month; right for the one before.
+  const swipe = useSwipe({ onLeft: goNext, onRight: goPrev })
+
   // A reminder's Open: show the event once it is loaded.
   useEffect(() => {
     function openRequested() {
@@ -218,7 +222,7 @@ export function CalendarView() {
           <button
             type="button"
             onClick={goPrev}
-            className="text-fg-secondary hover:bg-bg-hover hover:text-fg rounded-md p-1 transition-colors"
+            className="text-fg-secondary hover:bg-bg-hover hover:text-fg rounded-md p-1 transition-colors pointer-coarse:p-2.5"
             aria-label="Previous"
           >
             <ChevronLeft className="size-4" />
@@ -226,7 +230,7 @@ export function CalendarView() {
           <button
             type="button"
             onClick={goNext}
-            className="text-fg-secondary hover:bg-bg-hover hover:text-fg rounded-md p-1 transition-colors"
+            className="text-fg-secondary hover:bg-bg-hover hover:text-fg rounded-md p-1 transition-colors pointer-coarse:p-2.5"
             aria-label="Next"
           >
             <ChevronRight className="size-4" />
@@ -296,43 +300,45 @@ export function CalendarView() {
       )}
 
       {/* Calendar body */}
-      {loading ? (
-        <div className="flex flex-1 items-center justify-center">
-          <Loader2 className="text-fg-muted size-6 animate-spin" />
-        </div>
-      ) : viewMode === 'month' ? (
-        <CalendarGrid
-          year={refDate.getFullYear()}
-          month={refDate.getMonth()}
-          events={shownEvents}
-          tasks={tasks}
-          dailyNoteDates={dailyNoteDates}
-          onDayClick={handleDayClick}
-          onEventClick={handleEventClick}
-          onDailyNoteClick={(d) => void handleDailyNoteClick(d)}
-        />
-      ) : viewMode === 'week' ? (
-        <WeekGrid
-          referenceDate={refDate}
-          events={shownEvents}
-          tasks={tasks}
-          dailyNoteDates={dailyNoteDates}
-          onDayClick={handleDayClick}
-          onTimeSlotClick={handleTimeSlotClick}
-          onEventClick={handleEventClick}
-          onDailyNoteClick={(d) => void handleDailyNoteClick(d)}
-        />
-      ) : (
-        <DayGrid
-          date={refDate}
-          events={shownEvents}
-          tasks={tasks}
-          dailyNoteDates={dailyNoteDates}
-          onAddEvent={handleDayClick}
-          onEventClick={handleEventClick}
-          onDailyNoteClick={(d) => void handleDailyNoteClick(d)}
-        />
-      )}
+      <div className="flex min-h-0 flex-1 touch-pan-y flex-col" {...swipe.handlers}>
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="text-fg-muted size-6 animate-spin" />
+          </div>
+        ) : viewMode === 'month' ? (
+          <CalendarGrid
+            year={refDate.getFullYear()}
+            month={refDate.getMonth()}
+            events={shownEvents}
+            tasks={tasks}
+            dailyNoteDates={dailyNoteDates}
+            onDayClick={handleDayClick}
+            onEventClick={handleEventClick}
+            onDailyNoteClick={(d) => void handleDailyNoteClick(d)}
+          />
+        ) : viewMode === 'week' ? (
+          <WeekGrid
+            referenceDate={refDate}
+            events={shownEvents}
+            tasks={tasks}
+            dailyNoteDates={dailyNoteDates}
+            onDayClick={handleDayClick}
+            onTimeSlotClick={handleTimeSlotClick}
+            onEventClick={handleEventClick}
+            onDailyNoteClick={(d) => void handleDailyNoteClick(d)}
+          />
+        ) : (
+          <DayGrid
+            date={refDate}
+            events={shownEvents}
+            tasks={tasks}
+            dailyNoteDates={dailyNoteDates}
+            onAddEvent={handleDayClick}
+            onEventClick={handleEventClick}
+            onDailyNoteClick={(d) => void handleDailyNoteClick(d)}
+          />
+        )}
+      </div>
 
       <EventDialog
         open={dialogOpen}

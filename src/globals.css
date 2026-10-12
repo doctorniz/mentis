@@ -137,6 +137,21 @@
   color-scheme: dark;
 }
 
+/*
+ * Phones draw the page under the status and navigation bars (viewport-fit=cover
+ * in index.html); these keep content clear of them. Zero everywhere else.
+ */
+@utility safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+@utility safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility safe-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
 @layer base {
   * {
     @apply border-border;

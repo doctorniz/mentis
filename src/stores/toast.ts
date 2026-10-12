@@ -2,17 +2,29 @@ import { create } from 'zustand'
 
 export type ToastVariant = 'info' | 'success' | 'error' | 'warning'
 
+/** A button on the toast, such as Undo. Clicking it runs `run` and closes the toast. */
+export interface ToastAction {
+  label: string
+  run: () => void
+}
+
 export interface Toast {
   id: string
   message: string
   variant: ToastVariant
   durationMs: number
   createdAt: number
+  action?: ToastAction
 }
 
 interface ToastState {
   toasts: Toast[]
-  add: (message: string, variant?: ToastVariant, durationMs?: number) => string
+  add: (
+    message: string,
+    variant?: ToastVariant,
+    durationMs?: number,
+    action?: ToastAction,
+  ) => string
   dismiss: (id: string) => void
 }
 
@@ -28,10 +40,10 @@ const DEFAULTS: Record<ToastVariant, number> = {
 export const useToastStore = create<ToastState>()((set) => ({
   toasts: [],
 
-  add: (message, variant = 'info', durationMs?) => {
+  add: (message, variant = 'info', durationMs?, action?) => {
     const id = `t-${++counter}-${Date.now()}`
     const duration = durationMs ?? DEFAULTS[variant]
-    const t: Toast = { id, message, variant, durationMs: duration, createdAt: Date.now() }
+    const t: Toast = { id, message, variant, durationMs: duration, createdAt: Date.now(), action }
     set((s) => ({ toasts: [...s.toasts, t] }))
     if (duration > 0) {
       setTimeout(() => {
@@ -50,4 +62,7 @@ export const toast = {
   error: (msg: string, ms?: number) => useToastStore.getState().add(msg, 'error', ms),
   warning: (msg: string, ms?: number) => useToastStore.getState().add(msg, 'warning', ms),
   dismiss: (id: string) => useToastStore.getState().dismiss(id),
+  /** A toast with a button, such as Undo. */
+  withAction: (msg: string, action: ToastAction, ms = 6000) =>
+    useToastStore.getState().add(msg, 'info', ms, action),
 }

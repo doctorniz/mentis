@@ -38,7 +38,7 @@ export function MobileDrawer({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[210] bg-black/40 md:hidden" />
         <Dialog.Content
-          className="border-border bg-bg fixed top-0 left-0 z-[211] flex h-full w-[min(100vw-2rem,320px)] flex-col border-r shadow-xl outline-none md:hidden"
+          className="border-border bg-bg safe-top safe-bottom fixed top-0 left-0 z-[211] flex h-full w-[min(100vw-2rem,320px)] flex-col border-r shadow-xl outline-none md:hidden"
           aria-describedby={undefined}
         >
           <Dialog.Title className="sr-only">{title}</Dialog.Title>

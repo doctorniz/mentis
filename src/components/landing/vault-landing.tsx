@@ -154,7 +154,7 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3">
+      <div className="safe-top safe-bottom flex min-h-screen flex-col items-center justify-center gap-3">
         <Loader2 className="text-accent size-10 animate-spin" aria-hidden />
         <p className="text-fg-secondary text-sm">
           {desktop ? 'Opening your vault…' : 'Opening local storage…'}
@@ -164,12 +164,12 @@ export function VaultLanding({ onVaultReady, onShowAbout }: VaultLandingProps) {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-16">
+    <div className="safe-top safe-bottom relative flex min-h-screen flex-col items-center justify-center px-4 py-16">
       {onShowAbout && (
         <button
           type="button"
           onClick={onShowAbout}
-          className="text-fg-muted hover:text-fg hover:bg-bg-hover absolute top-4 right-4 rounded-lg p-2 transition-colors"
+          className="text-fg-muted hover:text-fg hover:bg-bg-hover absolute top-[calc(1rem+env(safe-area-inset-top))] right-4 rounded-lg p-2 transition-colors"
           aria-label="About Mentis"
         >
           <Info className="size-5" strokeWidth={1.5} />

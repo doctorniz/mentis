@@ -14,8 +14,17 @@ interface UiState {
   sidebarWidth: number
   theme: ThemeChoice
   activeModal: string | null
+  /**
+   * Vault search was asked for (Ctrl+F, the Search tab). Kept until the vault
+   * view takes it, so a request made while switching to it is not lost.
+   */
+  vaultSearchRequested: boolean
 
   setActiveView: (view: ViewId) => void
+  /** Show the vault view with its search panel open. */
+  requestVaultSearch: () => void
+  /** The vault view: take a pending search request. */
+  takeVaultSearchRequest: () => boolean
   setVaultMode: (mode: VaultLayoutMode) => void
   /** Restore `vaultMode` from `localStorage` for the active vault path (call when vault opens or path changes). */
   hydrateVaultLayoutForActiveVault: () => void
@@ -58,13 +67,28 @@ function readStoredVaultMode(): VaultLayoutMode {
 }
 
 export const useUiStore = create<UiState>()(
-  immer((set) => ({
+  immer((set, get) => ({
     activeView: HOME_VIEW,
     vaultMode: readStoredVaultMode(),
     isSidebarOpen: true,
     sidebarWidth: 260,
     theme: readStoredTheme(),
     activeModal: null,
+    vaultSearchRequested: false,
+
+    requestVaultSearch: () =>
+      set((state) => {
+        state.vaultSearchRequested = true
+        state.activeView = HOME_VIEW
+      }),
+
+    takeVaultSearchRequest: () => {
+      if (!get().vaultSearchRequested) return false
+      set((state) => {
+        state.vaultSearchRequested = false
+      })
+      return true
+    },
 
     setActiveView: (view) =>
       set((state) => {

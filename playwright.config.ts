@@ -27,7 +27,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: ['**/20-mobile.spec.ts'],
+      testIgnore: ['**/20-mobile.spec.ts', '**/30-touch.spec.ts'],
     },
     {
       // Real phone profile (Pixel 5: touch, mobile UA, 393×851). Runs the
@@ -37,7 +37,7 @@ export default defineConfig({
       // per-test viewport resizes.
       name: 'mobile',
       use: { ...devices['Pixel 5'] },
-      testMatch: ['**/20-mobile.spec.ts'],
+      testMatch: ['**/20-mobile.spec.ts', '**/30-touch.spec.ts'],
     },
   ],
 

@@ -27,6 +27,7 @@ import { useVaultStore } from '@/stores/vault'
 import { toast } from '@/stores/toast'
 import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
 import { cn } from '@/utils/cn'
+import { useSwipe } from '@/lib/browser/use-swipe'
 
 const SAVE_DEBOUNCE = 500
 
@@ -185,14 +186,20 @@ export function JournalView() {
   // An unwritten day shows what it will start as, so the first save keeps the template's text.
   const markdown = day && tab ? tabContent(splitJournal(day.raw ?? day.preview), tab) : ''
 
+  // Touch: swipe left for the next day, right for the one before.
+  const swipe = useSwipe({
+    onLeft: () => goTo(shift(date, 1)),
+    onRight: () => goTo(shift(date, -1)),
+  })
+
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 touch-pan-y flex-col" {...swipe.handlers}>
       <div className="border-border bg-bg-secondary flex flex-wrap items-center gap-2 border-b px-4 py-2">
         <button
           type="button"
           onClick={() => goTo(shift(date, -1))}
           aria-label="Previous day"
-          className="text-fg-secondary hover:text-fg rounded p-1"
+          className="text-fg-secondary hover:text-fg rounded p-1 pointer-coarse:p-2.5"
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -201,7 +208,7 @@ export function JournalView() {
           type="button"
           onClick={() => goTo(shift(date, 1))}
           aria-label="Next day"
-          className="text-fg-secondary hover:text-fg rounded p-1"
+          className="text-fg-secondary hover:text-fg rounded p-1 pointer-coarse:p-2.5"
         >
           <ChevronRight className="size-4" />
         </button>
@@ -301,7 +308,7 @@ export function JournalView() {
             </div>
           )}
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto">
             <SectionEditor
               key={`${date}/${tab}/${locked}`}
               markdown={markdown}

@@ -26,6 +26,7 @@ import { reindexFilePath } from '@/lib/search/build-vault-index'
 import { readListFile } from '@/stores/lists'
 import { useEditorStore } from '@/stores/editor'
 import { toast } from '@/stores/toast'
+import { useHoldToReorder } from '@/lib/browser/use-hold-to-reorder'
 import { cn } from '@/utils/cn'
 
 const SAVE_DEBOUNCE = 300
@@ -55,7 +56,8 @@ function downloadText(name: string, text: string) {
 }
 
 /**
- * A list: check items off, reorder them (drag, or Alt+↑/↓), give them notes,
+ * A list: check items off, reorder them (press and hold, then drag; or
+ * Alt+↑/↓), give them notes,
  * uncheck everything, reset on a schedule, and share a copy. Saves shortly
  * after each change and on leaving.
  */
@@ -65,7 +67,6 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
   const [doc, setDoc] = useState<ListDoc | null>(null)
   const [newText, setNewText] = useState('')
   const [openNote, setOpenNote] = useState<string | null>(null)
-  const [dragFrom, setDragFrom] = useState<number | null>(null)
   const docRef = useRef<ListDoc | null>(null)
   docRef.current = doc
   const pathRef = useRef(path)
@@ -125,6 +126,10 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
 
   const updateItem = (id: string, patch: Partial<ListItem>) =>
     mutate((d) => ({ ...d, items: d.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
+
+  const reorder = useHoldToReorder<HTMLOListElement>((from, to) =>
+    mutate((d) => ({ ...d, items: move(d.items, from, to) })),
+  )
 
   if (!doc) {
     return (
@@ -231,19 +236,15 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
         {doc.items.length === 0 && (
           <p className="text-fg-muted px-2 py-6 text-center text-sm">No items yet.</p>
         )}
-        <ol aria-label={`${title} items`} className="space-y-0.5">
+        <ol
+          ref={reorder.listRef}
+          aria-label={`${title} items`}
+          className={cn('space-y-0.5', reorder.drag && 'select-none')}
+        >
           {doc.items.map((item, index) => (
             <li
               key={item.id}
-              draggable
-              onDragStart={() => setDragFrom(index)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => {
-                if (dragFrom !== null && dragFrom !== index)
-                  mutate((d) => ({ ...d, items: move(d.items, dragFrom, index) }))
-                setDragFrom(null)
-              }}
-              onDragEnd={() => setDragFrom(null)}
+              {...reorder.itemProps(index)}
               onKeyDown={(e) => {
                 if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return
                 const to = index + (e.key === 'ArrowUp' ? -1 : 1)
@@ -254,7 +255,11 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
               className={cn(
                 'group rounded-md px-1.5 py-1',
                 index === nextIndex && 'bg-accent/5 ring-accent/30 ring-1',
-                dragFrom === index && 'opacity-50',
+                reorder.drag?.from === index && 'opacity-50',
+                reorder.drag &&
+                  reorder.drag.over === index &&
+                  reorder.drag.from !== index &&
+                  'ring-accent ring-2',
               )}
               data-next={index === nextIndex || undefined}
             >
@@ -273,7 +278,7 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
                   checked={item.done}
                   onChange={(e) => updateItem(item.id, { done: e.target.checked })}
                   aria-label={`Done: ${item.text}`}
-                  className="accent-accent size-4 shrink-0"
+                  className="accent-accent size-4 shrink-0 pointer-coarse:size-5"
                 />
                 <input
                   value={item.text}
@@ -289,10 +294,10 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
                   onClick={() => setOpenNote((n) => (n === item.id ? null : item.id))}
                   aria-label={item.note ? `Note: ${item.note}` : 'Add a note'}
                   className={cn(
-                    'shrink-0 rounded p-0.5',
+                    'shrink-0 rounded p-0.5 pointer-coarse:p-2',
                     item.note
                       ? 'text-accent'
-                      : 'text-fg-muted/50 opacity-0 group-hover:opacity-100 focus:opacity-100',
+                      : 'text-fg-muted/50 opacity-0 group-hover:opacity-100 focus:opacity-100 pointer-coarse:opacity-60',
                   )}
                 >
                   <StickyNote className="size-3.5" />
@@ -303,7 +308,7 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
                     mutate((d) => ({ ...d, items: d.items.filter((i) => i.id !== item.id) }))
                   }
                   aria-label={`Delete ${item.text}`}
-                  className="text-fg-muted/50 hover:text-danger shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  className="text-fg-muted/50 hover:text-danger shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 focus:opacity-100 pointer-coarse:p-2 pointer-coarse:opacity-60"
                 >
                   <Trash2 className="size-3.5" />
                 </button>

@@ -46,6 +46,24 @@ Alarms are exact: `USE_EXACT_ALARM` (Android 13+, allowed for reminder and
 calendar apps) and `SCHEDULE_EXACT_ALARM` up to Android 12. Without them
 Android may deliver a reminder up to an hour late.
 
+## Touch
+
+Narrow screens (the phone app and the web app on a phone) share one layout:
+
+- A bottom tab bar (`mobile-tab-bar.tsx`): Vault, Capture, Organizer, Search,
+  More (the menu sheet). Hidden while the on-screen keyboard is up.
+- The page draws under the status and navigation bars (`viewport-fit=cover`);
+  `safe-top` / `safe-bottom` / `safe-x` utilities in `globals.css` keep content
+  clear of them.
+- Gestures: swipe a task right to complete, left to delete (with Undo);
+  swipe between days in Journal and Calendar (`use-swipe.ts`); swipe down from
+  the top of a dialog or sheet to close it; press and hold a list item, then
+  drag, to reorder (`use-hold-to-reorder.ts`, mouse too). A swipe inside a
+  scroll area needs `touch-pan-y` on that area: `touch-action` is only read up
+  to the nearest scroll container.
+- Android back (`touch-shell.ts`): closes the open dialog or sheet, then steps
+  back through views visited, then sends the app to the background.
+
 ## Building and running
 
 ```bash

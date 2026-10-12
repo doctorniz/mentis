@@ -365,15 +365,15 @@ function NotesViewInner() {
   // Left panel: 'tree' shows the file tree, 'search' shows the search panel
   const [leftPanel, setLeftPanel] = useState<'tree' | 'search'>('tree')
 
-  // Listen for Ctrl+F → open search panel (dispatched from AppShell)
+  // Ctrl+F or the Search tab → open the search panel. A request made while
+  // switching to this view waits in the UI store until it mounts.
+  const searchRequested = useUiStore((s) => s.vaultSearchRequested)
   useEffect(() => {
-    function onVaultSearchOpen() {
-      setNotesTreeExpanded(true)
-      setLeftPanel('search')
-    }
-    window.addEventListener('ink:vault-search-open', onVaultSearchOpen)
-    return () => window.removeEventListener('ink:vault-search-open', onVaultSearchOpen)
-  }, [])
+    if (!searchRequested || !useUiStore.getState().takeVaultSearchRequest()) return
+    manualTreeToggleRef.current = true
+    setNotesTreeExpanded(true)
+    setLeftPanel('search')
+  }, [searchRequested])
 
   async function handleNewNote() {
     const path = await createUntitledNote(vaultFs)
