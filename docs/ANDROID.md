@@ -22,11 +22,16 @@ inside the picked folder), kept in the recent list with a display name.
 - `src-tauri/src/saf.rs` — the Rust end; `vault_*` commands send `content://`
   roots here and plain paths to the file system, so the window does not know
   the difference.
-- `SafPlugin.kt` — folder picking (permission kept across launches), path →
-  document lookup (built directly for phone storage, looked up and cached for
-  other providers), listing, and file descriptors for reads and writes, so file
-  bytes never pass through the plugin bridge. Reads run on a small pool;
-  changes run in order on one thread.
+- `SafPlugin.kt` — folder picking, with permission kept across launches. It
+  needs the activity, so it is a Tauri plugin.
+- `SafStore.kt` — everything else: path → document lookup (built directly for
+  phone storage, looked up and cached for other providers), listing, and file
+  descriptors for reads and writes, so file bytes never pass through a bridge.
+  Rust calls it over JNI from its own threads (`saf.rs`), so calls run in
+  parallel and never wait on the UI thread. R8 keeps it (`proguard-mentis.pro`).
+- Speed: each document open costs ~40 ms on the emulator, almost all of it in
+  Android's document provider; reading several at once brings a first index of
+  2,000 notes to ~45 s. Later launches only re-list folders.
 - No file watching: Android offers none for these folders. The vault is
   reconciled whenever the app comes back to the foreground.
 
@@ -36,6 +41,10 @@ The app is stopped in the background, so `reminders_schedule` hands each
 reminder to Android (the notification plugin's scheduled notifications, via
 AlarmManager) instead of the desktop's timer thread. Android asks for
 permission to notify the first time there is something to schedule.
+
+Alarms are exact: `USE_EXACT_ALARM` (Android 13+, allowed for reminder and
+calendar apps) and `SCHEDULE_EXACT_ALARM` up to Android 12. Without them
+Android may deliver a reminder up to an hour late.
 
 ## Building and running
 

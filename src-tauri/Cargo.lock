@@ -2185,6 +2185,8 @@ dependencies = [
 name = "mentis"
 version = "0.1.0"
 dependencies = [
+ "jni",
+ "ndk-context",
  "notify",
  "regex",
  "rusqlite",

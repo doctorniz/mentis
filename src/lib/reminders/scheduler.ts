@@ -46,6 +46,9 @@ const TICK = 30_000
 /** Work the occurrences out again this often, so the window moves on. */
 const REFRESH = 60 * 60_000
 
+/** Log a failure rather than lose it: reminders that silently stop are worse. */
+const warn = (what: string) => (e: unknown) => console.warn(`[reminders] ${what} failed:`, e)
+
 const seenKey = (vaultKey: string) => `mentis.reminders.seen:${vaultKey}`
 
 function loadSeen(vaultKey: string): number | null {
@@ -147,7 +150,7 @@ export function startReminders(
     rows = next
     clearTimeout(tickTimer)
     tick()
-    void tellShell().catch(() => {})
+    void tellShell().catch(warn('handing reminders to the shell'))
   }
 
   async function reconcile(): Promise<ReminderRow[]> {
@@ -168,13 +171,13 @@ export function startReminders(
     adopt(next)
     void putReminderRows(next)
       .then(() => window.dispatchEvent(new CustomEvent(REMINDERS_CHANGED)))
-      .catch(() => {})
+      .catch(warn('recording reminders'))
     return next
   }
 
   function reconcileSoon() {
     clearTimeout(reconcileTimer)
-    reconcileTimer = setTimeout(() => void reconcile().catch(() => {}), 500)
+    reconcileTimer = setTimeout(() => void reconcile().catch(warn('reading reminders')), 500)
   }
 
   void (async () => {
@@ -188,7 +191,10 @@ export function startReminders(
     ).catch(() => [])
     if (stopped) return
     if (recorded.length) adopt(recorded)
-    const current = await reconcile().catch(() => rows)
+    const current = await reconcile().catch((e) => {
+      warn('reading reminders')(e)
+      return rows
+    })
     if (stopped) return
     const missed = dueBetween(current, Math.max(seen, start - MISSED_REACH), start)
     for (const r of missed) fired.add(reminderId(r))
