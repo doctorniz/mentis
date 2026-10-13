@@ -14,7 +14,12 @@ import { useUiStore } from '@/stores/ui'
 export function startTouchShell(): () => void {
   const stops = [startSwipeToClose(), trackViewHistory()]
   if (isTauri() && __MENTIS_MOBILE__) stops.push(startBackButton())
-  return () => stops.forEach((stop) => stop())
+  // Marks the page once swipes are handled (the end-to-end tests wait for it).
+  document.documentElement.dataset.touchShell = ''
+  return () => {
+    stops.forEach((stop) => stop())
+    delete document.documentElement.dataset.touchShell
+  }
 }
 
 /** Open layers (dialogs, sheets, menus), which Escape closes. */

@@ -23,6 +23,11 @@ async function touchDrag(page: Page, from: Point, to: Point, opts: { holdMs?: nu
     })
     await page.waitForTimeout(16)
   }
+  // Rest before lifting, as a deliberate swipe does. Lifting at full speed
+  // is a fling, and a tap during a fling only stops it — Chrome sends no
+  // click, so a quick tap on Undo afterwards would do nothing.
+  await send('touchMove', to)
+  await page.waitForTimeout(150)
   await send('touchEnd')
   await cdp.detach()
 }
@@ -70,6 +75,8 @@ test.describe('30 — Touch', () => {
   })
 
   test('30.2 A sheet closes with a swipe down from its top', async ({ vaultPage: page }) => {
+    // Swipe-to-close starts a moment after the shell appears.
+    await expect(page.locator('html[data-touch-shell]')).toBeAttached()
     await tab(page, 'More').tap()
     const menu = page.getByRole('dialog')
     await expect(menu).toBeVisible()
@@ -95,7 +102,9 @@ test.describe('30 — Touch', () => {
     )
     await expect(row.getByRole('button', { name: 'Mark incomplete' })).toBeVisible()
 
-    b = await box(page, row)
+    // Measure the row's frame: the row itself may still be sliding back from
+    // the first swipe, and mid-slide its box reaches off the screen.
+    b = await box(page, row.locator('..'))
     await touchDrag(
       page,
       { x: b.x + b.width - 40, y: b.y + b.height / 2 },
