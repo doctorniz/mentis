@@ -83,6 +83,19 @@ export function AppRoot() {
     return startStarredSync(session.vaultFs, session.vaultPath)
   }, [session])
 
+  // Clear expired PDF snapshots once per open, after startup has settled.
+  useEffect(() => {
+    if (!session) return
+    const timer = window.setTimeout(() => {
+      const snapshots = useVaultStore.getState().config?.snapshots
+      if (!snapshots) return
+      import('@/lib/snapshot')
+        .then((m) => m.pruneSnapshots(session.vaultFs, snapshots))
+        .catch(() => {})
+    }, 10_000)
+    return () => window.clearTimeout(timer)
+  }, [session])
+
   const handleCloseVault = useCallback(() => {
     const path = useVaultStore.getState().activeVaultPath
     if (path) clearVaultChatSession(path)

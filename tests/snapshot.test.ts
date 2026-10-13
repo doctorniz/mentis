@@ -114,9 +114,9 @@ describe('createSnapshot', () => {
     fs.files.set('docs/report.pdf', new Uint8Array([37, 80, 68, 70, 45]))
   })
 
-  it('copies the PDF to the snapshots directory', async () => {
+  it('copies the PDF into a folder that mirrors its own', async () => {
     const snapPath = await createSnapshot(fs, 'docs/report.pdf')
-    expect(snapPath).toMatch(/^_mentis\/snapshots\/report_/)
+    expect(snapPath).toMatch(/^_mentis\/snapshots\/files\/docs\/report_/)
     expect(snapPath).toMatch(/\.pdf$/)
     const snapData = await fs.readFile(snapPath)
     expect(snapData).toEqual(new Uint8Array([37, 80, 68, 70, 45]))
@@ -148,6 +148,27 @@ describe('listSnapshots', () => {
     for (const s of filtered) expect(s.originalFile).toBe('report.pdf')
   })
 
+  it('does not mix up names that share a prefix', async () => {
+    fs.files.set('_mentis/snapshots/report_final_2026-03-28T10-00-00-000Z.pdf', new Uint8Array([9]))
+    const filtered = await listSnapshots(fs, 'report.pdf')
+    expect(filtered).toHaveLength(2)
+    expect((await listSnapshots(fs, 'report_final.pdf')).map((s) => s.originalFile)).toEqual([
+      'report_final.pdf',
+    ])
+  })
+
+  it('keeps same-named PDFs in different folders apart', async () => {
+    fs.files.set('Work/plan.pdf', new Uint8Array([1]))
+    fs.files.set('Home/plan.pdf', new Uint8Array([2]))
+    await createSnapshot(fs, 'Work/plan.pdf')
+    expect(await listSnapshots(fs, 'Work/plan.pdf')).toHaveLength(1)
+    expect(await listSnapshots(fs, 'Home/plan.pdf')).toHaveLength(0)
+  })
+
+  it('still lists older snapshots, kept by name only, for a PDF in a folder', async () => {
+    expect(await listSnapshots(fs, 'docs/report.pdf')).toHaveLength(2)
+  })
+
   it('returns empty array when no snapshots dir', async () => {
     const emptyFs = new InMemoryAdapter()
     const result = await listSnapshots(emptyFs, 'anything.pdf')
@@ -173,9 +194,9 @@ describe('restoreSnapshot', () => {
   })
 
   it('creates a safety snapshot of the current version before restoring', async () => {
-    const before = await listSnapshots(fs, 'report.pdf')
+    const before = await listSnapshots(fs, origPath)
     await restoreSnapshot(fs, snapPath, origPath)
-    const after = await listSnapshots(fs, 'report.pdf')
+    const after = await listSnapshots(fs, origPath)
     expect(after.length).toBe(before.length + 1)
   })
 })
@@ -211,5 +232,27 @@ describe('pruneSnapshots', () => {
     const remaining = await listSnapshots(fs, 'report.pdf')
     expect(remaining.length).toBeLessThanOrEqual(3)
     expect(remaining[0]!.timestamp).toContain('2026-03-07')
+  })
+
+  it('removes snapshots older than retentionDays, in every folder', async () => {
+    const recent = new Date(Date.now() - 2 * 86_400_000).toISOString().replace(/[:.]/g, '-')
+    fs.files.set(
+      `_mentis/snapshots/files/Gone/old_2020-01-01T10-00-00-000Z.pdf`,
+      new Uint8Array([1]),
+    )
+    fs.files.set(`_mentis/snapshots/files/Work/plan_${recent}.pdf`, new Uint8Array([1]))
+    await pruneSnapshots(fs, { enabled: true, maxPerFile: 10, retentionDays: 30 })
+    expect([...fs.files.keys()]).toEqual([`_mentis/snapshots/files/Work/plan_${recent}.pdf`])
+  })
+
+  it('counts the limit per PDF path, not per name', async () => {
+    fs = new InMemoryAdapter()
+    const ts = (d: number) => new Date(Date.now() - d * 60_000).toISOString().replace(/[:.]/g, '-')
+    for (const dir of ['A', 'B'])
+      for (let i = 1; i <= 3; i++)
+        fs.files.set(`_mentis/snapshots/files/${dir}/plan_${ts(i)}.pdf`, new Uint8Array([i]))
+    await pruneSnapshots(fs, { enabled: true, maxPerFile: 2, retentionDays: 30 })
+    expect(await listSnapshots(fs, 'A/plan.pdf')).toHaveLength(2)
+    expect(await listSnapshots(fs, 'B/plan.pdf')).toHaveLength(2)
   })
 })

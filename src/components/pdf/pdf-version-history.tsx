@@ -56,19 +56,17 @@ export function PdfVersionHistory({ pdfPath, vaultFs, onRestore }: Props) {
   const [restoring, setRestoring] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
-  const pdfFilename = pdfPath.split('/').pop() ?? pdfPath
-
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const snaps = await listSnapshots(vaultFs, pdfFilename)
+      const snaps = await listSnapshots(vaultFs, pdfPath)
       setSnapshots(snaps)
     } catch {
       setSnapshots([])
     } finally {
       setLoading(false)
     }
-  }, [vaultFs, pdfFilename])
+  }, [vaultFs, pdfPath])
 
   useEffect(() => {
     void refresh()
