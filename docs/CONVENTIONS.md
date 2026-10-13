@@ -1,229 +1,140 @@
-﻿# Mentis â€” Code Conventions
+# Mentis — Code Conventions
 
-## License
+How code in this repo is written. The principles, budgets and working
+agreement are in [`CLAUDE.md`](../CLAUDE.md); the layout is explained in
+[`ARCHITECTURE.md`](./ARCHITECTURE.md). _Last reviewed 2026-10-13._
 
-| Item                             | Detail                                                                                                                                                                                                                  |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Full text**                    | Root [`LICENSE`](../LICENSE) â€” **Business Source License 1.1** (MariaDB-style parameters + terms).                                                                                                                      |
-| **Licensor / work**              | **Marrow Group** / **Mentis** (this repository).                                                                                                                                                                        |
-| **Additional Use Grant**         | Production use for **any purpose** (see `LICENSE` â€” adjust only with legal review).                                                                                                                                     |
-| **Change Date / Change License** | **2030-04-09** / **MPL 2.0** (edit in `LICENSE` if policy changes).                                                                                                                                                     |
-| **`package.json`**               | `"license": "SEE LICENSE IN LICENSE"`.                                                                                                                                                                                  |
-| **README**                       | **AI assistance** section â€” tooling disclosure; **License** section â€” pointer to BSL; neither replaces `LICENSE`.                                                                                                       |
-| **Docs**                         | [`ARCHITECTURE.md`](./ARCHITECTURE.md) Â§10, [`TECH_STACK.md`](./TECH_STACK.md) (footer), [`PRD.md`](./PRD.md) Â§6, [`DEPLOYMENT.md`](./DEPLOYMENT.md) (static hosting / headers), this file, [`CURSOR.md`](./CURSOR.md). |
-
-Third-party npm packages remain under their respective licenses.
-
-## Project Structure
+## Project structure
 
 ```
 mentis/
-├── docs/                  # Project documentation (see README's doc index)
-├── tests/                 # Vitest unit tests (default env: node; happy-dom per file where needed)
-│   └── e2e/               # Playwright specs (chromium + Pixel-5 mobile projects) + fixtures
-├── public/                # PWA: manifest, icons, sw.js, MP3 worker + vmsg.wasm
-├── scripts/               # copy-mp3-worker (postinstall), qa-checklist server (pnpm qa)
 ├── src/
-│   ├── main.tsx           # App entry (mounts AppRoot into #root from index.html)
-│   ├── auth-dropbox-main.tsx  # Entry for the /auth/dropbox HTML page
-│   ├── node-globals.ts    # Browser shims for Buffer + global (webpack used to inject these)
-│   ├── globals.css        # Tailwind v4 theme tokens + global styles
-│   ├── fonts.css          # Self-hosted Inter (replaces next/font)
-│   ├── components/        # React UI by domain: shell, views, notes, pdf, canvas, board,
-│   │                      # tasks, calendar, bookmarks, kanban, mindmap, pptx, chat,
-│   │                      # file-browser, graph, search, audio, ui
-│   ├── contexts/          # vault-fs, notes-workspace, sync providers
-│   ├── hooks/             # use-auto-save
-│   ├── lib/               # Framework-free logic, one folder per domain (fs, vault, editor,
-│   │                      # markdown, notes, pdf, canvas, search, sync, chat, board, tasks,
-│   │                      # calendar, bookmarks, kanban, mindmap, spreadsheet, code, audio,
-│   │                      # graph, snapshot, file-browser, browser)
-│   ├── stores/            # Zustand + Immer stores, one per domain
-│   ├── types/             # Shared TypeScript types
-│   └── utils/             # cn.ts (clsx + tailwind-merge)
-├── .cursor/rules/         # Cursor AI rules (.mdc)
-├── .github/workflows/     # CI (typecheck, lint, unit, build, e2e)
-├── index.html             # App entry point (+ auth/dropbox.html for the OAuth return)
-├── vite.config.ts         # Multi-page static build; `node:` stubs; eager-vendor chunking
-├── playwright.config.ts   # E2E: dev server locally, static export on CI
-└── CLAUDE.md              # AI working notes — the most detailed, most current module reference
+│   ├── core/          # registries, index, capture grammar, convert, render — owned by no feature
+│   ├── modules/       # one folder per feature; registers itself (register.ts, view.ts, settings.ts, …)
+│   ├── components/    # React UI by domain
+│   ├── lib/           # framework-free logic by domain
+│   ├── stores/        # Zustand + Immer stores
+│   ├── contexts/      # vault session, notes workspace, sync
+│   └── types/         # shared types
+├── src-tauri/         # Rust shell (desktop + Android); gen/android is the Android project
+├── tests/             # Vitest unit tests; tests/e2e — Playwright specs + fixtures
+├── scripts/           # budgets, cold-start measurement, release version check, QA checklist server
+├── public/            # PWA manifest, icons, service worker, worker assets
+├── docs/              # documentation (index in README); docs/archive — historical
+└── .github/workflows/ # ci.yml, android-release.yml
 ```
 
-The root CLAUDE.md is kept current with every change and is the best per-module reference; this file covers the stable conventions.
+**Import boundaries** (ESLint): a module never imports another module — go
+through `@/core` or a registry. `core/` imports neither `modules/` nor
+`components/`.
 
-## Naming Conventions
+## Naming
 
-### Files & Directories
+| Kind                            | Convention                                                             | Example                            |
+| ------------------------------- | ---------------------------------------------------------------------- | ---------------------------------- |
+| Files (components, lib, stores) | kebab-case                                                             | `task-row.tsx`, `use-swipe.ts`     |
+| Tests                           | `*.test.ts(x)`; e2e `NN-topic.spec.ts`                                 | `pen.test.ts`, `30-touch.spec.ts`  |
+| Components, types, interfaces   | PascalCase                                                             | `TaskRow`, `VaultConfig`           |
+| Functions, variables            | camelCase                                                              | `createVault`, `searchResults`     |
+| Constants                       | SCREAMING_SNAKE_CASE                                                   | `TASKS_DIR`                        |
+| Zustand stores                  | `use[Name]Store`                                                       | `useTasksStore`                    |
+| Hooks                           | `use[Name]`                                                            | `useHoldToReorder`                 |
+| Event handlers                  | `handle[Event]` / `on[Event]`                                          | `handleToggle`, `onSaved`          |
+| Rust                            | `snake_case` modules and functions; Tauri commands named `area_action` | `vault_read`, `reminders_schedule` |
 
-| Type             | Convention                   | Example               |
-| ---------------- | ---------------------------- | --------------------- |
-| React components | PascalCase                   | `FileTreeSidebar.tsx` |
-| Hooks            | camelCase with `use` prefix  | `useVaultStore.ts`    |
-| Utilities/lib    | kebab-case                   | `pdf-annotations.ts`  |
-| Types            | kebab-case                   | `vault-types.ts`      |
-| Stores           | kebab-case                   | `file-tree.ts`        |
-| Tests            | `*.test.ts` / `*.test.tsx`   | `vault.test.ts`       |
-| Constants        | SCREAMING_SNAKE_CASE in file | `MAX_SNAPSHOT_COUNT`  |
+Import with the `@/` alias (`@/*` → `src/*`); never relative paths more than
+one level up.
 
-### Code
-
-| Type             | Convention                     | Example                     |
-| ---------------- | ------------------------------ | --------------------------- |
-| Components       | PascalCase                     | `FileTreeSidebar`           |
-| Functions        | camelCase                      | `createVault()`             |
-| Variables        | camelCase                      | `searchResults`             |
-| Constants        | SCREAMING_SNAKE_CASE           | `MAX_SNAPSHOTS_PER_FILE`    |
-| Types/Interfaces | PascalCase                     | `VaultConfig`, `FileEntry`  |
-| Enums            | PascalCase (members too)       | `ViewMode.FileBrowser`      |
-| Zustand stores   | `use[Name]Store`               | `useVaultStore`             |
-| Event handlers   | `handle[Event]` or `on[Event]` | `handleFileClick`, `onDrop` |
-
-## Component Patterns
-
-### Accessibility (HTML)
-
-- Never nest interactive elements (`<button>` inside `<button>`, etc.). For tab UIs with a close control, use a focusable `<div role="tab">` (with `tabIndex` and keyboard activation) and keep actions like â€œcloseâ€ as separate `<button>`s.
-
-### Notes editor & vault rename
-
-- After a file rename, `MarkdownNoteEditor`â€™s `useEffect` cleanup still closes over the **previous** `path`. Flushing save with that path **recreates** the old file (duplicate next to the new one). Skip the flush when `pathRef.current !== path` (tab path already retargeted).
-
-### Component File Structure
+## Components
 
 ```tsx
-// 1. Imports (external, then internal, then types)
-import { useState, useCallback } from 'react'
+// 1. Imports: external, then internal, then types
+import { useCallback, useState } from 'react'
 import { cn } from '@/utils/cn'
-import type { FileEntry } from '@/types/vault'
+import type { FileEntry } from '@/types/files'
 
-// 2. Types specific to this component
+// 2. Props
 interface FileTreeItemProps {
   entry: FileEntry
   depth: number
   onSelect: (entry: FileEntry) => void
 }
 
-// 3. Component definition (named export)
+// 3. A named export
 export function FileTreeItem({ entry, depth, onSelect }: FileTreeItemProps) {
-  // hooks first
-  const [isExpanded, setIsExpanded] = useState(false)
-
-  // handlers
-  const handleClick = useCallback(() => {
-    onSelect(entry)
-  }, [entry, onSelect])
-
-  // render
-  return <div className={cn('flex items-center', depth > 0 && 'ml-4')}>{/* ... */}</div>
+  const [expanded, setExpanded] = useState(false)
+  const handleClick = useCallback(() => onSelect(entry), [entry, onSelect])
+  return <div className={cn('flex items-center', depth > 0 && 'ml-4')}>{/* … */}</div>
 }
 ```
 
-### Zustand Store Pattern
+- Lazy-load anything heavy (`React.lazy`, dynamic `import()`); editors and
+  views are lazy through their registries.
+- Never nest interactive elements (`<button>` in `<button>`). For tabs with a
+  close control, use a focusable `role="tab"` element and a separate button.
+- After a file rename, an editor's unmount cleanup still holds the old path:
+  skip the flush when the tab's path has moved, or the old file is recreated.
 
-```tsx
-import { create } from 'zustand'
-import { immer } from 'zustand/middleware/immer'
+## Stores
 
-interface VaultState {
-  path: string | null
-  config: VaultConfig | null
-
-  // Actions
-  openVault: (path: string) => Promise<void>
-  closeVault: () => void
-}
-
+```ts
 export const useVaultStore = create<VaultState>()(
   immer((set, get) => ({
-    path: null,
     config: null,
-
-    openVault: async (path) => {
-      // ...
+    setConfig: (config) =>
       set((state) => {
-        state.path = path
-      })
-    },
-
-    closeVault: () => {
-      set((state) => {
-        state.path = null
-        state.config = null
-      })
-    },
+        state.config = config
+      }),
   })),
 )
 ```
 
-**Immer + collections:** Do not put `Set` or `Map` in Zustand state when using the `immer` middleware unless you call `enableMapSet()` at app init. Prefer `Record<string, true>` (or string arrays) for set-like dataâ€”see `file-tree`, `pdf`, and `canvas` stores.
+With Immer, do not put `Set` or `Map` in state (`enableMapSet()` is never
+called); use arrays or `Record<string, true>`.
 
-## Import Aliases
+## Styling
 
-```json
-{
-  "@/*": ["./src/*"]
-}
-```
+- Tailwind utilities; `cn()` (clsx + tailwind-merge) for conditional classes;
+  CVA for component variants. No CSS modules or styled-components.
+- Theme tokens are CSS variables in `src/globals.css`. Dark mode is class-based
+  (`.dark` on `<html>`), set before paint by the inline script in
+  `index.html` from `localStorage('ink-theme')`.
+- Phones: `safe-top` / `safe-bottom` / `safe-x` keep content clear of the
+  system bars; `pointer-coarse:` enlarges touch targets.
+- UI copy: as few words as possible; a hint under a setting only when it
+  prevents a real mistake.
 
-Always use `@/` path aliases for imports within `src/`. Never use relative paths that go more than one level up (`../../`).
+## Errors
 
-## Styling Guidelines
+- File operations catch and report; user-facing errors go through
+  `toast.error()` (`@/stores/toast`), with the `console.error`/`console.warn`
+  kept beside it for the stack.
+- Never swallow a failure silently in background work (reminders, sync,
+  indexing): log it with a short prefix such as `[reminders]`.
 
-- Use Tailwind CSS utility classes as the primary styling method.
-- Use `cn()` utility (clsx + tailwind-merge) for conditional and merged classes.
-- Use CSS variables in `globals.css` for theme tokens (colors, spacing, radii).
-- Component variants defined with `class-variance-authority` (CVA).
-- No CSS modules or styled-components.
-- Dark mode via Tailwind v4 `@variant dark` (class-based): `.dark` on `<html>` toggles CSS custom properties. Anti-flash inline script in `layout.tsx` reads `localStorage('ink-theme')` before paint. Three-state toggle (Light / System / Dark) in sidebar. `useUiStore.setTheme()` persists choice and syncs the class.
-- **Settings / forms:** avoid a second line of explanatory â€œhintâ€ text under every label unless it prevents a real mistake. AI guidance: `.cursor/rules/ui-copy.mdc`.
+## Testing
 
-## Error Handling
+| Layer | Tool       | Covers                                                            |
+| ----- | ---------- | ----------------------------------------------------------------- |
+| Unit  | Vitest     | pure logic: parsing, recurrence, reminders, index store, adapters |
+| E2E   | Playwright | real flows on the production build, desktop and phone profiles    |
+| Rust  | cargo test | the shell: file access, index, reminders, sign-in                 |
 
-- File system operations are wrapped in try/catch and return `Result<T, Error>` types where possible.
-- User-facing errors are shown via toast notifications â€” import `toast` from `@/stores/toast` and call `toast.error(msg)`, `toast.warning(msg)`, `toast.success(msg)`, or `toast.info(msg)`. The `<Toaster>` component is mounted in `app-root.tsx`.
-- Always keep the `console.error` alongside the toast so developers see full stack traces.
-- Critical errors (vault corruption, write failures) show modal dialogs with recovery options (`ErrorBoundary`).
+Before merging: `typecheck`, `lint` and the unit tests after the last edit,
+the build and budgets, and the full e2e suite on the production build
+(`pnpm build` then `CI=1 pnpm exec playwright test`). Behaviour only a person
+can check goes in the manual verification queue in
+[`LAUNCH_DEFERRALS.md`](./LAUNCH_DEFERRALS.md).
 
-## Testing Strategy
+## Git
 
-| Layer       | Tool                     | Focus                                                   |
-| ----------- | ------------------------ | ------------------------------------------------------- |
-| Unit        | Vitest                   | Pure functions, store logic, adapters                   |
-| Integration | Vitest + Testing Library | Component interactions, store + component               |
-| E2E         | Playwright               | Full user flows (create vault, edit note, annotate PDF) |
+- One task per branch: `feat/…`, `fix/…`, `refactor/…`, `docs/…`, `chore/…`.
+- Conventional Commits: `type(scope): description`, with the why in the body.
+- Commit at every green build; merge to `main` fast-forward once CI-equivalent
+  checks pass locally.
 
-## Git Conventions
+## License
 
-### Branch Names
-
-- `feat/description` â€” new feature
-- `fix/description` â€” bug fix
-- `refactor/description` â€” code restructuring
-- `docs/description` â€” documentation
-- `chore/description` â€” tooling, deps, config
-
-### Commit Messages
-
-Follow Conventional Commits:
-
-```
-type(scope): description
-
-feat(editor): add slash command menu
-fix(pdf): prevent annotation loss on interrupted save
-refactor(fs): extract common adapter interface
-docs(readme): add development setup instructions
-```
-
-### PR Conventions
-
-- One feature/fix per PR
-- PR description includes summary + test plan
-- Screenshots for UI changes
-- All CI checks must pass
-
-## Cursor & AI assistant
-
-- Project rules live in **`.cursor/rules/`** (`.mdc` files). See **`docs/CURSOR.md`** for the current list and purpose.
-- When using Cursor Agent on this repo, the default expectation is: greet with **Assalamualaikum** on substantive help, and **update `docs/`** (and `README.md` when needed) at the end of runs that change behavior, architecture, or dependenciesâ€”then summarize which doc files changed in the final reply.
-- For **UX or user-visible behavior** changes, also refresh **`docs/LAUNCH_DEFERRALS.md` â†’ _Manual verification queue_ â†’ _To do_** (and move verified rows to **Done**); repeat that checklist in the closeout under **Manual verification** so a human can smoke-test in the app.
+Mentis is under the [Business Source License 1.1](../LICENSE) (summary in the
+README); `package.json` says `"SEE LICENSE IN LICENSE"`. Third-party packages
+keep their own licences.

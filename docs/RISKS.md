@@ -1,125 +1,100 @@
-# Mentis — Risks & Mitigations
+# Mentis — Risks
 
-## Technical Risks
+The risks that matter now, what already mitigates each, and what is still
+open. _Last reviewed 2026-10-13._ Open items with IDs are tracked in
+[`LAUNCH_DEFERRALS.md`](./LAUNCH_DEFERRALS.md).
 
-### 1. OPFS / FSAPI Browser Support
+| #   | Risk                                        | Likelihood | Impact   | Priority |
+| --- | ------------------------------------------- | ---------- | -------- | -------- |
+| 1   | A write interrupted mid-way corrupts a file | Low        | Critical | P0       |
+| 2   | Sync conflicts lose an edit                 | Moderate   | High     | P1       |
+| 3   | Play rejects the exact-alarm permission     | Moderate   | High     | P1       |
+| 4   | Android file access is slow for big vaults  | Certain    | Medium   | P1       |
+| 5   | Phone cold start misses its budget          | Likely     | Medium   | P2       |
+| 6   | The browser evicts a web vault              | Low        | High     | P2       |
+| 7   | The startup bundle outgrows its budget      | Likely     | Medium   | P2       |
+| 8   | Losing the Android upload key               | Low        | Medium   | P3       |
+| 9   | Licence misread; errors in AI-assisted code | Moderate   | Medium   | P3       |
 
-|                |                                                                                                                                                                                                                                                           |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Risk**       | Safari has limited File System Access API support                                                                                                                                                                                                         |
-| **Impact**     | High — Safari users can't use "open folder" vault access                                                                                                                                                                                                  |
-| **Likelihood** | Certain (FSAPI is Chromium-only as of 2026)                                                                                                                                                                                                               |
-| **Mitigation** | OPFS is well-supported across all modern browsers including Safari. OPFS is the primary adapter; FSAPI is progressive enhancement for Chromium users who want to work with an existing folder on disk. Fallback to IndexedDB virtual FS as a last resort. |
-| **Status**     | Accepted — design accounts for this                                                                                                                                                                                                                       |
+## 1. Interrupted writes
 
-### 2. PDF.js Performance on Large Files
+A crash, closed tab or power loss during a save could leave a broken file.
 
-|                |                                                                                                                                                                                                                                                                |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Risk**       | Slow rendering and high memory usage on PDFs with 100+ pages                                                                                                                                                                                                   |
-| **Impact**     | Medium — poor UX for users working with large documents                                                                                                                                                                                                        |
-| **Likelihood** | Likely                                                                                                                                                                                                                                                         |
-| **Mitigation** | Lazy page rendering: only render visible pages + 1 adjacent page in each direction. Use PDF.js Web Worker for parsing. Release page canvases when scrolled out of view. LRU cache for rendered pages. Monitor memory usage and show warnings above thresholds. |
-| **Monitoring** | Performance benchmarks in CI against 50-page and 200-page test PDFs                                                                                                                                                                                            |
+- **In place:** PDFs are written to a temporary file, checked for a `%PDF-`
+  header, then renamed over the original; a snapshot is taken before the first
+  edit (`_mentis/snapshots/`). Canvases write their layer PNGs before the JSON
+  that points at them. Chat files use temp-and-rename.
+- **Open:** there is no shared "atomic write" helper; each feature does its
+  own. Notes are written directly.
 
-### 3. Freehand Drawing Latency
+## 2. Sync conflicts
 
-|                |                                                                                                                                                                                                                                                                  |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Risk**       | Visible lag between stylus/mouse movement and stroke appearance                                                                                                                                                                                                  |
-| **Impact**     | High — makes drawing unusable, especially on tablets                                                                                                                                                                                                             |
-| **Likelihood** | Moderate                                                                                                                                                                                                                                                         |
-| **Mitigation** | Use `PointerEvent.getCoalescedEvents()` for full-resolution input. Consider OffscreenCanvas or direct WebGL rendering for strokes if Fabric.js canvas is too slow. Profile and optimize the hot path. Dedicated requestAnimationFrame loop for stroke rendering. |
-| **Monitoring** | Input-to-pixel latency benchmarks on target devices                                                                                                                                                                                                              |
+Two devices editing the same file between syncs.
 
-### 4. Destructive Write Corruption
+- **In place:** last-write-wins by modification time, a notification naming
+  the kept version, and no silent overwrite of an unpushed local edit on poll.
+- **Open:** the losing version is not kept and there is no conflict history
+  (S7). Marrow Sync, with merging for Markdown, is a roadmap item.
 
-|                |                                                                                                                                                                                                                                                                                  |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Risk**       | PDF file corruption if write is interrupted (crash, tab close, power loss)                                                                                                                                                                                                       |
-| **Impact**     | Critical — user data loss                                                                                                                                                                                                                                                        |
-| **Likelihood** | Low (but catastrophic)                                                                                                                                                                                                                                                           |
-| **Mitigation** | Write to a temporary file first, then atomic rename to the target path. Pre-edit snapshots in `_mentis/snapshots/` provide a recovery point. Verify PDF integrity after write by checking file header bytes. Show "unsaved changes" indicator in UI. Warn on tab close if dirty. |
-| **Monitoring** | Integrity check on file open; corrupt file recovery flow                                                                                                                                                                                                                         |
+## 3. Exact alarms on Google Play
 
-### 5. pdf-lib Annotation Fidelity
+The Android app declares `USE_EXACT_ALARM` so reminders fire on the minute.
+Google Play allows it only for apps whose core function is an alarm, a timer
+or a calendar, and reviews the declaration.
 
-|                |                                                                                                                                                                                                                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Risk**       | Not all PDF annotation types are fully supported by pdf-lib; some annotations may render differently across viewers                                                                                                                                                                      |
-| **Impact**     | Medium — annotations might not look identical in Acrobat vs. Preview vs. Chrome                                                                                                                                                                                                          |
-| **Likelihood** | Moderate                                                                                                                                                                                                                                                                                 |
-| **Mitigation** | Use only standard annotation types: `/Highlight`, `/Ink`, `/FreeText`, `/Stamp`, `/Text`. Test annotations against Acrobat, Preview, Chrome PDF viewer, and Firefox. Document any known cross-viewer differences. Consider using annotation appearance streams for consistent rendering. |
-| **Monitoring** | Cross-viewer compatibility test suite with visual regression tests                                                                                                                                                                                                                       |
+- **Mitigation:** Mentis has a calendar and reminders; state that in the Play
+  declaration. If it is refused, fall back to `SCHEDULE_EXACT_ALARM` (the user
+  grants it in system settings) and ask when the first reminder is set.
 
-### 6. Sync Conflicts on Binary PDFs
+## 4. Android file access speed
 
-|                |                                                                                                                                                                                                                                            |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Risk**       | Data loss when two devices edit the same PDF simultaneously                                                                                                                                                                                |
-| **Impact**     | High — user loses annotations                                                                                                                                                                                                              |
-| **Likelihood** | Moderate (especially with filesystem sync via iCloud/Dropbox)                                                                                                                                                                              |
-| **Mitigation** | CRDTs work for markdown but not binary files. PDF sync uses last-write-wins with automatic `.conflict` file copy creation. Snapshots provide additional recovery. Marrow Sync (Phase 2) can detect conflicts server-side and notify users. |
-| **Monitoring** | Conflict detection and notification system                                                                                                                                                                                                 |
+A vault in a picked folder is reached through Android's Storage Access
+Framework: about 40 ms to open each file on the emulator.
 
-## Product Risks
+- **In place:** reads run in parallel from Rust over JNI; the first index of
+  2,000 notes took 43 s in the background, and later launches only re-list
+  folders (~5.5 s, also in the background) while the tree draws from the index.
+- **Open:** measure on real phones; very large vaults will be slow to index
+  the first time.
 
-### 7. Scope Creep
+## 5. Phone cold start
 
-|                |                                                                                                                                                                                                                            |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Risk**       | Attempting too many features delays the MVP                                                                                                                                                                                |
-| **Impact**     | Critical — no shipped product                                                                                                                                                                                              |
-| **Likelihood** | High                                                                                                                                                                                                                       |
-| **Mitigation** | Strict phase gating. Phase 1 = markdown + PDF browser + annotation + canvas. No sync, no mobile, no plugins until Phase 1 ships. Weekly milestone reviews against the plan. Cut features that aren't tracking to schedule. |
-| **Monitoring** | Weekly progress checks against DEVELOPMENT_PHASES.md                                                                                                                                                                       |
+The budget is 1.8 s to a usable shell. The emulator measured 2.0–2.4 s on a
+Windows host, which is not representative either way.
 
-### 8. Performance at Scale (10k+ files)
+- **Next:** measure on a mid-range phone (`docs/ANDROID.md`, "Cold start")
+  before tuning.
 
-|                |                                                                                                                                                                                                                              |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Risk**       | UI becomes sluggish with large vaults                                                                                                                                                                                        |
-| **Impact**     | Medium — power users abandon the app                                                                                                                                                                                         |
-| **Likelihood** | Moderate                                                                                                                                                                                                                     |
-| **Mitigation** | Virtualized file lists (only render visible items). Lazy file tree loading (expand on demand). Search index loaded asynchronously. Thumbnail generation on demand (not all at once). Profile with synthetic 10k-file vaults. |
-| **Monitoring** | Performance benchmarks with 1k, 5k, 10k file vaults                                                                                                                                                                          |
+## 6. Web vault eviction
 
-### 9. OPFS Storage Limits
+A web vault in the browser's private storage (OPFS) can be evicted under
+storage pressure.
 
-|                |                                                                                                                                                                                                                              |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Risk**       | Browsers may limit or evict OPFS storage                                                                                                                                                                                     |
-| **Impact**     | High — user loses vault data                                                                                                                                                                                                 |
-| **Likelihood** | Low (OPFS is designed for persistent storage, but browsers can evict under storage pressure)                                                                                                                                 |
-| **Mitigation** | Request persistent storage (`navigator.storage.persist()`). Show storage usage in vault settings. Warn users approaching limits. Encourage FSAPI or desktop app for large vaults. Provide vault export/backup functionality. |
-| **Monitoring** | Storage quota monitoring in the app                                                                                                                                                                                          |
+- **In place:** the app asks for persistent storage
+  (`navigator.storage.persist()`); Chromium users can open a real folder
+  instead; the desktop and Android apps use real folders. Sync gives an
+  off-device copy.
 
-## Legal, licensing & process
+## 7. Startup bundle
 
-|                |                                                                                                                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Risk**       | Misinterpretation of **BSL 1.1** (distribution, commercial use, or “open source” expectations)                                                                                           |
-| **Impact**     | Medium–High — contractual or compliance exposure for Marrow Group or downstream users                                                                                                    |
-| **Likelihood** | Moderate — BSL is less familiar than MIT/Apache                                                                                                                                          |
-| **Mitigation** | Single source of truth: root `LICENSE`. Summaries in README + `docs/` (Architecture §10, PRD §6, Conventions) must stay aligned with `LICENSE`. Legal review before changing Parameters. |
+Initial JS + CSS is ~206 of 209 KB (the ratchet); every always-loaded
+component adds to it.
 
-|                |                                                                                                                       |
-| -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **Risk**       | Undetected errors or license conflicts in **AI-suggested** code                                                       |
-| **Impact**     | Medium — bugs, security issues, or incompatible snippets                                                              |
-| **Likelihood** | Moderate                                                                                                              |
-| **Mitigation** | Human review for merges; README AI disclosure; security-sensitive paths get extra scrutiny; run tests and lint in CI. |
+- **In place:** the budget is enforced in CI; editors, views and most
+  features load lazily.
+- **Rule:** a budget is raised only as a deliberate, separate commit.
 
-## Risk Matrix
+## 8. The Android upload key
 
-| #   | Risk                  | Likelihood | Impact   | Priority      |
-| --- | --------------------- | ---------- | -------- | ------------- |
-| 4   | Write corruption      | Low        | Critical | P0            |
-| 7   | Scope creep           | High       | Critical | P0            |
-| 3   | Drawing latency       | Moderate   | High     | P1            |
-| 6   | Sync conflicts        | Moderate   | High     | P1            |
-| 9   | OPFS storage limits   | Low        | High     | P1            |
-| 2   | PDF.js performance    | Likely     | Medium   | P2            |
-| 5   | Annotation fidelity   | Moderate   | Medium   | P2            |
-| 8   | Scale performance     | Moderate   | Medium   | P2            |
-| 1   | FSAPI browser support | Certain    | Medium   | P3 (accepted) |
+- **In place:** Play App Signing holds the app signing key; the upload key
+  lives in GitHub secrets and a password manager, and Play can reset a lost
+  upload key.
+
+## 9. Licence and AI-assisted code
+
+- **Licence:** Business Source License 1.1, which is less familiar than MIT or
+  Apache. `LICENSE` is the single source; the README summary must agree with
+  it; change parameters only after legal review.
+- **AI-assisted code:** human review before merging; CI runs typecheck, lint,
+  unit, Rust and end-to-end tests; security-sensitive paths (vault path
+  resolution, sign-in, signing) get extra scrutiny.

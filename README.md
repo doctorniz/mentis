@@ -2,126 +2,109 @@
 
 _An app by Marrow Group._
 
-Local-first markdown notes, PDF editor, and unlimited canvas.
+A local-first personal knowledge system: notes, PDFs, drawings, tasks, a
+calendar and a journal, as ordinary files in a folder you choose. No database
+of record, no account, no cloud dependency. On the web, on Windows, and on
+Android.
 
-## What is Mentis?
+## What it does
 
-Mentis is a local-first personal knowledge base built on a **plain-file architecture**. Every document is a file in a folder you own — markdown notes, PDFs, drawings, spreadsheets — with no database and no lock-in. It runs entirely in the browser, works offline, and optionally syncs via Dropbox.
+- **Notes** — WYSIWYG Markdown (Tiptap) with a source mode, wiki-links and
+  backlinks, slash commands, tables, KaTeX, templates, image embeds.
+- **PDFs** — annotate, highlight, draw, sign, comment, fill forms; reorder,
+  insert, merge and extract pages. Edits are written into the PDF itself, with
+  a snapshot taken before the first edit.
+- **Drawing canvas** — layered raster drawing (PixiJS/WebGL): pressure and
+  tilt-sensitive brushes, eraser, fill, eyedropper, selection, blend modes,
+  PNG/PDF export.
+- **More file types** — mindmaps (`.map.md`), kanban boards (`.kan.md`), Marp
+  slides (`.slides.md`), lists (`.list.md`); view Word, PowerPoint and
+  spreadsheets, and convert Word to Markdown and PowerPoint to slides; edit
+  code and plain text.
+- **Capture** — type anything and it lands in Thoughts; `/task`, `/cal`,
+  `/journal`, `/bookmark` … send it elsewhere, with natural-language dates.
+  From the desktop, a global hotkey; from the phone, share sheet, shortcuts,
+  a widget and a Quick Settings tile.
+- **Organizer** — tasks and projects, lists, a calendar with repeating events,
+  reminders (desktop and phone notifications with Snooze and Done), and a
+  daily journal with tabs from a template.
+- **Search and graph** — full-text search across every file type, and a
+  wiki-link graph, both from an on-disk index rebuilt from your files.
+- **AI chat** — ask about the open document or the whole vault, with cited
+  sources. Your own keys (Anthropic, OpenAI, OpenRouter, Gemini), Ollama on
+  your network, or Gemma on the device. Read-only: it never edits your files.
+- **Sync (optional)** — Dropbox, with change detection and conflict
+  notification.
 
-## Features
+## Platforms
 
-- **Markdown Notes** — WYSIWYG editing (Tiptap) with Source mode, wiki-links, backlinks, slash commands, tables, KaTeX math, find/replace, outline, templates, image embed/resize
-- **PDF Editor** — Annotate, highlight, draw, sign, comment; page reorder/merge/extract; form filling; find-in-document; edits written destructively into the file with pre-edit snapshots
-- **Drawing Canvas** — Layered raster drawing (PixiJS/WebGL): pressure-sensitive brushes, eraser, fill, eyedropper, rectangular selection with move/nudge/clipboard, selection-constrained painting, blend modes, PNG/PDF export
-- **Office & code files** — View `.docx`, `.pptx` and `.xlsx`/`.csv` (and convert Word and PowerPoint files to Markdown and slides); edit source/plain-text files inline; mindmaps (`.map.md`) and kanban boards (`.kan.md`), both stored as plain markdown
-- **Organizer** — Tasks (CalDAV-shaped, natural-language quick-add, recurrence, `.ics` export), calendar (day/week/month), quick-capture Board (text/image/voice with Whisper transcription), web bookmarks
-- **AI Chat** — Bring-your-own-LLM chat grounded in the open document or the whole vault (MiniSearch RAG, cited sources); OpenRouter / OpenAI / Anthropic / Gemini / Ollama, or fully local Gemma over WebGPU
-- **Full-Text Search** — Instant fuzzy search across every file type's content, with tags, folder, date, and type filters
-- **Graph** — Force-directed wiki-link graph across all file types
-- **Sync (optional)** — Dropbox with SHA-256 change detection, exclude patterns, and conflict notifications
-- **Offline-First PWA** — Installable, Service Worker caching, mobile layout with touch drawing
+| Platform    | Where your files live                                          | Build                                    |
+| ----------- | -------------------------------------------------------------- | ---------------------------------------- |
+| **Web**     | The browser's private storage, or a folder you pick (Chromium) | `pnpm build` → static `out/`             |
+| **Windows** | Any folder on disk                                             | `pnpm tauri:build`                       |
+| **Android** | A folder you pick (e.g. in Documents)                          | see [`docs/ANDROID.md`](docs/ANDROID.md) |
 
-## Architecture
+## Getting started
 
-```
-src/
-├── main.tsx          # App entry, mounted by index.html
-├── auth-dropbox-main.tsx  # Entry for the /auth/dropbox page (Dropbox OAuth return)
-├── components/       # React UI by domain: shell, views, notes, pdf, canvas, board,
-│                     # tasks, calendar, bookmarks, kanban, mindmap, pptx, chat,
-│                     # file-browser, graph, audio, ui
-├── contexts/         # VaultFsContext, NotesWorkspaceContext, SyncContext
-├── hooks/            # use-auto-save
-├── lib/              # Framework-free logic: fs, vault, editor, markdown, notes, pdf,
-│                     # canvas, search, sync, chat, board, tasks, calendar, bookmarks,
-│                     # kanban, mindmap, spreadsheet, code, audio, graph, snapshot, browser
-├── stores/           # Zustand+Immer stores, one per domain
-├── types/            # TypeScript type definitions
-└── utils/            # cn.ts (clsx + tailwind-merge)
-```
-
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full picture.
-
-## Tech Stack
-
-| Layer       | Technology                                                                         |
-| ----------- | ---------------------------------------------------------------------------------- |
-| Build       | Vite 7 (static multi-page build: app + `/auth/dropbox`)                            |
-| UI          | React 19, Tailwind CSS 4, Radix UI, Lucide icons                                   |
-| Notes       | Tiptap (ProseMirror) + marked + turndown + gray-matter; CodeMirror 6 (source/code) |
-| PDF         | PDF.js (render), pdf-lib (write), Fabric.js (annotation overlay)                   |
-| Canvas      | PixiJS v8 (WebGL, layered raster)                                                  |
-| Office      | mammoth (DOCX), slidecanvas (PPTX), SheetJS + jspreadsheet-ce                      |
-| AI          | Provider SSE clients; MediaPipe LLM (local Gemma); transformers.js (Whisper)       |
-| Search      | MiniSearch                                                                         |
-| State       | Zustand + Immer                                                                    |
-| File System | OPFS (all browsers); File System Access API on Chromium (“open folder”)            |
-| Offline     | Service Worker (stale-while-revalidate), PWA manifest                              |
-
-## Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 20+
-- [pnpm](https://pnpm.io/) 9+
-
-### Setup
-
-Optional **Dropbox sync** — set `NEXT_PUBLIC_DROPBOX_CLIENT_ID` in `.env.local`; connect under **Settings → Sync**; when enabled, the Vault toolbar shows a **sync** button next to Preview / Files. See [`docs/CLOUD_SYNC.md`](docs/CLOUD_SYNC.md).
+Prerequisites: Node.js 22, [pnpm](https://pnpm.io/) (CI uses 9.15), and for
+the apps the [Tauri prerequisites](https://tauri.app/start/prerequisites/)
+(Rust; for Android the SDK, NDK 27 and a JDK).
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Start development server (Vite)
-pnpm dev
-
-# Type check
-pnpm typecheck
-
-# Lint
-pnpm lint
-
-# Run tests
-pnpm test
+pnpm dev            # the web app, with hot reload
+pnpm tauri:dev      # the desktop app
+pnpm typecheck && pnpm lint && pnpm test:run
+pnpm build && pnpm budgets
+CI=1 pnpm exec playwright test   # end-to-end, against the production build
 ```
 
-### Build
-
-```bash
-pnpm build
-```
-
-The app builds as a static export (SPA) suitable for deployment to any static hosting.
+Optional Dropbox sync: set `NEXT_PUBLIC_DROPBOX_CLIENT_ID` in `.env.local`
+and connect under Settings › Sync — see [`docs/CLOUD_SYNC.md`](docs/CLOUD_SYNC.md).
 
 ## Documentation
 
-Detailed documentation lives in the `docs/` folder:
+| Document                                     | What it covers                                                  |
+| -------------------------------------------- | --------------------------------------------------------------- |
+| [CLAUDE.md](CLAUDE.md)                       | Principles, settled decisions, budgets, working agreement       |
+| [Architecture](docs/ARCHITECTURE.md)         | How the code is put together: shells, registries, index, files  |
+| [Product](docs/PRD.md)                       | What Mentis is for, what it does, what it deliberately does not |
+| [Tech stack](docs/TECH_STACK.md)             | Libraries and why                                               |
+| [Conventions](docs/CONVENTIONS.md)           | Code style, naming, Git                                         |
+| [Android](docs/ANDROID.md)                   | The phone app: vaults, reminders, touch, pen, releasing         |
+| [PDF workflow](docs/PDF_WORKFLOW.md)         | How PDF editing behaves                                         |
+| [Cloud sync](docs/CLOUD_SYNC.md)             | Dropbox setup and behaviour                                     |
+| [Deployment](docs/DEPLOYMENT.md)             | Hosting the web build                                           |
+| [Launch deferrals](docs/LAUNCH_DEFERRALS.md) | Open issues and the manual verification queue                   |
+| [Risks](docs/RISKS.md)                       | Risks and mitigations                                           |
+| [Archive](docs/archive/README.md)            | Historical plans and reports                                    |
 
-| Document                                         | Description                                                                                 |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| [PRD](docs/PRD.md)                               | Product requirements and feature breakdown                                                  |
-| [Architecture](docs/ARCHITECTURE.md)             | System architecture, data flows, module design                                              |
-| [Tech Stack](docs/TECH_STACK.md)                 | Technology choices and rationale                                                            |
-| [Development Phases](docs/DEVELOPMENT_PHASES.md) | Week-by-week delivery plan                                                                  |
-| [Conventions](docs/CONVENTIONS.md)               | Code style, naming, project structure                                                       |
-| [Cursor / AI](docs/CURSOR.md)                    | Cursor rules and AI workflow for this repo                                                  |
-| [PDF Workflow](docs/PDF_WORKFLOW.md)             | Detailed PDF editing UX specification                                                       |
-| [Risks](docs/RISKS.md)                           | Risk register with mitigations                                                              |
-| [Deployment](docs/DEPLOYMENT.md)                 | Static export, COOP/COEP headers on hosting                                                 |
-| [Cloud sync](docs/CLOUD_SYNC.md)                 | Dropbox env var, OAuth, redirect URI                                                        |
-| [License](LICENSE)                               | Business Source License 1.1 (full text); summaries in Architecture §10, PRD §6, Conventions |
+## Roadmap
 
-## Development Phases
+Done: the web app; the Windows desktop app (tray, capture hotkey, reminders);
+the Android app (picked-folder vaults, touch UI, share and quick capture,
+reminders, pen). Next:
 
-1. **Phase 1 (Weeks 1–12):** Web MVP — markdown editor, PDF browser/editor, unlimited canvas, wiki graph view, Vault (tree + browse) / Search / Graph shell + New popover, offline PWA ✅
-2. **Phase 2 (Weeks 13–18):** Desktop app (Tauri), extended template features, Marrow Sync
-3. **Phase 3 (Weeks 19–26):** Mobile (Capacitor), stylus support, OCR, plugin system, public launch
+- **Release** the Android app on Google Play (the pipeline is in place).
+- **iOS** — the code is kept iOS-ready; it needs a Mac to build.
+- **Per-folder settings** — `_config.md`, inherited down the tree.
+- **On-device AI** on LiteRT-LM; **OCR** for scanned PDFs.
+- **Marrow Sync** — an optional end-to-end encrypted sync service.
+
+Deliberately out: a third-party plugin system, agentic AI that edits files,
+and anything clinical or patient-related.
 
 ## AI assistance
 
-This project was developed with **AI-assisted** tooling (e.g. IDE-integrated agents and language models). Human maintainers at Marrow Group review and integrate changes; generated material can still contain mistakes. **You are responsible** for validating behaviour, security, privacy, and licensing for your use case. See [`docs/CURSOR.md`](docs/CURSOR.md) for workflow expectations.
+Mentis is developed with AI-assisted tooling. Maintainers at Marrow Group
+review and integrate changes, but generated material can contain mistakes: you
+are responsible for validating behaviour, security, privacy and licensing for
+your use.
 
 ## License
 
-Licensed under the **Business Source License 1.1** — see [`LICENSE`](./LICENSE). Short summary: **Marrow Group** / **Mentis**; production use is permitted under the **Additional Use Grant** in `LICENSE`; **Change Date** **2030-04-09**, then **MPL 2.0** for that version as stated in `LICENSE`. BSL is not the same as OSI “open source” before the Change Date — read the full file. Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §10, [`docs/PRD.md`](docs/PRD.md) §6.
+[Business Source License 1.1](./LICENSE). Licensor: **Marrow Group**; Licensed
+Work: **Mentis**. The Additional Use Grant permits production use; on the
+Change Date (**2030-04-09**) that version becomes available under **MPL 2.0**.
+BSL is not an OSI open-source licence before the Change Date — read `LICENSE`.
+Third-party packages keep their own licences.

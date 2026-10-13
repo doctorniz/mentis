@@ -1,35 +1,66 @@
 # Cloud sync (Dropbox)
 
-Mentis can optionally sync vault files to **Dropbox**. Sync is **last-write-wins** by file modification time; manifests and OAuth tokens live in **IndexedDB** (see `docs/ARCHITECTURE.md`, Sync Engine). A **self-hosted** sync server may be added later.
+Mentis can sync a vault's files to **Dropbox**, optionally. It is file by file,
+last-write-wins by modification time, with a notification when both sides
+changed the same file. The sync manifest and the OAuth token stay on the
+device (IndexedDB), never in the vault. Code: `src/lib/sync/`.
 
-## Environment variables (build / dev)
+## Setup
 
-Read at **build time** for the static export (`NEXT_PUBLIC_*`). Set in `.env.local` and restart `pnpm dev` / `pnpm build`.
+1. In the [Dropbox App Console](https://www.dropbox.com/developers/apps):
+   **Create app** → **Scoped access** → **Full Dropbox** (the API uses absolute
+   paths such as `/Apps/Mentis/<vault>`).
+2. **Permissions:** `files.content.read`, `files.content.write`,
+   `files.metadata.read`, `files.metadata.write`.
+3. **Redirect URIs** — register every one you use:
 
-| Variable                            | Used for      | What it is                                                                                                                         |
-| ----------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **`NEXT_PUBLIC_DROPBOX_CLIENT_ID`** | Dropbox OAuth | **App key** from the [Dropbox App Console](https://www.dropbox.com/developers/apps). Not a secret. Register redirect URIs (below). |
+   | Where you sign in   | Redirect URI                                               |
+   | ------------------- | ---------------------------------------------------------- |
+   | Web, local dev      | `http://localhost:3000/auth/dropbox` (match your dev port) |
+   | Web, deployed       | `https://your-domain.example/auth/dropbox`                 |
+   | Desktop and Android | `http://127.0.0.1:53682/auth/dropbox`                      |
 
-If it is missing, **Connect Dropbox** in Settings will alert.
+4. Put the app key in `.env.local` (read at **build** time, so restart
+   `pnpm dev` or rebuild):
 
-## Dropbox setup
+   ```
+   NEXT_PUBLIC_DROPBOX_CLIENT_ID=your_app_key
+   ```
 
-1. [Dropbox App Console](https://www.dropbox.com/developers/apps) → **Create app** → **Scoped access** → **Full Dropbox**: the API uses absolute paths like `/Apps/Mentis/<vault>`.
-2. **Permissions** (Scopes tab): enable `files.content.read`, `files.content.write`, `files.metadata.read`, `files.metadata.write`.
-3. **OAuth 2** → redirect URIs, e.g. `http://localhost:3000/auth/dropbox` and `https://your-domain.example/auth/dropbox`.
-4. `.env.local`: `NEXT_PUBLIC_DROPBOX_CLIENT_ID=your_app_key_here`
-5. **Settings** → **Sync**: **Remote folder** defaults to `/Apps/Mentis/<vault name>`. Click **Connect Dropbox**. With Dropbox enabled, use the **sync** icon in the Vault toolbar (next to Preview / Files) to run a full sync on demand. Each vault has its own `_mentis/config.json` sync section and its own OAuth token key (`vaultId` = active vault path).
+   The app key is not a secret. Without it, **Connect Dropbox** says so.
 
-After OAuth, the app opens **`/auth/dropbox`** (`src/app/auth/dropbox/page.tsx`), exchanges `code` for tokens, returns to `/`. Static hosting must serve the SPA for `/auth/dropbox` (see `docs/DEPLOYMENT.md`).
+5. In Mentis: **Settings › Sync** → remote folder (default
+   `/Apps/Mentis/<vault name>`) → **Connect Dropbox**. Each vault has its own
+   sync section in `_mentis/config.json` and its own token.
 
-## Excluded paths
+### How sign-in returns
 
-Sync never touches (in either direction): `_mentis/snapshots` (pre-edit PDF backups — heavy, per-device) and `_mentis/search-index.json` (rebuilt on every vault open). Copies of these already on Dropbox from before the exclude feature stay there untouched — delete them in Dropbox if you want the space back.
+- **Web:** Dropbox redirects to `/auth/dropbox`, its own page
+  (`auth/dropbox.html`, `src/auth/dropbox-callback.tsx`), which exchanges the
+  code (PKCE) and returns to the app. Static hosting must serve that path — see
+  [`DEPLOYMENT.md`](./DEPLOYMENT.md).
+- **Desktop and Android:** the system browser does the consent step and
+  redirects to a one-shot listener on `127.0.0.1:53682` in the app (RFC 8252,
+  `src-tauri/src/oauth.rs`). Nothing loads in the app window.
 
-Extra excludes per vault: add `"excludePaths": ["some/folder", "big-file.mp4"]` to the `sync` section of `_mentis/config.json`. A pattern matches the exact path or anything under it as a folder. There is no Settings UI for this yet.
+## What syncs
 
-## Related
+Everything in the vault except:
 
-- Architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
-- Deferrals: [`LAUNCH_DEFERRALS.md`](./LAUNCH_DEFERRALS.md)
-- Deployment: [`DEPLOYMENT.md`](./DEPLOYMENT.md)
+- `_mentis/snapshots` — pre-edit PDF backups (heavy, per device);
+- `_mentis/search-index.json` — a file older versions wrote; nothing uses it now;
+- any extra patterns in `_mentis/config.json` → `sync.excludePaths`, e.g.
+  `["some/folder", "big-file.mp4"]` (an exact path, or anything under it as a
+  folder). There is no Settings UI for this yet.
+
+Excluded paths are invisible to sync in both directions; copies already on
+Dropbox are left there.
+
+Change detection reads and hashes only files whose size or modification time
+changed, using hashes cached in the index.
+
+## Known gaps
+
+- No history of past conflicts, and the losing side of a conflict is not kept
+  (`LAUNCH_DEFERRALS.md`, S7).
+- Dropbox only; Marrow Sync (end-to-end encrypted) is on the roadmap.

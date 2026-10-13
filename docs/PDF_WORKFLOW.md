@@ -1,23 +1,20 @@
 # Mentis — PDF Workflow (Detailed UX)
 
-This document describes product behaviour for **Mentis**. Repository **licensing** (BSL 1.1) is defined in the root [`LICENSE`](../LICENSE); see also [`ARCHITECTURE.md`](./ARCHITECTURE.md) §10.
+How PDF editing behaves in Mentis. Code: `src/components/pdf/`, `src/lib/pdf/`. _Last reviewed 2026-10-13._
 
-## 1. File Browser View (PDFs)
+## 1. Finding PDFs
 
-1. User switches to the **File Browser** view from the sidebar.
-2. Grid view shows thumbnail previews of every PDF in the vault. List view shows name, folder, page count, size, and last modified date.
-3. Sort by: name, date modified, date added, size, folder.
-4. Filter by: folder, tags.
-5. Search bar filters PDFs by filename and (if indexed) extracted text content.
-6. Right-click context menu: Open, Move, Rename, Duplicate, Delete, Merge selected, Export.
-7. Drag-and-drop from desktop imports a PDF into the currently viewed folder (or `_inbox/` if no folder selected).
+The **Files** view (Ctrl+5) lists every file in the vault, PDFs with first-page
+thumbnails: grid or list, sorted by name, date, size or type, filtered by type.
+The context menu opens, renames, duplicates, moves or deletes; several files can
+be selected to move or delete together. Search finds PDFs by their text.
 
 ## 2. Importing PDFs
 
-1. Drag-and-drop a PDF anywhere onto the app → import modal appears.
-2. User chooses destination folder (default: `_inbox/`).
-3. File is copied into the vault. Thumbnail is generated. Search index is updated.
-4. Alternatively: **Import** button in toolbar opens a system file picker (multi-select supported).
+Drag PDFs onto the Files view, or use **New › File**: they are copied into the
+folder being viewed, next to any file of the same name rather than over it. On
+the desktop, PDFs copied into the vault folder from outside appear on their
+own (the folder is watched). The search index picks them up in the background.
 
 ## 3. Opening & Editing a PDF
 
@@ -37,11 +34,17 @@ This document describes product behaviour for **Mentis**. Repository **licensing
 
 ## 5. Freehand Drawing
 
-1. User selects **Draw** tool from toolbar.
-2. Toolbar expands: pen colour picker and thickness slider (no separate eraser in the PDF viewer today).
-3. Mouse/stylus strokes are captured as Fabric.js paths on the overlay.
-4. On auto-save, strokes are written into the PDF **page content** as line segments (`pdf-lib` `drawLine`). Fabric curve commands (`Q`/`C`) are flattened to polylines first (`fabric-path-to-pdf-points.ts`) so strokes persist reliably.
-5. Pressure sensitivity when stylus provides pressure data remains a future enhancement.
+1. Select **Draw**: choose a colour and a width.
+2. Strokes are Fabric.js paths on the overlay until auto-save, which draws them
+   into the **page content** as line segments (`pdf-lib` `drawLine`; curves are
+   flattened first by `fabric-path-to-pdf-points.ts`). From then on they are
+   part of the page, like a pen on paper.
+3. Each stroke has one width; pen pressure is not used (a choice, not a limit
+   of the format — each segment could take its own width).
+4. With a pen on a touch screen, palm rejection applies (Settings › Editor ›
+   Pen): once a pen is used, fingers scroll instead of drawing.
+5. The pen's eraser end removes strokes **not yet saved**; once auto-save has
+   drawn them into the page they are permanent (undo via Version history).
 
 ## 6. Text Boxes
 
@@ -82,15 +85,11 @@ This document describes product behaviour for **Mentis**. Repository **licensing
 3. User fills in values → **Save** in the form dialog writes values into the PDF form data.
 4. A dedicated **Flatten** export is **not** in the viewer toolbar today; `flattenPdf` exists in code for potential future export UX.
 
-## 11. New PDF Note Creation
+## 11. Blank Pages
 
-1. User picks "New PDF Note" from the New view.
-2. Chooses page style: **Blank | Lined | Grid | Dot grid**.
-3. Chooses page size: **A4 | Letter | Custom**.
-4. Names the file, picks a destination folder.
-5. A new `.pdf` is created via `pdf-lib` with the chosen background pattern.
-6. User writes/draws on it with freehand tools.
-7. Additional pages added on demand via the page panel.
+There is no "new PDF" command; blank pages are added to an open PDF with **Add
+page** in the toolbar, in the style chosen in Settings › Vault › PDF
+(_Blank_, _Lined_ or _Grid_; _Dot grid_ exists in code but not in the setting).
 
 ### Page Style Specifications
 

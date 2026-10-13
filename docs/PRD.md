@@ -1,136 +1,106 @@
-# Mentis — Product Requirements Document
+# Mentis — Product
 
-_An app by Marrow Group._
+_An app by Marrow Group. Last reviewed 2026-10-13._
 
-## 1. Vision
-
-Mentis is a cross-platform note-taking application built on a **local-first, markdown-file architecture**. It treats the filesystem as the source of truth — every note is a `.md` file, every asset lives alongside it, and the user always owns their data. On top of this foundation, Mentis is also a **full-featured PDF file browser and editor**: import, create, organise, annotate, highlight, sign, and manage PDFs as first-class citizens. All PDF edits are written directly into the file — one file, one source of truth, no sidecar layers.
-
-**Web-first**, then native.
+What Mentis is for, what it does today, and what it deliberately does not do.
+How it is built is in [`ARCHITECTURE.md`](./ARCHITECTURE.md); the principles
+and settled decisions are in [`CLAUDE.md`](../CLAUDE.md).
 
 ---
 
-## 2. Core Principles
+## 1. What it is
 
-| Principle                      | Description                                                                                                                                                    |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **File-over-database**         | Notes are `.md` files on disk (or synced storage), not rows in a proprietary database. Users can open their vault in any text editor.                          |
-| **Offline-capable**            | The web app works without a connection. Native apps work natively.                                                                                             |
-| **Destructive PDF workflow**   | Annotations, highlights, signatures, and drawings are written directly into the PDF file. One file = one source of truth. No sidecar files, no overlay layers. |
-| **PDF as first-class citizen** | Mentis is also a PDF file browser and manager. Import, create, organise, annotate, sign, and export PDFs with the same fluency as markdown notes.              |
-| **Progressive complexity**     | A new user writes a note in 3 seconds. Power features reveal themselves gradually.                                                                             |
+A local-first personal knowledge system. Everything you write, draw, annotate,
+plan or capture is an ordinary file in a folder you choose — readable in any
+other tool, yours to copy, sync or walk away with. There is no account, no
+database of record and no cloud dependency.
 
----
+It is one app on the web, Windows and Android, built to be quick to capture
+into and fast to open.
 
-## 3. Feature Breakdown
+## 2. Principles, for users
 
-### 3.1 Markdown Notes (Core)
+| Principle                  | What it means in practice                                                                                                                                       |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Files are the truth**    | Notes are `.md`, drawings are `.canvas` + PNGs, tasks and events are Markdown with frontmatter. Anything derived (the search index) can be deleted and rebuilt. |
+| **Your folder**            | The vault is a folder you pick; one vault open at a time, with a recent list.                                                                                   |
+| **One file per PDF**       | PDF annotations, highlights and signatures are written into the PDF itself — no sidecars.                                                                       |
+| **Quick to capture**       | Type, and it is saved. Natural-language dates; no forms unless you ask for a destination.                                                                       |
+| **Fast**                   | The app opens to your vault at once and loads each tool only when you use it (budgets in `CLAUDE.md`).                                                          |
+| **AI answers, never acts** | Chat reads your files to answer, with sources; it does not edit or create them.                                                                                 |
 
-- **Live editor**: WYSIWYG-style editing that renders markdown in-place (Typora/Obsidian style). Toggle to raw source view.
-- **File tree sidebar**: Browse, search, create, rename, move, and delete `.md` files and folders.
-- **Frontmatter support**: YAML frontmatter for metadata — tags, created/modified dates, custom fields.
-- **Wiki-links**: `[[note-name]]` linking between notes with backlink tracking.
-- **Slash commands**: `/` menu for inserting headings, tables, code blocks, callouts, checkboxes, images, embeds.
-- **Tags & search**: `#tag` support. Full-text search across the vault with instant results.
-- **Templates**: User-defined `.md` templates for meeting notes, journals, project briefs, etc.
-- **Image & file embeds**: Drag-and-drop images/files. Stored in an `_assets/` folder relative to the note.
-- **Embedded PDF pages**: `![[file.pdf#page=3]]` renders a specific PDF page inline within the note. Supports page ranges: `![[file.pdf#page=3-5]]`.
-- **Markdown extensions**: GFM tables, task lists, math (KaTeX), footnotes, callout blocks.
-- **Export**: Export note as PDF, HTML, or plain `.md`.
+## 3. What it does
 
-### 3.2 PDF File Browser & Manager
+### Writing and documents
 
-- **PDF library view**: Dedicated view showing all PDFs in the vault — grid (thumbnail) or list mode. Sort by name, date modified, size, folder.
-- **Import**: Drag-and-drop or file picker to import external PDFs into the vault.
-- **Quick Look / preview**: Hover or single-click for thumbnail preview and metadata.
-- **Batch operations**: Multi-select PDFs to move, delete, tag, or merge.
-- **PDF inbox**: A dedicated `_inbox/` folder for newly imported PDFs.
+- **Notes** — WYSIWYG Markdown with a source mode; wiki-links and backlinks;
+  slash commands; tables, task lists, KaTeX, callouts; templates with
+  variables; image embeds; PDF page embeds (`![[file.pdf#page=3]]`).
+- **PDFs** — view, search, highlight, draw, add text boxes and comments, sign,
+  fill forms; add, delete, reorder, rotate, merge and extract pages; a snapshot
+  before the first edit, version history, auto-save. Detail:
+  [`PDF_WORKFLOW.md`](./PDF_WORKFLOW.md).
+- **Drawing canvas** — layers with opacity, blend modes and locking; pressure
+  and tilt-sensitive brushes; eraser, fill, eyedropper, selection; undo; export.
+- **Mindmaps, kanban boards, slides, lists** — each a Markdown file with its own
+  editor. **Office files** open for viewing; Word converts to a note and
+  PowerPoint to slides. **Code and text** files edit in place.
 
-### 3.3 PDF Editing & Annotation (Destructive)
+### Capture and organising
 
-All edits written directly into the PDF file on save.
+- **Capture** — a bar everywhere: bare text goes to Thoughts with Undo; `/task`,
+  `/cal`, `/journal`, `/list`, `/bookmark`, `/note`, `/chat` send it elsewhere
+  after a prefilled confirmation. Also from the desktop's global hotkey, and
+  from the phone's share sheet, app shortcuts, widget and Quick Settings tile.
+- **Tasks** — projects, priorities, due dates, weekly repeats, reminders.
+- **Lists** — checklists and ordered lists, with notes and a scheduled reset.
+- **Calendar** — day, week and month; repeating events; alerts.
+- **Reminders** — for tasks, events and an evening journal prompt; delivered
+  as notifications on desktop and phone (Snooze and Done right there) and in
+  the app; a tab of missed and upcoming ones.
+- **Journal** — a page per day, with tabs from a template.
+- **Bookmarks** — links with previews, in collections.
 
-- **PDF Viewer**: Page navigation, zoom, search-in-document, outline/bookmark sidebar.
-- **Highlighting**: Select text → choose color. Written as standard PDF `/Highlight` annotation.
-- **Freehand annotation**: Draw/write on pages. Pen color, thickness, eraser. Stamped into PDF on save.
-- **Text comments**: Pin a comment to a specific region of a page.
-- **Text box insertion**: Place editable text boxes anywhere on a page.
-- **Signatures**: Create, save, and place reusable signatures. Embedded into the PDF.
-- **Form filling**: Detect and fill interactive PDF form fields.
-- **Page management**: Insert, delete, reorder, and rotate pages.
-- **Merge & split**: Combine multiple PDFs or extract page ranges.
-- **New PDF note**: Create a blank PDF canvas (lined, grid, dot grid, or blank pages).
-- **Export**: Download as-is or flatten (removes annotation editability).
-- **Auto-save**: Configurable interval (default 5s and on blur; overridable in Settings).
-- **Version snapshots**: Pre-edit safety copies in `_mentis/snapshots/`.
+### Finding and connecting
 
-### 3.4 App Views
+- **Search** across every file type's content, with tag, folder, date and type
+  filters. **Graph** of wiki-links. **Command palette** (Ctrl+K) for actions
+  and files.
+- **AI chat** about the open document or the whole vault, with cited sources:
+  your own provider keys, Ollama on your network, or Gemma on the device.
 
-| View               | Description                                                                                                |
-| ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| **Vault (browse)** | Grid/list file browser: sort, filter, batch operations, move/delete modals, inbox.                         |
-| **Vault (tree)**   | Folder tree + inline editors for markdown, PDF, and canvas; starred paths; no separate “Notes” nav label.  |
-| **Search**         | Full-text search across vault. Results grouped by file type with filters.                                  |
-| **Graph**          | Force-directed vault graph (notes, PDFs, canvases); wiki-link edges; folder filter; open files from nodes. |
-| **New**            | Quick-create launcher (popover): note, file import, drawing; Templates tab in `NewView` where exposed.     |
+### Across devices
 
-### 3.5 Drawing Canvas
+- **Dropbox sync** (optional), file by file, with conflict notification.
+- **Desktop** (Windows): tray, launch at login, global capture hotkey.
+- **Android**: a vault in a folder you pick, touch-first layout, pen support
+  with palm rejection.
 
-Layered raster drawing surface (Photoshop/Procreate direction — the original whiteboard concept was retired in favor of drawing):
+## 4. Out of scope
 
-- Infinite pan/zoom surface, auto-expanding canvas
-- Pressure-sensitive brushes with hardness/opacity/stabilizer; eraser, fill, eyedropper
-- Layers with opacity, visibility, lock, blend modes; merge/flatten
-- Rectangular selection: move, nudge, delete, copy/cut/paste, select-all; selection constrains painting
-- Undo/redo with dirty-region snapshots; history survives tab switches
-- Touch: pinch-zoom, two-finger pan, gesture-safe stroke handling
-- Export to PNG/PDF
-- Saved as `.canvas` metadata JSON + per-layer PNGs under `_mentis/_drawings/`
+- **A third-party plugin system.** "Modular" means internal decoupling only.
+- **Agentic AI** that writes or edits files (v1 is read-and-answer).
+- **Clinical or patient data.** Mentis is not built or meant for it; features
+  that imply it are not added.
+- **Editing spreadsheets** (viewing only in v1) and parsing locations from
+  captured text.
 
-### 3.6 Cross-Platform Sync (Phase 2+)
+## 5. Data and privacy
 
-- **Filesystem sync**: Point vault at cloud-synced folder (iCloud, Dropbox, Google Drive, OneDrive).
-- **Marrow Sync** (optional): Proprietary encrypted sync service using CRDTs.
-- **Conflict handling**: Last-write-wins with `.conflict` copies (filesystem) or CRDT merge (Marrow Sync).
+- Local by default; nothing leaves the device unless you turn on sync or use a
+  cloud AI provider with your own key.
+- Provider keys and sign-in tokens stay on the device (IndexedDB or the OS),
+  never in the vault.
+- No telemetry.
+- Export is copying the folder.
 
----
+## 6. Open questions
 
-## 4. Success Metrics (Phase 1)
+1. **Monetisation** — free core plus paid sync, or another model.
+2. **Marrow Sync** — an optional end-to-end encrypted sync service: whether,
+   and how it handles conflicts (CRDTs for Markdown, copies for binaries).
+3. **On-device AI** — moving from MediaPipe to LiteRT-LM, and which Gemma size
+   a phone can carry.
 
-| Metric                                | Target                                           |
-| ------------------------------------- | ------------------------------------------------ |
-| Time to first note                    | < 5 seconds from app load                        |
-| Vault size supported                  | 10,000+ notes without degradation                |
-| PDF open time (50-page doc)           | < 2 seconds                                      |
-| PDF save time (50-page annotated doc) | < 3 seconds                                      |
-| PDF browser thumbnail generation      | < 500ms per PDF                                  |
-| Lighthouse PWA score                  | > 90                                             |
-| Offline functionality                 | Full read/write without network                  |
-| Cross-viewer compatibility            | Annotations readable in Acrobat, Preview, Chrome |
-
----
-
-## 5. Data & Privacy
-
-- **Local-first by default.** No account required. No data leaves the device unless user opts into Marrow Sync.
-- **Marrow Sync encryption.** End-to-end encrypted. Server stores opaque blobs.
-- **No telemetry without consent.** Optional, anonymized usage analytics (opt-in).
-- **Export everything.** Users can copy their vault folder and walk away. No lock-in.
-
----
-
-## 6. Licensing & source code
-
-- **Application source** is distributed under the **Business Source License 1.1** — see the repository root [`LICENSE`](../LICENSE). Summary: **Marrow Group** is the Licensor; **Mentis** is the Licensed Work; an **Additional Use Grant** allows production use for any purpose (full wording in `LICENSE`); on the **Change Date** (currently **2030-04-09**) the **Change License** (**MPL 2.0**) applies to that version as defined in BSL. BSL is **not** identical to “OSI open source” before the Change Date — distributors and integrators should read the full file.
-- **Third-party dependencies** retain their own licenses (npm packages).
-- **AI-assisted development** is disclosed in the README. It does not change license terms; enterprise or regulated users should run their own review of generated and hand-written code.
-
----
-
-## 7. Open Questions
-
-1. Default view on vault open — single view or combined "Home" dashboard?
-2. Canvas file format — Obsidian-compatible `.canvas` JSON or custom format?
-3. Canvas real-time collaboration (Phase 2+)?
-4. Monetization model — free core + paid sync, or freemium with feature gating?
-5. Naming — "Vault" vs "Notebook" vs "Library" vs "Workspace"?
+Licence: [`LICENSE`](../LICENSE) (Business Source License 1.1; summary in the
+README).

@@ -1,3 +1,5 @@
+> **Archived (2026-10-13).** The April 2026 manual test plan, written before the Vite move, the registries, the desktop and Android apps, and most of the Organizer. Automated coverage now lives in `tests/` and `tests/e2e/`; what still needs a person is the _Manual verification queue_ in [`../LAUNCH_DEFERRALS.md`](../LAUNCH_DEFERRALS.md) (`pnpm qa`).
+
 MENTIS BY MARROW
 Comprehensive QA Test Plan
 Full-Feature Review • Edge Cases • Stress Tests

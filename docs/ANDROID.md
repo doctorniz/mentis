@@ -99,13 +99,15 @@ Shared by the canvas and PDF ink (`src/lib/browser/pen.ts`):
   zoom for the session), _Pen only_, or _Pen and finger_. On a phone a pen also
   sends touch events; the PDF layer tells them from a finger (`touchType`,
   and the pen's pointerdown just before).
-- **Pressure** sets the canvas brush's size and strength (as before). PDF ink
-  stays one width per stroke, as standard `/Ink` annotations are.
+- **Pressure** sets the canvas brush's size and strength. PDF ink is one
+  width per stroke (it is drawn into the page content on auto-save; per-segment
+  widths would be possible but were not chosen).
 - **Tilt** shades like a pencil on its side: the canvas brush tip lengthens
   (up to 3×) towards the lean and lightens (`tiltShape` in
   `src/lib/canvas/math.ts`).
 - **Eraser end** (or eraser button): erases on the canvas with the eraser
-  size; in a PDF it removes the ink strokes it passes over (`inkTouched`).
+  size; in a PDF it removes ink strokes not yet saved (`inkTouched`) — once
+  auto-save has drawn them into the page they are permanent.
 
 `adb shell input stylus swipe …` sends pen input to the emulator (no tilt or
 pressure); the e2e tests send pen input with pressure and tilt through the

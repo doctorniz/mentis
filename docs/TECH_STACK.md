@@ -1,180 +1,87 @@
 # Mentis — Tech Stack
 
-## Phase 1: Web App
+The libraries Mentis is built on, and why. Versions are in `package.json` and
+`src-tauri/Cargo.toml`; adding a dependency needs approval and a note of its
+bundle cost (`CLAUDE.md`). _Last reviewed 2026-10-13._
 
-### Core Framework
+## Front end (every platform)
 
-| Technology                     | Version | Purpose                                                                                            |
-| ------------------------------ | ------- | -------------------------------------------------------------------------------------------------- |
-| **Vite**                       | 7.x     | Build tool + dev server. Multi-page static build: `index.html` and `auth/dropbox.html`             |
-| **React**                      | 19.x    | UI library                                                                                         |
-| **TypeScript**                 | 5.x     | Type safety across the entire codebase                                                             |
-| **Inter** (`next/font/google`) | bundled | Primary UI typography; assistant chat HTML uses `.chat-assistant-prose` for spacing/heading rhythm |
+| Area  | Libraries                                                                                                                                         |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build | **Vite 7** (multi-page: app, desktop capture overlay, Dropbox return), TypeScript 5                                                               |
+| UI    | **React 19**, Tailwind CSS 4, Radix UI primitives, Lucide icons, class-variance-authority, tailwind-merge, framer-motion, @tanstack/react-virtual |
+| State | **Zustand** + Immer                                                                                                                               |
+| Fonts | Inter, self-hosted (@fontsource-variable)                                                                                                         |
 
-### Markdown Editing
+## Features
 
-| Technology                                               | Purpose                                                                                   |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **Tiptap**                                               | ProseMirror-based rich text editor with extension system                                  |
-| **@tiptap/suggestion**                                   | `/` slash menu and `[[` wiki-link note picker (filtered list + keyboard nav)              |
-| **@tiptap/starter-kit**                                  | Base editor extensions (bold, italic, lists, etc.)                                        |
-| **@tiptap/extension-task-list**                          | Task list / checkbox support                                                              |
-| **@tiptap/extension-table**                              | GFM table support                                                                         |
-| **@tiptap/extension-code-block-lowlight** + **lowlight** | Syntax-highlighted code blocks (common languages bundle)                                  |
-| **@tiptap/extension-placeholder**                        | Placeholder text for empty documents                                                      |
-| **KaTeX**                                                | LaTeX math rendering for `$...$` (inline) and `$$...$$` (display) via custom Tiptap nodes |
-| **gray-matter**                                          | Frontmatter read/write for note files                                                     |
-| **marked**                                               | Markdown → HTML for loading into Tiptap                                                   |
-| **@tiptap/html**                                         | HTML ↔ Tiptap JSON (`generateJSON` / `generateHTML`)                                      |
-| **turndown**                                             | HTML → Markdown on save (round-trip with editor; some GFM fidelity gaps)                  |
+| Feature            | Libraries                                                                                                                                                                              |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Notes              | **Tiptap** (ProseMirror) + extensions; marked and turndown for Markdown ↔ editor; gray-matter for frontmatter; KaTeX; lowlight                                                         |
+| Code / source mode | **CodeMirror 6** with language packs                                                                                                                                                   |
+| PDF                | **pdf.js** (render, text), **pdf-lib** (write annotations and pages), **Fabric.js** (annotation overlay)                                                                               |
+| Drawing canvas     | **PixiJS 8** (WebGL, layered raster)                                                                                                                                                   |
+| Mindmaps           | **@xyflow/react**                                                                                                                                                                      |
+| Slides             | **@marp-team/marp-core** (rendered in a worker)                                                                                                                                        |
+| Office             | mammoth (Word → HTML → Markdown), slidecanvas + JSZip (PowerPoint), SheetJS + jspreadsheet-ce (spreadsheets, view only)                                                                |
+| Media              | plyr (audio, video), mp3-mediarecorder (voice notes)                                                                                                                                   |
+| Capture            | **chrono-node** (dates; English locale only, loaded lazily)                                                                                                                            |
+| Search index       | **SQLite + FTS5**: sqlite-wasm on the web (in a worker), rusqlite in the apps; MiniSearch only for fuzzy title matching                                                                |
+| AI                 | provider streaming clients (Anthropic, OpenAI, OpenRouter, Gemini, Ollama); **@mediapipe/tasks-genai** for Gemma on the device (WebGPU); **transformers.js** for Whisper transcription |
 
-### PDF Engine
+## The apps (Tauri 2)
 
-| Technology              | Purpose                                                                                                                                       |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **pdfjs-dist** (PDF.js) | PDF rendering, text layer, search, outline extraction                                                                                         |
-| **pdf-lib**             | Client-side PDF manipulation — annotation writing, page management, merge, page extract/reorder, form filling, signature stamping             |
-| **Fabric.js**           | Canvas overlay for annotation editing on PDF pages                                                                                            |
-| **PixiJS** v8           | WebGL-accelerated layer-based drawing canvas (`.canvas` editor) with brush engine and Photoshop-style properties panel                        |
-| **@xyflow/react** 12.x  | Node-based interactive graph UI for the Mindmap editor (`.map.md` files, stored as a nested markdown list) — pan/zoom, draggable nodes, custom node/edge rendering, touch support |
+| Area    | Crates and plugins                                                                                             |
+| ------- | -------------------------------------------------------------------------------------------------------------- |
+| Shell   | **Tauri 2** (desktop with tray; Android)                                                                       |
+| Index   | rusqlite (bundled SQLite, FTS5), strsim, regex                                                                 |
+| Files   | notify (desktop file watching); Android: the Storage Access Framework from Kotlin, over JNI (jni, ndk-context) |
+| Plugins | dialog, opener, notification; desktop only: global-shortcut, single-instance, autostart                        |
+| Android | Kotlin in `src-tauri/gen/android` (AndroidX), Gradle                                                           |
 
-### Search
+## Tooling
 
-| Technology     | Purpose                                                                                     |
-| -------------- | ------------------------------------------------------------------------------------------- |
-| **MiniSearch** | Lightweight client-side full-text search with fuzzy matching, prefix search, field boosting |
+| Tool                    | Use                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------- |
+| pnpm                    | packages (CI: 9.15; the lockfile is written by pnpm 10)                                           |
+| ESLint (flat), Prettier | lint (including import boundaries between modules) and formatting                                 |
+| Vitest (+ happy-dom)    | unit tests in `tests/`                                                                            |
+| Playwright              | end-to-end in `tests/e2e/`: desktop Chromium and a Pixel 5 profile, on the production build in CI |
+| cargo fmt, clippy, test | the Rust shell                                                                                    |
+| GitHub Actions          | `ci.yml` (verify, e2e, desktop, android) and `android-release.yml` (signed releases)              |
 
-### AI Runtime
+## Key decisions
 
-| Technology                    | Purpose                                                             |
-| ----------------------------- | ------------------------------------------------------------------- |
-| **@mediapipe/tasks-genai**    | Gemma 4 E2B inference in browser (WebGPU) via LiteRT `.task` format |
-| **@huggingface/transformers** | Whisper transcription in browser (Transformers.js).                 |
-| **OPFS**                      | Caches the Gemma 4 E2B `.task` model locally after first download   |
+**Tauri, not Electron or Capacitor** — one Rust shell for desktop and mobile,
+small binaries (the desktop budget is 15 MB), real filesystem access, and a
+place for work that must not run in a webview (the index, reminder timers).
 
-The `device` chat provider (labeled **Local** in Settings) runs Gemma 4 E2B via MediaPipe/WebGPU only.
+**Vite, not Next.js** — Mentis is a static app with no server; Vite builds it
+simply and makes lazy loading per file type straightforward. (Migrated
+2026-09-28.)
 
-### State Management
+**SQLite + FTS5 for the index** — one store for search, the file manifest, the
+folder tree, sync hashes, links and reminders, persisted between launches so
+nothing walks the disk at startup. The same schema runs as sqlite-wasm in the
+browser and rusqlite in the apps.
 
-| Technology                         | Purpose                                                    |
-| ---------------------------------- | ---------------------------------------------------------- |
-| **Zustand**                        | Minimal, performant state management with devtools support |
-| **Immer** (via Zustand middleware) | Immutable state updates with mutable syntax                |
+**Tiptap** — ProseMirror's model with an extension system that fits wiki-links,
+embeds and slash commands, without building an editor from raw ProseMirror.
 
-### Styling & UI
+**Fabric.js for PDF annotations** — an object model for shapes, ink and text
+over each rendered page; pdf-lib then writes them into the PDF as standard
+annotations.
 
-| Technology                         | Purpose                                                                         |
-| ---------------------------------- | ------------------------------------------------------------------------------- |
-| **Tailwind CSS**                   | Utility-first CSS framework                                                     |
-| **tailwind-merge**                 | Intelligent class merging for component variants                                |
-| **class-variance-authority (CVA)** | Type-safe component variant definitions                                         |
-| **Lucide React**                   | Icon library (consistent, tree-shakeable)                                       |
-| **Radix UI**                       | Unstyled, accessible UI primitives (dialogs, dropdowns, tooltips, etc.)         |
-| **@tanstack/react-virtual**        | Virtualized list/grid rendering for large vaults (file browser, search results) |
-| **Framer Motion**                  | Animations and transitions                                                      |
+**PixiJS for the canvas** — GPU raster painting with layers, blend modes and
+large surfaces that Canvas 2D handles poorly.
 
-### File System & Offline
+**Zustand** — small, explicit stores without providers; Immer for nested
+updates.
 
-| Technology                            | Purpose                                                                                          |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Origin Private File System (OPFS)** | Browser-native performant local storage                                                          |
-| **File System Access API**            | `FsapiAdapter` wraps `showDirectoryPicker()` for "open folder" vault access on Chromium browsers |
-| **Service Worker**                    | Hand-written `public/sw.js` with stale-while-revalidate caching (no Workbox dependency)          |
+**chrono-node for dates** — deterministic parsing; AI is never used to read
+dates.
 
-### Build & Dev Tooling
+## License
 
-| Technology              | Purpose                                                                                         |
-| ----------------------- | ----------------------------------------------------------------------------------------------- |
-| **pnpm**                | Fast, disk-efficient package manager                                                            |
-| **ESLint**              | Linting with flat config                                                                        |
-| **Prettier**            | Code formatting                                                                                 |
-| **Vitest**              | Unit and integration testing (261 tests across 21 suite files under `tests/`)                   |
-| **happy-dom**           | Lightweight DOM implementation for Vitest tests requiring a browser environment (Tiptap bridge) |
-| **Playwright**          | E2E browser testing                                                                             |
-| **Husky + lint-staged** | Pre-commit hooks                                                                                |
-
----
-
-## Phase 2: Desktop (Tauri)
-
-| Technology             | Purpose                                                  |
-| ---------------------- | -------------------------------------------------------- |
-| **Tauri v2**           | Rust-based desktop shell, small binary, native FS access |
-| **Tauri FS plugin**    | Direct read/write to user's vault directory              |
-| **Tauri updater**      | Auto-update mechanism                                    |
-| **Tauri shell plugin** | System integration (open in default app, etc.)           |
-
----
-
-## Phase 3: Mobile
-
-| Technology                      | Purpose                                  |
-| ------------------------------- | ---------------------------------------- |
-| **Capacitor** (or Tauri Mobile) | Mobile shell wrapping the web app        |
-| **Pointer Events API**          | Stylus/Apple Pencil pressure sensitivity |
-| **Capacitor Filesystem**        | Sandboxed file storage                   |
-| **iCloud / SAF integration**    | Native cloud sync per platform           |
-
----
-
-## Key Library Decisions
-
-### Why Tiptap over Milkdown, BlockNote, or raw ProseMirror?
-
-- First-class React bindings with strong TypeScript support
-- Mature extension ecosystem covering all our markdown needs
-- Active maintenance and commercial backing
-- Easier to extend than raw ProseMirror while retaining full ProseMirror power
-- Better WYSIWYG experience than Milkdown for our "renders in-place" requirement
-
-### Why Fabric.js for PDF annotations?
-
-- Richer object manipulation API (select, resize, rotate, group) for annotation overlays
-- Built-in serialization to/from JSON
-- Better text editing support on canvas
-- Active community and documentation
-
-### Why PixiJS for the Canvas Editor?
-
-- WebGL-accelerated rendering for smooth drawing at any zoom level
-- `RenderTexture` enables raster-first, layer-based workflows (Photoshop/Magma style)
-- Native blend modes (multiply, screen, overlay, etc.) via GPU
-- Pointer Events integration for pressure-sensitive stylus/pen input
-- Performant even with large canvases (4096×4096 per layer)
-
-### Why MiniSearch over Lunr or FlexSearch?
-
-- Smallest bundle size (~7KB gzipped)
-- Supports both prefix search and fuzzy matching out of the box
-- Field boosting allows ranking title matches above body matches
-- Auto-suggest / autocomplete API for search-as-you-type
-- Simple API for incremental index updates
-
-### Why Zustand over Redux, Jotai, or React Context?
-
-- Minimal boilerplate (no providers, reducers, or action types)
-- Works outside React components (useful for file system callbacks)
-- Built-in devtools middleware
-- Excellent TypeScript support
-- Immer middleware for ergonomic immutable updates
-
-### Why pnpm over npm or yarn?
-
-- Significantly faster installs via content-addressable store
-- Strict dependency resolution prevents phantom dependencies
-- Workspace support for potential monorepo structure
-- Disk space efficient (shared packages across projects)
-
----
-
-## License & repository metadata
-
-| Item                         | Value                                                                                                                                                                   |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **License**                  | [Business Source License 1.1](../LICENSE) (BSL 1.1) — not OSI-open-source until the **Change Date** in `LICENSE`; then **MPL 2.0** for that version as specified there. |
-| **`package.json` `license`** | `SEE LICENSE IN LICENSE`                                                                                                                                                |
-| **AI assistance**            | Disclosed in the root [README](../README.md); does not override the license.                                                                                            |
-
-Dependency licenses are those of each npm package (see lockfile / `pnpm licenses`); the **Mentis** application source is under BSL as above.
-
-**Static hosting:** `output: 'export'` — configure COOP/COEP at the edge if you need cross-origin isolation; see [DEPLOYMENT.md](./DEPLOYMENT.md).
+Mentis: [Business Source License 1.1](../LICENSE) (summary in the README).
+Third-party packages keep their own licences.

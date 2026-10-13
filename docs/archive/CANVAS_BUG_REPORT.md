@@ -1,3 +1,5 @@
+> **Archived (2026-10-13).** The April 2026 triage of the PixiJS canvas. Every bug here was fixed; the canvas's current behaviour is covered by `tests/e2e/05-canvas.spec.ts` and `21-canvas-selection.spec.ts`. Kept for the BUG-nn references in commits and comments.
+
 # Canvas (PixiJS) — Bug Report
 
 **Date:** 2026-04-18 (initial triage) · **Post-fix review:** 2026-04-19

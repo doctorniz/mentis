@@ -1,12 +1,14 @@
+> **Archived (2026-10-13).** The original week-by-week plan and its log, through the Next.js era. It describes how Mentis was planned, not how it is built: the stack, storage and platforms changed since (see [`../ARCHITECTURE.md`](../ARCHITECTURE.md)), and what is next is in the README's _Roadmap_.
+
 # Mentis — Development Phases
 
 ## Phase 1 — Web MVP (Weeks 1–12)
 
 **Goal:** A usable web app with markdown editing, PDF file management, unlimited canvas, wiki graph view, quick-capture Board, and a **Vault / Search / Graph / Board** shell (plus **New** popover) — all in the browser, offline-capable.
 
-**Pre-launch scratch list:** [LAUNCH_DEFERRALS.md](./LAUNCH_DEFERRALS.md) — track items to clear before public release.
+**Pre-launch scratch list:** [LAUNCH_DEFERRALS.md](../LAUNCH_DEFERRALS.md) — track items to clear before public release.
 
-**License:** Source is under **BSL 1.1** — [`LICENSE`](../LICENSE). High-level summaries: [ARCHITECTURE.md](./ARCHITECTURE.md) §10, [PRD.md](./PRD.md) §6, [CONVENTIONS.md](./CONVENTIONS.md) (License). **AI-assisted development** is noted in the README and [CURSOR.md](./CURSOR.md).
+**License:** Source is under **BSL 1.1** — [`LICENSE`](../../LICENSE). High-level summaries: [ARCHITECTURE.md](../ARCHITECTURE.md) §10, [PRD.md](../PRD.md) §6, [CONVENTIONS.md](../CONVENTIONS.md) (License). **AI-assisted development** is noted in the README and CURSOR.md (removed).
 
 How this file is organized:
 
@@ -148,7 +150,7 @@ A user can:
 
 ## Manual verification
 
-Checklists for human smoke-testing in the app (Vault modes, PDF tools, canvas, export, etc.) live in **[LAUNCH_DEFERRALS.md — Manual verification queue](./LAUNCH_DEFERRALS.md#manual-verification-queue)** (**To do** = `- [ ]`, **Done** = `- [x]`). Update **To do** whenever shipped behavior changes; repeat those items in PRs or chat under **Manual verification** so nothing is missed.
+Checklists for human smoke-testing in the app (Vault modes, PDF tools, canvas, export, etc.) live in **[LAUNCH_DEFERRALS.md — Manual verification queue](../LAUNCH_DEFERRALS.md#manual-verification-queue)** (**To do** = `- [ ]`, **Done** = `- [x]`). Update **To do** whenever shipped behavior changes; repeat those items in PRs or chat under **Manual verification** so nothing is missed.
 
 ---
 

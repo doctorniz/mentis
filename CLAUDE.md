@@ -4,8 +4,11 @@ Local-first personal knowledge system. Every item of user data is an ordinary
 file in a folder the user chooses. No database of record, no account required,
 no cloud dependency.
 
-Currently a Vite + React 19 static SPA (~50k LOC TS/TSX) storing files in OPFS.
-Being migrated to a Tauri 2 application with real filesystem access.
+One codebase (~61k LOC TS/TSX, ~5k Rust): a Vite + React 19 web app (files in
+OPFS, or a folder via the File System Access API), the same app in a Tauri 2
+desktop shell (Windows) with real filesystem access, and in a Tauri 2 Android
+app (a folder picked through the Storage Access Framework). iOS is kept
+possible but not built. See `docs/ARCHITECTURE.md` and `docs/ANDROID.md`.
 
 ## Non-negotiable principles
 
@@ -99,3 +102,10 @@ raise it only as a deliberate, separately committed decision.
 - If a task turns out to be larger than described, stop and say so rather than
   proceeding.
 - When behaviour is ambiguous, ask. Do not infer a product decision.
+- Keep `docs/` in step with the code: a change to behaviour, structure,
+  dependencies or process updates the doc that describes it in the same task
+  (`README.md`, `docs/ARCHITECTURE.md`, `docs/TECH_STACK.md`, …). Behaviour a
+  person must check by hand goes in the manual verification queue in
+  `docs/LAUNCH_DEFERRALS.md`.
+- UI copy: say as little as possible. A label and its control; a hint under a
+  setting only when it prevents a real mistake.
