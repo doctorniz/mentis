@@ -9,10 +9,12 @@
 //! Commands are async so they run off the UI thread.
 
 use std::collections::HashSet;
+use std::ffi::OsString;
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
@@ -116,6 +118,41 @@ fn err(e: io::Error) -> String {
     e.to_string()
 }
 
+/// Writes `bytes` to `path` so that a crash or power cut leaves either the old
+/// file or the new one, never a mix: the bytes go to a hidden file beside it,
+/// reach the disk, and then replace it in one rename. If the rename is refused
+/// (another program holds the file open on Windows), the file is written in
+/// place as before.
+fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let name = path
+        .file_name()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "not a file path"))?;
+    // Unique per write, so two saves of one file at once never share a temp file.
+    let mut temp_name = OsString::from(".");
+    temp_name.push(name);
+    temp_name.push(format!(
+        ".{}.mentis-tmp",
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    ));
+    let temp = path.with_file_name(temp_name);
+
+    let staged = (|| {
+        let mut file = fs::File::create(&temp)?;
+        file.write_all(bytes)?;
+        file.sync_all()
+    })();
+    if let Err(e) = staged {
+        let _ = fs::remove_file(&temp);
+        return Err(e);
+    }
+    if fs::rename(&temp, path).is_ok() {
+        return Ok(());
+    }
+    let _ = fs::remove_file(&temp);
+    fs::write(path, bytes)
+}
+
 fn millis(t: io::Result<std::time::SystemTime>) -> Option<f64> {
     t.ok()?
         .duration_since(UNIX_EPOCH)
@@ -217,7 +254,7 @@ pub async fn vault_write(
         }
     };
     match target {
-        Target::Local(full) => fs::write(full, bytes).map_err(err),
+        Target::Local(full) => write_atomic(&full, bytes).map_err(err),
         Target::Saf { tree, path } => {
             let bytes = bytes.to_vec();
             on_saf_thread(&saf, move |b| saf::write(b, &tree, &path, &bytes)).await
@@ -429,6 +466,30 @@ mod tests {
         ));
         fs::create_dir_all(dir.join("notes")).unwrap();
         fs::canonicalize(dir).unwrap()
+    }
+
+    #[test]
+    fn writes_replace_the_file_and_leave_no_temp_files() {
+        let root = temp_root();
+        let note = root.join("notes").join("a.md");
+        write_atomic(&note, b"first").unwrap();
+        write_atomic(&note, b"second, longer").unwrap();
+        assert_eq!(fs::read(&note).unwrap(), b"second, longer");
+        write_atomic(&note, b"3").unwrap();
+        assert_eq!(fs::read(&note).unwrap(), b"3");
+        let names: Vec<_> = fs::read_dir(root.join("notes"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        assert_eq!(names, vec![OsString::from("a.md")]);
+    }
+
+    #[test]
+    fn a_write_into_a_missing_folder_fails_cleanly() {
+        let root = temp_root();
+        let missing = root.join("no-such-folder").join("a.md");
+        assert!(write_atomic(&missing, b"x").is_err());
+        assert!(!root.join("no-such-folder").exists());
     }
 
     #[test]
