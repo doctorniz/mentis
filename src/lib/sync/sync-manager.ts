@@ -3,7 +3,14 @@ import type { RemoteSyncProvider, RemoteFileEntry, SyncManifestEntry, SyncStatus
 import { SyncState } from './sync-state'
 import { detectLocalChanges, hashBytes, type HashCache } from './change-detector'
 import { buildSyncExcludeMatcher } from './excludes'
-import { resolveSyncConflict, decideRemoteUpdate, decideRemoteDelete } from './conflicts'
+import {
+  conflictCopyPath,
+  resolveSyncConflict,
+  decideRemoteUpdate,
+  decideRemoteDelete,
+} from './conflicts'
+import { uniqueVaultPath } from '@/lib/fs/unique-path'
+import { fileTypes } from '@/core/registries'
 import { putFileHashes, validFileHashes } from '@/lib/search/index'
 
 /** File hashes remembered in the vault index, so unchanged files are not re-read. */
@@ -11,10 +18,11 @@ const indexHashCache: HashCache = { valid: validFileHashes, put: putFileHashes }
 
 export type SyncStatusListener = (status: SyncStatus, message?: string) => void
 
-/** A true conflict: both sides changed and one side's edits were discarded. */
+/** A true conflict: both sides changed; the losing side was saved as `copyPath`. */
 export interface SyncConflict {
   path: string
   winner: 'local' | 'remote'
+  copyPath: string
 }
 
 export type SyncConflictListener = (conflict: SyncConflict) => void
@@ -111,7 +119,12 @@ export class SyncManager {
       for (const path of [...localChanges.created, ...localChanges.modified]) {
         const remote = remoteMap.get(path)
         if (remote) {
-          const winner = this.resolveConflict(path, localChanges, remote, manifestMap.get(path))
+          const winner = await this.resolveConflict(
+            path,
+            localChanges,
+            remote,
+            manifestMap.get(path),
+          )
           if (winner === 'remote') {
             await this.pullFile(path, remote)
             continue
@@ -133,7 +146,7 @@ export class SyncManager {
           const isLocallyChanged =
             localChanges.modified.includes(path) || localChanges.created.includes(path)
           if (isLocallyChanged) {
-            const winner = this.resolveConflict(path, localChanges, remote, manifestEntry)
+            const winner = await this.resolveConflict(path, localChanges, remote, manifestEntry)
             if (winner === 'remote') {
               await this.pullFile(path, remote)
             }
@@ -276,7 +289,7 @@ export class SyncManager {
       })
 
       if (decision.isTrueConflict) {
-        this.announceConflict(remote.path, decision.action === 'pull' ? 'remote' : 'local')
+        await this.keepLosingSide(remote.path, decision.action === 'pull' ? 'remote' : 'local')
       }
 
       if (decision.action === 'pull') {
@@ -324,10 +337,25 @@ export class SyncManager {
     }
   }
 
-  private announceConflict(path: string, winner: 'local' | 'remote'): void {
+  /**
+   * Before a true conflict overwrites one side, save that side beside the
+   * file as a conflict copy (which then syncs like any file), and tell the
+   * listeners. If the copy cannot be saved this throws, so nothing is
+   * overwritten. Runs once per path per sync run.
+   */
+  private async keepLosingSide(path: string, winner: 'local' | 'remote'): Promise<void> {
     if (this.announcedConflicts.has(path)) return
+    const loser =
+      winner === 'remote' ? await this.fs.readFile(path) : await this.provider.download(path)
+    const copyPath = await uniqueVaultPath(
+      this.fs,
+      conflictCopyPath(path, new Date(), fileTypes.matchedSuffix(path)),
+      fileTypes.matchedSuffix(path),
+    )
+    await this.fs.writeFile(copyPath, loser)
+    await this.pushFileInternal(copyPath)
     this.announcedConflicts.add(path)
-    for (const fn of this.conflictListeners) fn({ path, winner })
+    for (const fn of this.conflictListeners) fn({ path, winner, copyPath })
   }
 
   private async pullFile(path: string, remote: RemoteFileEntry): Promise<void> {
@@ -358,12 +386,12 @@ export class SyncManager {
 
   // --------------- Conflict resolution ---------------
 
-  private resolveConflict(
+  private async resolveConflict(
     path: string,
     localChanges: { created: string[]; modified: string[] },
     remote: RemoteFileEntry,
     manifestEntry: SyncManifestEntry | undefined,
-  ): 'local' | 'remote' {
+  ): Promise<'local' | 'remote'> {
     const decision = resolveSyncConflict({
       isLocallyChanged: localChanges.modified.includes(path) || localChanges.created.includes(path),
       remoteHash: remote.hash,
@@ -371,8 +399,8 @@ export class SyncManager {
       manifestEntry,
     })
 
-    // Surface TRUE conflicts (both sides changed → one side discarded).
-    if (decision.isTrueConflict) this.announceConflict(path, decision.winner)
+    // TRUE conflicts (both sides changed): keep the side about to be replaced.
+    if (decision.isTrueConflict) await this.keepLosingSide(path, decision.winner)
 
     return decision.winner
   }

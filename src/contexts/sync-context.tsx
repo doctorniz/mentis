@@ -95,17 +95,13 @@ export function SyncProvider({
           excludePathsKey ? excludePathsKey.split('\n') : undefined,
         )
 
-        // True conflicts (both sides edited; one version discarded by
-        // last-write-wins) surface as a toast — silent data replacement
-        // is worse than a noisy one.
-        mgr.onConflict(({ path, winner }) => {
+        // True conflicts (both sides edited) keep one version in place and
+        // the other in a conflict copy; the toast says where.
+        mgr.onConflict(({ path, copyPath }) => {
           if (cancelled) return
           const name = path.split('/').pop() ?? path
-          toast.info(
-            winner === 'remote'
-              ? `Sync conflict: ${name} — kept the newer remote version`
-              : `Sync conflict: ${name} — kept this device's version`,
-          )
+          const copy = copyPath.split('/').pop() ?? copyPath
+          toast.info(`Sync conflict: ${name}. The other version is in ${copy}.`)
         })
 
         mgr.onStatusChange((s, msg) => {

@@ -1,6 +1,29 @@
 import type { SyncManifestEntry } from './types'
 
 /**
+ * Where the losing side of a conflict is kept: beside the file, as
+ * `Name (conflict 2026-10-13 14.32).ext` in local time. `suffix` is the
+ * file type's suffix when it has more than one dot (`.kan.md`), so the
+ * label goes before all of it; otherwise the last extension is used.
+ */
+export function conflictCopyPath(path: string, when: Date, suffix?: string): string {
+  const slash = path.lastIndexOf('/')
+  const dir = path.slice(0, slash + 1)
+  const name = path.slice(slash + 1)
+  const ext =
+    suffix && name.toLowerCase().endsWith(suffix.toLowerCase()) && name.length > suffix.length
+      ? name.slice(name.length - suffix.length)
+      : name.lastIndexOf('.') > 0
+        ? name.slice(name.lastIndexOf('.'))
+        : ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const stamp =
+    `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())} ` +
+    `${pad(when.getHours())}.${pad(when.getMinutes())}`
+  return `${dir}${name.slice(0, name.length - ext.length)} (conflict ${stamp})${ext}`
+}
+
+/**
  * Pure conflict-resolution policy (last-write-wins), extracted from
  * SyncManager so it can be unit-tested without IndexedDB.
  */
