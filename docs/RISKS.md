@@ -7,7 +7,7 @@ open. _Last reviewed 2026-10-13._ Open items with IDs are tracked in
 | #   | Risk                                        | Likelihood | Impact   | Priority |
 | --- | ------------------------------------------- | ---------- | -------- | -------- |
 | 1   | A write interrupted mid-way corrupts a file | Low        | Critical | P0       |
-| 2   | Sync conflicts lose an edit                 | Moderate   | High     | P1       |
+| 2   | Sync conflicts confuse                      | Moderate   | Medium   | P2       |
 | 3   | Play rejects the exact-alarm permission     | Moderate   | High     | P1       |
 | 4   | Android file access is slow for big vaults  | Certain    | Medium   | P1       |
 | 5   | Phone cold start misses its budget          | Likely     | Medium   | P2       |
@@ -20,21 +20,23 @@ open. _Last reviewed 2026-10-13._ Open items with IDs are tracked in
 
 A crash, closed tab or power loss during a save could leave a broken file.
 
-- **In place:** PDFs are written to a temporary file, checked for a `%PDF-`
-  header, then renamed over the original; a snapshot is taken before the first
-  edit (`_mentis/snapshots/`). Canvases write their layer PNGs before the JSON
-  that points at them. Chat files use temp-and-rename.
-- **Open:** there is no shared "atomic write" helper; each feature does its
-  own. Notes are written directly.
+- **In place:** every save in the desktop app goes to a hidden temporary
+  file, is flushed to disk, and is renamed over the original; browsers save
+  the same way by design. PDFs are also checked for a `%PDF-` header before
+  the swap, and a snapshot is taken before the first edit. Canvases write
+  their layer PNGs before the JSON that points at them.
+- **Open:** Android saves to a picked folder overwrite in place — the Storage
+  Access Framework has no atomic replace (V4).
 
 ## 2. Sync conflicts
 
 Two devices editing the same file between syncs.
 
-- **In place:** last-write-wins by modification time, a notification naming
-  the kept version, and no silent overwrite of an unpushed local edit on poll.
-- **Open:** the losing version is not kept and there is no conflict history
-  (S7). Marrow Sync, with merging for Markdown, is a roadmap item.
+- **In place:** last-write-wins by modification time; the other version is
+  kept beside the file as a conflict copy and synced, and a notification names
+  it; no silent overwrite of an unpushed local edit on poll.
+- **Open:** nothing lists past conflicts (S7). Marrow Sync, with merging for
+  Markdown, is a roadmap item.
 
 ## 3. Exact alarms on Google Play
 

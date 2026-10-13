@@ -33,8 +33,8 @@ Android.
 - **AI chat** — ask about the open document or the whole vault, with cited
   sources. Your own keys (Anthropic, OpenAI, OpenRouter, Gemini), Ollama on
   your network, or Gemma on the device. Read-only: it never edits your files.
-- **Sync (optional)** — Dropbox, with change detection and conflict
-  notification.
+- **Sync (optional)** — Dropbox, with change detection; a conflict keeps both
+  versions.
 
 ## Platforms
 

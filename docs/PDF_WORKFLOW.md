@@ -138,8 +138,8 @@ Editor idle for the configured interval OR window blur (when enabled)
 
 ## 14. Snapshot Retention
 
-- Snapshots stored at: `_mentis/snapshots/<filename>_<ISO-timestamp>.pdf`
-- Default retention: last 5 snapshots per file, or 30 days, whichever is reached first
-- Pruning runs on vault open and after each snapshot creation
+- Snapshots stored at: `_mentis/snapshots/files/<folder>/<name>_<ISO-timestamp>.pdf`, mirroring the PDF's folder, so same-named PDFs keep separate histories (snapshots from older builds sit directly in `_mentis/snapshots/` and are matched by name)
+- Default retention: last 5 snapshots per file, or 30 days, whichever is reached first; snapshots of deleted PDFs expire the same way
+- Pruning runs after each snapshot and in the background shortly after a vault opens
 - Users can browse and restore snapshots from the PDF viewer's "Version History" menu
 - Snapshots are opt-out (enabled by default) via `_mentis/config.json`

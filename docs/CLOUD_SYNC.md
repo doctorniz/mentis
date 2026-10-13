@@ -1,8 +1,9 @@
 # Cloud sync (Dropbox)
 
 Mentis can sync a vault's files to **Dropbox**, optionally. It is file by file,
-last-write-wins by modification time, with a notification when both sides
-changed the same file. The sync manifest and the OAuth token stay on the
+last-write-wins by modification time. When both sides changed the same file,
+the other version is kept beside it as `Name (conflict 2026-10-13 14.32).ext`,
+synced like any file, and a notification names it. The sync manifest and the OAuth token stay on the
 device (IndexedDB), never in the vault. Code: `src/lib/sync/`.
 
 ## Setup
@@ -61,6 +62,6 @@ changed, using hashes cached in the index.
 
 ## Known gaps
 
-- No history of past conflicts, and the losing side of a conflict is not kept
+- Nothing lists past conflicts; look for `(conflict …)` files
   (`LAUNCH_DEFERRALS.md`, S7).
 - Dropbox only; Marrow Sync (end-to-end encrypted) is on the roadmap.

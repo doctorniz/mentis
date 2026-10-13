@@ -71,7 +71,7 @@ into and fast to open.
 
 ### Across devices
 
-- **Dropbox sync** (optional), file by file, with conflict notification.
+- **Dropbox sync** (optional), file by file; a conflict keeps both versions.
 - **Desktop** (Windows): tray, launch at login, global capture hotkey.
 - **Android**: a vault in a folder you pick, touch-first layout, pen support
   with palm rejection.

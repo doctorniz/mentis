@@ -13,7 +13,6 @@ import { useFileTreeStore } from '@/stores/file-tree'
 import { HOME_VIEW, viewIdOrHome } from '@/core/registries'
 import { forgetLastVault } from '@/lib/vault/session'
 import { trackPathChanges } from '@/lib/fs/track'
-import { moveStars, startStarredSync } from '@/lib/vault/starred'
 import { clearSearchIndex } from '@/lib/search/index'
 import { clearVaultChatSession } from '@/lib/chat/vault-chat-session'
 import { useVaultChatStore } from '@/stores/vault-chat'
@@ -23,6 +22,9 @@ import { Toaster } from '@/components/ui/toaster'
 const AboutOverlay = lazy(() =>
   import('@/components/landing/about-overlay').then((m) => ({ default: m.AboutOverlay })),
 )
+
+// Stars are not needed to draw the first screen.
+const loadStars = () => import('@/lib/vault/starred')
 
 function SyncProviderBridge({
   session,
@@ -54,8 +56,8 @@ export function AppRoot() {
     const next = {
       ...opened,
       vaultFs: trackPathChanges(opened.vaultFs, {
-        onRename: (from, to) => moveStars(from, to),
-        onRemove: (path) => moveStars(path, null),
+        onRename: (from, to) => void loadStars().then((m) => m.moveStars(from, to)),
+        onRemove: (path) => void loadStars().then((m) => m.moveStars(path, null)),
       }),
     }
     setSession(next)
@@ -80,7 +82,15 @@ export function AppRoot() {
 
   useEffect(() => {
     if (!session) return
-    return startStarredSync(session.vaultFs, session.vaultPath)
+    let stop: (() => void) | undefined
+    let closed = false
+    void loadStars().then((m) => {
+      if (!closed) stop = m.startStarredSync(session.vaultFs, session.vaultPath)
+    })
+    return () => {
+      closed = true
+      stop?.()
+    }
   }, [session])
 
   // Clear expired PDF snapshots once per open, after startup has settled.

@@ -172,8 +172,8 @@ Done and Snooze are written into the item's file (`reminderAck`,
 
 ## 8. Sync and AI
 
-**Sync** (`src/lib/sync/`): Dropbox, last-write-wins with conflict
-notification, a manifest and hash cache so only changed files are hashed,
+**Sync** (`src/lib/sync/`): Dropbox, last-write-wins with the other side
+kept as a conflict copy, a manifest and hash cache so only changed files are hashed,
 excludes (`_mentis/snapshots`, `sync.excludePaths`). Sign-in returns to
 `/auth/dropbox` on the web and to a one-shot listener on `127.0.0.1` in the
 desktop and Android apps (RFC 8252). See [`CLOUD_SYNC.md`](./CLOUD_SYNC.md).
@@ -232,8 +232,8 @@ build. Signed Android releases come from a version tag
 
 ## 11. Known gaps
 
-- **Starred files** are kept in `localStorage` per vault, not in the vault — a
-  breach of "files are the only source of truth" still to fix.
+- **Android saves** to a picked folder overwrite in place; desktop and
+  browser saves go through a temporary file.
 - **`_config.md` inheritance** (per-folder settings, nearest wins) is decided
   but not built.
 - The desktop cold-start and capture-overlay timings are reported, not yet
