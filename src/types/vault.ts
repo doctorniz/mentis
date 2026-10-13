@@ -60,6 +60,8 @@ export interface VaultConfig {
    * object — they should never land in the vault's `config.json`.
    */
   chat?: import('./chat').ChatSettings
+  /** Starred files and folders (vault-relative paths), shown at the top of the tree. */
+  starred?: string[]
 }
 
 export interface SnapshotConfig {

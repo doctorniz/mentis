@@ -1,6 +1,6 @@
 'use client'
 
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { AppShell } from '@/components/shell/app-shell'
 import { ErrorBoundary } from '@/components/shell/error-boundary'
 import { VaultLanding } from '@/components/landing/vault-landing'
@@ -12,6 +12,8 @@ import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { HOME_VIEW, viewIdOrHome } from '@/core/registries'
 import { forgetLastVault } from '@/lib/vault/session'
+import { trackPathChanges } from '@/lib/fs/track'
+import { moveStars, startStarredSync } from '@/lib/vault/starred'
 import { clearSearchIndex } from '@/lib/search/index'
 import { clearVaultChatSession } from '@/lib/chat/vault-chat-session'
 import { useVaultChatStore } from '@/stores/vault-chat'
@@ -47,7 +49,15 @@ export function AppRoot() {
   const [session, setSession] = useState<VaultSessionValue | null>(null)
   const [showAbout, setShowAbout] = useState(false)
 
-  const handleVaultReady = useCallback((next: VaultSessionValue) => {
+  const handleVaultReady = useCallback((opened: VaultSessionValue) => {
+    // Every rename and delete made in the app passes through here, so stars follow.
+    const next = {
+      ...opened,
+      vaultFs: trackPathChanges(opened.vaultFs, {
+        onRename: (from, to) => moveStars(from, to),
+        onRemove: (path) => moveStars(path, null),
+      }),
+    }
     setSession(next)
     const { vaultPath, config } = next
     const store = useVaultStore.getState()
@@ -67,6 +77,11 @@ export function AppRoot() {
       navigator.storage.persist().catch(() => {})
     }
   }, [])
+
+  useEffect(() => {
+    if (!session) return
+    return startStarredSync(session.vaultFs, session.vaultPath)
+  }, [session])
 
   const handleCloseVault = useCallback(() => {
     const path = useVaultStore.getState().activeVaultPath

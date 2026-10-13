@@ -35,10 +35,6 @@ import { toast } from '@/stores/toast'
 import { removeSearchDocument } from '@/lib/search/index'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 
-function starredStorageKey(vaultPath: string) {
-  return `mentis:starred:${vaultPath}`
-}
-
 export function NotesView() {
   const { vaultFs } = useVaultSession()
   return (
@@ -51,7 +47,7 @@ export function NotesView() {
 function NotesViewInner() {
   const [treeRefresh, setTreeRefresh] = useState(0)
   const [scanPulse, setScanPulse] = useState(0)
-  const { vaultFs, vaultPath } = useVaultSession()
+  const { vaultFs } = useVaultSession()
   const { markdownPaths, refreshMarkdownPaths } = useNotesWorkspace()
 
   const tabs = useEditorStore((s) => s.tabs)
@@ -85,26 +81,6 @@ function NotesViewInner() {
   }, [])
 
   const starredList = useMemo(() => starredPaths, [starredPaths])
-
-  useLayoutEffect(() => {
-    try {
-      const raw = localStorage.getItem(starredStorageKey(vaultPath))
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown
-        if (Array.isArray(parsed)) {
-          useFileTreeStore.setState({ starredPaths: parsed.filter((x) => typeof x === 'string') })
-        }
-      } else {
-        useFileTreeStore.setState({ starredPaths: [] })
-      }
-    } catch {
-      useFileTreeStore.setState({ starredPaths: [] })
-    }
-  }, [vaultPath])
-
-  useEffect(() => {
-    localStorage.setItem(starredStorageKey(vaultPath), JSON.stringify(starredPaths))
-  }, [vaultPath, starredPaths])
 
   async function handleRenameVaultFile(
     tabId: string,
