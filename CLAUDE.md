@@ -7,8 +7,9 @@ no cloud dependency.
 One codebase (~61k LOC TS/TSX, ~5k Rust): a Vite + React 19 web app (files in
 OPFS, or a folder via the File System Access API), the same app in a Tauri 2
 desktop shell (Windows) with real filesystem access, and in a Tauri 2 Android
-app (a folder picked through the Storage Access Framework). iOS is kept
-possible but not built. See `docs/ARCHITECTURE.md` and `docs/ANDROID.md`.
+app (a folder picked through the Storage Access Framework), and in a Tauri 2
+iOS app (iPhone and iPad; the app's folder or one picked in Files, built on a
+Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
 
 ## Non-negotiable principles
 

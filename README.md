@@ -43,6 +43,7 @@ Android.
 | **Web**     | The browser's private storage, or a folder you pick (Chromium) | `pnpm build` → static `out/`             |
 | **Windows** | Any folder on disk                                             | `pnpm tauri:build`                       |
 | **Android** | A folder you pick (e.g. in Documents)                          | see [`docs/ANDROID.md`](docs/ANDROID.md) |
+| **iOS**     | The app's folder in Files, or a folder you pick                | see [`docs/IOS.md`](docs/IOS.md)         |
 
 ## Getting started
 
@@ -72,6 +73,7 @@ and connect under Settings › Sync — see [`docs/CLOUD_SYNC.md`](docs/CLOUD_SY
 | [Tech stack](docs/TECH_STACK.md)             | Libraries and why                                               |
 | [Conventions](docs/CONVENTIONS.md)           | Code style, naming, Git                                         |
 | [Android](docs/ANDROID.md)                   | The phone app: vaults, reminders, touch, pen, releasing         |
+| [iOS](docs/IOS.md)                           | iPhone and iPad: vaults, building on a Mac                      |
 | [PDF workflow](docs/PDF_WORKFLOW.md)         | How PDF editing behaves                                         |
 | [Cloud sync](docs/CLOUD_SYNC.md)             | Dropbox setup and behaviour                                     |
 | [Deployment](docs/DEPLOYMENT.md)             | Hosting the web build                                           |
@@ -86,7 +88,8 @@ the Android app (picked-folder vaults, touch UI, share and quick capture,
 reminders, pen). Next:
 
 - **Release** the Android app on Google Play (the pipeline is in place).
-- **iOS** — the code is kept iOS-ready; it needs a Mac to build.
+- **iOS** — vaults work (iPhone and iPad); reminders, shares and the widget,
+  Dropbox sign-in, and TestFlight releases are next.
 - **Per-folder settings** — `_config.md`, inherited down the tree.
 - **On-device AI** on LiteRT-LM; **OCR** for scanned PDFs.
 - **Marrow Sync** — an optional end-to-end encrypted sync service.

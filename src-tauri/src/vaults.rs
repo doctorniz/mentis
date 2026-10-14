@@ -6,6 +6,9 @@
 //! (see `saf`); its root is a `content://` URI with no readable name, so the
 //! recent list keeps the name to show alongside it.
 //!
+//! On iOS a vault is the app's own folder or one picked in Files; a picked
+//! folder is reopened at launch through a bookmark (`mentis-folders`).
+//!
 //! The recent list is app state, not user data: it lives in the app's data
 //! folder, and losing it only means picking the folder again.
 
@@ -16,11 +19,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Runtime, State};
-#[cfg(not(target_os = "android"))]
+#[cfg(desktop)]
 use tauri_plugin_dialog::DialogExt;
 
 use crate::saf::{self, Saf};
-use crate::vault_fs::VaultRoots;
+use crate::vault_fs::{VaultRoots, root_path};
 
 const RECENT_FILE: &str = "recent-vaults.json";
 const MAX_RECENT: usize = 20;
@@ -107,6 +110,16 @@ impl Recents {
         self.save(&entries);
     }
 
+    /// A folder that moved keeps its place and name under its new path.
+    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+    fn rename(&self, from: &str, to: &str) {
+        let mut entries = self.entries.lock().unwrap();
+        for e in entries.iter_mut().filter(|e| same_path(&e.path, from)) {
+            e.path = to.to_string();
+        }
+        self.save(&entries);
+    }
+
     fn forget(&self, path: &str) {
         let mut entries = self.entries.lock().unwrap();
         entries.retain(|e| !same_path(&e.path, path));
@@ -182,9 +195,43 @@ fn open_picked(roots: &VaultRoots, recents: &Recents, picked: saf::Picked) -> St
 
 fn open(roots: &VaultRoots, recents: &Recents, folder: &Path) -> Result<String, String> {
     let canonical = roots.grant(folder).map_err(|e| e.to_string())?;
-    let path = display_path(&canonical);
+    let path = root_string(&canonical);
     recents.touch(&path);
     Ok(path)
+}
+
+/// The root to keep for a folder: on iOS, one inside the app's home is written
+/// from home (see `root_path`).
+fn root_string(folder: &Path) -> String {
+    #[cfg(target_os = "ios")]
+    if let Some(home) = std::env::var_os("HOME").and_then(|h| fs::canonicalize(h).ok()) {
+        if let Ok(rest) = folder.strip_prefix(&home) {
+            return format!("~/{}", rest.to_string_lossy());
+        }
+    }
+    display_path(folder)
+}
+
+/// iOS: reopen the folders picked in Files, which need their bookmarks after
+/// a restart, and follow any that moved.
+#[cfg(target_os = "ios")]
+pub fn restore_picked<R: Runtime>(app: &AppHandle<R>, recents: &Recents) {
+    let Some(folders) = app.try_state::<mentis_folders::Folders<R>>() else {
+        return;
+    };
+    let picked: Vec<String> = recents
+        .paths()
+        .into_iter()
+        .filter(|p| !p.starts_with("~/"))
+        .collect();
+    if picked.is_empty() {
+        return;
+    }
+    for found in folders.restore(&picked).unwrap_or_default() {
+        if let Some(now) = found.path.filter(|now| *now != found.saved) {
+            recents.rename(&found.saved, &now);
+        }
+    }
 }
 
 /// Grants every remembered folder that still exists, so reopening the last
@@ -195,7 +242,7 @@ pub fn grant_recent(roots: &VaultRoots, recents: &Recents) {
             // Android keeps the grant across launches; it is checked on open.
             roots.grant_picked(&path);
         } else {
-            let _ = roots.grant(Path::new(&path));
+            let _ = roots.grant(&root_path(&path));
         }
     }
 }
@@ -226,7 +273,7 @@ pub async fn vault_recent(
             }
             RecentVault {
                 name: folder_name(&path),
-                available: Path::new(&path).is_dir(),
+                available: root_path(&path).is_dir(),
                 path,
             }
         })
@@ -249,24 +296,54 @@ pub async fn vault_pick_folder<R: Runtime>(
             .map(|p| open_picked(&roots, &recents, p)));
     }
     let _ = &saf;
-    pick_folder_dialog(&app, "Open a folder as a vault".into())
+    pick_folder_dialog(&app, "Open a folder as a vault".into())?
         .map(|folder| open(&roots, &recents, &folder))
         .transpose()
 }
 
 /// The desktop folder dialog: the folder chosen, or None if cancelled.
-#[cfg(not(target_os = "android"))]
-fn pick_folder_dialog<R: Runtime>(app: &AppHandle<R>, title: String) -> Option<PathBuf> {
-    app.dialog()
+#[cfg(desktop)]
+fn pick_folder_dialog<R: Runtime>(
+    app: &AppHandle<R>,
+    title: String,
+) -> Result<Option<PathBuf>, String> {
+    Ok(app
+        .dialog()
         .file()
         .set_title(title)
         .blocking_pick_folder()
-        .and_then(|p| p.into_path().ok())
+        .and_then(|p| p.into_path().ok()))
+}
+
+/// The Files folder picker, which keeps access to the folder chosen.
+#[cfg(target_os = "ios")]
+fn pick_folder_dialog<R: Runtime>(
+    app: &AppHandle<R>,
+    _: String,
+) -> Result<Option<PathBuf>, String> {
+    let folders = app
+        .try_state::<mentis_folders::Folders<R>>()
+        .ok_or("The folder picker is not ready.")?;
+    Ok(folders.pick()?.map(|p| PathBuf::from(p.path)))
 }
 
 #[cfg(target_os = "android")]
-fn pick_folder_dialog<R: Runtime>(_: &AppHandle<R>, _: String) -> Option<PathBuf> {
-    None
+fn pick_folder_dialog<R: Runtime>(_: &AppHandle<R>, _: String) -> Result<Option<PathBuf>, String> {
+    Ok(None)
+}
+
+/// Where a new vault goes: on iOS the app's own folder, which Files shows as
+/// On My iPhone › Mentis; elsewhere a folder the user chooses.
+fn new_vault_parent<R: Runtime>(app: &AppHandle<R>, name: &str) -> Result<Option<PathBuf>, String> {
+    #[cfg(target_os = "ios")]
+    {
+        let _ = (app, name);
+        let documents = root_path("~/Documents");
+        fs::create_dir_all(&documents).map_err(|e| e.to_string())?;
+        Ok(Some(documents))
+    }
+    #[cfg(not(target_os = "ios"))]
+    pick_folder_dialog(app, format!("Choose where to create \"{name}\""))
 }
 
 /// Asks where to put a new vault, then creates a folder called `name` there.
@@ -286,8 +363,7 @@ pub async fn vault_create<R: Runtime>(
             .create_folder(&name)?
             .map(|p| open_picked(&roots, &recents, p)));
     }
-    let Some(parent) = pick_folder_dialog(&app, format!("Choose where to create \"{name}\""))
-    else {
+    let Some(parent) = new_vault_parent(&app, &name)? else {
         return Ok(None);
     };
     let folder = parent.join(&name);
@@ -320,22 +396,28 @@ pub async fn vault_open_recent(
         recents.touch(&path);
         return Ok(path);
     }
-    let folder = Path::new(&path);
+    let folder = root_path(&path);
     if !folder.is_dir() {
         return Err(format!("The folder {path} is no longer available."));
     }
-    open(&roots, &recents, folder)
+    open(&roots, &recents, &folder)
 }
 
 /// Removes a folder from the recent list. The folder itself is untouched.
 #[tauri::command]
-pub async fn vault_forget(
+pub async fn vault_forget<R: Runtime>(
+    app: AppHandle<R>,
     roots: State<'_, VaultRoots>,
     recents: State<'_, Recents>,
     path: String,
 ) -> Result<(), String> {
     recents.forget(&path);
     roots.revoke(&path);
+    #[cfg(target_os = "ios")]
+    if let Some(folders) = app.try_state::<mentis_folders::Folders<R>>() {
+        let _ = folders.forget(&path);
+    }
+    let _ = app;
     Ok(())
 }
 

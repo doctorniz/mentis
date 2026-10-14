@@ -1,14 +1,14 @@
 # Mentis — Architecture
 
 How the code is put together today. The principles it serves and the settled
-decisions behind it are in [`CLAUDE.md`](../CLAUDE.md); the phone app's
-specifics are in [`ANDROID.md`](./ANDROID.md).
+decisions behind it are in [`CLAUDE.md`](../CLAUDE.md); the phone apps'
+specifics are in [`ANDROID.md`](./ANDROID.md) and [`IOS.md`](./IOS.md).
 
 _Last reviewed 2026-10-13._
 
 ---
 
-## 1. One app, three shells
+## 1. One app, four shells
 
 The same React front end runs in three places. A build mode decides which
 platform pieces are included; everything else is shared.
@@ -18,14 +18,14 @@ platform pieces are included; everything else is shared.
 | **Web**     | `vite build` → static `out/`            | OPFS, or a picked folder (File System Access API)                                    | sqlite-wasm in a Web Worker  |
 | **Desktop** | `tauri build` (`--mode desktop`)        | A folder on disk, through Rust (`vault_fs.rs`)                                       | rusqlite in the Rust process |
 | **Android** | `tauri android build` (`--mode mobile`) | A folder picked through Android's Storage Access Framework (`saf.rs`, `SafStore.kt`) | rusqlite in the Rust process |
+| **iOS**     | `tauri ios build` (`--mode mobile`)     | The app's folder, or one picked in Files (`plugins/folders`)                         | rusqlite in the Rust process |
 
 - `__MENTIS_DESKTOP__` is true in both app builds (the native index; no
   sqlite-wasm). `__MENTIS_MOBILE__` is true on the phone (no tray, capture
   hotkey, overlay or launch at login).
 - `isTauri()` (`src/lib/fs/platform.ts`) answers "inside a shell?";
   `isDesktopApp()` answers "the desktop app?".
-- iOS is kept possible (`cfg(mobile)` rather than Android-only code where it
-  can be) but is not built.
+- Phone code is `cfg(mobile)` where it is not specific to one platform.
 
 ---
 
@@ -225,8 +225,8 @@ fails, and a budget is raised only as a deliberate, separate commit.
 CI (`.github/workflows/ci.yml`) on every push to `main` and every pull
 request: typecheck, lint, unit tests, build and budgets; the full Playwright
 suite on the production build (desktop Chromium and a Pixel 5 profile); the
-Windows desktop build with Rust format, clippy and tests; and an Android
-build. Signed Android releases come from a version tag
+Windows desktop build with Rust format, clippy and tests; an Android build;
+and an iOS simulator build, launched with a screenshot kept. Signed Android releases come from a version tag
 (`android-release.yml`, see `docs/ANDROID.md`).
 
 ---
@@ -239,5 +239,6 @@ build. Signed Android releases come from a version tag
   but not built.
 - The desktop cold-start and capture-overlay timings are reported, not yet
   enforced; the Android cold start was measured only on an emulator.
-- iOS is not built.
+- **iOS** has vaults only: no reminders, shares, widget, Dropbox sign-in or
+  on-device AI yet, and offloaded iCloud Drive files do not open.
 - More, with IDs, in [`LAUNCH_DEFERRALS.md`](./LAUNCH_DEFERRALS.md).

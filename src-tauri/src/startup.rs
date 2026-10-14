@@ -89,6 +89,10 @@ pub(crate) fn shell_call<R: Runtime, T: serde::de::DeserializeOwned>(
 #[cfg(mobile)]
 #[tauri::command]
 pub async fn inbox_take<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
+    // Nothing reaches the iOS app from outside yet.
+    if cfg!(target_os = "ios") {
+        return Ok(serde_json::json!([]));
+    }
     let taken: serde_json::Value = shell_call(&app, "takeInbox", serde_json::json!({}))?;
     serde_json::from_str(taken["entries"].as_str().unwrap_or("[]")).map_err(|e| e.to_string())
 }

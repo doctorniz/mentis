@@ -40,6 +40,10 @@ tauri-plugin-autostart = "2"
 jni = "0.21"
 ndk-context = "0.1"
 
+# Folders picked in Files, and access to them across launches (Swift).
+[target.'cfg(target_os = "ios")'.dependencies]
+mentis-folders = { path = "plugins/folders" }
+
 [profile.release]
 codegen-units = 1
 lto = true

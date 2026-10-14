@@ -98,6 +98,8 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
 /// Load the recent vaults (granting their folders) and place the index.
 fn setup_vault_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     let recents = vaults::Recents::load(vaults::recents_file(app));
+    #[cfg(target_os = "ios")]
+    vaults::restore_picked(app, &recents);
     vaults::grant_recent(&app.state::<vault_fs::VaultRoots>(), &recents);
     app.manage(recents);
     let dir = index::index_dir(app);
@@ -125,6 +127,8 @@ pub fn run() {
         .on_window_event(overlay::on_window_event);
     #[cfg(mobile)]
     let builder = builder.plugin(saf::init()).plugin(startup::init());
+    #[cfg(target_os = "ios")]
+    let builder = builder.plugin(mentis_folders::init());
     let builder = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())

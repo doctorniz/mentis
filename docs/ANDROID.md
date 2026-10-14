@@ -1,8 +1,8 @@
 # Android
 
 The mobile app is the same Tauri shell as the desktop app, built for Android.
-iOS is kept possible (`cfg(mobile)` rather than `cfg(target_os = "android")`
-where the code is not Android-specific) but needs a Mac to build.
+Code not specific to Android is `cfg(mobile)`, shared with iOS
+([`IOS.md`](./IOS.md)).
 
 - **Application id:** `app.mentis` (`src-tauri/tauri.android.conf.json`). The
   desktop app keeps `app.mentis.desktop`.

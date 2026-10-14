@@ -226,6 +226,10 @@ pub mod mobile {
         items: Vec<Due>,
         vault: Option<String>,
     ) -> Result<(), String> {
+        // Reminders are not built for iOS yet; don't ask to notify for nothing.
+        if cfg!(target_os = "ios") {
+            return Ok(());
+        }
         if !items.is_empty() {
             let notifications = app.notification();
             if matches!(
@@ -251,6 +255,9 @@ pub mod mobile {
     /// `{item, action, whenMs, untilMs?}`.
     #[tauri::command]
     pub async fn reminders_take_actions<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+        if cfg!(target_os = "ios") {
+            return Ok(json!([]));
+        }
         let taken: Value = shell_call(&app, "takeReminderActions", json!({}))?;
         let raw = taken["actions"].as_str().unwrap_or("[]");
         serde_json::from_str(raw).map_err(|e| e.to_string())

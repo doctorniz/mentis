@@ -51,13 +51,14 @@ impl VaultRoots {
     pub fn revoke(&self, root: &str) {
         if saf::is_saf(root) {
             self.picked.lock().unwrap().remove(root);
-        } else if let Ok(canonical) = fs::canonicalize(root) {
+        } else if let Ok(canonical) = fs::canonicalize(root_path(root)) {
             self.folders.lock().unwrap().remove(&canonical);
         }
     }
 
     pub(crate) fn resolve(&self, root: &str, rel: &str) -> Result<PathBuf, String> {
-        let root = fs::canonicalize(root).map_err(|e| format!("vault folder unavailable: {e}"))?;
+        let root = fs::canonicalize(root_path(root))
+            .map_err(|e| format!("vault folder unavailable: {e}"))?;
         if !self.folders.lock().unwrap().contains(&root) {
             return Err("vault folder has not been opened".into());
         }
@@ -75,6 +76,17 @@ impl VaultRoots {
         let (tree, path) = saf::split(root, rel);
         Ok(Target::Saf { tree, path })
     }
+}
+
+/// A vault root as a path. On iOS a root inside the app's own folder is
+/// written from home (`~/Documents/Notes`): that folder moves when the app is
+/// reinstalled or updated, so a full path would stop pointing at it.
+pub fn root_path(root: &str) -> PathBuf {
+    #[cfg(target_os = "ios")]
+    if let (Some(rest), Some(home)) = (root.strip_prefix("~/"), std::env::var_os("HOME")) {
+        return PathBuf::from(home).join(rest);
+    }
+    PathBuf::from(root)
 }
 
 /// `rel` joined onto `root`, refusing anything that could land outside it:

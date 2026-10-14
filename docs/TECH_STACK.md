@@ -31,13 +31,14 @@ bundle cost (`CLAUDE.md`). _Last reviewed 2026-10-13._
 
 ## The apps (Tauri 2)
 
-| Area    | Crates and plugins                                                                                             |
-| ------- | -------------------------------------------------------------------------------------------------------------- |
-| Shell   | **Tauri 2** (desktop with tray; Android)                                                                       |
-| Index   | rusqlite (bundled SQLite, FTS5), strsim, regex                                                                 |
-| Files   | notify (desktop file watching); Android: the Storage Access Framework from Kotlin, over JNI (jni, ndk-context) |
-| Plugins | dialog, opener, notification; desktop only: global-shortcut, single-instance, autostart                        |
-| Android | Kotlin in `src-tauri/gen/android` (AndroidX), Gradle                                                           |
+| Area    | Crates and plugins                                                                                                                                                           |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shell   | **Tauri 2** (desktop with tray; Android; iOS)                                                                                                                                |
+| Index   | rusqlite (bundled SQLite, FTS5), strsim, regex                                                                                                                               |
+| Files   | notify (desktop file watching); Android: the Storage Access Framework from Kotlin, over JNI (jni, ndk-context); iOS: Files picker and bookmarks in Swift (`plugins/folders`) |
+| Plugins | dialog, opener, notification; desktop only: global-shortcut, single-instance, autostart                                                                                      |
+| Android | Kotlin in `src-tauri/gen/android` (AndroidX), Gradle                                                                                                                         |
+| iOS     | Xcode project in `src-tauri/gen/apple` (XcodeGen), Swift packages built by Tauri's build step                                                                                |
 
 ## Tooling
 

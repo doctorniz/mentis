@@ -2186,6 +2186,7 @@ name = "mentis"
 version = "0.1.0"
 dependencies = [
  "jni",
+ "mentis-folders",
  "ndk-context",
  "notify",
  "regex",
@@ -2201,6 +2202,16 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
+]
+
+[[package]]
+name = "mentis-folders"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
 ]
 
 [[package]]

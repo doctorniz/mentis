@@ -164,3 +164,77 @@ jobs:
           restore-keys: cargo-android-
 
       - run: pnpm exec tauri android build --ci --target aarch64 --apk
+
+  # The iOS app, built for the simulator and launched there; a screenshot of
+  # its first screen is kept. Nothing else compiles the iOS-only code (Rust
+  # under cfg(target_os = "ios"), the Swift in src-tauri/plugins).
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Rust targets and XcodeGen
+        run: |
+          rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+          brew list xcodegen > /dev/null 2>&1 || brew install xcodegen
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-ios-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: cargo-ios-
+
+      # The Xcode project (src-tauri/gen/apple) is made once by `tauri ios init`
+      # on a Mac and committed; until it is, make it here.
+      - name: Xcode project
+        run: test -d src-tauri/gen/apple || pnpm exec tauri ios init --ci
+
+      - run: pnpm exec tauri ios build --ci --debug --target aarch64-sim
+
+      - name: Launch in the simulator
+        run: |
+          APP=$(find src-tauri/gen/apple ~/Library/Developer/Xcode/DerivedData -type d -name '*.app' -path '*iphonesimulator*' 2> /dev/null | head -1)
+          test -n "$APP" || { echo "no simulator app built"; exit 1; }
+          echo "app: $APP"
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for r in sorted(d, reverse=True) if 'iOS' in r for x in d[r] if x['name'].startswith('iPhone')))")
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" "$APP"
+          xcrun simctl launch "$DEVICE" app.mentis
+          sleep 20
+          xcrun simctl io "$DEVICE" screenshot ios-first-screen.png
+          xcrun simctl spawn "$DEVICE" launchctl list | grep -q 'app.mentis' || { echo "the app is not running"; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-first-screen
+          path: ios-first-screen.png
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # A project made here, to commit if none is yet.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-xcode-project
+          path: |
+            src-tauri/gen/apple
+            !src-tauri/gen/apple/build
+            !src-tauri/gen/apple/Externals
+          if-no-files-found: ignore
+          retention-days: 7
