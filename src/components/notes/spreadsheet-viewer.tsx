@@ -13,6 +13,23 @@ import type { SpreadsheetWorkbook } from '@/lib/spreadsheet/types'
 import { DEFAULT_COL_WIDTH, MIN_ROWS, MIN_COLS } from '@/lib/spreadsheet/types'
 
 /**
+ * jspreadsheet evaluates any cell starting with `=` through `new Function`, so a
+ * hostile .csv or .xlsx would run script in the app. Formulas are never
+ * evaluated; cells are shown as text.
+ */
+export const SAFE_GRID_OPTIONS = { parseFormulas: false, stripHTML: true } as const
+
+/** Cell text for the grid: the file's cached value, else the formula as text. */
+export function sheetToGrid(sheet: SpreadsheetWorkbook['sheets'][number]): string[][] {
+  return sheet.data.map((row) =>
+    row.map((cell) => {
+      if (cell.value !== null && cell.value !== undefined && cell.value !== '') return String(cell.value)
+      return cell.formula ?? ''
+    }),
+  )
+}
+
+/**
  * Read-only spreadsheet viewer powered by jspreadsheet-ce.
  *
  * Loads `.xlsx` / `.xls` / `.csv` files via SheetJS and shows them in a locked
@@ -47,14 +64,7 @@ export function SpreadsheetViewer({
   const mountSheet = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (jss: any, container: HTMLDivElement, sheet: SpreadsheetWorkbook['sheets'][number]) => {
-      // Convert CellData[][] to string[][] for jspreadsheet
-      const data = sheet.data.map((row) =>
-        row.map((cell) => {
-          if (cell.formula) return cell.formula
-          if (cell.value === null || cell.value === undefined) return ''
-          return String(cell.value)
-        }),
-      )
+      const data = sheetToGrid(sheet)
 
       // Build columns config
       const columns = sheet.colWidths.map((w) => ({
@@ -63,6 +73,7 @@ export function SpreadsheetViewer({
 
       const instance = jss(container, {
         data,
+        ...SAFE_GRID_OPTIONS,
         columns,
         minDimensions: [MIN_COLS, MIN_ROWS],
         defaultColWidth: DEFAULT_COL_WIDTH,
