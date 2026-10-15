@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Loader2, Mic, Sparkles, Trash2 } from 'lucide-react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import { marked } from 'marked'
+import { sanitizeHtml } from '@/lib/sanitize-html'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { stripBoardImageMarkdown } from '@/lib/board'
 import {
@@ -71,9 +72,11 @@ function ReadContent({ body }: { body: string }) {
   const displayBody = useMemo(() => bodyWithoutImages(body), [body])
   const html = useMemo(() => {
     try {
-      return marked.parse(displayBody, { async: false, gfm: true, breaks: true }) as string
+      return sanitizeHtml(
+        marked.parse(displayBody, { async: false, gfm: true, breaks: true }) as string,
+      )
     } catch {
-      return displayBody
+      return ''
     }
   }, [displayBody])
 

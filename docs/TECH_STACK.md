@@ -15,19 +15,19 @@ bundle cost (`CLAUDE.md`). _Last reviewed 2026-10-13._
 
 ## Features
 
-| Feature            | Libraries                                                                                                                                                                              |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Notes              | **Tiptap** (ProseMirror) + extensions; marked and turndown for Markdown ↔ editor; gray-matter for frontmatter; KaTeX; lowlight                                                         |
-| Code / source mode | **CodeMirror 6** with language packs                                                                                                                                                   |
-| PDF                | **pdf.js** (render, text), **pdf-lib** (write annotations and pages), **Fabric.js** (annotation overlay)                                                                               |
-| Drawing canvas     | **PixiJS 8** (WebGL, layered raster)                                                                                                                                                   |
-| Mindmaps           | **@xyflow/react**                                                                                                                                                                      |
-| Slides             | **@marp-team/marp-core** (rendered in a worker)                                                                                                                                        |
-| Office             | mammoth (Word → HTML → Markdown), slidecanvas + JSZip (PowerPoint), SheetJS + jspreadsheet-ce (spreadsheets, view only)                                                                |
-| Media              | plyr (audio, video), mp3-mediarecorder (voice notes)                                                                                                                                   |
-| Capture            | **chrono-node** (dates; English locale only, loaded lazily)                                                                                                                            |
-| Search index       | **SQLite + FTS5**: sqlite-wasm on the web (in a worker), rusqlite in the apps; MiniSearch only for fuzzy title matching                                                                |
-| AI                 | provider streaming clients (Anthropic, OpenAI, OpenRouter, Gemini, Ollama); **@mediapipe/tasks-genai** for Gemma on the device (WebGPU); **transformers.js** for Whisper transcription |
+| Feature            | Libraries                                                                                                                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Notes              | **Tiptap** (ProseMirror) + extensions; marked and turndown for Markdown ↔ editor; DOMPurify for Markdown rendered as HTML (Thoughts, chat); gray-matter for frontmatter; KaTeX; lowlight |
+| Code / source mode | **CodeMirror 6** with language packs                                                                                                                                                     |
+| PDF                | **pdf.js** (render, text), **pdf-lib** (write annotations and pages), **Fabric.js** (annotation overlay)                                                                                 |
+| Drawing canvas     | **PixiJS 8** (WebGL, layered raster)                                                                                                                                                     |
+| Mindmaps           | **@xyflow/react**                                                                                                                                                                        |
+| Slides             | **@marp-team/marp-core** (rendered in a worker)                                                                                                                                          |
+| Office             | mammoth (Word → HTML → Markdown), slidecanvas + JSZip (PowerPoint), SheetJS + jspreadsheet-ce (spreadsheets, view only)                                                                  |
+| Media              | plyr (audio, video), mp3-mediarecorder (voice notes)                                                                                                                                     |
+| Capture            | **chrono-node** (dates; English locale only, loaded lazily)                                                                                                                              |
+| Search index       | **SQLite + FTS5**: sqlite-wasm on the web (in a worker), rusqlite in the apps; MiniSearch only for fuzzy title matching                                                                  |
+| AI                 | provider streaming clients (Anthropic, OpenAI, OpenRouter, Gemini, Ollama); **@mediapipe/tasks-genai** for Gemma on the device (WebGPU); **transformers.js** for Whisper transcription   |
 
 ## The apps (Tauri 2)
 

@@ -30,18 +30,13 @@ describe('preprocessChatMarkdown', () => {
   })
 })
 
+// Rendered HTML (vault links, link targets, sanitising) needs DOMPurify in a
+// real browser — happy-dom does not sanitise — so it is checked end to end in
+// `tests/e2e/31-sanitize.spec.ts`.
 describe('renderChatMarkdown', () => {
-  it('rewrites relative vault links for in-app handling', () => {
-    const html = renderChatMarkdown('[Notes/X.md](Notes/X.md)')
-    expect(html).toContain('data-ink-path')
-    expect(html).toContain('chat-vault-source')
-    expect(html).toContain('Notes/X.md')
-    expect(html).not.toContain('target="_blank"')
-  })
-
-  it('keeps external http links', () => {
-    const html = renderChatMarkdown('[x](https://example.com)')
-    expect(html).toContain('https://example.com')
-    expect(html).toContain('target="_blank"')
+  it('without a DOM to sanitise in, returns escaped text', () => {
+    const html = renderChatMarkdown('Hi <img src=x onerror=alert(1)>')
+    expect(html).not.toContain('<img')
+    expect(html).toContain('&lt;img')
   })
 })
