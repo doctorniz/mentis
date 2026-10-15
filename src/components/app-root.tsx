@@ -106,6 +106,15 @@ export function AppRoot() {
     return () => window.clearTimeout(timer)
   }, [session])
 
+  // Empty sync trash folders older than a month, once per open.
+  useEffect(() => {
+    if (!session) return
+    const timer = window.setTimeout(() => {
+      import('@/lib/sync/trash').then((m) => m.pruneLocalTrash(session.vaultFs)).catch(() => {})
+    }, 10_000)
+    return () => window.clearTimeout(timer)
+  }, [session])
+
   const handleCloseVault = useCallback(() => {
     const path = useVaultStore.getState().activeVaultPath
     if (path) clearVaultChatSession(path)

@@ -2,6 +2,8 @@
 
 import {
   createContext,
+  lazy,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -15,6 +17,16 @@ import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { VaultSyncConfig } from '@/types/vault'
 import { toast } from '@/stores/toast'
 import { SYNC_SIGNED_IN_EVENT } from '@/lib/sync/oauth-session'
+
+const ConfirmDialog = lazy(() =>
+  import('@/components/ui/confirm-dialog').then((m) => ({ default: m.ConfirmDialog })),
+)
+
+interface DeleteQuestion {
+  deletes: number
+  tracked: number
+  answer: (deleteThem: boolean) => void
+}
 
 interface SyncContextValue {
   status: SyncStatus
@@ -46,6 +58,8 @@ export function SyncProvider({
   const [status, setStatus] = useState<SyncStatus>('idle')
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [canManualSync, setCanManualSync] = useState(false)
+  // A sync run that would delete many files waits here for an answer.
+  const [deleteQuestion, setDeleteQuestion] = useState<DeleteQuestion | null>(null)
   const prevStatusRef = useRef<SyncStatus>('idle')
   // Bumped when sign-in finishes without a page reload (the desktop app), so the
   // effect below looks for the new token.
@@ -104,6 +118,14 @@ export function SyncProvider({
           toast.info(`Sync conflict: ${name}. The other version is in ${copy}.`)
         })
 
+        mgr.onConfirmDeletes(
+          (counts) =>
+            new Promise<boolean>((resolve) => {
+              if (cancelled) return resolve(false)
+              setDeleteQuestion({ ...counts, answer: resolve })
+            }),
+        )
+
         mgr.onStatusChange((s, msg) => {
           if (!cancelled) {
             // After any syncing → idle transition, local FS may have changed
@@ -132,6 +154,10 @@ export function SyncProvider({
 
     return () => {
       cancelled = true
+      setDeleteQuestion((q) => {
+        q?.answer(false)
+        return null
+      })
       managerRef.current?.stopPolling()
       managerRef.current = null
       setCanManualSync(false)
@@ -169,6 +195,24 @@ export function SyncProvider({
       value={{ status, statusMessage, pushFile, triggerFullSync, canManualSync }}
     >
       {children}
+      {deleteQuestion && (
+        <Suspense fallback={null}>
+          <ConfirmDialog
+            open
+            title={`Sync would delete ${deleteQuestion.deletes} of ${deleteQuestion.tracked} files.`}
+            description="Deleted files are kept in _mentis/trash for a month."
+            confirmLabel="Delete"
+            cancelLabel="Keep files"
+            onConfirm={() => deleteQuestion.answer(true)}
+            onOpenChange={(open) => {
+              if (open) return
+              // After Delete this is a no-op: the promise is already settled.
+              deleteQuestion.answer(false)
+              setDeleteQuestion(null)
+            }}
+          />
+        </Suspense>
+      )}
     </SyncContext.Provider>
   )
 }

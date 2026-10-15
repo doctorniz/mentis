@@ -288,6 +288,66 @@ export class DropboxProvider implements RemoteSyncProvider {
     }
   }
 
+  async move(fromPath: string, toPath: string): Promise<void> {
+    const accessToken = await this.getAccessToken()
+    const res = await fetch(`${API_URL}/files/move_v2`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from_path: dropboxJoin(this.remoteRoot, fromPath),
+        to_path: dropboxJoin(this.remoteRoot, toPath),
+        autorename: true,
+      }),
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      if (res.status === 409 && text.includes('from_lookup/not_found')) return
+      throw new Error(`Dropbox move_v2 failed (${res.status}): ${text}`)
+    }
+  }
+
+  async listFolders(remotePath: string): Promise<string[]> {
+    const accessToken = await this.getAccessToken()
+    const res = await fetch(`${API_URL}/files/list_folder`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ path: dropboxJoin(this.remoteRoot, remotePath), recursive: false }),
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      if (res.status === 409 && text.includes('not_found')) return []
+      throw new Error(`Dropbox list_folder failed (${res.status}): ${text}`)
+    }
+    let json = await res.json()
+    const names: string[] = []
+    for (;;) {
+      for (const e of json.entries as DropboxEntry[]) {
+        if (e['.tag'] === 'folder' && e.name) names.push(e.name)
+      }
+      if (!json.has_more) return names
+      const more = await fetch(`${API_URL}/files/list_folder/continue`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ cursor: json.cursor }),
+      })
+      if (!more.ok) throw await apiError(more, 'list_folder/continue')
+      json = await more.json()
+    }
+  }
+
+  contentHash(data: Uint8Array): Promise<string> {
+    return dropboxContentHash(data)
+  }
+
   // --------------- Token helpers ---------------
 
   private async getAccessToken(): Promise<string> {
@@ -351,6 +411,24 @@ export function encodeDropboxApiArgHeader(payload: object): string {
     out += String.fromCharCode(bytes[i]!)
   }
   return out
+}
+
+const CONTENT_HASH_BLOCK = 4 * 1024 * 1024
+
+/**
+ * Dropbox's `content_hash`: SHA-256 of each 4 MiB block, concatenated,
+ * then SHA-256 of that, as hex.
+ */
+export async function dropboxContentHash(data: Uint8Array): Promise<string> {
+  const blocks: Uint8Array[] = []
+  for (let i = 0; i < data.length; i += CONTENT_HASH_BLOCK) {
+    const block = data.slice(i, i + CONTENT_HASH_BLOCK)
+    blocks.push(new Uint8Array(await crypto.subtle.digest('SHA-256', block)))
+  }
+  const joined = new Uint8Array(blocks.length * 32)
+  blocks.forEach((b, i) => joined.set(b, i * 32))
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', joined))
+  return Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 interface DropboxEntry {

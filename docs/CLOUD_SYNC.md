@@ -50,6 +50,7 @@ Everything in the vault except:
 
 - `_mentis/snapshots` — pre-edit PDF backups (heavy, per device);
 - `_mentis/search-index.json` — a file older versions wrote; nothing uses it now;
+- `_mentis/trash` — files sync deleted (below); each side keeps its own;
 - any extra patterns in `_mentis/config.json` → `sync.excludePaths`, e.g.
   `["some/folder", "big-file.mp4"]` (an exact path, or anything under it as a
   folder). There is no Settings UI for this yet.
@@ -59,6 +60,25 @@ Dropbox are left there.
 
 Change detection reads and hashes only files whose size or modification time
 changed, using hashes cached in the index.
+
+## Deletes
+
+Sync never deletes a file outright. A file deleted on one side is moved into
+`_mentis/trash/<day>/<original path>` on the other: in the vault folder when
+it was deleted on Dropbox, and in the Dropbox folder when it was deleted here.
+Day folders older than a month are emptied: this device's when a vault opens,
+Dropbox's on the first sync after that.
+
+A run that would delete at least 5 files and more than 10% of the files sync
+tracks asks first. **Keep files** restores each one on the side it is missing
+from, so a renamed or emptied Dropbox folder is filled again rather than
+emptying the vault. With nobody to answer, the files are kept.
+
+A file deleted here but edited on Dropbox since the last sync comes back
+(as a local edit beats a Dropbox delete). A file on both sides that sync has
+no record of — after Disconnect, or a second device using the same folder —
+is compared by content: the same, it is just recorded; different, this
+device's version stays and Dropbox's is kept as a conflict copy.
 
 ## Known gaps
 

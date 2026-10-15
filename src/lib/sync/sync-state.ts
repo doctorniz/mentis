@@ -74,20 +74,19 @@ export class SyncState {
       const store = tx.objectStore(ENTRIES_STORE)
       const req = store.getAll()
       const keysReq = store.getAllKeys()
-      const entries: SyncManifestEntry[] = []
-      tx.oncomplete = () => resolve(entries)
-      tx.onerror = () => reject(tx.error)
-      keysReq.onsuccess = () => {
-        req.onsuccess = () => {
-          const allKeys = keysReq.result as string[]
-          const allVals = req.result as SyncManifestEntry[]
-          for (let i = 0; i < allKeys.length; i++) {
-            if (allKeys[i].startsWith(prefix)) {
-              entries.push(allVals[i])
-            }
-          }
+      // Read both results once the transaction is done. (Attaching the values'
+      // handler inside the keys' handler was too late: `getAll` had already
+      // succeeded, so this always returned nothing.)
+      tx.oncomplete = () => {
+        const allKeys = keysReq.result as string[]
+        const allVals = req.result as SyncManifestEntry[]
+        const entries: SyncManifestEntry[] = []
+        for (let i = 0; i < allKeys.length; i++) {
+          if (allKeys[i].startsWith(prefix)) entries.push(allVals[i])
         }
+        resolve(entries)
       }
+      tx.onerror = () => reject(tx.error)
     })
   }
 

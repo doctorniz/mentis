@@ -156,3 +156,31 @@ export function decideRemoteDelete(input: {
 
   return 'delete-local'
 }
+
+/** A local delete found by full sync. `remoteHash` is null when the remote is gone too. */
+export function decideLocalDelete(input: {
+  manifestEntry: SyncManifestEntry
+  remoteHash: string | null
+}): 'trash-remote' | 'pull' | 'forget' {
+  if (input.remoteHash === null) return 'forget'
+  // Remote edited since the last sync: the edit wins over the delete
+  // (the mirror of a local edit beating a remote delete).
+  if (input.remoteHash !== input.manifestEntry.remoteHash) return 'pull'
+  return 'trash-remote'
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mass-delete guard                                                  */
+/* ------------------------------------------------------------------ */
+
+export const DELETE_CONFIRM_MIN_FILES = 5
+export const DELETE_CONFIRM_FRACTION = 0.1
+
+/**
+ * A run that would delete at least 5 files and more than 10% of the files
+ * sync tracks asks first. A renamed or emptied remote folder, or a local
+ * folder that reads as empty, looks exactly like a mass delete.
+ */
+export function needsDeleteConfirmation(deletes: number, tracked: number): boolean {
+  return deletes >= DELETE_CONFIRM_MIN_FILES && deletes > tracked * DELETE_CONFIRM_FRACTION
+}

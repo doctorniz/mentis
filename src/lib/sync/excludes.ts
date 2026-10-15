@@ -17,10 +17,12 @@
  * Local-only artifacts every vault excludes:
  *  - `_mentis/snapshots` — pre-edit PDF backups; heavy and per-device.
  *  - `_mentis/search-index.json` — rebuilt on every vault open.
+ *  - `_mentis/trash` — files sync deleted; each side keeps its own.
  */
 export const DEFAULT_SYNC_EXCLUDES: readonly string[] = [
   '_mentis/snapshots',
   '_mentis/search-index.json',
+  '_mentis/trash',
 ]
 
 function normalize(path: string): string {

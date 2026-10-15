@@ -174,7 +174,8 @@ Done and Snooze are written into the item's file (`reminderAck`,
 
 **Sync** (`src/lib/sync/`): Dropbox, last-write-wins with the other side
 kept as a conflict copy, a manifest and hash cache so only changed files are hashed,
-excludes (`_mentis/snapshots`, `sync.excludePaths`). Sign-in returns to
+excludes (`_mentis/snapshots`, `_mentis/trash`, `sync.excludePaths`). Deletes go
+to a dated trash folder on each side, and a run that would delete many files asks first. Sign-in returns to
 `/auth/dropbox` on the web and to a one-shot listener on `127.0.0.1` in the
 desktop and Android apps (RFC 8252). See [`CLOUD_SYNC.md`](./CLOUD_SYNC.md).
 

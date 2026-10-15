@@ -38,6 +38,12 @@ export interface RemoteSyncProvider {
   upload(remotePath: string, data: Uint8Array): Promise<RemoteFileEntry>
   mkdir(remotePath: string): Promise<void>
   remove(remotePath: string): Promise<void>
+  /** Move a file within the remote root. */
+  move(fromPath: string, toPath: string): Promise<void>
+  /** Names of the folders directly inside `remotePath`; empty when it is missing. */
+  listFolders(remotePath: string): Promise<string[]>
+  /** The provider's content hash of `data`, comparable to `RemoteFileEntry.hash`. */
+  contentHash?(data: Uint8Array): Promise<string>
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'error'

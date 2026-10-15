@@ -8,7 +8,11 @@ import {
   resolveSyncConflict,
   decideRemoteUpdate,
   decideRemoteDelete,
+  decideLocalDelete,
+  needsDeleteConfirmation,
+  type RemoteDeleteAction,
 } from './conflicts'
+import { TRASH_DIR, expiredTrashDays, moveToLocalTrash, trashPath } from './trash'
 import { uniqueVaultPath } from '@/lib/fs/unique-path'
 import { fileTypes } from '@/core/registries'
 import { putFileHashes, validFileHashes } from '@/lib/search/index'
@@ -27,11 +31,23 @@ export interface SyncConflict {
 
 export type SyncConflictListener = (conflict: SyncConflict) => void
 
+/**
+ * Asked before a run deletes many files (see `needsDeleteConfirmation`).
+ * Resolves true to delete them (into the trash), false to keep them: each
+ * file is restored on the side it is missing from.
+ */
+export type DeleteConfirmer = (counts: { deletes: number; tracked: number }) => Promise<boolean>
+
 export class SyncManager {
   private state: SyncState
   private pollTimer: ReturnType<typeof setInterval> | null = null
   private listeners = new Set<SyncStatusListener>()
   private conflictListeners = new Set<SyncConflictListener>()
+  private confirmDeletes: DeleteConfirmer | null = null
+  /** The full sync or pull in progress; a poll tick during it is skipped. */
+  private inFlight: Promise<void> | null = null
+  /** The remote trash is emptied of old days once per manager (per launch). */
+  private remoteTrashPruned = false
   /** Paths already announced this fullSync — the push and pull loops can
    *  both evaluate the same conflicting path; the user hears about it once. */
   private announcedConflicts = new Set<string>()
@@ -69,14 +85,39 @@ export class SyncManager {
     return () => this.conflictListeners.delete(listener)
   }
 
+  /** Without a confirmer, a run that needs confirmation keeps the files. */
+  onConfirmDeletes(confirmer: DeleteConfirmer): void {
+    this.confirmDeletes = confirmer
+  }
+
   private setStatus(status: SyncStatus, message?: string) {
     this._status = status
     for (const fn of this.listeners) fn(status, message)
   }
 
+  /** One full sync or pull at a time; a second full sync joins the first. */
+  private exclusive(run: () => Promise<void>): Promise<void> {
+    const p: Promise<void> = run().finally(() => {
+      if (this.inFlight === p) this.inFlight = null
+    })
+    this.inFlight = p
+    return p
+  }
+
+  /** Resolves true when the run may delete; asks only when the guard trips. */
+  private async mayDelete(deletes: number, tracked: number): Promise<boolean> {
+    if (!needsDeleteConfirmation(deletes, tracked)) return true
+    this.setStatus('syncing', `Waiting to confirm ${deletes} deletions…`)
+    return (await this.confirmDeletes?.({ deletes, tracked })) ?? false
+  }
+
   // --------------- Full sync (vault open) ---------------
 
-  async fullSync(): Promise<void> {
+  fullSync(): Promise<void> {
+    return this.inFlight ?? this.exclusive(() => this.runFullSync())
+  }
+
+  private async runFullSync(): Promise<void> {
     this.setStatus('syncing', 'Starting full sync…')
     this.announcedConflicts.clear()
     try {
@@ -111,13 +152,48 @@ export class SyncManager {
           if (!e.isDirectory && !this.isExcluded(e.path)) remoteMap.set(e.path, e)
         }
       }
-      if (result.cursor) {
-        await this.state.setCursor(result.cursor)
+
+      // Work out every delete before changing anything, so a run that
+      // would delete many files can ask first.
+      const locallyChanged = new Set([...localChanges.created, ...localChanges.modified])
+      const locallyDeleted = new Set(localChanges.deleted)
+      const trashRemote: string[] = []
+      const pullBack: string[] = []
+      const forget: string[] = []
+      for (const path of localChanges.deleted) {
+        const entry = manifestMap.get(path)
+        if (!entry) continue
+        const action = decideLocalDelete({
+          manifestEntry: entry,
+          remoteHash: remoteMap.get(path)?.hash ?? null,
+        })
+        if (action === 'trash-remote') trashRemote.push(path)
+        else if (action === 'pull') pullBack.push(path)
+        else forget.push(path)
+      }
+      // In the manifest, gone from the remote, unchanged here: deleted remotely.
+      // A local edit is pushed back by the push loop below instead.
+      const trashLocal: string[] = []
+      for (const entry of manifestMap.values()) {
+        if (remoteMap.has(entry.path) || locallyDeleted.has(entry.path)) continue
+        if (locallyChanged.has(entry.path)) continue
+        if (await this.fs.exists(entry.path)) trashLocal.push(entry.path)
+        else forget.push(entry.path)
       }
 
+      const deletes = trashRemote.length + trashLocal.length
+      const keep = !(await this.mayDelete(deletes, manifestMap.size))
+      this.setStatus('syncing', 'Syncing…')
+
       // Push local creates and modifications
+      const settled = new Set<string>()
       for (const path of [...localChanges.created, ...localChanges.modified]) {
         const remote = remoteMap.get(path)
+        if (remote && !manifestMap.has(path)) {
+          await this.settleUntracked(path, remote)
+          settled.add(path)
+          continue
+        }
         if (remote) {
           const winner = await this.resolveConflict(
             path,
@@ -135,7 +211,7 @@ export class SyncManager {
 
       // Pull remote files that are new or newer
       for (const [path, remote] of remoteMap) {
-        if (remote.isDirectory) continue
+        if (remote.isDirectory || settled.has(path) || locallyDeleted.has(path)) continue
         const manifestEntry = manifestMap.get(path)
 
         if (!manifestEntry) {
@@ -143,9 +219,7 @@ export class SyncManager {
           await this.pullFile(path, remote)
         } else if (manifestEntry.remoteHash !== remote.hash) {
           // Remote changed since last sync
-          const isLocallyChanged =
-            localChanges.modified.includes(path) || localChanges.created.includes(path)
-          if (isLocallyChanged) {
+          if (locallyChanged.has(path)) {
             const winner = await this.resolveConflict(path, localChanges, remote, manifestEntry)
             if (winner === 'remote') {
               await this.pullFile(path, remote)
@@ -157,45 +231,40 @@ export class SyncManager {
         }
       }
 
-      // Handle local deletes: remove from remote
-      for (const path of localChanges.deleted) {
-        const remote = remoteMap.get(path)
-        if (remote) {
-          try {
-            await this.provider.remove(path)
-          } catch {
-            // file may already be gone
-          }
-        }
-        await this.state.removeEntry(path)
-      }
+      // Deleted here, edited remotely since: the edit comes back.
+      for (const path of pullBack) await this.pullFile(path, remoteMap.get(path)!)
 
-      // Handle remote deletes: files in manifest but not in remote
-      for (const entry of manifestMap.values()) {
-        if (!remoteMap.has(entry.path)) {
-          const exists = await this.fs.exists(entry.path)
-          if (exists) {
-            const isLocallyModified =
-              localChanges.modified.includes(entry.path) ||
-              localChanges.created.includes(entry.path)
-            if (isLocallyModified) {
-              // Re-upload: local edit wins over remote delete
-              await this.pushFileInternal(entry.path)
-            } else {
-              try {
-                await this.fs.remove(entry.path)
-              } catch {
-                // already gone
-              }
-              await this.state.removeEntry(entry.path)
-            }
-          } else {
-            await this.state.removeEntry(entry.path)
-          }
+      // Deleted here: trash the remote copy, or (kept) download it again.
+      for (const path of trashRemote) {
+        if (keep) {
+          await this.pullFile(path, remoteMap.get(path)!)
+        } else {
+          await this.trashRemoteFile(path)
+          await this.state.removeEntry(path)
         }
       }
 
+      // Deleted remotely: trash the local file, or (kept) upload it again.
+      for (const path of trashLocal) {
+        if (keep) {
+          await this.pushFileInternal(path)
+        } else {
+          await moveToLocalTrash(this.fs, path)
+          await this.state.removeEntry(path)
+        }
+      }
+
+      for (const path of forget) await this.state.removeEntry(path)
+
+      if (result.cursor) {
+        await this.state.setCursor(result.cursor)
+      }
       await this.state.setLastSyncTimestamp(new Date().toISOString())
+
+      if (!this.remoteTrashPruned) {
+        this.remoteTrashPruned = true
+        await this.pruneRemoteTrash().catch(() => {})
+      }
       this.setStatus('idle')
     } catch (err) {
       this.setStatus('error', err instanceof Error ? err.message : String(err))
@@ -221,19 +290,7 @@ export class SyncManager {
     const data = await this.fs.readFile(path)
     const localHash = await hashBytes(data)
 
-    // Ensure parent directories exist
-    const parts = path.split('/')
-    if (parts.length > 1) {
-      let dir = ''
-      for (let i = 0; i < parts.length - 1; i++) {
-        dir = dir ? `${dir}/${parts[i]}` : parts[i]
-        try {
-          await this.provider.mkdir(dir)
-        } catch {
-          // directory may already exist
-        }
-      }
-    }
+    await this.ensureRemoteDirs(path)
 
     const remote = await this.provider.upload(path, data)
     await this.state.setEntry({
@@ -244,27 +301,66 @@ export class SyncManager {
     })
   }
 
+  /** Create the remote parent folders of `path`. */
+  private async ensureRemoteDirs(path: string): Promise<void> {
+    const parts = path.split('/')
+    let dir = ''
+    for (let i = 0; i < parts.length - 1; i++) {
+      dir = dir ? `${dir}/${parts[i]}` : parts[i]
+      try {
+        await this.provider.mkdir(dir)
+      } catch {
+        // directory may already exist
+      }
+    }
+  }
+
+  // --------------- Trash ---------------
+
+  /** Move a remote file into the remote's trash folder for today. */
+  private async trashRemoteFile(path: string): Promise<void> {
+    const dest = trashPath(path, new Date())
+    await this.ensureRemoteDirs(dest)
+    await this.provider.move(path, dest)
+  }
+
+  /** Empty the remote trash's day folders older than a month. */
+  private async pruneRemoteTrash(): Promise<void> {
+    const days = await this.provider.listFolders(TRASH_DIR)
+    for (const day of expiredTrashDays(days, new Date())) {
+      await this.provider.remove(`${TRASH_DIR}/${day}`)
+    }
+  }
+
   // --------------- Pull remote changes (periodic) ---------------
 
-  async pull(): Promise<void> {
+  pull(): Promise<void> {
+    if (this.inFlight) return Promise.resolve()
+    return this.exclusive(() => this.runPull())
+  }
+
+  private async runPull(): Promise<void> {
     this.setStatus('syncing', 'Pulling remote changes…')
     this.announcedConflicts.clear()
     try {
       const cursor = await this.state.getCursor()
 
       if (cursor && this.provider.type === 'dropbox') {
-        let changes = await this.provider.listChanges(cursor)
-        await this.applyRemoteChanges(changes.entries, changes.deleted)
-        await this.state.setCursor(changes.cursor)
-
-        while (changes.hasMore) {
-          changes = await this.provider.listChanges(changes.cursor)
-          await this.applyRemoteChanges(changes.entries, changes.deleted)
-          await this.state.setCursor(changes.cursor)
+        // Collect every page first, so deletes can be counted before any
+        // is applied. A later page's event for a path replaces an earlier one.
+        const changes = new Map<string, RemoteFileEntry | null>()
+        let page = await this.provider.listChanges(cursor)
+        for (;;) {
+          for (const e of page.entries) changes.set(e.path, e)
+          for (const p of page.deleted) changes.set(p, null)
+          if (!page.hasMore) break
+          page = await this.provider.listChanges(page.cursor)
         }
+        await this.applyRemoteChanges(changes)
+        await this.state.setCursor(page.cursor)
       } else {
         // Fallback: full listing comparison (no delta cursor yet)
-        await this.fullSync()
+        await this.runFullSync()
         return
       }
 
@@ -276,14 +372,45 @@ export class SyncManager {
     }
   }
 
-  private async applyRemoteChanges(entries: RemoteFileEntry[], deleted: string[]): Promise<void> {
-    for (const remote of entries) {
-      if (remote.isDirectory || this.isExcluded(remote.path)) continue
+  /** `changes` maps each path to its new remote entry, or null when deleted. */
+  private async applyRemoteChanges(changes: Map<string, RemoteFileEntry | null>): Promise<void> {
+    const updates: RemoteFileEntry[] = []
+    const deletes = new Map<string, RemoteDeleteAction>()
+    for (const [path, remote] of changes) {
+      if (this.isExcluded(path)) continue
+      if (remote) {
+        if (!remote.isDirectory) updates.push(remote)
+        continue
+      }
+      const manifestEntry = await this.state.getEntry(path)
+      const localExists = await this.fs.exists(path)
+      deletes.set(
+        path,
+        decideRemoteDelete({
+          manifestEntry,
+          localExists,
+          localHash: localExists ? await this.currentLocalHash(path) : null,
+        }),
+      )
+    }
+
+    const toTrash = [...deletes].filter(([, a]) => a === 'delete-local').map(([p]) => p)
+    const tracked = (await this.state.getAllEntries()).filter((e) => !this.isExcluded(e.path))
+    const keep = !(await this.mayDelete(toTrash.length, tracked.length))
+    this.setStatus('syncing', 'Pulling remote changes…')
+
+    for (const remote of updates) {
       const manifestEntry = await this.state.getEntry(remote.path)
+      const localHash = await this.currentLocalHash(remote.path)
+
+      if (!manifestEntry && localHash !== null) {
+        await this.settleUntracked(remote.path, remote)
+        continue
+      }
 
       const decision = decideRemoteUpdate({
         manifestEntry,
-        localHash: await this.currentLocalHash(remote.path),
+        localHash,
         remoteHash: remote.hash,
         remoteModifiedAt: remote.modifiedAt,
       })
@@ -295,37 +422,44 @@ export class SyncManager {
       if (decision.action === 'pull') {
         await this.pullFile(remote.path, remote)
       } else if (decision.action === 'push-local') {
-        // Unpushed local edit (or same-path local create) wins — re-assert
-        // it instead of clobbering. The upload also realigns the manifest.
+        // Unpushed local edit wins — re-assert it instead of clobbering.
+        // The upload also realigns the manifest.
         await this.pushFileInternal(remote.path)
       }
     }
 
-    for (const path of deleted) {
-      if (this.isExcluded(path)) continue
-      const manifestEntry = await this.state.getEntry(path)
-      const localExists = await this.fs.exists(path)
-      const action = decideRemoteDelete({
-        manifestEntry,
-        localExists,
-        localHash: localExists ? await this.currentLocalHash(path) : null,
-      })
-
-      if (action === 'push-local') {
-        // Local edit wins over remote delete (full sync's re-upload rule).
+    for (const [path, action] of deletes) {
+      if (action === 'push-local' || (action === 'delete-local' && keep)) {
+        // Local edit wins over remote delete (full sync's re-upload rule),
+        // or the user chose to keep the files.
         await this.pushFileInternal(path)
         continue
       }
       if (action === 'keep-local') continue
-      if (action === 'delete-local') {
-        try {
-          await this.fs.remove(path)
-        } catch {
-          // already gone
-        }
-      }
+      if (action === 'delete-local') await moveToLocalTrash(this.fs, path)
       await this.state.removeEntry(path)
     }
+  }
+
+  /**
+   * A file on both sides that sync has no record of: a reconnect, a wiped
+   * manifest, or a second device using the same remote folder. Same bytes:
+   * just record it. Different: local stays, and the remote version is kept
+   * as a conflict copy instead of being overwritten.
+   */
+  private async settleUntracked(path: string, remote: RemoteFileEntry): Promise<void> {
+    const local = await this.fs.readFile(path)
+    if (this.provider.contentHash && (await this.provider.contentHash(local)) === remote.hash) {
+      await this.state.setEntry({
+        path,
+        localHash: await hashBytes(local),
+        remoteHash: remote.hash,
+        lastSyncedAt: new Date().toISOString(),
+      })
+      return
+    }
+    await this.keepLosingSide(path, 'local')
+    await this.pushFileInternal(path)
   }
 
   /** SHA-256 of the local file's current bytes; null when missing/unreadable. */
