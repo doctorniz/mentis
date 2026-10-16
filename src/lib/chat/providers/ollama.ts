@@ -19,13 +19,15 @@ import type { ChatCompletionRequest, ChatProvider, ChatStreamChunk } from './typ
 const DEFAULT_BASE_URL = 'http://localhost:11434/v1'
 
 /**
- * Added to "cannot reach Ollama" errors in the desktop app. A request the server
- * refuses for its origin fails exactly like one that never connected, and
- * Ollama only trusts some origins by default.
+ * Added to "cannot reach Ollama" errors in the desktop and phone apps. A
+ * request the server refuses for its origin fails exactly like one that never
+ * connected, and Ollama only trusts some origins by default. Names this
+ * app's own origin (`http://tauri.localhost` on Windows and Android), never
+ * `*`, which would let every website use Ollama.
  */
 export function ollamaDesktopHint(): string {
   return isTauri()
-    ? " In the Mentis desktop app, Ollama must also allow the app's origin: set OLLAMA_ORIGINS=* (or http://tauri.localhost) and restart Ollama."
+    ? ` Ollama must also allow this app: set OLLAMA_ORIGINS=${window.location.origin} and restart Ollama.`
     : ''
 }
 
