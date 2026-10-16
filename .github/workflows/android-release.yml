@@ -63,8 +63,18 @@ jobs:
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
 
+      - name: Dropbox app key
+        env:
+          NEXT_PUBLIC_DROPBOX_CLIENT_ID: ${{ vars.NEXT_PUBLIC_DROPBOX_CLIENT_ID }}
+        run: |
+          if [ -z "$NEXT_PUBLIC_DROPBOX_CLIENT_ID" ]; then
+            echo "::error::The NEXT_PUBLIC_DROPBOX_CLIENT_ID variable is not set (docs/ANDROID.md, Releasing)."
+            exit 1
+          fi
+
       - name: Build the signed bundle and APK (all four CPU types)
         env:
+          NEXT_PUBLIC_DROPBOX_CLIENT_ID: ${{ vars.NEXT_PUBLIC_DROPBOX_CLIENT_ID }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}

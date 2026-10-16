@@ -179,6 +179,10 @@ GitHub secrets; the key never enters the repo (`*.jks`, `*.keystore` and
    | `ANDROID_KEY_ALIAS`         | `upload`                                  |
    | `ANDROID_KEY_PASSWORD`      | the key password                          |
 
+   and under Variables, `NEXT_PUBLIC_DROPBOX_CLIENT_ID`: the Dropbox app key
+   (not a secret: it ships inside the app). A release without it stops before
+   building, since sync could not sign in.
+
 3. Create the app in the Play Console (application id `app.mentis`) and turn on
    Play App Signing. The first upload is made by hand there.
 
