@@ -234,19 +234,6 @@ pub fn restore_picked<R: Runtime>(app: &AppHandle<R>, recents: &Recents) {
     }
 }
 
-/// Grants every remembered folder that still exists, so reopening the last
-/// vault needs no dialog.
-pub fn grant_recent(roots: &VaultRoots, recents: &Recents) {
-    for path in recents.paths() {
-        if saf::is_saf(&path) {
-            // Android keeps the grant across launches; it is checked on open.
-            roots.grant_picked(&path);
-        } else {
-            let _ = roots.grant(&root_path(&path));
-        }
-    }
-}
-
 pub fn recents_file<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
     app.path()
         .app_data_dir()

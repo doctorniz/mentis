@@ -194,7 +194,7 @@ open file through its extractor. Voice notes are transcribed by Whisper
 
 | Module                          | Does                                                                             |
 | ------------------------------- | -------------------------------------------------------------------------------- |
-| `vault_fs.rs`, `vaults.rs`      | file access inside chosen roots; the folder picker; the recent-vaults list       |
+| `vault_fs.rs`, `vaults.rs`      | file access inside the open vault; the folder picker; the recent-vaults list     |
 | `saf.rs`                        | Android picked folders: the Kotlin `SafStore` over JNI                           |
 | `index/`                        | the native SQLite index                                                          |
 | `watch.rs`                      | the desktop file watcher                                                         |

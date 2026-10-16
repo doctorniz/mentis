@@ -1,6 +1,7 @@
 //! File access for an open vault. Every command takes the vault's root folder
-//! and a vault-relative path; a root is only usable after the app has granted
-//! it (from a folder the user picked), and a path can never leave its root.
+//! and a vault-relative path; a root is only usable while it is the open
+//! vault (granted when the user picks or reopens it), and a path can never
+//! leave its root.
 //!
 //! A root is either a folder path or, on Android, a folder picked through the
 //! Storage Access Framework (`content://…`, see `saf`); the commands take
@@ -36,16 +37,23 @@ pub(crate) enum Target {
 }
 
 impl VaultRoots {
-    /// Lets commands use `root`. Called only for folders the user chose.
+    /// Lets commands use `root`, and no other vault: one vault is open at a
+    /// time. Called only for folders the user chose.
     pub fn grant(&self, root: &Path) -> io::Result<PathBuf> {
         let canonical = fs::canonicalize(root)?;
-        self.folders.lock().unwrap().insert(canonical.clone());
+        self.picked.lock().unwrap().clear();
+        let mut folders = self.folders.lock().unwrap();
+        folders.clear();
+        folders.insert(canonical.clone());
         Ok(canonical)
     }
 
-    /// Lets commands use a picked SAF root.
+    /// Lets commands use a picked SAF root, and no other vault.
     pub fn grant_picked(&self, root: &str) {
-        self.picked.lock().unwrap().insert(root.to_string());
+        self.folders.lock().unwrap().clear();
+        let mut picked = self.picked.lock().unwrap();
+        picked.clear();
+        picked.insert(root.to_string());
     }
 
     pub fn revoke(&self, root: &str) {
@@ -540,6 +548,27 @@ mod tests {
         assert!(roots.resolve(&root_str, "notes").is_err());
         roots.grant(&root).unwrap();
         assert!(roots.resolve(&root_str, "notes").is_ok());
+    }
+
+    #[test]
+    fn opening_a_vault_closes_the_last_one() {
+        let roots = VaultRoots::default();
+        let (a, b) = (temp_root(), temp_root());
+        let (a_str, b_str) = (
+            a.to_string_lossy().to_string(),
+            b.to_string_lossy().to_string(),
+        );
+        roots.grant(&a).unwrap();
+        roots.grant(&b).unwrap();
+        assert!(roots.resolve(&a_str, "notes").is_err());
+        assert!(roots.resolve(&b_str, "notes").is_ok());
+
+        let tree = "content://com.android.externalstorage.documents/tree/primary%3ANotes";
+        roots.grant_picked(tree);
+        assert!(roots.resolve(&b_str, "notes").is_err());
+        assert!(roots.target(tree, "notes").is_ok());
+        roots.grant(&a).unwrap();
+        assert!(roots.target(tree, "notes").is_err());
     }
 
     #[test]
