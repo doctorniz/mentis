@@ -35,6 +35,12 @@ inside the picked folder), kept in the recent list with a display name.
 - No file watching: Android offers none for these folders. The vault is
   reconciled whenever the app comes back to the foreground.
 
+## Plain http
+
+Release builds allow plain `http://` (`usesCleartextTraffic` in
+`app/build.gradle.kts`): Ollama on the LAN is always http, and AI providers
+take a custom base URL. The app only requests addresses the user typed in.
+
 ## Reminders
 
 The app is stopped in the background, so reminders are handed to Android

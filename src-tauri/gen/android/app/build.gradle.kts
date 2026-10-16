@@ -32,7 +32,9 @@ android {
     compileSdk = 37
     namespace = "app.mentis"
     defaultConfig {
-        manifestPlaceholders["usesCleartextTraffic"] = "false"
+        // Plain http, for Ollama on the LAN (always http) and custom AI base
+        // URLs. The app only requests addresses the user typed in.
+        manifestPlaceholders["usesCleartextTraffic"] = "true"
         applicationId = "app.mentis"
         minSdk = 24
         targetSdk = 37
@@ -51,7 +53,6 @@ android {
     }
     buildTypes {
         getByName("debug") {
-            manifestPlaceholders["usesCleartextTraffic"] = "true"
             isDebuggable = true
             isJniDebuggable = true
             isMinifyEnabled = false

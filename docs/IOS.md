@@ -15,6 +15,12 @@ iPhone and iPad. It needs a Mac to build; CI builds it on a macOS runner.
 Not built yet: reminders, shares and the widget, Dropbox sign-in, on-device
 AI. Their commands answer with nothing on iOS.
 
+## Plain http
+
+App Transport Security allows plain `http://` to local addresses only
+(`NSAllowsLocalNetworking`), for Ollama on the LAN; the first request asks
+for local network access (`NSLocalNetworkUsageDescription`).
+
 ## Vaults
 
 A vault is either:
