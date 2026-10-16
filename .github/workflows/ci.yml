@@ -37,6 +37,42 @@ jobs:
       # enforced budget; never raise one to make this pass.
       - run: pnpm budgets
 
+  # Known vulnerabilities in dependencies (docs/DEPLOYMENT.md, Audits).
+  # Rust fails the build. npm only reports for now: most of its findings are
+  # in Node-only code that never ships (Next.js through slidecanvas, tar).
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: npm audit (report only)
+        run: |
+          set +e
+          pnpm audit --prod --audit-level high | tee audit.txt
+          status=${PIPESTATUS[0]}
+          {
+            echo '## npm audit (production dependencies)'
+            tail -n 2 audit.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::npm audit found high or critical advisories (see this step's log)."
+          fi
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: cargo-audit-0.22.2
+
+      - name: cargo audit
+        working-directory: src-tauri
+        run: |
+          command -v cargo-audit || cargo install cargo-audit --version 0.22.2 --locked
+          cargo audit
+
   e2e:
     runs-on: ubuntu-latest
     steps:

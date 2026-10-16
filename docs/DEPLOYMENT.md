@@ -47,6 +47,21 @@ keeps the two, and the e2e server's `tests/e2e/serve.json`, identical.
 In CI the e2e suite runs against the policy, and any violation fails the test
 that caused it (`tests/e2e/fixtures.ts`).
 
+## Audits
+
+CI's `audit` job checks dependencies for known vulnerabilities.
+
+- **Rust:** `cargo audit` fails the build on any vulnerability. Two warnings
+  remain (unmaintained `proc-macro-error`, unsound `glib`), both in Tauri's
+  Linux GTK stack; warnings do not fail it.
+- **npm:** `pnpm audit --prod` only reports, as a warning and in the job
+  summary. In October 2026 it found about 80 high or critical advisories. About 60
+  are in code that only runs in Node and never ships (Next.js and `sharp`
+  through `slidecanvas`; `tar` through `fabric` and `@huggingface/transformers`).
+  The ones in shipped code are `prosemirror-view`, `fabric`,
+  `@xmldom/xmldom`, `linkify-it`, `js-yaml` and `xlsx`. Once those are
+  updated, the npm audit should fail the build too.
+
 ## Cross-origin isolation (optional)
 
 Nothing in Mentis requires `SharedArrayBuffer` today, so COOP/COEP headers are
