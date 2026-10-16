@@ -23,6 +23,17 @@ describe('sync exclude matcher', () => {
     expect(isSyncExcluded('notes/todo.md')).toBe(false)
   })
 
+  it('excludes anything whose name starts with a dot, at any depth', () => {
+    expect(isSyncExcluded('.git')).toBe(true)
+    expect(isSyncExcluded('.git/objects/ab/cdef')).toBe(true)
+    expect(isSyncExcluded('.obsidian/workspace.json')).toBe(true)
+    expect(isSyncExcluded('Projects/.trash/old.md')).toBe(true)
+    expect(isSyncExcluded('Projects/.DS_Store')).toBe(true)
+    expect(isSyncExcluded('notes/.plan.md.3.mentis-tmp')).toBe(true)
+    expect(isSyncExcluded('notes/plan.v2.md')).toBe(false)
+    expect(isSyncExcluded('notes/..md')).toBe(true)
+  })
+
   it('normalizes leading and trailing slashes', () => {
     expect(isSyncExcluded('/_mentis/snapshots/x.pdf')).toBe(true)
     const matcher = buildSyncExcludeMatcher(['/Big Folder/'])

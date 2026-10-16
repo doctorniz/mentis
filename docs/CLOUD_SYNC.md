@@ -48,6 +48,9 @@ device (IndexedDB), never in the vault. Code: `src/lib/sync/`.
 
 Everything in the vault except:
 
+- anything whose name starts with a dot, at any depth (`.git`, `.obsidian`,
+  `.trash`, `.DS_Store`, temp files from interrupted desktop saves) — the app
+  hides these too;
 - `_mentis/snapshots` — pre-edit PDF backups (heavy, per device);
 - `_mentis/search-index.json` — a file older versions wrote; nothing uses it now;
 - `_mentis/trash` — files sync deleted (below); each side keeps its own;

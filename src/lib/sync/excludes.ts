@@ -14,6 +14,11 @@
  */
 
 /**
+ * Every vault also excludes any file or folder whose name starts with a dot,
+ * at any depth: `.git`, `.obsidian`, `.trash`, `.DS_Store`, and the hidden
+ * temp files of interrupted desktop saves. The app hides these everywhere
+ * else too.
+ *
  * Local-only artifacts every vault excludes:
  *  - `_mentis/snapshots` — pre-edit PDF backups; heavy and per-device.
  *  - `_mentis/search-index.json` — rebuilt on every vault open.
@@ -36,6 +41,7 @@ export function buildSyncExcludeMatcher(extraPatterns?: string[]): (path: string
     .filter(Boolean)
   return (path: string) => {
     const p = normalize(path)
+    if (p.split('/').some((seg) => seg.startsWith('.'))) return true
     for (const pattern of patterns) {
       if (p === pattern || p.startsWith(pattern + '/')) return true
     }
