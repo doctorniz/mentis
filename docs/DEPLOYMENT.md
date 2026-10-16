@@ -21,8 +21,31 @@ see the README and [`ANDROID.md`](./ANDROID.md).
 `public/sw.js` is a hand-written service worker. Navigations are
 **network-first**, falling back to the cache offline, so a new deploy is picked
 up on the next load instead of serving a stale `index.html` against new
-assets; other assets are stale-while-revalidate. The inline script in
-`index.html` registers it and warms the cache.
+assets; other assets are stale-while-revalidate. `public/boot.js`,
+loaded by every page, registers it and warms the cache.
+
+## Content security policy
+
+The website sends a `Content-Security-Policy` header (`vercel.json`); the
+desktop and phone apps carry the same policy in `src-tauri/tauri.conf.json`,
+minus `frame-ancestors`, which only works as a header. `tests/csp.test.ts`
+keeps the two, and the e2e server's `tests/e2e/serve.json`, identical.
+
+- Script runs only from the app itself (plus `cdn.jsdelivr.net`, where the
+  on-device model and transcription load their WebAssembly runtimes): no
+  inline script, no `eval`. `'wasm-unsafe-eval'` is for SQLite, PDF and those
+  runtimes. The canvas loads `pixi.js/unsafe-eval`, which despite its name
+  is Pixi's renderer without `eval`.
+- Network requests may go to any `http:` or `https:` address: AI providers
+  take a custom base URL and Ollama runs anywhere on the LAN.
+- Images may come from any `https:` address (bookmark previews, remote images
+  in notes). Inline styles are allowed; the editors set them.
+- The apps keep inline styles working by not letting Tauri hash them
+  (`dangerousDisableAssetCspModification: ["style-src"]`); hashes would switch
+  `'unsafe-inline'` off. In development (`devCsp: null`) there is no policy.
+
+In CI the e2e suite runs against the policy, and any violation fails the test
+that caused it (`tests/e2e/fixtures.ts`).
 
 ## Cross-origin isolation (optional)
 

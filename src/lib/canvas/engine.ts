@@ -1,4 +1,7 @@
 import { Application, Container } from 'pixi.js'
+// Pixi builds its renderer with `new Function` unless this is loaded; the
+// content security policy forbids eval (docs/DEPLOYMENT.md).
+import 'pixi.js/unsafe-eval'
 import { LayerManager } from '@/lib/canvas/layer-manager'
 import { StrokeEngine } from '@/lib/canvas/stroke-engine'
 import { BrushSystem } from '@/lib/canvas/brush-system'

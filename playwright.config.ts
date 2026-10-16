@@ -44,8 +44,12 @@ export default defineConfig({
   webServer: {
     // CI runs against the real production artifact: `pnpm build` (run as a
     // prior workflow step) emits the static export to `out/`, and `serve`
-    // hosts it. Locally the dev server keeps the fast iteration loop.
-    command: process.env.CI ? 'pnpm exec serve out -l 3000 -L' : 'pnpm dev',
+    // hosts it with the deployed content security policy (`serve.json`, kept
+    // equal to vercel.json by tests/csp.test.ts). Locally the dev server keeps
+    // the fast iteration loop.
+    command: process.env.CI
+      ? 'pnpm exec serve out -l 3000 -L -c ../tests/e2e/serve.json'
+      : 'pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -6,18 +6,7 @@
     <title>Mentis capture</title>
   </head>
   <body class="bg-transparent">
-    <!-- The desktop capture overlay. Desktop only: no service worker here.
-         Sets the dark class before first paint, as index.html does. -->
-    <script>
-      ;(function () {
-        try {
-          var t = localStorage.getItem('ink-theme')
-          var dark =
-            t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme:dark)').matches)
-          if (dark) document.documentElement.classList.add('dark')
-        } catch (e) {}
-      })()
-    </script>
+    <script src="/boot.js"></script>
     <div id="root"></div>
     <script type="module" src="/src/capture-main.tsx"></script>
   </body>

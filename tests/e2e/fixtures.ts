@@ -11,12 +11,29 @@ const TEST_VAULT_NAME = 'E2E Test Vault'
 
 export const test = base.extend<{
   vaultPage: Page
+  cspViolations: void
 }>({
   vaultPage: async ({ page }, use) => {
     await page.goto('/')
     await seedVault(page)
     await use(page)
   },
+  // Served with the deployed content security policy (CI), anything the
+  // policy blocks fails the test that triggered it.
+  cspViolations: [
+    async ({ context }, use) => {
+      const violations: string[] = []
+      const watch = (page: Page) =>
+        page.on('console', (msg) => {
+          if (msg.text().includes('Content Security Policy')) violations.push(msg.text())
+        })
+      context.pages().forEach(watch)
+      context.on('page', watch)
+      await use()
+      expect(violations, 'blocked by the content security policy').toEqual([])
+    },
+    { auto: true },
+  ],
 })
 
 export { expect }

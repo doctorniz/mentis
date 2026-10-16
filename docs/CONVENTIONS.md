@@ -97,8 +97,9 @@ called); use arrays or `Record<string, true>`.
 - Tailwind utilities; `cn()` (clsx + tailwind-merge) for conditional classes;
   CVA for component variants. No CSS modules or styled-components.
 - Theme tokens are CSS variables in `src/globals.css`. Dark mode is class-based
-  (`.dark` on `<html>`), set before paint by the inline script in
-  `index.html` from `localStorage('ink-theme')`.
+  (`.dark` on `<html>`), set before paint by `public/boot.js` from
+  `localStorage('ink-theme')`. No inline scripts: the content security policy
+  forbids them (see `docs/DEPLOYMENT.md`).
 - Phones: `safe-top` / `safe-bottom` / `safe-x` keep content clear of the
   system bars; `pointer-coarse:` enlarges touch targets.
 - UI copy: as few words as possible; a hint under a setting only when it
