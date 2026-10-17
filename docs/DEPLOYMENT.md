@@ -22,7 +22,13 @@ see the README and [`ANDROID.md`](./ANDROID.md).
 **network-first**, falling back to the cache offline, so a new deploy is picked
 up on the next load instead of serving a stale `index.html` against new
 assets; other assets are stale-while-revalidate. `public/boot.js`,
-loaded by every page, registers it and warms the cache.
+loaded by every page, registers it and warms the cache. Each build writes its
+own id into the cache name (`stampServiceWorker` in `vite.config.ts`), so a
+deploy starts a fresh cache and drops the old one with its assets.
+
+`public/mp3-recorder-worker.js`, `public/vmsg.wasm` and
+`public/pdf.worker.min.mjs` are copied from `node_modules` on install
+(`postinstall`) and are not in git.
 
 ## Content security policy
 

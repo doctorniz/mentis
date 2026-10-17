@@ -1,6 +1,9 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'mentis-v3'
+// The build writes its own id here (vite.config.ts, `stampServiceWorker`), so
+// each deploy gets a fresh cache and the activate step drops the old one with
+// the assets of builds that no longer exist.
+const CACHE_NAME = 'mentis-__BUILD_ID__'
 
 const PRECACHE_URLS = ['/', '/manifest.json', '/icon.svg']
 

@@ -1,6 +1,9 @@
 import path from 'path'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { createHash } from 'crypto'
+import { readFileSync, writeFileSync } from 'fs'
+import type { Plugin } from 'vite'
 
 const stub = path.resolve(__dirname, 'src/lib/empty-module.js')
 const esmStub = path.resolve(__dirname, 'src/lib/empty-module-esm.js')
@@ -27,6 +30,31 @@ const EAGER_VENDOR_GROUPS: Array<[string, string[]]> = [
   ['vendor-text', ['/minisearch/', '/turndown/', '/marked/', '/gray-matter/']],
 ]
 
+/** Writes a build id into the copied `sw.js`: a hash of the built
+ *  `index.html`, which names every hashed entry asset, so it changes exactly
+ *  when what the page loads changes. */
+function stampServiceWorker(): Plugin {
+  let outDir = 'out'
+  return {
+    name: 'mentis-stamp-service-worker',
+    apply: 'build',
+    configResolved(config) {
+      outDir = config.build.outDir
+    },
+    closeBundle() {
+      const sw = path.resolve(outDir, 'sw.js')
+      let html: string
+      try {
+        html = readFileSync(path.resolve(outDir, 'index.html'), 'utf8')
+      } catch {
+        return
+      }
+      const id = createHash('sha256').update(html).digest('hex').slice(0, 12)
+      writeFileSync(sw, readFileSync(sw, 'utf8').replace('__BUILD_ID__', id))
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   // Keep the existing `NEXT_PUBLIC_` variable names so `.env.local` and any
   // deployment environment carry over untouched. `define` below feeds them to
@@ -34,7 +62,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ['VITE_', 'NEXT_PUBLIC_'])
 
   return {
-    plugins: [react()],
+    plugins: [react(), stampServiceWorker()],
 
     resolve: {
       alias: [
