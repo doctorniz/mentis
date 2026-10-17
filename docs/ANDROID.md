@@ -35,6 +35,13 @@ inside the picked folder), kept in the recent list with a display name.
 - No file watching: Android offers none for these folders. The vault is
   reconciled whenever the app comes back to the foreground.
 
+## No backups of app data
+
+The app's own data (settings, the Dropbox token, AI keys) is left out of
+Android backups and device-to-device transfers (`allowBackup="false"`,
+`res/xml/data_extraction_rules.xml`). Notes are in the folder the user picked
+and are not affected; on a new phone, sign in to Dropbox and enter keys again.
+
 ## Plain http
 
 Release builds allow plain `http://` (`usesCleartextTraffic` in
