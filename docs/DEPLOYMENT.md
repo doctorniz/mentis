@@ -53,6 +53,14 @@ keeps the two, and the e2e server's `tests/e2e/serve.json`, identical.
 In CI the e2e suite runs against the policy, and any violation fails the test
 that caused it (`tests/e2e/fixtures.ts`).
 
+## CI
+
+Workflows use third-party actions pinned to a commit, with the tag as a
+comment; Dependabot (`.github/dependabot.yml`) proposes updates monthly. CI
+runs with read-only repository access. The Android release job, which holds
+the signing secrets, restores no caches, so it builds only from what it
+fetched itself.
+
 ## Audits
 
 CI's `audit` job checks dependencies for known vulnerabilities.
