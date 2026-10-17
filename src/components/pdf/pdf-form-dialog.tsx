@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/button'
-import { getFormFields, fillFormFields } from '@/lib/pdf/page-operations'
+import { getFormFields, fillFormFields } from '@/lib/pdf/pdf-ops'
 
 interface FormField {
   name: string

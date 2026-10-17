@@ -124,6 +124,8 @@ deleting it loses nothing, and it is rebuilt from them.
   `INDEX_VERSION` — a different version rebuilds the index.
 - **Extraction** runs in a worker: each module's `search.ts` turns a file into
   `{ title, content, tags, links }` (`src/core/index/extract-worker.ts`).
+- **PDF edits** (pdf-lib: saving annotations, page operations, forms) run in
+  a worker too (`src/lib/pdf/pdf-ops.ts`), started on the first edit.
 - **Launch:** the tree and search answer from the index at once; a background
   reconcile then lists the vault (metadata only) and re-extracts only new or
   changed files. On the desktop a watcher (`watch.rs`) reports changes; on

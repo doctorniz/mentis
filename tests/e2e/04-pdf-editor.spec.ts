@@ -292,10 +292,44 @@ test.describe('PDF Editor', () => {
       // This is better suited for a unit test on annotation-writer.ts.
     })
 
-    test.fixme('4.4.6 Save after annotation — close — reopen — annotations present', async () => {
-      // Requires reliable annotation creation (drawing on Fabric.js canvas),
-      // save, close tab, reopen, and verify annotations loaded back.
-      // The Fabric.js interaction is the blocker.
+    test('4.4.6 A highlight is saved into the PDF (pdf-lib in its worker)', async ({
+      vaultPage: page,
+    }) => {
+      await openPdfFromTree(page, 'test-doc.pdf')
+      /** The PDF's bytes in OPFS, as length and first five characters. */
+      const saved = () =>
+        page.evaluate(async () => {
+          try {
+            const vaults = await (
+              await navigator.storage.getDirectory()
+            ).getDirectoryHandle('vaults')
+            let dir: FileSystemDirectoryHandle | undefined
+            for await (const [, h] of (vaults as any).entries()) {
+              if (h.kind === 'directory') dir = h as FileSystemDirectoryHandle
+            }
+            const file = await (await dir!.getFileHandle('test-doc.pdf')).getFile()
+            const head = new TextDecoder().decode(await file.slice(0, 5).arrayBuffer())
+            return { size: file.size, head }
+          } catch {
+            return { size: 0, head: '' }
+          }
+        })
+      const before = await saved()
+
+      const layer = page.locator('canvas[aria-label="Annotation layer"]').first()
+      await page.locator('button[title="Highlight"]').click()
+      const box = (await layer.boundingBox())!
+      await page.mouse.move(box.x + 400, box.y + 100)
+      await page.mouse.down()
+      await page.mouse.move(box.x + 520, box.y + 160, { steps: 10 })
+      await page.mouse.up()
+      // Saving happens on an interval and when the window loses focus.
+      await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+
+      await expect
+        .poll(async () => (await saved()).size, { timeout: 30_000 })
+        .toBeGreaterThan(before.size)
+      expect((await saved()).head).toBe('%PDF-')
     })
   })
 

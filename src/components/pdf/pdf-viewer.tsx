@@ -8,9 +8,9 @@ import { useSyncPush } from '@/contexts/sync-context'
 import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
 import { loadPdfjs } from '@/lib/pdf/pdfjs-loader'
 import { readPageAnnotations } from '@/lib/pdf/annotation-reader'
-import { writeAnnotationsIntoPdf } from '@/lib/pdf/annotation-writer'
 import { loadSignatures, addSignatureToVault } from '@/lib/pdf/signature-store'
 import {
+  writeAnnotationsIntoPdf,
   insertBlankPage,
   appendBlankPage,
   deletePage,
@@ -18,7 +18,7 @@ import {
   reorderPages,
   mergePages,
   extractPages,
-} from '@/lib/pdf/page-operations'
+} from '@/lib/pdf/pdf-ops'
 import { PdfUndoStack } from '@/lib/pdf/undo-stack'
 import { createSnapshot, pruneSnapshots } from '@/lib/snapshot'
 import { useEditorStore } from '@/stores/editor'
