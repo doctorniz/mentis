@@ -247,7 +247,9 @@ test.describe('5.2 Layers', () => {
     await expect(undoBtn).toBeDisabled()
 
     await page.getByTitle('Clear layer').click()
-    await expect(undoBtn).toBeEnabled({ timeout: 5_000 })
+    // The undo entry waits for a PNG encode of the whole layer, which takes
+    // seconds under CI's parallel software rendering.
+    await expect(undoBtn).toBeEnabled({ timeout: 20_000 })
   })
 })
 
