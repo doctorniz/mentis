@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { searchVault } from '@/lib/search/index'
+import { INDEX_CHANGED_EVENTS } from '@/lib/search/index-events'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import type { SearchResult } from '@/types/search'
 import { useEditorStore } from '@/stores/editor'
@@ -43,6 +44,9 @@ export function VaultLeftSearch({ onClose, rootClassName }: VaultLeftSearchProps
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
+  // Bumped when the index changes, so results catch up with indexing that
+  // finishes after the query was typed (e.g. just after a vault opens).
+  const [indexVersion, setIndexVersion] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Auto-focus when the panel opens
@@ -57,7 +61,15 @@ export function VaultLeftSearch({ onClose, rootClassName }: VaultLeftSearchProps
     return () => window.clearTimeout(t)
   }, [query])
 
-  // Run search whenever debounced query changes
+  useEffect(() => {
+    const bump = () => setIndexVersion((v) => v + 1)
+    for (const name of INDEX_CHANGED_EVENTS) window.addEventListener(name, bump)
+    return () => {
+      for (const name of INDEX_CHANGED_EVENTS) window.removeEventListener(name, bump)
+    }
+  }, [])
+
+  // Run search whenever the debounced query or the index changes
   useEffect(() => {
     const { text, hashTags } = parseSearchQuery(debounced)
     if (!text.length && !hashTags.length) {
@@ -73,7 +85,7 @@ export function VaultLeftSearch({ onClose, rootClassName }: VaultLeftSearchProps
     return () => {
       stale = true
     }
-  }, [debounced])
+  }, [debounced, indexVersion])
 
   const openResult = useCallback(
     (r: SearchResult) => {
