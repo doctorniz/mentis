@@ -352,10 +352,23 @@ test.describe('11 — Search', () => {
 
       // Leave the app (releasing the database), delete the index, come back.
       await page.goto('/404.html')
-      await page.evaluate(async () => {
-        const root = await navigator.storage.getDirectory()
-        await root.removeEntry('.mentis-index', { recursive: true })
-      })
+      // The old page's database worker lets go of its files shortly after
+      // the page goes; until then OPFS refuses the delete.
+      await expect
+        .poll(
+          () =>
+            page.evaluate(async () => {
+              try {
+                const root = await navigator.storage.getDirectory()
+                await root.removeEntry('.mentis-index', { recursive: true })
+                return 'deleted'
+              } catch (err) {
+                return (err as Error).name
+              }
+            }),
+          { timeout: 15_000 },
+        )
+        .toBe('deleted')
       await page.goto('/')
       await page.waitForSelector('nav', { timeout: 30_000 })
       const handle = await page.waitForFunction(
