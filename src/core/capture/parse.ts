@@ -175,7 +175,11 @@ export function extractRecurrence(text: CaptureText): Recurrence | undefined {
   return { repeat: 'weekly', repeatWeekday: winner.dow }
 }
 
-/** `on monday`, `this friday`, `next tuesday`: the next such day. The first phrase wins. */
+/**
+ * `on monday`, `this friday`, `next tuesday`: the next such day, today
+ * included, except that `next tuesday` said on a Tuesday is a week away (as
+ * chrono reads it for events). The first phrase wins.
+ */
 export function extractWeekday(
   text: CaptureText,
   now: Date = new Date(),
@@ -185,7 +189,12 @@ export function extractWeekday(
     const dow = dayWordToDow(m[1]!)
     if (dow == null) continue
     text.claim(...wholeRange(m), field)
-    return formatLocalDate(nextWeekdayOnOrAfter(now, dow))
+    const day = nextWeekdayOnOrAfter(now, dow)
+    const isNext = m[0].toLowerCase().startsWith('next')
+    if (isNext && formatLocalDate(day) === formatLocalDate(now)) {
+      day.setDate(day.getDate() + 7)
+    }
+    return formatLocalDate(day)
   }
   return undefined
 }
