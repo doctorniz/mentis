@@ -1,6 +1,7 @@
 import { FileType, getFileType } from '@/types/files'
 import type { FileEntry, FileStats } from '@/types/files'
 import type { FileSystemAdapter } from './types'
+import { readHandle } from './read-handle'
 
 /**
  * File System Access API adapter — wraps a user-picked directory handle.
@@ -56,15 +57,13 @@ export class FsapiAdapter implements FileSystemAdapter {
   async readFile(path: string): Promise<Uint8Array> {
     const { parent, name } = await this.resolvePath(path)
     const fh = await parent.getFileHandle(name)
-    const file = await fh.getFile()
-    return new Uint8Array(await file.arrayBuffer())
+    return readHandle(fh, async (file) => new Uint8Array(await file.arrayBuffer()))
   }
 
   async readTextFile(path: string): Promise<string> {
     const { parent, name } = await this.resolvePath(path)
     const fh = await parent.getFileHandle(name)
-    const file = await fh.getFile()
-    return file.text()
+    return readHandle(fh, (file) => file.text())
   }
 
   async writeFile(path: string, data: Uint8Array): Promise<void> {

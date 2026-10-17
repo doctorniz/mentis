@@ -1,6 +1,7 @@
 import { FileType, getFileType } from '@/types/files'
 import type { FileEntry, FileStats } from '@/types/files'
 import type { FileSystemAdapter } from './types'
+import { readHandle } from './read-handle'
 
 export class OpfsAdapter implements FileSystemAdapter {
   readonly type = 'opfs' as const
@@ -41,16 +42,13 @@ export class OpfsAdapter implements FileSystemAdapter {
   async readFile(path: string): Promise<Uint8Array> {
     const { parent, name } = await this.resolvePath(path)
     const fileHandle = await parent.getFileHandle(name)
-    const file = await fileHandle.getFile()
-    const buffer = await file.arrayBuffer()
-    return new Uint8Array(buffer)
+    return readHandle(fileHandle, async (file) => new Uint8Array(await file.arrayBuffer()))
   }
 
   async readTextFile(path: string): Promise<string> {
     const { parent, name } = await this.resolvePath(path)
     const fileHandle = await parent.getFileHandle(name)
-    const file = await fileHandle.getFile()
-    return file.text()
+    return readHandle(fileHandle, (file) => file.text())
   }
 
   async writeFile(path: string, data: Uint8Array): Promise<void> {
