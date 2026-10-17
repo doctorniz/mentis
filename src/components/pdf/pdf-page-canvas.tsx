@@ -9,8 +9,9 @@ import {
   Path as FabricPath,
   Textbox as FabricTextbox,
   FabricImage,
+  FabricObject,
 } from 'fabric'
-import type { FabricObject, TPointerEventInfo } from 'fabric'
+import type { TPointerEventInfo } from 'fabric'
 import { usePdfStore } from '@/stores/pdf'
 import { PdfTool, PdfAnnotationType } from '@/types/pdf'
 import type {
@@ -24,6 +25,11 @@ import type {
 import { fabricPathCommandsToPdfPoints } from '@/lib/pdf/fabric-path-to-pdf-points'
 import { fingersDraw, isPenEraser, notePointer } from '@/lib/browser/pen'
 import { inkTouched } from '@/lib/pdf/ink-hit'
+
+// Fabric 7 places objects by their centre by default; every annotation here
+// is placed by its top-left corner, as in Fabric 6.
+FabricObject.ownDefaults.originX = 'left'
+FabricObject.ownDefaults.originY = 'top'
 
 interface Props {
   page: PDFPageProxy

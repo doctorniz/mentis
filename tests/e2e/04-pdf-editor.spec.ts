@@ -146,6 +146,52 @@ test.describe('PDF Editor', () => {
       await expect(colourGroup).toBeVisible()
     })
 
+    test('4.2.5 A highlight and an ink stroke land where they were drawn', async ({
+      vaultPage: page,
+    }) => {
+      await openPdfFromTree(page, 'test-doc.pdf')
+      const layer = page.locator('canvas[aria-label="Annotation layer"]').first()
+      // Measured after choosing a tool: its colour row moves the page down.
+      // Right half of the page: a side panel covers the left of it at this width.
+      let box = (await layer.boundingBox())!
+      const at = (x: number, y: number) => [box.x + x, box.y + y] as const
+
+      /** Alpha of the annotation layer's pixel at page offset (x, y). */
+      const alpha = (x: number, y: number) =>
+        layer.evaluate(
+          (el, [x, y]) => {
+            const c = el as HTMLCanvasElement
+            const scale = c.width / c.clientWidth
+            const ctx = c.getContext('2d')!
+            return ctx.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data[3]
+          },
+          [x, y],
+        )
+
+      await page.locator('button[title="Highlight"]').click()
+      box = (await layer.boundingBox())!
+      await page.mouse.move(...at(400, 100))
+      await page.mouse.down()
+      await page.mouse.move(...at(460, 130), { steps: 5 })
+      await page.mouse.move(...at(520, 160), { steps: 5 })
+      await page.mouse.up()
+      await page.waitForTimeout(300)
+      // Inside the dragged box, and outside it where a centred box would be.
+      expect(await alpha(505, 150)).toBeGreaterThan(0)
+      expect(await alpha(360, 80)).toBe(0)
+
+      await page.locator('button[title="Draw"]').click()
+      box = (await layer.boundingBox())!
+      await page.mouse.move(...at(380, 250))
+      await page.mouse.down()
+      await page.mouse.move(...at(530, 250), { steps: 15 })
+      await page.mouse.up()
+      await page.waitForTimeout(300)
+      expect(await alpha(520, 250)).toBeGreaterThan(0)
+      expect(await alpha(520, 300)).toBe(0)
+      expect(await alpha(340, 250)).toBe(0)
+    })
+
     test('4.2.4 Text annotation — click page — type', async ({ vaultPage: page }) => {
       await openPdfFromTree(page, 'test-doc.pdf')
 

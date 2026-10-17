@@ -55,12 +55,15 @@ CI's `audit` job checks dependencies for known vulnerabilities.
   remain (unmaintained `proc-macro-error`, unsound `glib`), both in Tauri's
   Linux GTK stack; warnings do not fail it.
 - **npm:** `pnpm audit --prod` only reports, as a warning and in the job
-  summary. In October 2026 it found about 80 high or critical advisories. About 60
-  are in code that only runs in Node and never ships (Next.js and `sharp`
-  through `slidecanvas`; `tar` through `fabric` and `@huggingface/transformers`).
-  The ones in shipped code are `prosemirror-view`, `fabric`,
-  `@xmldom/xmldom`, `linkify-it`, `js-yaml` and `xlsx`. Once those are
-  updated, the npm audit should fail the build too.
+  summary. The advisories in shipped code were fixed in October 2026
+  (`prosemirror-view`, `fabric` 7, `@xmldom/xmldom`, `linkify-it`, `js-yaml`,
+  `protobufjs`, and SheetJS 0.20.3 from its own CDN, since npm stopped getting
+  releases). About 30 high or critical remain, all in code that only runs in
+  Node and never ships: Next.js and its tooling through `slidecanvas`, `tar`
+  and `sharp` through `@huggingface/transformers`, and `image-size`, which
+  `slidecanvas` only uses to write PowerPoint files.
+- `package.json` overrides `@xmldom/xmldom` for `speech-rule-engine` (slide
+  maths), which pins a vulnerable 0.9 release.
 
 ## Cross-origin isolation (optional)
 
