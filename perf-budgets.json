@@ -8,13 +8,13 @@
     },
     "initialTotal": {
       "label": "Initial JS + CSS (ratchet)",
-      "maxKb": 209,
+      "maxKb": 208,
       "enforce": true
     },
     "firstPdf": {
       "label": "First-PDF lazy chunk (excl. worker)",
       "maxKb": 400,
-      "enforce": false
+      "enforce": true
     }
   },
   "timing": {

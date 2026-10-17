@@ -86,7 +86,9 @@ Import boundaries are enforced by ESLint `no-restricted-imports`:
 | Binary excluding model | < 15 MB |
 | First-PDF lazy chunk | < 400 KB |
 
-A build exceeding these fails. Do not raise a budget to make a build pass —
+A build exceeding a size budget (initial JS, binary, first-PDF chunk) fails;
+the timings are measured in CI and reported (`perf-budgets.json`). Do not
+raise a budget to make a build pass —
 raise it only as a deliberate, separately committed decision.
 
 ## Working agreement
