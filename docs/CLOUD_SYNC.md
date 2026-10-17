@@ -83,6 +83,17 @@ no record of — after Disconnect, or a second device using the same folder —
 is compared by content: the same, it is just recorded; different, this
 device's version stays and Dropbox's is kept as a conflict copy.
 
+## Conflicting drawings
+
+A drawing is its `.canvas` file plus one PNG per layer under
+`_mentis/_drawings/<assetId>/`, and sync moves each file on its own. When both
+sides changed any of a drawing's files, the losing side is saved whole before
+any of them is transferred: `Drawing (conflict <date>).canvas` with a new
+asset id, and every layer PNG copied under that id. One toast per drawing; no
+per-layer copies, which the orphan reaper would delete. Older canvases (pixels
+beside the file, no asset id) get the ordinary per-file copy
+(`lib/sync/canvas-conflict.ts`, `tests/sync-canvas-conflict.test.ts`).
+
 ## Known gaps
 
 - Nothing lists past conflicts; look for `(conflict …)` files

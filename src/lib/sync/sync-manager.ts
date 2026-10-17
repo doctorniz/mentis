@@ -13,6 +13,13 @@ import {
   type RemoteDeleteAction,
 } from './conflicts'
 import { TRASH_DIR, expiredTrashDays, moveToLocalTrash, trashPath } from './trash'
+import {
+  canvasConflictCopy,
+  canvasRefs,
+  drawingAssetOf,
+  isCanvasPath,
+  isDrawingPath,
+} from './canvas-conflict'
 import { uniqueVaultPath } from '@/lib/fs/unique-path'
 import { fileTypes } from '@/core/registries'
 import { putFileHashes, validFileHashes } from '@/lib/search/index'
@@ -30,6 +37,12 @@ export interface SyncConflict {
 }
 
 export type SyncConflictListener = (conflict: SyncConflict) => void
+
+/** A true conflict on a drawing's file, and which side's version stays. */
+interface DrawingConflict {
+  path: string
+  winner: 'local' | 'remote'
+}
 
 /**
  * Asked before a run deletes many files (see `needsDeleteConfirmation`).
@@ -184,6 +197,28 @@ export class SyncManager {
       const deletes = trashRemote.length + trashLocal.length
       const keep = !(await this.mayDelete(deletes, manifestMap.size))
       this.setStatus('syncing', 'Syncing…')
+
+      // Conflicting drawings are copied whole before any of their files moves.
+      const drawingConflicts: DrawingConflict[] = []
+      for (const path of locallyChanged) {
+        const remote = remoteMap.get(path)
+        if (!remote || !isDrawingPath(path)) continue
+        const manifestEntry = manifestMap.get(path)
+        if (!manifestEntry) {
+          if (await this.differsFromRemote(path, remote)) {
+            drawingConflicts.push({ path, winner: 'local' })
+          }
+          continue
+        }
+        const decision = resolveSyncConflict({
+          isLocallyChanged: true,
+          remoteHash: remote.hash,
+          remoteModifiedAt: remote.modifiedAt,
+          manifestEntry,
+        })
+        if (decision.isTrueConflict) drawingConflicts.push({ path, winner: decision.winner })
+      }
+      await this.keepLosingDrawings(drawingConflicts, [...remoteMap.keys(), ...locallyChanged])
 
       // Push local creates and modifications
       const settled = new Set<string>()
@@ -399,6 +434,36 @@ export class SyncManager {
     const keep = !(await this.mayDelete(toTrash.length, tracked.length))
     this.setStatus('syncing', 'Pulling remote changes…')
 
+    // Conflicting drawings are copied whole before any of their files moves.
+    const drawingConflicts: DrawingConflict[] = []
+    for (const remote of updates) {
+      if (!isDrawingPath(remote.path)) continue
+      const manifestEntry = await this.state.getEntry(remote.path)
+      const localHash = await this.currentLocalHash(remote.path)
+      if (!manifestEntry) {
+        if (localHash !== null && (await this.differsFromRemote(remote.path, remote))) {
+          drawingConflicts.push({ path: remote.path, winner: 'local' })
+        }
+        continue
+      }
+      const decision = decideRemoteUpdate({
+        manifestEntry,
+        localHash,
+        remoteHash: remote.hash,
+        remoteModifiedAt: remote.modifiedAt,
+      })
+      if (decision.isTrueConflict) {
+        drawingConflicts.push({
+          path: remote.path,
+          winner: decision.action === 'pull' ? 'remote' : 'local',
+        })
+      }
+    }
+    await this.keepLosingDrawings(drawingConflicts, [
+      ...tracked.map((e) => e.path),
+      ...updates.map((u) => u.path),
+    ])
+
     for (const remote of updates) {
       const manifestEntry = await this.state.getEntry(remote.path)
       const localHash = await this.currentLocalHash(remote.path)
@@ -448,11 +513,10 @@ export class SyncManager {
    * as a conflict copy instead of being overwritten.
    */
   private async settleUntracked(path: string, remote: RemoteFileEntry): Promise<void> {
-    const local = await this.fs.readFile(path)
-    if (this.provider.contentHash && (await this.provider.contentHash(local)) === remote.hash) {
+    if (!(await this.differsFromRemote(path, remote))) {
       await this.state.setEntry({
         path,
-        localHash: await hashBytes(local),
+        localHash: await hashBytes(await this.fs.readFile(path)),
         remoteHash: remote.hash,
         lastSyncedAt: new Date().toISOString(),
       })
@@ -460,6 +524,13 @@ export class SyncManager {
     }
     await this.keepLosingSide(path, 'local')
     await this.pushFileInternal(path)
+  }
+
+  /** Whether the local file's bytes differ from `remote` (assumed so when the
+   *  provider cannot hash content the way it does). */
+  private async differsFromRemote(path: string, remote: RemoteFileEntry): Promise<boolean> {
+    if (!this.provider.contentHash) return true
+    return (await this.provider.contentHash(await this.fs.readFile(path))) !== remote.hash
   }
 
   /** SHA-256 of the local file's current bytes; null when missing/unreadable. */
@@ -492,23 +563,96 @@ export class SyncManager {
     for (const fn of this.conflictListeners) fn({ path, winner, copyPath })
   }
 
+  /**
+   * Save the losing side of each conflicting drawing whole, before any of its
+   * files is transferred: a drawing is its `.canvas` file and a PNG per layer,
+   * and per-file copies of those do not make a drawing (canvas-conflict.ts).
+   * A layer file's drawing is found among `canvases` by its asset id. Paths
+   * handled here are marked announced, so no per-file copy is made of them;
+   * a drawing that cannot be copied this way (an older format) is left to the
+   * per-file copies.
+   */
+  private async keepLosingDrawings(
+    conflicts: DrawingConflict[],
+    canvases: Iterable<string>,
+  ): Promise<void> {
+    if (conflicts.length === 0) return
+    const readLocal = async (path: string) => {
+      try {
+        return await this.fs.readFile(path)
+      } catch {
+        return null
+      }
+    }
+    const readRemote = async (path: string) => {
+      try {
+        return await this.provider.download(path)
+      } catch {
+        return null
+      }
+    }
+
+    let canvasOfAsset: Map<string, string> | null = null
+    const groups = new Map<string, { winner: 'local' | 'remote'; paths: string[] }>()
+    for (const conflict of conflicts) {
+      let canvasPath = isCanvasPath(conflict.path) ? conflict.path : null
+      if (!canvasPath) {
+        if (!canvasOfAsset) {
+          canvasOfAsset = new Map()
+          for (const path of new Set(canvases)) {
+            if (!isCanvasPath(path)) continue
+            const bytes = (await readLocal(path)) ?? (await readRemote(path))
+            const refs = bytes && canvasRefs(bytes)
+            if (refs) canvasOfAsset.set(refs.assetId, path)
+          }
+        }
+        canvasPath = canvasOfAsset.get(drawingAssetOf(conflict.path)!) ?? null
+      }
+      if (!canvasPath) continue
+      const group = groups.get(canvasPath) ?? { winner: conflict.winner, paths: [] }
+      group.paths.push(conflict.path)
+      groups.set(canvasPath, group)
+    }
+
+    for (const [canvasPath, { winner, paths }] of groups) {
+      const suffix = fileTypes.matchedSuffix(canvasPath)
+      const copyPath = await uniqueVaultPath(
+        this.fs,
+        conflictCopyPath(canvasPath, new Date(), suffix),
+        suffix,
+      )
+      const files = await canvasConflictCopy({
+        canvasPath,
+        copyPath,
+        newAssetId: crypto.randomUUID(),
+        read: winner === 'remote' ? readLocal : readRemote,
+      })
+      if (!files) continue
+      for (const [path, data] of files) {
+        await this.ensureLocalDirs(path)
+        await this.fs.writeFile(path, data)
+        await this.pushFileInternal(path)
+      }
+      for (const path of [canvasPath, ...paths]) this.announcedConflicts.add(path)
+      for (const fn of this.conflictListeners) fn({ path: canvasPath, winner, copyPath })
+    }
+  }
+
+  /** Create the local parent folders of `path`. */
+  private async ensureLocalDirs(path: string): Promise<void> {
+    const parts = path.split('/')
+    let dir = ''
+    for (let i = 0; i < parts.length - 1; i++) {
+      dir = dir ? `${dir}/${parts[i]}` : parts[i]
+      if (!(await this.fs.exists(dir))) await this.fs.mkdir(dir)
+    }
+  }
+
   private async pullFile(path: string, remote: RemoteFileEntry): Promise<void> {
     const data = await this.provider.download(path)
     const localHash = await hashBytes(data)
 
-    // Ensure parent directories exist locally
-    const parts = path.split('/')
-    if (parts.length > 1) {
-      let dir = ''
-      for (let i = 0; i < parts.length - 1; i++) {
-        dir = dir ? `${dir}/${parts[i]}` : parts[i]
-        const dirExists = await this.fs.exists(dir)
-        if (!dirExists) {
-          await this.fs.mkdir(dir)
-        }
-      }
-    }
-
+    await this.ensureLocalDirs(path)
     await this.fs.writeFile(path, data)
     await this.state.setEntry({
       path,
