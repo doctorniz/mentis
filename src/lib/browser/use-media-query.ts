@@ -1,5 +1,3 @@
-'use client'
-
 import { useLayoutEffect, useState } from 'react'
 
 /** Subscribes to `window.matchMedia(query)`. SSR / first paint: `false` until mounted. */

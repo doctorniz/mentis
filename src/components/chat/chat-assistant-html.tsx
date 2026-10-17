@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, type MouseEvent } from 'react'
 
 import { cn } from '@/utils/cn'

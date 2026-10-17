@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'

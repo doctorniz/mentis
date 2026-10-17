@@ -1,5 +1,3 @@
-'use client'
-
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { ChevronDown, FileCode, FileDown, FileText, PenLine, Printer, Search } from 'lucide-react'
 import { cn } from '@/utils/cn'

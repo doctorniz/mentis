@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useState } from 'react'
 import * as Slider from '@radix-ui/react-slider'
 import {

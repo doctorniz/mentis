@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useRef, useState } from 'react'
 import { FolderOpen, Plus, Trash2 } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'

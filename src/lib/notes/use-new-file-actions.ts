@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useMemo, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'

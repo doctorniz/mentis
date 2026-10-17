@@ -1,5 +1,3 @@
-'use client'
-
 import { forwardRef, useEffect, useRef, useState, type ComponentPropsWithoutRef } from 'react'
 import { File } from 'lucide-react'
 import type { FbFileItem } from '@/types/file-browser'

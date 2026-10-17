@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import { FileOutput } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'

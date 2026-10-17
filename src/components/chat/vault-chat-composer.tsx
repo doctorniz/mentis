@@ -1,5 +1,3 @@
-'use client'
-
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { ChevronDown, Plus, Send, Square } from 'lucide-react'
 

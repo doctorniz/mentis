@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useState } from 'react'
 import { Cloud, CloudOff, Loader2 } from 'lucide-react'
 import { useVaultStore } from '@/stores/vault'

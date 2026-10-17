@@ -1,5 +1,3 @@
-'use client'
-
 import type { PDFPageProxy } from 'pdfjs-dist'
 import { BookOpen, ChevronLeft, Layers } from 'lucide-react'
 import { PdfPagePanel } from '@/components/pdf/pdf-page-panel'

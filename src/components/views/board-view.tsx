@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ImagePlus, Loader2, Mic, Plus } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'

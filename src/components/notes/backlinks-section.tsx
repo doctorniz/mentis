@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * Collapsible backlinks section, designed to sit inside the unified
  * right-side column alongside the chat panel.

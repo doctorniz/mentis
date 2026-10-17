@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * Unified editor right-column layout.
  *

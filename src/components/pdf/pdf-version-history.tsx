@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useState } from 'react'
 import { History, RotateCcw, Trash2 } from 'lucide-react'
 import type { FileSystemAdapter } from '@/lib/fs'

@@ -1,5 +1,3 @@
-'use client'
-
 import { useEffect, useState } from 'react'
 import { Brain, FolderOpen, Info, Loader2, PlugZap, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'

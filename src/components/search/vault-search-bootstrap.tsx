@@ -1,5 +1,3 @@
-'use client'
-
 import { useEffect, useState } from 'react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { openSearchIndex } from '@/lib/search/index'

@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useState } from 'react'
 import { Check, GripVertical, Trash2 } from 'lucide-react'
 import type { KanbanCard } from '@/types/kanban'

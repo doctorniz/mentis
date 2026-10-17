@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Bell, BellRing, ChevronDown, X } from 'lucide-react'

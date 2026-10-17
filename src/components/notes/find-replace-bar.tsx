@@ -1,5 +1,3 @@
-'use client'
-
 import { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
 import { ChevronDown, ChevronRight, ChevronUp, X } from 'lucide-react'

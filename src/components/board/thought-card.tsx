@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Loader2, Mic, Sparkles, Trash2 } from 'lucide-react'
 import { EditorContent, useEditor } from '@tiptap/react'

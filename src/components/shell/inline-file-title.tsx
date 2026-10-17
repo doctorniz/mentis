@@ -1,5 +1,3 @@
-'use client'
-
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 
 export function InlineFileTitle({

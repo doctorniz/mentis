@@ -1,5 +1,3 @@
-'use client'
-
 import * as Dialog from '@radix-ui/react-dialog'
 import { KEYBOARD_SHORTCUTS, formatShortcut, type KeyboardShortcut } from '@/lib/keyboard-shortcuts'
 

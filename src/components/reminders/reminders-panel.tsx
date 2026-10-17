@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Bell, BookOpen, CalendarDays, CheckSquare } from 'lucide-react'
 import type { ReminderRow } from '@/core/index/protocol'

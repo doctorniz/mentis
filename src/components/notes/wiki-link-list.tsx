@@ -1,5 +1,3 @@
-'use client'
-
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import type { SuggestionProps } from '@tiptap/suggestion'
 import type { WikiLinkPick } from '@/lib/editor/wiki-link-types'

@@ -1,5 +1,3 @@
-'use client'
-
 import { useEffect, useMemo, useState } from 'react'
 import { Bell, CalendarDays, CheckSquare, List } from 'lucide-react'
 import { TasksView } from '@/components/views/tasks-view'

@@ -1,5 +1,3 @@
-'use client'
-
 import { Bot, User } from 'lucide-react'
 
 import { ChatAssistantHtml } from '@/components/chat/chat-assistant-html'

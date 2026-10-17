@@ -1,5 +1,3 @@
-'use client'
-
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { MainSidebar } from '@/components/shell/main-sidebar'
 import { MobileNavMasthead } from '@/components/shell/mobile-nav-masthead'

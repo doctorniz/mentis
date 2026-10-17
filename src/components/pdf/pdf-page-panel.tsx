@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PDFPageProxy } from 'pdfjs-dist'
 import { FilePlus, FileStack, RotateCw, Save, Trash2 } from 'lucide-react'

@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * Collapsible headings-outline section for the unified editor right
  * column, stacked alongside BacklinksSection. Reads headings live from

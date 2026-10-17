@@ -1,5 +1,3 @@
-'use client'
-
 import { useRef } from 'react'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import { Copy, ExternalLink, FolderInput, Pencil, Trash2 } from 'lucide-react'

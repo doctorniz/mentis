@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Contrast, Crop, RotateCcw, RotateCw, Save, Sun, SunMedium, Undo2 } from 'lucide-react'
 import type { FileSystemAdapter } from '@/lib/fs'

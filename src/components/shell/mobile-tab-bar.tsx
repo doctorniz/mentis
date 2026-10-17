@@ -1,5 +1,3 @@
-'use client'
-
 import { useEffect, useState } from 'react'
 import { MoreHorizontal, Search, type LucideIcon } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'

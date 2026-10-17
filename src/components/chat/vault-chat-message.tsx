@@ -1,5 +1,3 @@
-'use client'
-
 import { ChatAssistantHtml } from '@/components/chat/chat-assistant-html'
 import { renderVaultChatMarkdown } from '@/lib/chat/render-markdown'
 import type { ChatMessage as ChatMessageT } from '@/types/chat'

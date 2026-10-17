@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useRef, useState } from 'react'
 import { GripHorizontal, Plus, Trash2 } from 'lucide-react'
 import type { KanbanColumn as KanbanColumnType, KanbanColumnColor } from '@/types/kanban'

@@ -1,5 +1,3 @@
-'use client'
-
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { AppShell } from '@/components/shell/app-shell'
 import { ErrorBoundary } from '@/components/shell/error-boundary'

@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fileTypes } from '@/core/registries'
 import type { GraphAppearance } from '@/core/registries/file-types'

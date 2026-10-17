@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/utils/cn'
 

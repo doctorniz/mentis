@@ -1,5 +1,3 @@
-'use client'
-
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Editor as TiptapEditor } from '@tiptap/core'
 import { FileText, GitFork, Search, Vault } from 'lucide-react'

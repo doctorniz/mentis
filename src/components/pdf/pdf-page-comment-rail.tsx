@@ -1,5 +1,3 @@
-'use client'
-
 import type { PdfTextComment } from '@/types/pdf'
 
 const MIN_CARD_GAP = 8

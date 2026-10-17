@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Maximize, ZoomIn, ZoomOut } from 'lucide-react'
 import type { CanvasEngine } from '@/lib/canvas/engine'

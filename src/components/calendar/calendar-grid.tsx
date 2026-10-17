@@ -1,5 +1,3 @@
-'use client'
-
 import { useMemo, useCallback } from 'react'
 import { cn } from '@/utils/cn'
 import type { CalendarEvent } from '@/types/calendar'

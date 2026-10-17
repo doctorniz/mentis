@@ -1,5 +1,3 @@
-'use client'
-
 import { forwardRef, useCallback, useEffect, useRef, useState } from 'react'
 import { Send, Square } from 'lucide-react'
 import { cn } from '@/utils/cn'

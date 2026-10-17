@@ -1,5 +1,3 @@
-'use client'
-
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { captureDestinations } from '@/core/registries'
 import type { CaptureContext, CaptureDestination, ParseResult } from '@/core/registries/capture'

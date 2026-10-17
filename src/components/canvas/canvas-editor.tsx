@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { PanelRightOpen } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'

@@ -1,5 +1,3 @@
-'use client'
-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mic, Pause, Play, Square, X } from 'lucide-react'
 import { AudioRecorder, type RecorderState } from '@/lib/audio/recorder'
