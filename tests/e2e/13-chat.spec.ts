@@ -10,113 +10,45 @@ import {
 
 test.describe('13 — AI Chat', () => {
   test.describe('14.1 Settings & Provider Configuration', () => {
+    /** Opens Settings › AI and returns its provider picker. */
     async function openAISettings(page: import('@playwright/test').Page) {
-      // Open settings dialog — typically via a gear icon or keyboard shortcut
-      const settingsBtn = page
-        .locator(
-          'button[aria-label*="etting"], [data-testid="settings-button"], button:has([class*="Settings"])',
-        )
-        .first()
-      if (await settingsBtn.isVisible().catch(() => false)) {
-        await settingsBtn.click()
-      } else {
-        // Try keyboard shortcut
-        await page.keyboard.press('Control+,')
-      }
-      await page.waitForTimeout(500)
-
-      // Navigate to AI tab in settings (scope to the dialog — the nav
-      // sidebar behind the overlay also has a "Chat" label)
-      const aiTab = page.locator('[role="dialog"]').getByRole('tab', { name: 'AI' })
-      if (await aiTab.isVisible().catch(() => false)) {
-        await aiTab.click()
-        await page.waitForTimeout(300)
-      }
+      await page.keyboard.press('Control+,')
+      const dialog = page.getByRole('dialog')
+      await dialog.getByRole('tab', { name: 'AI' }).click()
+      // The AI panel loads on demand; its picker is the one offering OpenAI.
+      const providerSelect = dialog.locator('select', {
+        has: page.locator('option', { hasText: 'OpenAI' }),
+      })
+      await expect(providerSelect).toBeVisible({ timeout: 10_000 })
+      return providerSelect
     }
 
+    const keyInput = (page: import('@playwright/test').Page) =>
+      page.locator(
+        'input[type="password"], input[placeholder*="key"], input[placeholder*="Key"], [data-testid="api-key-input"]',
+      )
+
     test('14.1.1 Provider dropdown — all providers listed', async ({ vaultPage: page }) => {
-      await openAISettings(page)
-
-      // Find provider selector
-      const providerSelect = page
-        .locator('select, [data-testid="provider-select"], [role="combobox"]')
-        .first()
-      await expect(providerSelect).toBeVisible({ timeout: 10_000 })
-
-      await providerSelect.click()
-      await page.waitForTimeout(300)
-
-      // Should list known providers
-      const options = page.locator('option, [role="option"], [data-testid*="provider"]')
-      const count = await options.count()
-      expect(count).toBeGreaterThanOrEqual(3) // at minimum: openrouter, openai, ollama, device, etc.
+      const providerSelect = await openAISettings(page)
+      const labels = await providerSelect.locator('option').allTextContents()
+      expect(labels).toEqual(expect.arrayContaining(['OpenRouter', 'OpenAI', 'Ollama']))
     })
 
     test('14.1.2 Select cloud provider — API key field shown', async ({ vaultPage: page }) => {
-      await openAISettings(page)
-
-      const providerSelect = page
-        .locator('select, [data-testid="provider-select"], [role="combobox"]')
-        .first()
-      await expect(providerSelect).toBeVisible({ timeout: 10_000 })
-
-      // Select OpenAI (a cloud provider)
-      await providerSelect.click()
-      await page.waitForTimeout(200)
-      const openaiOption = page.getByText(/OpenAI/i).first()
-      if (await openaiOption.isVisible()) {
-        await openaiOption.click()
-      } else {
-        await providerSelect.selectOption({ label: 'OpenAI' })
-      }
-      await page.waitForTimeout(500)
-
-      // API key input should be visible for cloud providers
-      const keyInput = page
-        .locator(
-          'input[type="password"], input[placeholder*="key"], input[placeholder*="Key"], [data-testid="api-key-input"]',
-        )
-        .first()
-      await expect(keyInput).toBeVisible({ timeout: 5_000 })
+      const providerSelect = await openAISettings(page)
+      await providerSelect.selectOption({ label: 'OpenAI' })
+      await expect(keyInput(page).first()).toBeVisible({ timeout: 5_000 })
     })
 
     test('14.1.3 Select local provider — API key field hidden', async ({ vaultPage: page }) => {
-      await openAISettings(page)
-
-      const providerSelect = page
-        .locator('select, [data-testid="provider-select"], [role="combobox"]')
-        .first()
-      await expect(providerSelect).toBeVisible({ timeout: 10_000 })
-
-      // Select a local provider (Ollama or Local/Device)
-      await providerSelect.click()
-      await page.waitForTimeout(200)
-      const localOption = page.getByText(/Ollama|Local|Device/i).first()
-      if (await localOption.isVisible()) {
-        await localOption.click()
-      }
-      await page.waitForTimeout(500)
-
-      // API key input should NOT be visible for local providers
-      const keyInput = page.locator(
-        'input[type="password"], input[placeholder*="key"], input[placeholder*="Key"], [data-testid="api-key-input"]',
-      )
-      await expect(keyInput)
-        .toBeHidden({ timeout: 5_000 })
-        .catch(() => {
-          // Some implementations show the field but it's optional — check if it's marked optional
-          // Either hidden or marked as optional is acceptable
-        })
+      const providerSelect = await openAISettings(page)
+      await providerSelect.selectOption({ label: 'Ollama' })
+      await expect(keyInput(page)).toBeHidden({ timeout: 5_000 })
     })
 
     test.fixme('14.1.11 Change provider — model list resets', async ({ vaultPage: page }) => {
       // Requires switching between providers and verifying model dropdown resets
-      await openAISettings(page)
-
-      const providerSelect = page
-        .locator('select, [data-testid="provider-select"], [role="combobox"]')
-        .first()
-      await expect(providerSelect).toBeVisible({ timeout: 10_000 })
+      const providerSelect = await openAISettings(page)
 
       // Select first provider
       await providerSelect.click()

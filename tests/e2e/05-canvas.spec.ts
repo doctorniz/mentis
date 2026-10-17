@@ -20,9 +20,11 @@ async function createCanvas(page: import('@playwright/test').Page) {
     .getByRole('button', { name: 'Canvas' })
     .or(page.getByRole('menuitem', { name: 'Canvas' }))
   await canvasBtn.first().click()
-  // Wait for canvas editor to mount and finish loading
+  // The editor loads lazily: wait for its toolbar and surface, not for a
+  // loading text that may not have appeared yet.
+  await expect(page.getByTitle('Brush (B)')).toBeVisible({ timeout: 30_000 })
+  await expect(canvasLocator(page)).toBeVisible()
   await expect(page.getByText('Loading canvas…')).toBeHidden({ timeout: 15_000 })
-  await page.waitForTimeout(800)
 }
 
 /** Locator for the Pixi <canvas> element inside the viewport. */

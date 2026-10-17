@@ -34,8 +34,13 @@ async function createCanvasWithHooks(page: Page) {
     .getByRole('button', { name: 'Canvas' })
     .or(page.getByRole('menuitem', { name: 'Canvas' }))
   await canvasBtn.first().click()
+  // The editor loads lazily: wait for its engine, not for a loading text that
+  // may not have appeared yet.
+  await page.waitForFunction(() => (window as any).__mentisTest?.canvasEngine, null, {
+    timeout: 30_000,
+  })
+  await expect(canvasLocator(page)).toBeVisible()
   await expect(page.getByText('Loading canvas…')).toBeHidden({ timeout: 15_000 })
-  await page.waitForTimeout(800)
 }
 
 function canvasLocator(page: Page) {
@@ -417,7 +422,7 @@ test.describe('5.8 Selection', () => {
   }) => {
     await page.keyboard.press('b')
     await dragCanvas(page, 150, 150, 300, 300)
-    await page.waitForTimeout(400)
+    await settleHistory(page)
     const before = await layerStats(page)
     const { undoDepth } = await selectionState(page)
 
@@ -432,16 +437,16 @@ test.describe('5.8 Selection', () => {
     // Mid-burst the pixels are floating (layer shows the hole)…
     expect((await layerStats(page)).px).toBe(0)
     // …and the debounced commit lands them after the pause.
-    await page.waitForTimeout(900)
-
-    const after = await layerStats(page)
-    expect(after.px).toBe(before.px)
-    expect(after.bbox).toEqual({
-      minX: before.bbox!.minX + 3,
-      minY: before.bbox!.minY + 10,
-      maxX: before.bbox!.maxX + 3,
-      maxY: before.bbox!.maxY + 10,
+    await waitForLayer(page, {
+      px: before.px,
+      bbox: {
+        minX: before.bbox!.minX + 3,
+        minY: before.bbox!.minY + 10,
+        maxX: before.bbox!.maxX + 3,
+        maxY: before.bbox!.maxY + 10,
+      },
     })
+    await settleHistory(page)
     // The whole burst is ONE undo entry…
     expect((await selectionState(page)).undoDepth).toBe(undoDepth + 1)
     // …and undoing it restores the original pixels exactly.
@@ -459,13 +464,12 @@ test.describe('5.8 Selection', () => {
     const cursorAt = async (cx: number, cy: number) => {
       const [sx, sy] = await canvasToScreen(page, cx, cy)
       await page.mouse.move(sx, sy)
-      await page.waitForTimeout(150)
       return host.evaluate((el) => getComputedStyle(el).cursor)
     }
 
-    expect(await cursorAt(225, 225)).toBe('move') // inside the marquee
-    expect(await cursorAt(420, 60)).toBe('crosshair') // outside it
-    expect(await cursorAt(225, 225)).toBe('move') // and back
+    await expect.poll(() => cursorAt(225, 225)).toBe('move') // inside the marquee
+    await expect.poll(() => cursorAt(420, 60)).toBe('crosshair') // outside it
+    await expect.poll(() => cursorAt(225, 225)).toBe('move') // and back
   })
 
   test('5.8.11 selection persists across tool switch and clips the brush', async ({
@@ -475,9 +479,10 @@ test.describe('5.8 Selection', () => {
     await dragCanvas(page, 100, 100, 250, 250)
 
     await page.keyboard.press('b')
-    await page.waitForTimeout(300)
     // The selection must survive the tool switch — it's the constraint.
-    expect((await selectionState(page)).rect).toEqual({ x: 100, y: 100, width: 150, height: 150 })
+    await expect
+      .poll(async () => (await selectionState(page)).rect)
+      .toEqual({ x: 100, y: 100, width: 150, height: 150 })
 
     // Stroke crossing the selection boundary: only the inside paints.
     await dragCanvas(page, 150, 150, 350, 350)

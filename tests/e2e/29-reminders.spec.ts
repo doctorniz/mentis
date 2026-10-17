@@ -17,18 +17,23 @@ const taskFile = (title: string, remind: string) =>
     '',
   ].join('\n')
 
-/** A vault file's text, read straight from OPFS. */
+/** A vault file's text, read straight from OPFS; '' while the app is writing
+ *  it (OPFS refuses the read), so `expect.poll` tries again. */
 async function readVaultFile(page: import('@playwright/test').Page, relPath: string) {
   return page.evaluate(async (relPath) => {
-    const root = await navigator.storage.getDirectory()
-    const vaults = await root.getDirectoryHandle('vaults')
-    const iter = (vaults as unknown as { values(): AsyncIterable<FileSystemHandle> }).values()
-    let dir: FileSystemDirectoryHandle | null = null
-    for await (const e of iter) if (e.kind === 'directory') dir = e as FileSystemDirectoryHandle
-    const parts = relPath.split('/')
-    const name = parts.pop()!
-    for (const part of parts) dir = await dir!.getDirectoryHandle(part)
-    return (await (await dir!.getFileHandle(name)).getFile()).text()
+    try {
+      const root = await navigator.storage.getDirectory()
+      const vaults = await root.getDirectoryHandle('vaults')
+      const iter = (vaults as unknown as { values(): AsyncIterable<FileSystemHandle> }).values()
+      let dir: FileSystemDirectoryHandle | null = null
+      for await (const e of iter) if (e.kind === 'directory') dir = e as FileSystemDirectoryHandle
+      const parts = relPath.split('/')
+      const name = parts.pop()!
+      for (const part of parts) dir = await dir!.getDirectoryHandle(part)
+      return await (await (await dir!.getFileHandle(name)).getFile()).text()
+    } catch {
+      return ''
+    }
   }, relPath)
 }
 
