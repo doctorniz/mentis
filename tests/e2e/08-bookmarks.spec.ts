@@ -1,4 +1,4 @@
-import { test, expect, navigateTo, waitForView } from './fixtures'
+import { test, expect, waitForView } from './fixtures'
 
 test.describe('8 — Bookmark Manager', () => {
   test.beforeEach(async ({ vaultPage: page }) => {

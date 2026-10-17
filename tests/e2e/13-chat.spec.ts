@@ -2,7 +2,6 @@ import {
   test,
   expect,
   navigateTo,
-  waitForView,
   createMarkdownNote,
   openVaultFile,
   waitForAutoSave,
@@ -233,11 +232,7 @@ test.describe('13 — AI Chat', () => {
       await navigateTo(page, 'chat')
       await page.waitForTimeout(1000)
 
-      // Should see a full-viewport chat interface
-      const chatView = page
-        .locator('[data-testid="vault-chat"], [class*="vault-chat"], [class*="VaultChat"]')
-        .first()
-      // Fallback: look for the chat composer/input area characteristic of vault chat
+      // The chat composer fills the view
       const chatComposer = page
         .locator('textarea, [data-testid="chat-input"], [contenteditable="true"]')
         .first()

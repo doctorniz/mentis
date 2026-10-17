@@ -1,4 +1,4 @@
-import { test, expect, navigateTo, waitForView, waitForAutoSave } from './fixtures'
+import { test, expect, navigateTo } from './fixtures'
 
 /**
  * Canvas (PixiJS v8) drawing editor E2E tests — QA plan section 5.

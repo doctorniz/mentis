@@ -1,4 +1,4 @@
-import { test, expect, navigateTo, waitForView, waitForAutoSave } from './fixtures'
+import { test, expect, navigateTo } from './fixtures'
 
 /**
  * Board (quick capture) E2E tests — QA plan section 6.
@@ -229,7 +229,7 @@ test.describe('6.3 Layout & Edge Cases', () => {
     await openBoard(page)
   })
 
-  test.fixme('6.3.1 Many thoughts — masonry reflows correctly', async ({ vaultPage: page }) => {
+  test.fixme('6.3.1 Many thoughts — masonry reflows correctly', async () => {
     // Performance test: create 20+ thoughts and verify masonry columns
     // form correctly with no overflow. Manual verification recommended
     // for visual correctness and scroll performance.

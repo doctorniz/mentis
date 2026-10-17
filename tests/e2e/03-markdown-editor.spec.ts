@@ -3,7 +3,6 @@ import {
   expect,
   navigateTo,
   createMarkdownNote,
-  typeInEditor,
   waitForAutoSave,
   writeVaultFile,
   openVaultFile,

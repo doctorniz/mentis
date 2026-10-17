@@ -1,4 +1,4 @@
-import { test, expect, navigateTo, createMarkdownNote, writeVaultFile } from './fixtures'
+import { test, expect, navigateTo, writeVaultFile } from './fixtures'
 
 async function createNoteViaOPFS(
   page: import('@playwright/test').Page,

@@ -1,4 +1,4 @@
-import { test, expect, navigateTo, waitForView } from './fixtures'
+import { test, expect, waitForView } from './fixtures'
 
 test.describe('9 — Calendar', () => {
   test.beforeEach(async ({ vaultPage: page }) => {

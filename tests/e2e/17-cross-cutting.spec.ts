@@ -196,7 +196,6 @@ test.describe('18.3 — Performance', () => {
         count++
       }
       window.addEventListener('ink:vault-changed', handler)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(window as any).__e2eWriteCount = () => {
         window.removeEventListener('ink:vault-changed', handler)
         return count
@@ -213,7 +212,6 @@ test.describe('18.3 — Performance', () => {
     await page.waitForTimeout(3000)
 
     const finalCount: number = await page.evaluate(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const getter = (window as any).__e2eWriteCount as (() => number) | undefined
       return getter ? getter() : 0
     })

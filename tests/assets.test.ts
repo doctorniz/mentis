@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { FileEntry, FileStats } from '@/types/files'
-import { FileType } from '@/types/files'
 import { saveAsset, isImagePath } from '@/lib/notes/assets'
 
 class InMemoryAdapter implements FileSystemAdapter {

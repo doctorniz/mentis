@@ -45,7 +45,6 @@ function canvasLocator(page: Page) {
 /** Count non-transparent pixels + bounding box of the ACTIVE layer. */
 async function layerStats(page: Page): Promise<LayerStats> {
   return page.evaluate(() => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     const eng = (window as any).__mentisTest?.canvasEngine
     if (!eng?.initialized) throw new Error('canvas engine test hook not registered')
     const layer = eng.layerManager.getActiveLayer()
@@ -79,7 +78,6 @@ async function regionPx(
   region: { x: number; y: number; width: number; height: number },
 ): Promise<number> {
   return page.evaluate((r) => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     const eng = (window as any).__mentisTest?.canvasEngine
     const layer = eng.layerManager.getActiveLayer()
     const canvas = eng.layerManager.extractLayerCanvas(layer.id, r)
@@ -132,7 +130,6 @@ async function waitForLayer(page: Page, expected: LayerStats): Promise<void> {
 
 async function selectionState(page: Page) {
   return page.evaluate(() => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     const eng = (window as any).__mentisTest?.canvasEngine
     return {
       rect: eng.selectionTool.rect,
@@ -150,7 +147,6 @@ async function selectionState(page: Page) {
  */
 async function settleHistory(page: Page): Promise<void> {
   await page.evaluate(async () => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     const eng = (window as any).__mentisTest?.canvasEngine
     for (;;) {
       const chain = eng.undoPushChain
@@ -166,7 +162,6 @@ async function canvasToScreen(page: Page, cx: number, cy: number): Promise<[numb
   if (!box) throw new Error('Canvas not visible')
   const vp = await page.evaluate(
     () =>
-      /* eslint-disable @typescript-eslint/no-explicit-any */
       (window as any).__mentisTest.canvasEngine.viewportController.state as {
         x: number
         y: number
@@ -562,7 +557,6 @@ test.describe('5.8 Selection', () => {
     await page.waitForTimeout(400)
 
     const samples = await page.evaluate(() => {
-      /* eslint-disable @typescript-eslint/no-explicit-any */
       const eng = (window as any).__mentisTest.canvasEngine
       return {
         onStroke: eng.layerManager.sampleCompositedPixel(200, 200, eng.background),

@@ -105,7 +105,7 @@ test.describe('PDF Editor', () => {
       await expect(page.getByText('1 / 2')).toBeVisible()
     })
 
-    test.fixme('4.1.6 Large PDF — verify lazy rendering', async ({ vaultPage: page }) => {
+    test.fixme('4.1.6 Large PDF — verify lazy rendering', async () => {
       // Generating a large multi-page PDF in the browser is impractical for E2E.
       // Would need a pre-built fixture PDF with 50+ pages to test lazy rendering.
     })
@@ -284,7 +284,7 @@ test.describe('PDF Editor', () => {
   // ── 4.4 Persistence & Auto-Save ───────────────────────────────────
 
   test.describe('4.4 Persistence & Auto-Save', () => {
-    test.fixme('4.4.1 Annotations written into PDF bytes', async ({ vaultPage: page }) => {
+    test.fixme('4.4.1 Annotations written into PDF bytes', async () => {
       // Verifying that annotations are written into PDF bytes requires:
       // 1. Making an annotation (drawing/highlight — hard to simulate)
       // 2. Triggering save
@@ -292,9 +292,7 @@ test.describe('PDF Editor', () => {
       // This is better suited for a unit test on annotation-writer.ts.
     })
 
-    test.fixme('4.4.6 Save after annotation — close — reopen — annotations present', async ({
-      vaultPage: page,
-    }) => {
+    test.fixme('4.4.6 Save after annotation — close — reopen — annotations present', async () => {
       // Requires reliable annotation creation (drawing on Fabric.js canvas),
       // save, close tab, reopen, and verify annotations loaded back.
       // The Fabric.js interaction is the blocker.
@@ -363,11 +361,7 @@ test.describe('PDF Editor', () => {
         // (showing "Loading PDF…" indefinitely is acceptable for corrupted files)
         const pdfToolbar = page.locator('[role="toolbar"][aria-label="PDF tools"]')
         const toolbarVisible = await pdfToolbar.isVisible().catch(() => false)
-
-        // If toolbar is visible, the PDF partially loaded despite corruption
-        // If not visible, load failed gracefully (showing "Loading PDF…")
-        // Either way, no crash = pass
-        expect(true).toBe(true)
+        expect(hasError || hasWarning || !toolbarVisible).toBe(true)
       }
     })
   })
