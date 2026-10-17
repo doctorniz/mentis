@@ -76,7 +76,9 @@ export function ListsPanel() {
           </button>
         </div>
         <div className="min-h-0 flex-1">
-          <ListEditor key={open} path={open} />
+          {/* Reload when a save lands: the save made on leaving finishes after
+              the overview has already read the lists. */}
+          <ListEditor key={open} path={open} onPersisted={() => void loadLists(vaultFs)} />
         </div>
       </div>
     )
