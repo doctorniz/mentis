@@ -1,10 +1,12 @@
 import { generateHTML, generateJSON } from '@tiptap/html'
 import { marked } from 'marked'
 import TurndownService from 'turndown'
-import type { JSONContent } from '@tiptap/core'
+import { getSchema, type JSONContent } from '@tiptap/core'
+import { DOMParser as PMDOMParser } from '@tiptap/pm/model'
 import { getNoteEditorExtensions } from '@/lib/editor/tiptap-extensions'
 
 const extensions = getNoteEditorExtensions()
+const schema = getSchema(extensions)
 
 marked.setOptions({ gfm: true, breaks: true })
 
@@ -21,6 +23,10 @@ const HIGHLIGHT_RE = /==([^=\n]+?)==/g
 const CODE_FENCE_RE = /^([ \t]{0,3})(`{3,}|~{3,})[^\n]*\n[\s\S]*?\n\1\2[ \t]*$/gm
 const CODE_SPAN_RE = /(`+)([\s\S]*?)\1(?!`)/g
 const SHIELD_RE = /\0(?:CODEBLOCK|CODESPAN)(\d+)\0/g
+// HTML written in a note: comments, and tags other than <u> (the editor's
+// underline). The editor has no node for it, so it is shown and saved as the
+// text it is rather than dropped or reinterpreted.
+const RAW_HTML_RE = /<!--[\s\S]*?-->|<\/?(?!u>)[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?\/?>/g
 
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -111,7 +117,7 @@ function preprocessTaskLists(md: string): string {
 
 function preprocessCustomSyntax(md: string): string {
   const { shielded, restore } = shieldCodeRegions(md)
-  let out = shielded
+  let out = shielded.replace(RAW_HTML_RE, (html) => html.replace(/</g, '&lt;'))
 
   out = preprocessTaskLists(out)
 
@@ -147,6 +153,9 @@ function preprocessCustomSyntax(md: string): string {
   return restore(out)
 }
 
+const paragraphsIn = (el: Element) =>
+  Array.from(el.children).filter((c) => c.nodeName === 'P').length
+
 function createTurndown(): TurndownService {
   const td = new TurndownService({
     headingStyle: 'atx',
@@ -154,6 +163,38 @@ function createTurndown(): TurndownService {
     bulletListMarker: '-',
     emDelimiter: '*',
     strongDelimiter: '**',
+    hr: '---',
+  })
+
+  // Footnotes (`[^1]`) and callouts (`> [!note]`) are written as they were,
+  // not escaped into literal brackets.
+  const escape = td.escape.bind(td)
+  td.escape = (text: string) =>
+    escape(text)
+      .replace(/\\\[\^([^\]\s]+)\\\]/g, '[^$1]')
+      .replace(/\\\[!([A-Za-z-]+)\\\]/g, '[!$1]')
+      // An underscore inside a word is never emphasis in GFM (`my_file_name`).
+      .replace(/(?<=[A-Za-z0-9])\\_(?=[A-Za-z0-9])/g, '_')
+
+  // A link whose text is its own address was a bare URL, which GFM links.
+  td.addRule('bareUrl', {
+    filter: (node) => {
+      const href = node.nodeName === 'A' ? (node as HTMLElement).getAttribute('href') : null
+      return !!href && /^(https?:|mailto:)/.test(href) && node.textContent === href
+    },
+    replacement: (_content, node) => (node as HTMLElement).getAttribute('href') ?? '',
+  })
+
+  // A line break inside a paragraph is a plain newline: notes are parsed
+  // with `breaks: true`, so no trailing spaces are needed.
+  td.addRule('lineBreak', {
+    filter: 'br',
+    replacement: () => '\n',
+  })
+
+  td.addRule('underline', {
+    filter: 'u',
+    replacement: (content) => `<u>${content}</u>`,
   })
   td.addRule('listItem', {
     filter: 'li',
@@ -167,10 +208,15 @@ function createTurndown(): TurndownService {
       } else {
         prefix = `${options.bulletListMarker} `
       }
-      const isParagraph = /\n$/.test(content)
-      const trimmed = content.replace(/^\n+/, '').replace(/\n+$/, '') + (isParagraph ? '\n' : '')
-      const indented = trimmed.replace(/\n/gm, '\n' + ' '.repeat(prefix.length))
-      return prefix + indented + ((node as HTMLElement).nextSibling ? '\n' : '')
+      // The editor wraps every item in a paragraph, so a list is written
+      // loose (blank lines kept) only when an item holds more than one.
+      const loose = Array.from(parent.children).some((li) => paragraphsIn(li) > 1)
+      let trimmed = content.replace(/^\n+/, '').replace(/\n+$/, '')
+      if (!loose) trimmed = trimmed.replace(/\n{2,}/g, '\n')
+      // Indent continuation lines under the marker; blank lines stay empty.
+      const indented = trimmed.replace(/\n(?!\n)/g, '\n' + ' '.repeat(prefix.length))
+      const next = (node as HTMLElement).nextSibling ? (loose ? '\n\n' : '\n') : ''
+      return prefix + indented + next
     },
   })
 
@@ -198,7 +244,13 @@ function createTurndown(): TurndownService {
       ) {
         const cells = el.querySelectorAll('th, td')
         const sep = Array.from(cells)
-          .map(() => ' --- ')
+          .map((cell) => {
+            const align = (cell as HTMLElement).getAttribute('data-align')
+            if (align === 'left') return ' :--- '
+            if (align === 'center') return ' :---: '
+            if (align === 'right') return ' ---: '
+            return ' --- '
+          })
           .join('|')
         row += `|${sep}|\n`
       }
@@ -347,7 +399,21 @@ export function markdownToTiptapJSON(markdown: string): JSONContent {
   const preprocessed = preprocessCustomSyntax(src)
   const html = preprocessed ? String(marked.parse(preprocessed, { async: false })) : ''
   const wrapped = html || '<p></p>'
-  return generateJSON(wrapped, extensions)
+  return htmlToJSON(wrapped)
+}
+
+/**
+ * The editor document for `html`. Parsed with the page's own DOM where there
+ * is one: `generateJSON` uses a small server-side DOM whose elements lose
+ * details the schema reads (a code block's language class, a cell's
+ * alignment).
+ */
+function htmlToJSON(html: string): JSONContent {
+  if (typeof window === 'undefined' || typeof window.DOMParser !== 'function') {
+    return generateJSON(html, extensions)
+  }
+  const body = new window.DOMParser().parseFromString(html, 'text/html').body
+  return PMDOMParser.fromSchema(schema).parse(body).toJSON() as JSONContent
 }
 
 export function tiptapJSONToMarkdown(doc: JSONContent): string {

@@ -26,6 +26,22 @@ import { createInkWikiLinkSuggestion } from '@/lib/editor/wiki-link-suggestion'
 
 const lowlight = createLowlight(common)
 
+/** A table cell's column alignment, from markdown's `:---:` (marked writes it
+ *  as `align`); shown as text-align and written back to the separator row. */
+function alignedCell(this: { parent?: () => Record<string, unknown> }) {
+  return {
+    ...this.parent?.(),
+    align: {
+      default: null,
+      parseHTML: (el: HTMLElement) =>
+        el.getAttribute('data-align') || el.getAttribute('align') || el.style.textAlign || null,
+      // data-align for saving: the HTML the bridge writes keeps no style.
+      renderHTML: (attrs: { align?: string | null }) =>
+        attrs.align ? { 'data-align': attrs.align, style: `text-align: ${attrs.align}` } : {},
+    },
+  }
+}
+
 export type NoteEditorWikiOptions = {
   getMarkdownPaths: () => string[]
   currentNotePath?: () => string | null
@@ -53,8 +69,8 @@ export function getNoteEditorExtensions(
     TaskItem.configure({ nested: true }),
     Table.configure({ resizable: false, HTMLAttributes: { class: 'ink-table' } }),
     TableRow,
-    TableCell,
-    TableHeader,
+    TableCell.extend({ addAttributes: alignedCell }),
+    TableHeader.extend({ addAttributes: alignedCell }),
     WikiLinkNode,
     MathInline,
     MathBlock,

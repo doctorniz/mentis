@@ -96,6 +96,14 @@ notebooks; `_`-prefixed ones are system), and app data under `_mentis/`:
 `_drawings`, `signatures`, `snapshots`, `templates`, `config.json`.
 Attachments go to `_assets/` (configurable).
 
+**Markdown notes** load into the editor through marked and save through
+turndown (`src/lib/editor/markdown-bridge.ts`). Opening and saving a note
+without edits leaves it byte-for-byte the same for what the editor writes
+(`tests/markdown-fidelity.test.ts`). The editor has no node for raw HTML, so
+comments and tags (other than `<u>`) are kept as visible text rather than
+dropped; footnotes and callouts are kept as written. A loose list whose items
+are single paragraphs comes back tight.
+
 What is _not_ in files is derived or per-device: the index (§5), per-device
 preferences in `localStorage` (theme, panel widths, "Draw with"), OAuth tokens
 and API keys in IndexedDB or the OS, the desktop's `app-settings.json`.
