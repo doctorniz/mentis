@@ -131,6 +131,21 @@ pub fn resolve_in(root: &Path, rel: &str) -> Result<PathBuf, String> {
     if !real.starts_with(root) {
         return Err(format!("path leaves the vault: {rel}"));
     }
+
+    // A link to something missing does not "exist", so the check above skips
+    // it, yet writing or copying through it would create its target wherever
+    // that is. Refuse any such link on the way.
+    let mut walk = root.to_path_buf();
+    for seg in rel.split('/').filter(|s| !s.is_empty()) {
+        walk.push(seg);
+        match fs::symlink_metadata(&walk) {
+            Ok(meta) if meta.file_type().is_symlink() && fs::canonicalize(&walk).is_err() => {
+                return Err(format!("path leaves the vault: {rel}"));
+            }
+            Ok(_) => {}
+            Err(_) => break,
+        }
+    }
     Ok(path)
 }
 
@@ -538,6 +553,30 @@ mod tests {
         ] {
             assert!(resolve_in(&root, bad).is_err(), "{bad} should be refused");
         }
+    }
+
+    /// A link in the vault, or None where this system will not make one
+    /// (Windows without Developer Mode).
+    fn link(target: &Path, at: &Path) -> Option<()> {
+        #[cfg(unix)]
+        let made = std::os::unix::fs::symlink(target, at);
+        #[cfg(windows)]
+        let made = std::os::windows::fs::symlink_file(target, at);
+        made.ok()
+    }
+
+    #[test]
+    fn links_to_missing_targets_are_refused() {
+        let root = temp_root();
+        let outside = temp_root().join("escaped.md");
+        if link(&outside, &root.join("notes").join("trap.md")).is_none() {
+            eprintln!("skipped: this system cannot make symlinks");
+            return;
+        }
+        assert!(resolve_in(&root, "notes/trap.md").is_err());
+        assert!(!outside.exists());
+        // An ordinary missing file is still fine to create.
+        assert!(resolve_in(&root, "notes/new.md").is_ok());
     }
 
     #[test]
