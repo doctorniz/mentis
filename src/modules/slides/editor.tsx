@@ -17,6 +17,8 @@ import { markdown } from '@codemirror/lang-markdown'
 import 'katex/dist/katex.min.css'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useEditorStore } from '@/stores/editor'
+import { useVaultStore } from '@/stores/vault'
+import { attachmentsDir } from '@/lib/vault/attachments-dir'
 import { useAutoSave } from '@/hooks/use-auto-save'
 import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { inkEditorTheme, inkHighlightStyle } from '@/lib/code/codemirror-theme'
@@ -107,7 +109,7 @@ export default function SlidesFileEditor({
 
     let destroyed = false
     let view: EditorView | null = null
-    const images = createImageResolver(vaultFs)
+    const images = createImageResolver(vaultFs, attachmentsDir(useVaultStore.getState().config))
 
     void (async () => {
       let text: string

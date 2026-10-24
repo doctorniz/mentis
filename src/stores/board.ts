@@ -3,12 +3,13 @@ import { immer } from 'zustand/middleware/immer'
 import { uniqueVaultPath } from '@/lib/fs/unique-path'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { BoardItem, ThoughtColor } from '@/types/board'
+import { attachmentsDir } from '@/lib/vault/attachments-dir'
+import { useVaultStore } from '@/stores/vault'
 import {
-  BOARD_DIR,
-  BOARD_ASSETS_DIR,
+  thoughtsDir,
+  thoughtFilename,
   parseBoardItem,
   serializeBoardItem,
-  generateBoardFilename,
   defaultFrontmatter,
   extractBoardVaultImagePaths,
   boardBodyIsImageOnly,
@@ -21,7 +22,8 @@ interface BoardState {
   activeItemPath: string | null
 
   loadBoard: (fs: FileSystemAdapter) => Promise<void>
-  addThought: (fs: FileSystemAdapter, color?: ThoughtColor) => Promise<BoardItem>
+  /** A new thought, opened for editing. `body` starts it with text (and names it). */
+  addThought: (fs: FileSystemAdapter, color?: ThoughtColor, body?: string) => Promise<BoardItem>
   /** Save a thought that already has its text (capture), without opening it for editing. */
   captureThought: (fs: FileSystemAdapter, text: string) => Promise<BoardItem>
   addAudioThought: (
@@ -44,6 +46,15 @@ interface BoardState {
   setActiveItem: (path: string | null) => void
 }
 
+const currentConfig = () => useVaultStore.getState().config
+
+/** A free path in the Thoughts folder for a thought that says `text`. */
+async function newThoughtPath(fs: FileSystemAdapter, text: string): Promise<string> {
+  const dir = thoughtsDir(currentConfig())
+  await fs.mkdir(dir)
+  return uniqueVaultPath(fs, `${dir}/${thoughtFilename(text)}`)
+}
+
 export const useBoardStore = create<BoardState>()(
   immer((set, get) => ({
     items: [],
@@ -55,9 +66,10 @@ export const useBoardStore = create<BoardState>()(
         s.loading = true
       })
       try {
-        const exists = await fs.exists(BOARD_DIR)
+        const dir = thoughtsDir(currentConfig())
+        const exists = await fs.exists(dir)
         if (!exists) {
-          await fs.mkdir(BOARD_DIR)
+          await fs.mkdir(dir)
           set((s) => {
             s.items = []
             s.loading = false
@@ -65,7 +77,7 @@ export const useBoardStore = create<BoardState>()(
           return
         }
 
-        const entries = await fs.readdir(BOARD_DIR)
+        const entries = await fs.readdir(dir)
         const mdFiles = entries.filter((e) => !e.isDirectory && e.name.endsWith('.md'))
 
         const items: BoardItem[] = []
@@ -90,14 +102,10 @@ export const useBoardStore = create<BoardState>()(
       }
     },
 
-    addThought: async (fs, color) => {
-      const exists = await fs.exists(BOARD_DIR)
-      if (!exists) await fs.mkdir(BOARD_DIR)
-
-      const filename = generateBoardFilename()
-      const path = `${BOARD_DIR}/${filename}`
+    addThought: async (fs, color, body = '\n') => {
+      const path = await newThoughtPath(fs, body)
       const fm = defaultFrontmatter(color)
-      const raw = serializeBoardItem(fm, '\n')
+      const raw = serializeBoardItem(fm, body)
       await fs.writeTextFile(path, raw)
 
       const item = parseBoardItem(path, raw)
@@ -109,10 +117,7 @@ export const useBoardStore = create<BoardState>()(
     },
 
     captureThought: async (fs, text) => {
-      const exists = await fs.exists(BOARD_DIR)
-      if (!exists) await fs.mkdir(BOARD_DIR)
-
-      const path = `${BOARD_DIR}/${generateBoardFilename()}`
+      const path = await newThoughtPath(fs, text)
       const raw = serializeBoardItem(defaultFrontmatter(), `${text}\n`)
       await fs.writeTextFile(path, raw)
 
@@ -124,10 +129,6 @@ export const useBoardStore = create<BoardState>()(
     },
 
     addAudioThought: async (fs, audioBytes, durationMs, color, mimeType) => {
-      // Ensure assets dir exists
-      const assetsExist = await fs.exists(BOARD_ASSETS_DIR)
-      if (!assetsExist) await fs.mkdir(BOARD_ASSETS_DIR)
-
       // Derive file extension from MIME type (fallback to mp3)
       const ext = mimeType?.includes('mp4')
         ? 'mp4'
@@ -137,19 +138,16 @@ export const useBoardStore = create<BoardState>()(
             ? 'webm'
             : 'mp3'
 
-      // Save audio to assets
-      const ts = Date.now().toString(36)
-      const rand = Math.random().toString(36).slice(2, 6)
-      const assetName = `${ts}-${rand}.${ext}`
-      const audioPath = `${BOARD_ASSETS_DIR}/${assetName}`
-      await fs.writeFile(audioPath, audioBytes)
+      // Loaded here, not up front: the board store is in the initial bundle.
+      const { saveAsset } = await import('@/lib/notes/assets')
+      const audioPath = await saveAsset(
+        fs,
+        `recording.${ext}`,
+        audioBytes,
+        attachmentsDir(currentConfig()),
+      )
 
-      // Create board .md file with audio frontmatter
-      const boardExists = await fs.exists(BOARD_DIR)
-      if (!boardExists) await fs.mkdir(BOARD_DIR)
-
-      const filename = generateBoardFilename()
-      const path = `${BOARD_DIR}/${filename}`
+      const path = await newThoughtPath(fs, 'Voice note')
       const now = new Date().toISOString()
       const durationSec = Math.round(durationMs / 1000)
       const fm = {
@@ -263,7 +261,7 @@ export const useBoardStore = create<BoardState>()(
               : typeof fm.audioPath === 'string'
                 ? fm.audioPath
                 : null
-          if (!audioRel || !audioRel.startsWith(`${BOARD_ASSETS_DIR}/`)) {
+          if (!audioRel) {
             console.error('Board audio item missing asset path')
             return null
           }
@@ -287,9 +285,10 @@ export const useBoardStore = create<BoardState>()(
           return finalize(destPath)
         }
 
-        // Image-only card (one board asset, headings/whitespace only) → vault root image file
+        // Image-only card (one attachment, headings/whitespace only) → vault root image file
+        const attachments = attachmentsDir(currentConfig())
         const boardImagePaths = extractBoardVaultImagePaths(content).filter((p) =>
-          p.startsWith(`${BOARD_ASSETS_DIR}/`),
+          p.startsWith(`${attachments}/`),
         )
         if (boardImagePaths.length === 1 && boardBodyIsImageOnly(content) && !fm.audioPath) {
           const imgPath = boardImagePaths[0]
@@ -322,29 +321,7 @@ export const useBoardStore = create<BoardState>()(
         }
         const destPath = await uniqueVaultPath(fs, destName)
 
-        let updatedContent = content
-        const assetRe = /(_mentis\/_thoughts\/_assets\/[^\s)]+)/g
-        const assetMatches = [...raw.matchAll(assetRe)]
-        const assetDir = '_assets'
-        if (assetMatches.length > 0) {
-          const dirExists = await fs.exists(assetDir)
-          if (!dirExists) await fs.mkdir(assetDir)
-        }
-        for (const match of assetMatches) {
-          const oldAssetPath = match[1]
-          const assetFilename = oldAssetPath.split('/').pop() ?? ''
-          const newAssetPath = `${assetDir}/${assetFilename}`
-          try {
-            const assetBytes = await fs.readFile(oldAssetPath)
-            await fs.writeFile(newAssetPath, assetBytes)
-            await fs.remove(oldAssetPath)
-          } catch {
-            /* asset may already be moved or missing */
-          }
-          updatedContent = updatedContent.replaceAll(oldAssetPath, newAssetPath)
-          if (fm.audioPath === oldAssetPath) fm.audioPath = newAssetPath
-        }
-
+        // Its images and recordings are already in the attachment folder.
         const vaultFm: Record<string, unknown> = {
           title: item.title ?? undefined,
           created: fm.created,
@@ -358,7 +335,7 @@ export const useBoardStore = create<BoardState>()(
         if (fm.transcript) vaultFm.transcript = fm.transcript
         if (fm.tags) vaultFm.tags = fm.tags
 
-        const newRaw = matterLib.stringify(updatedContent, vaultFm)
+        const newRaw = matterLib.stringify(content, vaultFm)
         await fs.writeTextFile(destPath, newRaw)
 
         try {

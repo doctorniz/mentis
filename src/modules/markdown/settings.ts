@@ -1,4 +1,5 @@
 import type { SettingsSection } from '@/core/registries/settings'
+import { ASSETS_DIR } from '@/types/vault'
 
 const sections: readonly SettingsSection[] = [
   {
@@ -12,7 +13,7 @@ const sections: readonly SettingsSection[] = [
         kind: 'folder',
         label: 'Attachment folder',
         hint: 'Where uploaded images and videos are saved when embedded in notes.',
-        get: (c) => c.attachmentFolder ?? '_assets',
+        get: (c) => c.attachmentFolder ?? ASSETS_DIR,
         set: (_, attachmentFolder) => ({ attachmentFolder }),
       },
     ],

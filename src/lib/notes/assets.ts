@@ -1,6 +1,7 @@
 import type { FileSystemAdapter } from '@/lib/fs'
+import { ASSETS_DIR } from '@/types/vault'
 
-export const DEFAULT_ASSETS_DIR = '_assets'
+export const DEFAULT_ASSETS_DIR = ASSETS_DIR
 
 function uniqueName(originalName: string): string {
   const dot = originalName.lastIndexOf('.')
@@ -13,8 +14,8 @@ function uniqueName(originalName: string): string {
 }
 
 /**
- * Save a binary file to the given folder (default `_assets/`) with a unique name.
- * Returns the vault-relative path (e.g. `_assets/photo-abc123.png`).
+ * Save a binary file to the given folder (default `Attachments/`) with a unique name.
+ * Returns the vault-relative path (e.g. `Attachments/photo-abc123.png`).
  *
  * @param targetFolder  Optional folder override (vault-relative, no leading slash).
  *                      Pass `'/'` or `''` to save at vault root.

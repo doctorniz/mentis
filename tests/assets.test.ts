@@ -54,18 +54,18 @@ describe('saveAsset', () => {
     fs = new InMemoryAdapter()
   })
 
-  it('saves a file under _assets/ with unique name', async () => {
+  it('saves a file under Attachments/ with unique name', async () => {
     const data = new Uint8Array([1, 2, 3])
     const path = await saveAsset(fs, 'photo.png', data)
-    expect(path).toMatch(/^_assets\/photo-[a-z0-9]+\.png$/)
+    expect(path).toMatch(/^Attachments\/photo-[a-z0-9]+\.png$/)
     expect(await fs.exists(path)).toBe(true)
     const read = await fs.readFile(path)
     expect([...read]).toEqual([1, 2, 3])
   })
 
-  it('creates _assets/ directory', async () => {
+  it('creates Attachments/ directory', async () => {
     await saveAsset(fs, 'test.jpg', new Uint8Array([0]))
-    expect(await fs.exists('_assets')).toBe(true)
+    expect(await fs.exists('Attachments')).toBe(true)
   })
 
   it('preserves file extension', async () => {
@@ -77,7 +77,7 @@ describe('saveAsset', () => {
     const path = await saveAsset(fs, 'my file (1).png', new Uint8Array([0]))
     expect(path).not.toContain(' ')
     expect(path).not.toContain('(')
-    expect(path).toMatch(/^_assets\/my_file__1_-[a-z0-9]+\.png$/)
+    expect(path).toMatch(/^Attachments\/my_file__1_-[a-z0-9]+\.png$/)
   })
 
   it('generates unique names for duplicate files', async () => {

@@ -4,7 +4,7 @@ import { test, expect, navigateTo } from './fixtures'
  * Board (quick capture) E2E tests — QA plan section 6.
  *
  * The Board is a masonry-layout notice board at Ctrl+2. Thoughts are
- * markdown files in _mentis/_thoughts/. Cards support inline Tiptap editing,
+ * markdown files in Thoughts/. Cards support inline Tiptap editing,
  * color on creation, and audio/image attachments.
  */
 

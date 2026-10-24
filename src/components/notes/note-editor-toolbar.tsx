@@ -34,7 +34,7 @@ import { parseNote } from '@/lib/markdown'
 import { fillTemplate } from '@/lib/notes/template-vars'
 import { useEditorStore } from '@/stores/editor'
 import { useVaultStore } from '@/stores/vault'
-import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
+import { ASSETS_DIR, DEFAULT_VAULT_CONFIG } from '@/types/vault'
 import { toast } from '@/stores/toast'
 
 /* ------------------------------------------------------------------ */
@@ -190,7 +190,7 @@ export function NoteEditorToolbar({
   editor,
   vaultFs,
   allPaths = [],
-  attachmentFolder = '_assets',
+  attachmentFolder = ASSETS_DIR,
   onInsertImage,
   onInsertVideo,
 }: {

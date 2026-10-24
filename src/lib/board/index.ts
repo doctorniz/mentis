@@ -1,8 +1,36 @@
 import matter from 'gray-matter'
 import type { BoardItem, BoardItemFrontmatter, ThoughtColor } from '@/types/board'
+import { THOUGHTS_DIR, type VaultConfig } from '@/types/vault'
 
-export const BOARD_DIR = '_mentis/_thoughts'
-export const BOARD_ASSETS_DIR = '_mentis/_thoughts/_assets'
+/** The vault's Thoughts folder, vault-relative without slashes. */
+export function thoughtsDir(config?: Pick<VaultConfig, 'thoughtsFolder'> | null): string {
+  return config?.thoughtsFolder?.replace(/^\/+|\/+$/g, '') || THOUGHTS_DIR
+}
+
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/**
+ * A thought's file name: when it was made, then its first few words —
+ * `2026-10-24 1432 Call the bank.md`. Markup is dropped; an empty thought
+ * is named by its time alone.
+ */
+export function thoughtFilename(text: string, now: Date = new Date()): string {
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}${pad(now.getMinutes())}`
+  const words = text
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[/\\:*?"<>|#*_`~=[\]()!>]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+  let stem = ''
+  for (const word of words.slice(0, 6)) {
+    const next = stem ? `${stem} ${word}` : word
+    if (next.length > 40) break
+    stem = next
+  }
+  stem = stem.replace(/[.\s]+$/, '')
+  return `${stamp}${stem ? ` ${stem}` : ''}.md`
+}
 
 const H1_RE = /^#\s+(.+)$/m
 const IMAGE_RE = /!\[.*?\]\(.+?\)/
@@ -30,12 +58,6 @@ export function parseBoardItem(path: string, raw: string): BoardItem {
 export function serializeBoardItem(fm: BoardItemFrontmatter, content: string): string {
   const updated = { ...fm, modified: new Date().toISOString() }
   return matter.stringify(content, updated)
-}
-
-export function generateBoardFilename(): string {
-  const ts = Date.now().toString(36)
-  const rand = Math.random().toString(36).slice(2, 8)
-  return `${ts}-${rand}.md`
 }
 
 export function defaultFrontmatter(color: ThoughtColor = 'yellow'): BoardItemFrontmatter {

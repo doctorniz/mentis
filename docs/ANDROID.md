@@ -78,7 +78,7 @@ the app comes back), and `src/modules/capture/share-host.tsx` acts on them:
   subject as the title).
 - **Shared images** are copied into the app's cache while Android's grant to
   read them lasts, then saved to the vault's attachments folder
-  (`attachmentFolder`, `_assets` by default); `inbox_read_file` reads each copy
+  (`attachmentFolder`, `Attachments` by default); `inbox_read_file` reads each copy
   once and removes it.
 - **App shortcuts** (long-press the icon; `res/xml/shortcuts.xml`): Capture,
   New task, Today's journal. **Widget** and **Quick Settings tile**

@@ -168,19 +168,19 @@ describe('journal destination', () => {
   it("creates the day's note if needed and appends a timestamped entry", async () => {
     const { fs, store } = memVault()
     await journal.write({ date: '2026-10-06', entry: 'Long walk' }, { ...ctx, vaultFs: fs })
-    const day = store.get('_mentis/_journals/2026-10-06.md')!
+    const day = store.get('Journal/2026-10-06.md')!
     expect(day).toMatch(/\*\*\d{2}:\d{2}\*\* — Long walk\n$/)
   })
 
   it('appends without a timestamp when that setting is off', async () => {
     useVaultStore.setState({ config: { ...DEFAULT_VAULT_CONFIG, journalTimestamps: false } })
-    const { fs, store } = memVault({ '_mentis/_journals/2026-10-06.md': '# Tue\n' })
+    const { fs, store } = memVault({ 'Journal/2026-10-06.md': '# Tue\n' })
     await journal.write({ date: '2026-10-06', entry: 'Quiet' }, { ...ctx, vaultFs: fs })
-    expect(store.get('_mentis/_journals/2026-10-06.md')).toBe('# Tue\n\nQuiet\n')
+    expect(store.get('Journal/2026-10-06.md')).toBe('# Tue\n\nQuiet\n')
   })
 
   it("refuses while that day's journal is open in a tab, so the editor cannot overwrite it", async () => {
-    const path = '_mentis/_journals/2026-10-06.md'
+    const path = 'Journal/2026-10-06.md'
     useEditorStore.setState({
       tabs: [{ id: 't', path, type: 'markdown', title: '2026-10-06', isDirty: false }],
     })
@@ -215,7 +215,7 @@ describe('journal template and tabs', () => {
       { date: '2026-10-06', tab: 'Work', entry: 'Fixed the bug' },
       { ...ctx, vaultFs: fs },
     )
-    const day = store.get('_mentis/_journals/2026-10-06.md')!
+    const day = store.get('Journal/2026-10-06.md')!
     expect(day).toContain('tags: [daily]')
     expect(day).not.toContain('defaultTab')
     expect(day).toContain('## Morning\n\n## Work\n\nStarted Tuesday 2026-10-06\n\nFixed the bug\n')
@@ -225,13 +225,13 @@ describe('journal template and tabs', () => {
     const existing = '# Tue\n\n## Morning\n\nRan.\n'
     const { fs, store } = memVault({
       '_mentis/templates/Day.md': TEMPLATE,
-      '_mentis/_journals/2026-10-06.md': existing,
+      'Journal/2026-10-06.md': existing,
     })
     await journal.write(
       { date: '2026-10-06', tab: 'Evening', entry: 'Read.' },
       { ...ctx, vaultFs: fs },
     )
-    expect(store.get('_mentis/_journals/2026-10-06.md')).toBe(
+    expect(store.get('Journal/2026-10-06.md')).toBe(
       '# Tue\n\n## Morning\n\nRan.\n\n## Evening\n\nRead.\n',
     )
   })

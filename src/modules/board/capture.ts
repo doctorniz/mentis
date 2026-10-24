@@ -11,7 +11,7 @@ const asIs = (input: string): ParseResult => ({
 
 /**
  * The default destination. Commits instantly with no confirmation and no
- * network: one file in `_mentis/_thoughts/`, undoable for a few seconds.
+ * network: one file in the Thoughts folder, undoable for a few seconds.
  */
 const thought: CaptureDestination = {
   id: 'thought',

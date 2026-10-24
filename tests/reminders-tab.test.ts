@@ -48,7 +48,7 @@ describe('journalPromptRows', () => {
   const config: VaultConfig = { ...DEFAULT_VAULT_CONFIG, journalPrompt: '21:00' }
   const fsWith = (paths: string[]) =>
     ({ exists: async (p: string) => paths.includes(p) }) as unknown as FileSystemAdapter
-  const todayPath = '_mentis/_journals/2026-10-11.md'
+  const todayPath = 'Journal/2026-10-11.md'
 
   it('reads only a real time as the prompt time', () => {
     expect(promptTime({ journalPrompt: '21:00' })).toBe('21:00')

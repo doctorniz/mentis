@@ -30,7 +30,8 @@ export interface VaultConfig {
   defaultNewFileFolder: string
   /**
    * Vault-relative folder where uploaded images/videos are saved when
-   * embedded in notes. Defaults to '_assets' (vault root).
+   * embedded in notes, and where Thoughts keep their images and
+   * recordings. Defaults to 'Attachments' (vault root).
    */
   attachmentFolder: string
   /** Page style for newly created blank PDFs */
@@ -42,10 +43,14 @@ export interface VaultConfig {
   dailyNotesEnabled: boolean
   /**
    * Vault-relative folder where daily notes are stored.
-   * Defaults to '_mentis/_journals' (hidden from the file tree).
-   * Free-form; the folder is created on first use.
+   * Defaults to 'Journal'. Free-form; the folder is created on first use.
    */
   dailyNotesFolder: string
+  /**
+   * Vault-relative folder that holds Thoughts, one note per thought.
+   * Defaults to 'Thoughts'. Every note directly in it is a thought.
+   */
+  thoughtsFolder: string
   /** Start each journal entry added from capture with its time (`**14:32** — `). Defaults to true. */
   journalTimestamps: boolean
   /** File name of the journal template in the templates folder; '' for none. */
@@ -86,9 +91,10 @@ export interface VaultMetadata {
   lastOpened: string
 }
 
-export const DAILY_NOTES_DIR = '_mentis/_journals'
+export const DAILY_NOTES_DIR = 'Journal'
+export const THOUGHTS_DIR = 'Thoughts'
 export const MENTIS_DIR = '_mentis'
-export const ASSETS_DIR = '_assets'
+export const ASSETS_DIR = 'Attachments'
 export const SIGNATURES_DIR = `${MENTIS_DIR}/signatures`
 export const TEMPLATES_DIR = `${MENTIS_DIR}/templates`
 export const SNAPSHOTS_DIR = `${MENTIS_DIR}/snapshots`
@@ -111,10 +117,11 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   defaultView: HOME_VIEW,
   templateFolder: TEMPLATES_DIR,
   defaultNewFileFolder: '/',
-  attachmentFolder: '_assets',
+  attachmentFolder: ASSETS_DIR,
   pdfPageStyle: 'blank',
   dailyNotesEnabled: true,
-  dailyNotesFolder: '_mentis/_journals',
+  dailyNotesFolder: DAILY_NOTES_DIR,
+  thoughtsFolder: THOUGHTS_DIR,
   journalTimestamps: true,
   journalTemplate: '',
   journalPrompt: '',

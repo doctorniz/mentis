@@ -62,6 +62,31 @@ export const checklist = {
       ],
     },
     {
+      id: 'visible-folders',
+      title: 'Thoughts, Journal & Attachments folders',
+      device: 'desktop',
+      items: [
+        {
+          id: 'visible-folders-new-vault',
+          title: 'A new vault shows them in the tree',
+          steps: [
+            "Create a vault; capture a thought, a voice note and an image thought; open today's journal",
+            'Thoughts/, Journal/ and Attachments/ are in the tree; thought files are named by time and first words',
+            'Search finds the thought text',
+          ],
+        },
+        {
+          id: 'visible-folders-move',
+          title: 'Moving the Thoughts folder',
+          steps: [
+            'Settings → Editor → Thoughts: Move to Ideas — the board shows the same thoughts, Thoughts/ is gone',
+            'Move to a folder that has notes in it — refused, nothing moved',
+            'With Dropbox sync on: the moved files arrive on a second device',
+          ],
+        },
+      ],
+    },
+    {
       id: 'canvas-maintenance',
       title: 'Canvas — maintenance & regressions',
       device: 'desktop',

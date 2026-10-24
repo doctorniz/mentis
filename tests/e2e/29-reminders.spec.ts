@@ -199,7 +199,7 @@ test.describe('29 — Reminders: tab', () => {
     const prompt = page.getByText('Write today’s journal')
     await expect(prompt).toBeVisible({ timeout: 15_000 })
 
-    await writeVaultFile(page, `_mentis/_journals/${ymd(new Date())}.md`, '# Today\n\nWritten.\n')
+    await writeVaultFile(page, `Journal/${ymd(new Date())}.md`, '# Today\n\nWritten.\n')
     await expect(prompt).toBeHidden({ timeout: 15_000 })
   })
 })

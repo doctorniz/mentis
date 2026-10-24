@@ -33,11 +33,14 @@ Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
 - **Build:** Vite + React 19 + TypeScript. Migrated off Next.js (2026-09-28).
 - **Storage:** the user's chosen folder. Folder identity == vault identity.
   One vault open at a time; keep a recent-vaults list.
-- **App data:** `_mentis/` inside the chosen folder, containing `_journals`,
-  `_thoughts`, `_tasks`, `_bookmarks`, `_chats`, `_calendar`, `_drawings`,
-  `signatures`, `snapshots`, `templates`, `config.json`, `search-index.json`.
-  (Renamed from `_marrow/`; `_dailies` is now `_journals`, `_board` is now
-  `_thoughts`. No migration — there were no users of the old layout.)
+- **App data:** `_mentis/` inside the chosen folder, containing `_tasks`,
+  `_bookmarks`, `_chats`, `_calendar`, `_drawings`, `signatures`,
+  `snapshots`, `templates`, `config.json`, `search-index.json`.
+- **User content is visible:** Thoughts, the journal and attachments are
+  ordinary folders at the root — `Thoughts/`, `Journal/`, `Attachments/` —
+  each changeable in Settings. Nothing the user wrote is hidden in
+  `_mentis/`. (Moved out of `_mentis/_thoughts`, `_mentis/_journals` and
+  `_assets` on 2026-10-24. No migration — there were no users.)
 - **Notebooks:** every root folder is a notebook; every subfolder is a section;
   sections nest. Root folders starting with `_` are system, not notebooks.
   Loose root-level files appear as an implicit "Unfiled" notebook.

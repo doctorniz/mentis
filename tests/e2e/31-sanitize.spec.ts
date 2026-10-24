@@ -89,7 +89,7 @@ test.describe('31 — Sanitised HTML', () => {
     const now = new Date().toISOString()
     await writeVaultFile(
       page,
-      '_mentis/_thoughts/zz-hostile.md',
+      'Thoughts/zz-hostile.md',
       `---\ntype: thought\ncreated: '${now}'\nmodified: '${now}'\ncolor: yellow\n---\n${BODY}\n`,
     )
     await navigateTo(page, 'board')

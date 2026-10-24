@@ -3,16 +3,16 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { createImageResolver, imageCandidates } from '@/core/render/resolve-images'
 
 describe('imageCandidates', () => {
-  it('tries the assets folder first, then the vault path as written', () => {
-    expect(imageCandidates('pic.png')).toEqual(['_assets/pic.png', 'pic.png'])
+  it('tries the attachment folder first, then the vault path as written', () => {
+    expect(imageCandidates('pic.png')).toEqual(['Attachments/pic.png', 'pic.png'])
     expect(imageCandidates('./photos/a%20b.png')).toEqual([
-      '_assets/photos/a b.png',
+      'Attachments/photos/a b.png',
       'photos/a b.png',
     ])
   })
 
-  it('takes an explicit assets path as is', () => {
-    expect(imageCandidates('_assets/pic.png')).toEqual(['_assets/pic.png'])
+  it('takes an explicit attachment path as is', () => {
+    expect(imageCandidates('Attachments/pic.png')).toEqual(['Attachments/pic.png'])
   })
 
   it('ignores external URLs and paths that climb out of the vault', () => {
@@ -25,7 +25,7 @@ describe('imageCandidates', () => {
 })
 
 describe('createImageResolver', () => {
-  const files = new Map<string, Uint8Array>([['_assets/a.png', new Uint8Array([1])]])
+  const files = new Map<string, Uint8Array>([['Attachments/a.png', new Uint8Array([1])]])
   const fs = {
     exists: async (p: string) => files.has(p),
     readFile: async (p: string) => {
@@ -44,7 +44,7 @@ describe('createImageResolver', () => {
 
     const root = document.createElement('div')
     root.innerHTML =
-      `<img src="a.png"><img src="_assets/a.png"><img src="https://x.test/b.png"><img src="missing.png">` +
+      `<img src="a.png"><img src="Attachments/a.png"><img src="https://x.test/b.png"><img src="missing.png">` +
       `<figure style="background-image:url(&quot;a.png&quot;);"></figure>`
     const resolver = createImageResolver(fs)
     await resolver.resolve(root)

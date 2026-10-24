@@ -121,7 +121,7 @@ test.describe('24 — Office view and convert', () => {
     await expect(page.locator('.cm-content')).toContainText('marp: true')
   })
 
-  test('24.5 Pictures in a converted deck are saved to _assets and show in the preview', async ({
+  test('24.5 Pictures in a converted deck are saved to Attachments and show in the preview', async ({
     vaultPage: page,
   }) => {
     await writeVaultFile(page, 'Pics.pptx', await pptxWithPictureBase64(), { base64: true })
@@ -130,7 +130,7 @@ test.describe('24 — Office view and convert', () => {
     await page.getByRole('menuitem', { name: 'Convert to slides' }).click()
 
     await expect(page.locator('.cm-content')).toContainText('![A dot w:', { timeout: 10_000 })
-    await expect(page.locator('.cm-content')).toContainText('_assets/Pics-slide1-image1')
+    await expect(page.locator('.cm-content')).toContainText('Attachments/Pics-slide1-image1')
 
     const img = page.getByTestId('slides-preview').locator('img')
     await expect(img).toHaveAttribute('src', /^blob:/, { timeout: 10_000 })

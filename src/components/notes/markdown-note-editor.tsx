@@ -1,3 +1,4 @@
+import { ASSETS_DIR } from '@/types/vault'
 import {
   forwardRef,
   useCallback,
@@ -173,7 +174,7 @@ export const MarkdownNoteEditor = forwardRef<
   const syncPush = useSyncPush()
   const markDirty = useEditorStore((s) => s.markDirty)
   const updateTab = useEditorStore((s) => s.updateTab)
-  const attachmentFolder = useVaultStore((s) => s.config?.attachmentFolder ?? '_assets')
+  const attachmentFolder = useVaultStore((s) => s.config?.attachmentFolder ?? ASSETS_DIR)
   const fileTreeRoot = useFileTreeStore((s) => s.root)
   const allPaths = useMemo(() => flattenFilePaths(fileTreeRoot), [fileTreeRoot])
   const showRawSource = useEditorStore(

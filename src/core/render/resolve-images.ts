@@ -7,9 +7,9 @@ const CSS_URL = /url\(\s*(["']?)(.*?)\1\s*\)/g
 
 /**
  * Vault paths a slide image reference may mean, most likely first. A bare
- * name means the assets folder; an explicit vault path is tried as written.
+ * name means the attachment folder; an explicit vault path is tried as written.
  */
-export function imageCandidates(src: string): string[] {
+export function imageCandidates(src: string, assetsDir = DEFAULT_ASSETS_DIR): string[] {
   if (!src || EXTERNAL.test(src)) return []
   let path = src
   try {
@@ -19,7 +19,7 @@ export function imageCandidates(src: string): string[] {
   }
   path = path.replace(/^(?:\.\/)+/, '').replace(/^\/+/, '')
   if (!path || path.split('/').includes('..')) return []
-  return path.startsWith(`${DEFAULT_ASSETS_DIR}/`) ? [path] : [`${DEFAULT_ASSETS_DIR}/${path}`, path]
+  return path.startsWith(`${assetsDir}/`) ? [path] : [`${assetsDir}/${path}`, path]
 }
 
 export interface ImageResolver {
@@ -29,7 +29,10 @@ export interface ImageResolver {
   dispose(): void
 }
 
-export function createImageResolver(fs: FileSystemAdapter): ImageResolver {
+export function createImageResolver(
+  fs: FileSystemAdapter,
+  assetsDir = DEFAULT_ASSETS_DIR,
+): ImageResolver {
   // Keyed by vault path; holds the promise so concurrent lookups share one blob.
   const urls = new Map<string, Promise<string | null>>()
 
@@ -46,7 +49,7 @@ export function createImageResolver(fs: FileSystemAdapter): ImageResolver {
   }
 
   async function urlFor(src: string): Promise<string | null> {
-    for (const path of imageCandidates(src)) {
+    for (const path of imageCandidates(src, assetsDir)) {
       const url = await load(path)
       if (url) return url
     }

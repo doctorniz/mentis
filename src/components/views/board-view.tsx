@@ -3,8 +3,10 @@ import { ImagePlus, Loader2, Mic, Plus } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { ThoughtCard } from '@/components/board/thought-card'
 import { AudioRecorderBar } from '@/components/audio/audio-recorder-bar'
-import { BOARD_ASSETS_DIR } from '@/lib/board'
+import { saveAsset } from '@/lib/notes/assets'
+import { attachmentsDir } from '@/lib/vault/attachments-dir'
 import { useBoardStore } from '@/stores/board'
+import { useVaultStore } from '@/stores/vault'
 import type { ThoughtColor } from '@/types/board'
 import { THOUGHT_COLORS } from '@/types/board'
 import { cn } from '@/utils/cn'
@@ -72,8 +74,8 @@ export function BoardView() {
   const loadBoard = useBoardStore((s) => s.loadBoard)
   const addThought = useBoardStore((s) => s.addThought)
   const addAudioThought = useBoardStore((s) => s.addAudioThought)
-  const updateItem = useBoardStore((s) => s.updateItem)
   const setActiveItem = useBoardStore((s) => s.setActiveItem)
+  const thoughtsFolder = useVaultStore((s) => s.config?.thoughtsFolder)
 
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -81,7 +83,7 @@ export function BoardView() {
 
   useEffect(() => {
     void loadBoard(vaultFs)
-  }, [vaultFs, loadBoard])
+  }, [vaultFs, loadBoard, thoughtsFolder])
 
   // Listen for global "start recording on board" event (fired from New button)
   useEffect(() => {
@@ -101,27 +103,19 @@ export function BoardView() {
 
   const handleImageUpload = useCallback(
     async (file: File) => {
-      const exists = await vaultFs.exists(BOARD_ASSETS_DIR)
-      if (!exists) {
-        await vaultFs.mkdir(BOARD_ASSETS_DIR)
-      }
-
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png'
-      const ts = Date.now().toString(36)
-      const rand = Math.random().toString(36).slice(2, 6)
-      const assetName = `${ts}-${rand}.${ext}`
-      const assetPath = `${BOARD_ASSETS_DIR}/${assetName}`
-
       const buf = await file.arrayBuffer()
-      await vaultFs.writeFile(assetPath, new Uint8Array(buf))
+      const assetPath = await saveAsset(
+        vaultFs,
+        file.name,
+        new Uint8Array(buf),
+        attachmentsDir(useVaultStore.getState().config),
+      )
 
-      const item = await addThought(vaultFs, 'white')
       const titleLine = file.name.replace(/\.[^.]+$/, '')
-      const body = `\n# ${titleLine}\n\n![${titleLine}](${assetPath})\n`
-      await updateItem(vaultFs, item.path, body)
+      await addThought(vaultFs, 'white', `\n# ${titleLine}\n\n![${titleLine}](${assetPath})\n`)
       setActiveItem(null)
     },
-    [vaultFs, addThought, updateItem, setActiveItem],
+    [vaultFs, addThought, setActiveItem],
   )
 
   const handleFileChange = useCallback(

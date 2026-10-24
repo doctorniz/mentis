@@ -1,3 +1,4 @@
+import { ASSETS_DIR } from '@/types/vault'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Tabs from '@radix-ui/react-tabs'
@@ -196,7 +197,7 @@ function UploadTab({
         <p className="text-fg-muted text-xs">
           Saved to{' '}
           <code className="bg-bg-tertiary rounded px-1 font-mono">
-            {attachmentFolder || '_assets'}
+            {attachmentFolder || ASSETS_DIR}
           </code>
         </p>
       </div>
@@ -220,7 +221,7 @@ function UploadTab({
 export function InsertMediaDialog({
   open,
   mode,
-  attachmentFolder = '_assets',
+  attachmentFolder = ASSETS_DIR,
   onInsert,
   onClose,
 }: InsertMediaDialogProps) {

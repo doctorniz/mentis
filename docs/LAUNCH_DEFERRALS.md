@@ -65,6 +65,8 @@ _Last reviewed 2026-10-13._
 - [ ] **Drawing conflict copy** — draw on the same canvas on two devices between syncs: one keeps the newer drawing, `Drawing (conflict …).canvas` opens with the other's strokes on both devices, one toast, and no `(conflict …).png` under `_mentis/_drawings`. (Unit-tested: `tests/sync-canvas-conflict.test.ts`.)
 - [ ] **PDF Version history** — two `plan.pdf` in different folders show separate histories; snapshots from an older build still show.
 
+- [ ] **Visible Thoughts, Journal and Attachments** — a new vault on desktop and Android: capture a thought, a voice note and an image thought, open today's journal: `Thoughts/` (files named by time and first words), `Journal/` and `Attachments/` show in the tree and the thought text is found by search. Settings › Editor › Thoughts, Move to `Ideas`: the board shows the same thoughts, `Thoughts/` is gone; Move to a folder with notes in it: refused. With Dropbox sync on, the moved files arrive on a second device. (Unit-tested: `tests/thoughts-folder.test.ts`.)
+
 - [ ] **Open vault only** — desktop, Android and iOS, with two recent vaults: relaunch, the last one reopens with no dialog; switch to the other from the landing page: it opens, and capture from the overlay saves into it. (Unit-tested: `opening_a_vault_closes_the_last_one`.)
 
 - [ ] **Content security policy** — on the website, desktop, Android and iOS, with DevTools open: no "Content Security Policy" errors while signing in to Dropbox, downloading and chatting with the on-device model, transcribing a voice note, adding a bookmark (preview image shows), and asking Ollama on another machine. (E2E runs under the policy: `tests/e2e/fixtures.ts`.)

@@ -92,9 +92,13 @@ writes hand Rust a file descriptor (§9).
 
 **Vault layout:** user notes and folders at the top level (root folders are
 notebooks; `_`-prefixed ones are system), and app data under `_mentis/`:
-`_journals`, `_thoughts`, `_tasks`, `_calendar`, `_bookmarks`, `_chats`,
-`_drawings`, `signatures`, `snapshots`, `templates`, `config.json`.
-Attachments go to `_assets/` (configurable).
+`_tasks`, `_calendar`, `_bookmarks`, `_chats`, `_drawings`, `signatures`,
+`snapshots`, `templates`, `config.json`. Thoughts, journal entries and
+attachments are ordinary visible folders, each set in Settings: `Thoughts/`
+(one note per thought, named by time and first words; every note in the
+folder is a thought), `Journal/` (`YYYY-MM-DD.md`) and `Attachments/`
+(pasted images, recordings, Thoughts' images too). Being outside
+`_mentis/`, they appear in the tree, search and graph.
 
 **Markdown notes** load into the editor through marked and save through
 turndown (`src/lib/editor/markdown-bridge.ts`). Opening and saving a note
