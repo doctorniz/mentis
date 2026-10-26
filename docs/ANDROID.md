@@ -89,7 +89,7 @@ the app comes back), and `src/modules/capture/share-host.tsx` acts on them:
 
 Narrow screens (the phone app and the web app on a phone) share one layout:
 
-- A bottom tab bar (`mobile-tab-bar.tsx`): Vault, Capture, Organizer, Search,
+- A bottom tab bar (`mobile-tab-bar.tsx`): Vault, Thoughts, Tasks, Search,
   More (the menu sheet). Hidden while the on-screen keyboard is up.
 - The page draws under the status and navigation bars (`viewport-fit=cover`);
   `safe-top` / `safe-bottom` / `safe-x` utilities in `globals.css` keep content

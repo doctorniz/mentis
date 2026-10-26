@@ -138,7 +138,7 @@ export function BoardView() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <div className="border-border bg-bg-secondary flex shrink-0 items-center justify-between border-b px-4 py-2.5">
-        <h1 className="text-fg text-sm font-semibold">Capture</h1>
+        <h1 className="text-fg text-sm font-semibold">Thoughts</h1>
         <div className="flex items-center gap-2">
           <button
             type="button"

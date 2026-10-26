@@ -424,7 +424,7 @@ This is the body after frontmatter.`
       })
 
       // Refresh to pick up new file
-      await page.keyboard.press('Control+1')
+      await navigateTo(page, 'vault')
       await page.waitForTimeout(1_500)
 
       // Open the file from the tree

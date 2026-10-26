@@ -1,4 +1,4 @@
-import { test, expect, createMarkdownNote } from './fixtures'
+import { test, expect, createMarkdownNote, navigateTo } from './fixtures'
 
 /** The Vault file tree (lives in the main content area, not the nav sidebar). */
 function vaultTree(page: import('@playwright/test').Page) {
@@ -46,7 +46,7 @@ test.describe('1.1 — Vault Creation & Opening', () => {
     await expect(page.locator('text=E2E Test Vault').first()).toBeVisible({ timeout: 10_000 })
 
     // The created note should still be in the tree
-    await page.keyboard.press('Control+1')
+    await navigateTo(page, 'vault')
     await expect(
       vaultTree(page).getByRole('button', { name: 'Persisted Note', exact: true }),
     ).toBeVisible({ timeout: 10_000 })
@@ -198,7 +198,7 @@ test.describe('1.3 — Auto-Save Behavior', () => {
     await page.reload()
     await page.waitForLoadState('domcontentloaded')
     await page.waitForSelector('aside, nav', { timeout: 30_000 })
-    await page.keyboard.press('Control+1')
+    await navigateTo(page, 'vault')
     await page.waitForTimeout(1000)
 
     await vaultTree(page).getByRole('button', { name: 'Autosave Note', exact: true }).click()
@@ -218,11 +218,11 @@ test.describe('1.3 — Auto-Save Behavior', () => {
     await editor.pressSequentially('Blur save test')
 
     // Immediately switch view (unmount flush saves the note)
-    await page.keyboard.press('Control+2')
+    await navigateTo(page, 'board')
     await page.waitForTimeout(1500)
 
     // Switch back and reopen the note
-    await page.keyboard.press('Control+1')
+    await navigateTo(page, 'vault')
     await page.waitForTimeout(1000)
     await vaultTree(page).getByRole('button', { name: 'Blur Note', exact: true }).click()
 
@@ -234,18 +234,18 @@ test.describe('1.3 — Auto-Save Behavior', () => {
 
 test.describe('1.5 — Vault Structure Integrity', () => {
   test('1.5.1 Verify _mentis/ directory hidden from file tree', async ({ vaultPage: page }) => {
-    await page.keyboard.press('Control+1')
+    await navigateTo(page, 'vault')
     await page.waitForTimeout(1000)
 
     // The _mentis folder should NOT be visible in the vault tree
     await expect(vaultTree(page).getByText('_mentis')).not.toBeVisible({ timeout: 3000 })
   })
 
-  test('1.5.8 Open Files view (Ctrl+5) — verify hidden folders visible', async ({
+  test('1.5.8 Open Files view (palette) — verify hidden folders visible', async ({
     vaultPage: page,
   }) => {
     // Navigate to Files view (shows hidden folders)
-    await page.keyboard.press('Control+5')
+    await navigateTo(page, 'files')
     await page.waitForTimeout(1500)
 
     // In the Files view (FileBrowserView with showHidden), _mentis should be visible

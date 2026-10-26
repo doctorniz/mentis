@@ -15,7 +15,8 @@ const view: ViewDefinition = {
     import('@/components/views/bookmarks-view').then((m) => ({
       default: m.BookmarksView as ViewComponent,
     })),
-  nav: { order: 4, shortcut: '4' },
+  nav: { order: 4 },
+  shortcut: '6',
 }
 
 export default view

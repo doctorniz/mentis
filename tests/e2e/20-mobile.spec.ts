@@ -36,7 +36,7 @@ test.describe('20 — Mobile (Pixel 5)', () => {
         },
       },
       {
-        label: 'Capture',
+        label: 'Thoughts',
         probe: async () => {
           await expect(
             page
@@ -47,9 +47,9 @@ test.describe('20 — Mobile (Pixel 5)', () => {
         },
       },
       {
-        label: 'Organizer',
+        label: 'Tasks',
         probe: async () => {
-          await expect(page.getByRole('button', { name: 'Tasks', exact: true })).toBeVisible()
+          await expect(page.getByRole('button', { name: 'All tasks', exact: true })).toBeVisible()
         },
       },
       {
@@ -107,8 +107,8 @@ test.describe('20 — Mobile (Pixel 5)', () => {
   })
 
   test('20.4 Projects drawer works with touch', async ({ vaultPage: page }) => {
-    await mastheadNavigate(page, 'Organizer')
-    await page.getByRole('button', { name: 'Tasks', exact: true }).tap()
+    await mastheadNavigate(page, 'Tasks')
+    await page.getByRole('button', { name: 'All tasks', exact: true }).tap()
 
     await page.getByRole('button', { name: 'Open projects' }).tap()
     const drawer = page.getByRole('dialog')
@@ -156,8 +156,7 @@ test.describe('20 — Mobile (Pixel 5)', () => {
   })
 
   test('20.6 Calendar defaults to day view on a phone', async ({ vaultPage: page }) => {
-    await mastheadNavigate(page, 'Organizer')
-    await page.getByRole('button', { name: 'Calendar', exact: true }).tap()
+    await mastheadNavigate(page, 'Calendar')
 
     const dayBtn = page.getByRole('button', { name: 'day', exact: true })
     await expect(dayBtn).toBeVisible()

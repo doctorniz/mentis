@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer'
 import type { VaultLayoutMode } from '@/types/vault'
 import { HOME_VIEW, type ViewId } from '@/core/registries/views'
 import { useVaultStore } from '@/stores/vault'
+import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
 
@@ -23,9 +24,9 @@ interface UiState {
   captureFocusRequested: boolean
 
   setActiveView: (view: ViewId) => void
-  /** Show the vault view with its search panel open. */
+  /** Open search: in the sidebar, or on a phone over the vault view. */
   requestVaultSearch: () => void
-  /** The vault view: take a pending search request. */
+  /** The search panel on screen: take a pending search request. */
   takeVaultSearchRequest: () => boolean
   /** Show `view` with its capture bar focused. */
   requestCaptureFocus: (view: ViewId) => void
@@ -100,7 +101,8 @@ export const useUiStore = create<UiState>()(
     requestVaultSearch: () =>
       set((state) => {
         state.vaultSearchRequested = true
-        state.activeView = HOME_VIEW
+        // On a phone search opens over the vault view; wide, it is in the sidebar beside any view.
+        if (window.matchMedia(MOBILE_NAV_MEDIA_QUERY).matches) state.activeView = HOME_VIEW
       }),
 
     takeVaultSearchRequest: () => {

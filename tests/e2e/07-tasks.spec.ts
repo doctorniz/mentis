@@ -111,7 +111,7 @@ test.describe('7 — Task Manager', () => {
       await page.waitForTimeout(1_000)
 
       // Click "Today" smart filter in sidebar
-      const todayBtn = page.locator('button', { hasText: 'Today' }).first()
+      const todayBtn = page.getByRole('main').locator('button', { hasText: 'Today' }).first()
       await todayBtn.click()
       await page.waitForTimeout(500)
 

@@ -4,7 +4,7 @@ How PDF editing behaves in Mentis. Code: `src/components/pdf/`, `src/lib/pdf/`. 
 
 ## 1. Finding PDFs
 
-The **Files** view (Ctrl+5) lists every file in the vault, PDFs with first-page
+The **Files** view (command palette › Go to Files) lists every file in the vault, PDFs with first-page
 thumbnails: grid or list, sorted by name, date, size or type, filtered by type.
 The context menu opens, renames, duplicates, moves or deletes; several files can
 be selected to move or delete together. Search finds PDFs by their text.

@@ -63,7 +63,7 @@ glob over `src/modules/*/`, so adding a module never edits a central list.
 | Registry                 | A module contributes                                                                              | Used by                                      |
 | ------------------------ | ------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | **File types**           | `{ id, suffixes, editor (lazy), layout, appearance, search, createNew, convertTo, thumbnail, … }` | tree, tabs, New menu, graph, search, convert |
-| **Views**                | `{ id, label, icon, component (lazy), nav, aliases }`                                             | sidebar, tab bar, view router, shortcuts     |
+| **Views**                | `{ id, label, icon, component (lazy), nav, shortcut, aliases }`                                   | sidebar, tab bar, view router, shortcuts     |
 | **Commands**             | `{ id, title, scope, run }`                                                                       | command palette (Ctrl+K), editor slash menu  |
 | **Capture destinations** | `{ sigil, parse, fields, validate, enrich, write }`                                               | capture bar, confirm dialog, overlay, shares |
 | **Settings**             | sections of fields (`get`/`set` on the vault config) or a lazy panel                              | the settings dialog                          |
@@ -72,6 +72,16 @@ File types are matched by suffix, longest first, so compound extensions work:
 `.md`, `.canvas`, `.map.md`, `.kan.md`, `.slides.md`, `.list.md`. Editors and
 views are `React.lazy` — opening a note never loads the PDF engine, the
 canvas or the spreadsheet grid.
+
+**Layout.** On a wide screen one sidebar holds everything: Search and New, a
+date card that opens today's journal (Ctrl+1), the views with `nav` — Chat,
+Calendar, Tasks, Thoughts, Bookmarks (Ctrl+2 to 6) — and below them the
+vault's file tree (`sidebar-files.tsx`, loaded after the shell). Opening a
+file from the tree or search shows it in the vault view, the editor with its
+tabs, from whichever view is up. The vault view, Files and Graph have no
+sidebar entry: the tree opens files, the palette reaches every view, and Graph
+is on the tree's heading. On a phone the sidebar is replaced by the masthead
+menu and the bottom tab bar, and the tree opens in a drawer over the editor.
 
 ---
 
@@ -156,7 +166,7 @@ measurement; Android's "Fully drawn" log).
 
 ---
 
-## 7. Capture and the Organizer
+## 7. Capture, Calendar and Tasks
 
 **Capture.** Bare text goes to Thoughts at once, with Undo. `/` picks a
 destination (Journal, Calendar, Task, List, Bookmark, Note, Chat), each shown
@@ -166,9 +176,11 @@ from the capture bar, the command palette, the desktop's global hotkey and
 overlay window, and on the phone from shares, app shortcuts, a widget and a
 Quick Settings tile.
 
-**Organizer:** Tasks (projects, recurrence, `remind`), Lists (checklists,
-ordered lists, scheduled reset), Calendar (repeating events, alerts),
-Reminders, and the Journal (a note per day, with tabs from a template).
+**Calendar and Tasks.** Tasks (projects, recurrence, `remind`) with Lists
+(checklists, ordered lists, scheduled reset) as a second tab; the Calendar
+(repeating events, alerts, tasks on their due days, a mark on days with a
+journal entry) with Reminders as a second tab; and the Journal (a note per day,
+with tabs from a template).
 
 **Reminders.** Occurrences are worked out from the files
 (`src/lib/reminders/`), recorded in the index, and delivered by the platform:

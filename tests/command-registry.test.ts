@@ -77,8 +77,8 @@ describe('registered commands', () => {
   })
 
   it('shows each view shortcut beside its command', () => {
-    const vault = commands.all().find((c) => c.id === 'view.vault')
-    expect(vault?.shortcut).toBe('Ctrl+1')
+    const today = commands.all().find((c) => c.id === 'view.journal')
+    expect(today?.shortcut).toBe('Ctrl+1')
   })
 })
 

@@ -320,9 +320,9 @@ test.describe('5.3 Undo / Redo', () => {
     await page.waitForTimeout(500)
 
     // Switch away (unmounts + destroys the engine) and back
-    await page.keyboard.press('Control+2')
+    await navigateTo(page, 'board')
     await page.waitForTimeout(1500)
-    await page.keyboard.press('Control+1')
+    await navigateTo(page, 'vault')
     await expect(page.getByText('Loading canvas…')).toBeHidden({ timeout: 15_000 })
     await page.waitForTimeout(800)
 

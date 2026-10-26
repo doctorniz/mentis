@@ -7,7 +7,7 @@ declare module '@/core/registries/views' {
   }
 }
 
-/** A day's journal as tabs. Opened from the sidebar date and the calendar, not the nav. */
+/** A day's journal as tabs. Opened from the sidebar's date card (Ctrl+1) and the calendar, not the nav list. */
 const view: ViewDefinition = {
   id: 'journal',
   label: 'Journal',
@@ -16,6 +16,7 @@ const view: ViewDefinition = {
     import('@/components/journal/journal-view').then((m) => ({
       default: m.JournalView as ViewComponent,
     })),
+  shortcut: '1',
 }
 
 export default view

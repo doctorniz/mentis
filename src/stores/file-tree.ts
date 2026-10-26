@@ -10,6 +10,8 @@ interface FileTreeState {
   selectedPath: string | null
   expandedPaths: ExpandedPathsMap
   starredPaths: string[]
+  /** Bumped when files were created, renamed or deleted: trees re-list their folders. */
+  refreshToken: number
 
   setRoot: (root: FileEntry) => void
   setSelectedPath: (path: string | null) => void
@@ -17,6 +19,7 @@ interface FileTreeState {
   setExpanded: (path: string, expanded: boolean) => void
   toggleStarred: (path: string) => void
   isStarred: (path: string) => boolean
+  refreshTree: () => void
 }
 
 export const useFileTreeStore = create<FileTreeState>()(
@@ -25,6 +28,7 @@ export const useFileTreeStore = create<FileTreeState>()(
     selectedPath: null,
     expandedPaths: {},
     starredPaths: [],
+    refreshToken: 0,
 
     setRoot: (root) =>
       set((state) => {
@@ -65,5 +69,10 @@ export const useFileTreeStore = create<FileTreeState>()(
       }),
 
     isStarred: (path) => get().starredPaths.includes(path),
+
+    refreshTree: () =>
+      set((state) => {
+        state.refreshToken += 1
+      }),
   })),
 )

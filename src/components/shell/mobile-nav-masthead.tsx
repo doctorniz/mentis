@@ -31,6 +31,14 @@ const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'dark', label: 'Dark', icon: Moon },
 ]
 
+/**
+ * The menu's views: the sidebar's, plus the vault and Files, which a wide
+ * screen reaches from its tree and the command palette.
+ */
+function menuViews() {
+  return [views.get('vault'), ...views.nav(), views.get('files')].filter((v) => v !== undefined)
+}
+
 /** Sidebar date pill — opens today in the journal view. */
 function DailyNoteDate({ onClose }: { onClose: () => void }) {
   const config = useVaultStore((s) => s.config)
@@ -85,7 +93,8 @@ export function MobileNavMasthead({
   const [open, setOpen] = useState(false)
   const [newExpanded, setNewExpanded] = useState(false)
   const activeView = useUiStore((s) => s.activeView)
-  const activeHighlight = views.resolve(activeView)?.highlight
+  const resolved = views.resolve(activeView)
+  const activeHighlight = resolved?.highlight ?? resolved?.def.id
   const setActiveView = useUiStore((s) => s.setActiveView)
   const config = useVaultStore((s) => s.config)
   const theme = useUiStore((s) => s.theme)
@@ -201,7 +210,7 @@ export function MobileNavMasthead({
             >
               <DailyNoteDate onClose={closeMenu} />
 
-              {views.nav().map(({ id, label, icon: Icon }) => {
+              {menuViews().map(({ id, label, icon: Icon }) => {
                 const active = activeHighlight === id
                 return (
                   <button

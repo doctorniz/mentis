@@ -87,6 +87,31 @@ export const checklist = {
       ],
     },
     {
+      id: 'one-sidebar',
+      title: 'One sidebar',
+      device: 'desktop',
+      items: [
+        {
+          id: 'one-sidebar-layout',
+          title: 'The sidebar holds the views and the tree',
+          steps: [
+            'Search, New, the Today card, Chat, Calendar, Tasks, Thoughts, Bookmarks, then the file tree',
+            'With Calendar showing, open a PDF, a canvas and a .kan.md from the tree — each opens in its own editor',
+            'Ctrl+F opens search in the sidebar without leaving the view; Esc goes back to the tree',
+            'Ctrl+1–6: Today, Chat, Calendar, Tasks, Thoughts, Bookmarks',
+          ],
+        },
+        {
+          id: 'one-sidebar-tabs',
+          title: 'Tasks and Calendar tabs',
+          steps: [
+            'Tasks has All tasks and Lists; Calendar has Calendar and Reminders (missed count on the tab)',
+            "A reminder's Open lands on Tasks or Calendar with the item open",
+          ],
+        },
+      ],
+    },
+    {
       id: 'canvas-maintenance',
       title: 'Canvas — maintenance & regressions',
       device: 'desktop',
@@ -222,7 +247,7 @@ export const checklist = {
     },
     {
       id: 'organizer',
-      title: 'Organizer — Tasks / Calendar / Board / Bookmarks',
+      title: 'Tasks / Calendar / Thoughts / Bookmarks',
       device: 'desktop',
       items: [
         {

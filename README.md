@@ -25,7 +25,7 @@ Android.
   `/journal`, `/bookmark` … send it elsewhere, with natural-language dates.
   From the desktop, a global hotkey; from the phone, share sheet, shortcuts,
   a widget and a Quick Settings tile.
-- **Organizer** — tasks and projects, lists, a calendar with repeating events,
+- **Calendar and Tasks** — tasks and projects, lists, a calendar with repeating events,
   reminders (desktop and phone notifications with Snooze and Done), and a
   daily journal with tabs from a template.
 - **Search and graph** — full-text search across every file type, and a

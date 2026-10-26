@@ -1,27 +1,28 @@
-import { CalendarCheck } from 'lucide-react'
+import { CheckSquare } from 'lucide-react'
 import type { ViewComponent, ViewDefinition } from '@/core/registries/views'
 
 declare module '@/core/registries/views' {
   interface ViewIds {
-    organizer: true
     tasks: true
-    calendar: true
+    organizer: true
   }
 }
 
+/** Tasks, with Lists as a second tab. The Calendar is its own view (modules/calendar). */
 const view: ViewDefinition = {
-  id: 'organizer',
-  label: 'Organizer',
-  icon: CalendarCheck,
+  id: 'tasks',
+  label: 'Tasks',
+  icon: CheckSquare,
   component: () =>
-    import('@/components/views/organizer-view').then((m) => ({
-      default: m.OrganizerView as ViewComponent,
+    import('@/components/views/tasks-page').then((m) => ({
+      default: m.TasksPage as ViewComponent,
     })),
-  nav: { order: 3, shortcut: '3' },
+  nav: { order: 2 },
+  shortcut: '4',
   aliases: [
-    // Tasks and Calendar were folded into the Organizer as tabs.
-    { id: 'tasks', props: { initialTab: 'tasks' } },
-    { id: 'calendar', props: { initialTab: 'calendars' } },
+    // The Organizer held Tasks, Lists, Calendar and Reminders as tabs; saved
+    // state that names it lands on Tasks.
+    { id: 'organizer' },
   ],
 }
 

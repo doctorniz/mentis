@@ -19,6 +19,7 @@ import { parseSearchQuery } from '@/lib/search/parse-query'
 import type { SearchResult } from '@/types/search'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
+import { showEditor } from '@/lib/notes/show-editor'
 import { cn } from '@/utils/cn'
 
 const TYPE_ICONS: Record<string, typeof FileText> = {
@@ -102,6 +103,7 @@ export function VaultLeftSearch({ onClose, rootClassName }: VaultLeftSearchProps
           title: r.title,
           isDirty: false,
         })
+        showEditor()
       })()
     },
     [vaultFs],

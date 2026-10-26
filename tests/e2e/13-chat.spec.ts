@@ -119,7 +119,8 @@ test.describe('13 — AI Chat', () => {
       await waitForAutoSave(page)
 
       // Open chat panel
-      const sparkleBtn = page
+      const main = page.getByRole('main')
+      const sparkleBtn = main
         .locator(
           'button[aria-label*="hat"], button[aria-label*="parkle"], button[aria-label*="AI"], [data-testid="chat-toggle"]',
         )
@@ -140,7 +141,7 @@ test.describe('13 — AI Chat', () => {
       }
 
       // Close chat panel
-      const closeBtn = page
+      const closeBtn = main
         .locator('[data-testid="chat-close"], button[aria-label*="lose"]')
         .first()
       if (await closeBtn.isVisible().catch(() => false)) {
@@ -158,7 +159,7 @@ test.describe('13 — AI Chat', () => {
   })
 
   test.describe('14.3 Vault-Wide Chat', () => {
-    test('14.3.1 Switch to Vault Chat view (Ctrl+0) — full-viewport layout', async ({
+    test('14.3.1 Switch to Vault Chat view (Ctrl+2) — full-viewport layout', async ({
       vaultPage: page,
     }) => {
       await navigateTo(page, 'chat')

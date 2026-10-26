@@ -18,7 +18,6 @@ const view: ViewDefinition = {
     import('@/components/views/vault-view').then((m) => ({
       default: m.VaultView as ViewComponent,
     })),
-  nav: { order: 1, shortcut: '1' },
   aliases: [
     // Legacy ids that always rendered the vault.
     { id: 'file-browser' },

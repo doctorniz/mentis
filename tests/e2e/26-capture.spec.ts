@@ -13,7 +13,7 @@ function localDate(offsetDays: number) {
 test.describe('26 — Capture', () => {
   test('26.1 A bare thought commits instantly and can be undone', async ({ vaultPage: page }) => {
     await navigateTo(page, 'board')
-    await expect(page.getByRole('heading', { name: 'Capture' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Thoughts' })).toBeVisible()
 
     await bar(page).fill('An idea worth keeping')
     await bar(page).press('Enter')
@@ -199,7 +199,7 @@ test.describe('26 — Capture', () => {
     await dialog.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('status')).toContainText('Added to Groceries')
 
-    await page.keyboard.press('Control+3')
+    await page.keyboard.press('Control+4')
     await page.getByRole('button', { name: 'Lists', exact: true }).first().click()
     await page.getByRole('button', { name: /Groceries/ }).click()
     await expect(page.getByLabel('Item', { exact: true })).toHaveCount(2)

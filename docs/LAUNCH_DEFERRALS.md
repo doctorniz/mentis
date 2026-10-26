@@ -67,6 +67,8 @@ _Last reviewed 2026-10-13._
 
 - [ ] **Visible Thoughts, Journal and Attachments** — a new vault on desktop and Android: capture a thought, a voice note and an image thought, open today's journal: `Thoughts/` (files named by time and first words), `Journal/` and `Attachments/` show in the tree and the thought text is found by search. Settings › Editor › Thoughts, Move to `Ideas`: the board shows the same thoughts, `Thoughts/` is gone; Move to a folder with notes in it: refused. With Dropbox sync on, the moved files arrive on a second device. (Unit-tested: `tests/thoughts-folder.test.ts`.)
 
+- [ ] **One sidebar** — the desktop app and the website at full width: the sidebar shows Search, New, the Today card, Chat, Calendar, Tasks, Thoughts, Bookmarks and the file tree. Open a PDF, a canvas and a .kan.md from the tree while Calendar is showing: each opens in its own editor. Ctrl+F opens search in the sidebar without leaving the view; Esc goes back to the tree. Ctrl+1–6 reach Today, Chat, Calendar, Tasks, Thoughts and Bookmarks. Narrow the window until a canvas collapses the sidebar, then widen it again. A reminder's Open lands on Tasks or Calendar. (E2E: `02-navigation.spec.ts`.)
+
 - [ ] **Open vault only** — desktop, Android and iOS, with two recent vaults: relaunch, the last one reopens with no dialog; switch to the other from the landing page: it opens, and capture from the overlay saves into it. (Unit-tested: `opening_a_vault_closes_the_last_one`.)
 
 - [ ] **Content security policy** — on the website, desktop, Android and iOS, with DevTools open: no "Content Security Policy" errors while signing in to Dropbox, downloading and chatting with the on-device model, transcribing a voice note, adding a bookmark (preview image shows), and asking Ollama on another machine. (E2E runs under the policy: `tests/e2e/fixtures.ts`.)
@@ -99,7 +101,7 @@ _Last reviewed 2026-10-13._
 - [ ] **Chat — Settings tab** — per-provider key hints; keys round-trip through IndexedDB and NEVER appear in `config.json`.
 - [ ] **Chat — per-document panels** — `chatAssetId` minting (frontmatter for md, index.json for PDF), thread persistence across rename, resize divider, empty states, streaming + Stop, source links.
 - [ ] **Chat — providers** — streaming round-trip per cloud provider (wire-format smoke checks); Ollama reachability error; Local Gemma download → Ready → coherent streaming without word-gluing; WebGPU error message on unsupported browsers.
-- [ ] **Vault chat (Ctrl+0)** — sidebar resize/collapse persistence, session thread memory, centered empty-state composer, Sources list only for cited excerpts, image uploads.
+- [ ] **Vault chat (Ctrl+2)** — sidebar resize/collapse persistence, session thread memory, centered empty-state composer, Sources list only for cited excerpts, image uploads.
 - [ ] **Vault & files** — Preview/Files tabs, sync icon when Dropbox configured, Unicode filenames over sync, browse header path, file-browser context menu + batch ops, image edit from tree, vault rename round-trip (C18), New menu (note/file/drawing/PDF import with page style).
 - [ ] **Canvas — general sweep** — brushes/sizes/colors, layer operations (add/rename/lock/opacity/blend/merge/flatten/clear + undo), inline rename, rapid tab switching, export PNG/PDF, keyboard map (M/B/E/H/G/I, `[`/`]`, Ctrl+Z/Y/S, Esc, Del, Ctrl+A/C/X/V, arrows).
 - [ ] **Canvas (mobile / narrow)** — visible drawing area, repaint after view switches, pinch-zoom/two-finger pan, gesture aborts strokes and selections.

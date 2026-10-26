@@ -3,7 +3,7 @@ import { test, expect, navigateTo } from './fixtures'
 /**
  * Board (quick capture) E2E tests — QA plan section 6.
  *
- * The Board is a masonry-layout notice board at Ctrl+2. Thoughts are
+ * The Board is a masonry-layout notice board at Ctrl+5. Thoughts are
  * markdown files in Thoughts/. Cards support inline Tiptap editing,
  * color on creation, and audio/image attachments.
  */
@@ -16,7 +16,7 @@ import { test, expect, navigateTo } from './fixtures'
 async function openBoard(page: import('@playwright/test').Page) {
   await navigateTo(page, 'board')
   await page.waitForTimeout(600)
-  await expect(page.getByRole('heading', { name: 'Capture' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Thoughts' })).toBeVisible()
 }
 
 /** Create a thought via the toolbar button and wait for editor to mount. */

@@ -11,7 +11,8 @@ const vault: ViewDefinition = {
   label: 'Vault',
   icon: File,
   component,
-  nav: { order: 1, shortcut: '1' },
+  nav: { order: 1 },
+  shortcut: '1',
   aliases: [{ id: 'notes' }, { id: 'search', highlight: false }],
 }
 const organizer: ViewDefinition = {
@@ -19,7 +20,8 @@ const organizer: ViewDefinition = {
   label: 'Organizer',
   icon: File,
   component,
-  nav: { order: 0, shortcut: '3' },
+  nav: { order: 0 },
+  shortcut: '3',
   aliases: [{ id: 'tasks', props: { initialTab: 'tasks' } }],
 }
 const graph: ViewDefinition = {
@@ -72,21 +74,29 @@ describe('createViewRegistry', () => {
     expect(() => createViewRegistry([vault, { ...graph, aliases: [{ id: 'vault' }] }])).toThrow(
       /collides/,
     )
-    expect(() =>
-      createViewRegistry([vault, { ...organizer, nav: { order: 2, shortcut: '1' } }]),
-    ).toThrow(/Ctrl\+1/)
+    expect(() => createViewRegistry([vault, { ...organizer, shortcut: '1' }])).toThrow(/Ctrl\+1/)
   })
 })
 
 describe('registered views', () => {
-  it('keep the nav order and Ctrl+digit bindings the shell always had', () => {
-    expect(views.nav().map((v) => [v.id, v.label, v.nav?.shortcut])).toEqual([
-      ['vault-chat', 'Chat', '0'],
-      ['vault', 'Vault', '1'],
-      ['board', 'Capture', '2'],
-      ['organizer', 'Organizer', '3'],
-      ['bookmarks', 'Bookmarks', '4'],
-      ['files', 'Files', '5'],
+  it('list Chat, Calendar, Tasks, Thoughts and Bookmarks in the sidebar', () => {
+    expect(views.nav().map((v) => [v.id, v.label])).toEqual([
+      ['vault-chat', 'Chat'],
+      ['calendar', 'Calendar'],
+      ['tasks', 'Tasks'],
+      ['board', 'Thoughts'],
+      ['bookmarks', 'Bookmarks'],
+    ])
+  })
+
+  it('bind Ctrl+1 to 6 in sidebar order, Today first', () => {
+    expect(['1', '2', '3', '4', '5', '6'].map((k) => views.byShortcut(k)?.id)).toEqual([
+      'journal',
+      'vault-chat',
+      'calendar',
+      'tasks',
+      'board',
+      'bookmarks',
     ])
   })
 
@@ -95,11 +105,11 @@ describe('registered views', () => {
       const r = views.resolve(id)
       return [r?.def.id, r?.props, r?.highlight]
     }
-    expect(route('file-browser')).toEqual(['vault', {}, 'vault'])
-    expect(route('notes')).toEqual(['vault', {}, 'vault'])
+    expect(route('file-browser')).toEqual(['vault', {}, undefined])
+    expect(route('notes')).toEqual(['vault', {}, undefined])
     expect(route('search')).toEqual(['vault', {}, undefined])
     expect(route('graph')).toEqual(['graph', {}, 'vault'])
-    expect(route('tasks')).toEqual(['organizer', { initialTab: 'tasks' }, 'organizer'])
-    expect(route('calendar')).toEqual(['organizer', { initialTab: 'calendars' }, 'organizer'])
+    expect(route('organizer')).toEqual(['tasks', {}, 'tasks'])
+    expect(route('calendar')).toEqual(['calendar', {}, 'calendar'])
   })
 })

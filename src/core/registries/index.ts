@@ -95,13 +95,13 @@ const commandRegistrations = import.meta.glob<{ default: readonly AnyCommand[] }
   { eager: true },
 )
 
-/** "Go to <view>" for every view in the nav, with its Ctrl+digit. */
-const viewCommands: AnyCommand[] = views.nav().map((v) => ({
+/** "Go to <view>" for every view, with its Ctrl+digit — the palette reaches the views the sidebar does not list. */
+const viewCommands: AnyCommand[] = views.all().map((v) => ({
   id: `view.${v.id}`,
   title: `Go to ${v.label}`,
   keywords: ['view', 'switch', v.id],
   icon: v.icon,
-  shortcut: v.nav?.shortcut ? `Ctrl+${v.nav.shortcut}` : undefined,
+  shortcut: v.shortcut ? `Ctrl+${v.shortcut}` : undefined,
   scope: 'global',
   run: () => useUiStore.getState().setActiveView(v.id),
 }))

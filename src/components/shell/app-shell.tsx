@@ -5,7 +5,6 @@ import { MobileTabBar } from '@/components/shell/mobile-tab-bar'
 import { markShellReady } from '@/lib/startup-mark'
 import { ViewRouter } from '@/components/shell/view-router'
 import { VaultSearchBootstrap } from '@/components/search/vault-search-bootstrap'
-import { KeyboardShortcutsDialog } from '@/components/shell/keyboard-shortcuts-dialog'
 import { useUiStore } from '@/stores/ui'
 import { toast } from '@/stores/toast'
 import type { DesktopSettings } from '@/modules/desktop/shell'
@@ -17,6 +16,13 @@ import { usePdfStore } from '@/stores/pdf'
 import { useCanvasStore } from '@/stores/canvas'
 import { views } from '@/core/registries'
 import { currentCommandContexts, type CommandScopes } from '@/core/registries/commands'
+
+// The shortcuts list is loaded the first time it is asked for (Ctrl+Shift+?).
+const KeyboardShortcutsDialog = lazy(() =>
+  import('@/components/shell/keyboard-shortcuts-dialog').then((m) => ({
+    default: m.KeyboardShortcutsDialog,
+  })),
+)
 
 // Settings are loaded the first time they are opened, and stay mounted after.
 const SettingsDialog = lazy(() =>
@@ -239,7 +245,7 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
       }
       if (e.key === 'f' || e.key === 'F') {
         e.preventDefault()
-        // Navigate to Vault view and open the left-column search panel
+        // Open the search panel (the sidebar's, or the vault view's on a phone)
         useUiStore.getState().requestVaultSearch()
         return
       }
@@ -276,7 +282,11 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         <ViewRouter />
         <MobileTabBar />
       </main>
-      <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      {shortcutsOpen && (
+        <Suspense fallback={null}>
+          <KeyboardShortcutsDialog open onOpenChange={setShortcutsOpen} />
+        </Suspense>
+      )}
       {remindersReady && (
         <Suspense fallback={null}>
           <ReminderHost />

@@ -3,12 +3,11 @@ import { test, expect, writeVaultFile } from './fixtures'
 
 const longDate = (d: Date) =>
   d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-const pillDate = (d: Date) =>
-  d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
 async function openToday(page: Page) {
   await page
-    .getByRole('button', { name: pillDate(new Date()) })
+    .getByRole('navigation', { name: 'Main views' })
+    .getByRole('button', { name: /^Today, / })
     .first()
     .click()
   await expect(page.getByRole('heading', { name: longDate(new Date()) })).toBeVisible({
@@ -79,7 +78,7 @@ test.describe('28 — Journal', () => {
     yesterday.setDate(yesterday.getDate() - 1)
     await page.getByRole('button', { name: 'Previous day' }).click()
     await expect(page.getByRole('heading', { name: longDate(yesterday) })).toBeVisible()
-    await page.getByRole('button', { name: 'Today' }).click()
+    await page.getByRole('button', { name: 'Today', exact: true }).click()
     await expect(page.getByRole('heading', { name: longDate(new Date()) })).toBeVisible()
 
     await page.getByRole('button', { name: 'Add a tab' }).click()

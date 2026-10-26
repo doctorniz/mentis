@@ -15,7 +15,6 @@ const view: ViewDefinition = {
     import('@/components/views/files-view').then((m) => ({
       default: m.FilesView as ViewComponent,
     })),
-  nav: { order: 5, shortcut: '5' },
 }
 
 export default view

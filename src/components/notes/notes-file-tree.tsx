@@ -26,6 +26,7 @@ import type { FileEntry } from '@/types/files'
 import { listFolder } from '@/lib/notes/tree-listing'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { createUntitledNote } from '@/lib/notes/new-note'
+import { showEditor } from '@/lib/notes/show-editor'
 import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
 import { awaitPendingMarkdownSave } from '@/lib/notes/pending-saves'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
@@ -51,6 +52,7 @@ export function NotesFileTree({
   onSearchOpen,
   onGraphOpen,
   rootClassName,
+  heading = 'Vault',
 }: {
   vaultFs: FileSystemAdapter
   /** Increment from parent to reload the tree (e.g. after creating a note elsewhere). */
@@ -61,6 +63,8 @@ export function NotesFileTree({
   onSearchOpen?: () => void
   onGraphOpen?: () => void
   rootClassName?: string
+  /** The label over the tree. */
+  heading?: string
 }) {
   const [rootEntries, setRootEntries] = useState<FileEntry[]>([])
   const [renamePath, setRenamePath] = useState<string | null>(null)
@@ -110,6 +114,7 @@ export function NotesFileTree({
       isDirty: false,
     })
     addRecentFile(path)
+    showEditor()
   }
 
   function handleOpenFile(path: string) {
@@ -125,6 +130,7 @@ export function NotesFileTree({
         title: fileTitleFromPath(path),
         isDirty: false,
       })
+      showEditor()
     })()
   }
 
@@ -376,7 +382,7 @@ export function NotesFileTree({
               </Button>
             )}
             <span className="text-fg truncate text-xs font-semibold tracking-wide uppercase">
-              Vault
+              {heading}
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">

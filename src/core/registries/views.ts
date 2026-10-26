@@ -48,8 +48,10 @@ export interface ViewDefinition {
   icon: LucideIcon
   /** Lazily loaded view. Loaded when first shown, or preloaded when idle. */
   component: () => Promise<{ default: ViewComponent }>
-  /** Show in the nav, at this position; `shortcut` is the Ctrl+<digit>. */
-  nav?: { order: number; shortcut?: string }
+  /** Show in the sidebar list, at this position. */
+  nav?: { order: number }
+  /** Ctrl+<digit> switches to this view. */
+  shortcut?: string
   /** For views outside the nav: the nav item to highlight while shown. */
   highlights?: ViewId
   aliases?: readonly ViewAlias[]
@@ -83,7 +85,7 @@ export function createViewRegistry(definitions: readonly ViewDefinition[]): View
       throw new Error(`View id "${def.id}" is registered twice`)
     }
     byId.set(def.id, def)
-    const key = def.nav?.shortcut
+    const key = def.shortcut
     if (key) {
       const owner = shortcuts.get(key)
       if (owner) throw new Error(`Shortcut Ctrl+${key} is claimed by "${owner.id}" and "${def.id}"`)

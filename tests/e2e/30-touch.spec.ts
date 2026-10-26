@@ -42,8 +42,8 @@ const tabBar = (page: Page) => page.getByTestId('mobile-tab-bar')
 const tab = (page: Page, name: string) => tabBar(page).getByRole('button', { name, exact: true })
 
 async function addTask(page: Page, title: string) {
-  await tab(page, 'Organizer').tap()
-  await page.getByRole('button', { name: 'Tasks', exact: true }).first().tap()
+  await tab(page, 'Tasks').tap()
+  await page.getByRole('button', { name: 'All tasks', exact: true }).tap()
   const bar = page.getByPlaceholder('Add a task...')
   await bar.fill(title)
   await bar.press('Enter')
@@ -52,17 +52,17 @@ async function addTask(page: Page, title: string) {
 }
 
 test.describe('30 — Touch', () => {
-  test('30.1 The tab bar reaches Vault, Capture, Organizer, Search and More', async ({
+  test('30.1 The tab bar reaches Vault, Thoughts, Tasks, Search and More', async ({
     vaultPage: page,
   }) => {
     await expect(tabBar(page)).toBeVisible()
 
-    await tab(page, 'Organizer').tap()
-    await expect(page.getByRole('button', { name: 'Tasks', exact: true }).first()).toBeVisible()
-    await expect(tab(page, 'Organizer')).toHaveAttribute('aria-current', 'page')
+    await tab(page, 'Tasks').tap()
+    await expect(page.getByRole('button', { name: 'All tasks', exact: true })).toBeVisible()
+    await expect(tab(page, 'Tasks')).toHaveAttribute('aria-current', 'page')
 
-    await tab(page, 'Capture').tap()
-    await expect(tab(page, 'Capture')).toHaveAttribute('aria-current', 'page')
+    await tab(page, 'Thoughts').tap()
+    await expect(tab(page, 'Thoughts')).toHaveAttribute('aria-current', 'page')
 
     await tab(page, 'Search').tap()
     await expect(page.getByPlaceholder(/search/i).first()).toBeVisible({ timeout: 10_000 })
@@ -138,7 +138,7 @@ test.describe('30 — Touch', () => {
   })
 
   test('30.5 Press and hold a list item, then drag it to reorder', async ({ vaultPage: page }) => {
-    await tab(page, 'Organizer').tap()
+    await tab(page, 'Tasks').tap()
     await page.getByRole('button', { name: 'Lists', exact: true }).first().tap()
     await page.getByLabel('Kind of new list').selectOption({ label: 'Checklist' })
     const name = page.getByLabel('New list name')

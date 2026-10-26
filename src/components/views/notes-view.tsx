@@ -20,12 +20,7 @@ import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
 import { Button } from '@/components/ui/button'
-import {
-  MOBILE_NAV_MEDIA_QUERY,
-  WIDE_EDITOR_MEDIA_QUERY,
-  CANVAS_TREE_MEDIA_QUERY,
-  CANVAS_SIDEBAR_MEDIA_QUERY,
-} from '@/lib/browser/breakpoints'
+import { MOBILE_NAV_MEDIA_QUERY, CANVAS_SIDEBAR_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { useMediaQuery } from '@/lib/browser/use-media-query'
 import { createUntitledNote } from '@/lib/notes/new-note'
 import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
@@ -43,7 +38,7 @@ export function NotesView() {
 }
 
 function NotesViewInner() {
-  const [treeRefresh, setTreeRefresh] = useState(0)
+  const treeRefresh = useFileTreeStore((s) => s.refreshToken)
   const [scanPulse, setScanPulse] = useState(0)
   const { vaultFs } = useVaultSession()
   const { markdownPaths, refreshMarkdownPaths } = useNotesWorkspace()
@@ -115,7 +110,7 @@ function NotesViewInner() {
   }
 
   const vaultChanged = useCallback(() => {
-    setTreeRefresh((n) => n + 1)
+    useFileTreeStore.getState().refreshTree()
     void refreshMarkdownPaths()
   }, [refreshMarkdownPaths])
 
@@ -268,43 +263,24 @@ function NotesViewInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab?.path, activeTab?.type, vaultFs])
 
+  // On a wide screen the tree and search live in the sidebar (SidebarFiles);
+  // on a phone they open here, in a drawer over the editor.
   const isMobileTree = useMediaQuery(MOBILE_NAV_MEDIA_QUERY)
-  const isWideEditorNarrow = useMediaQuery(WIDE_EDITOR_MEDIA_QUERY)
-  const isCanvasTreeNarrow = useMediaQuery(CANVAS_TREE_MEDIA_QUERY)
   const isCanvasSidebarNarrow = useMediaQuery(CANVAS_SIDEBAR_MEDIA_QUERY)
   const isCanvasTab = activeDef?.layout?.narrow === 'canvas'
-  const isWideEditorTab = activeDef?.layout?.narrow === 'wide'
 
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const isSidebarOpen = useUiStore((s) => s.isSidebarOpen)
   const canvasSidebarAutoCollapsedRef = useRef(false)
 
-  const [notesTreeExpanded, setNotesTreeExpanded] = useState(true)
-  // Whether the user has manually toggled the tree (prevents auto-expand
-  // from fighting the user's intent until the tab or breakpoint changes).
-  const manualTreeToggleRef = useRef(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
-  useLayoutEffect(() => {
-    setNotesTreeExpanded(!window.matchMedia(MOBILE_NAV_MEDIA_QUERY).matches)
-  }, [])
-
-  // Auto-collapse tree: mobile always; canvas at ≤1200px; wide editors at ≤1380px.
-  // Skip if the user has manually toggled the tree (until the active tab changes).
-  useEffect(() => {
-    if (manualTreeToggleRef.current) return
-    if (isMobileTree) setNotesTreeExpanded(false)
-    else if (isCanvasTab && isCanvasTreeNarrow) setNotesTreeExpanded(false)
-    else if (isWideEditorTab && isWideEditorNarrow) setNotesTreeExpanded(false)
-    else setNotesTreeExpanded(true)
-  }, [isMobileTree, isCanvasTab, isCanvasTreeNarrow, isWideEditorTab, isWideEditorNarrow])
-
-  // On mobile, opening a file from the tree drawer must close the drawer —
-  // it otherwise stays covering the editor the user just navigated to.
-  // (The tree opens tabs internally, so this keys off the active tab id.)
+  // Opening a file from the drawer must close it — it otherwise stays
+  // covering the editor the user just navigated to. (The tree opens tabs
+  // internally, so this keys off the active tab id.)
   const activeTabIdForDrawer = activeTab?.id
   useEffect(() => {
-    if (isMobileTree) setNotesTreeExpanded(false)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setDrawerOpen(false)
   }, [activeTabIdForDrawer])
 
   // Auto-collapse nav sidebar for canvas tabs at ≤1050px. Restores when
@@ -326,28 +302,19 @@ function NotesViewInner() {
     }
   }, [isCanvasTab, isCanvasSidebarNarrow, isSidebarOpen, setSidebarOpen])
 
-  // Reset the manual override when the active tab changes so auto-logic
-  // kicks in again for the new tab.
-  const prevTabIdRef = useRef(activeTabId)
-  useEffect(() => {
-    if (activeTabId !== prevTabIdRef.current) {
-      manualTreeToggleRef.current = false
-      prevTabIdRef.current = activeTabId
-    }
-  }, [activeTabId])
-
-  // Left panel: 'tree' shows the file tree, 'search' shows the search panel
+  // The drawer shows the file tree or the search panel.
   const [leftPanel, setLeftPanel] = useState<'tree' | 'search'>('tree')
 
-  // Ctrl+F or the Search tab → open the search panel. A request made while
-  // switching to this view waits in the UI store until it mounts.
+  // On a phone, Ctrl+F or the Search tab → the drawer's search panel. A
+  // request made while switching to this view waits in the UI store until it
+  // mounts. (On a wide screen the sidebar takes it.)
   const searchRequested = useUiStore((s) => s.vaultSearchRequested)
   useEffect(() => {
+    if (!isMobileTree) return
     if (!searchRequested || !useUiStore.getState().takeVaultSearchRequest()) return
-    manualTreeToggleRef.current = true
-    setNotesTreeExpanded(true)
+    setDrawerOpen(true)
     setLeftPanel('search')
-  }, [searchRequested])
+  }, [searchRequested, isMobileTree])
 
   async function handleNewNote() {
     const path = await createUntitledNote(vaultFs)
@@ -367,9 +334,6 @@ function NotesViewInner() {
     if (!pendingVaultOpenPath) return
     const p = pendingVaultOpenPath
     setPendingVaultOpenPath(null)
-    manualTreeToggleRef.current = false
-    setNotesTreeExpanded(true)
-    setLeftPanel('tree')
     openNotePath(p)
   }, [pendingVaultOpenPath, setPendingVaultOpenPath, openNotePath])
 
@@ -380,14 +344,10 @@ function NotesViewInner() {
     onNoteCreated: () => {
       vaultChanged()
     },
-    onRequestCollapse: () => {
-      manualTreeToggleRef.current = true
-      setNotesTreeExpanded(false)
-    },
+    onRequestCollapse: () => setDrawerOpen(false),
     onSearchOpen: () => setLeftPanel('search'),
     onGraphOpen: () => {
-      manualTreeToggleRef.current = true
-      setNotesTreeExpanded(false)
+      setDrawerOpen(false)
       setActiveView('graph')
     },
   }
@@ -419,7 +379,7 @@ function NotesViewInner() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full">
-      {!notesTreeExpanded && (
+      {isMobileTree && (
         <div className="border-border bg-bg flex h-full w-10 shrink-0 flex-col items-center border-r pt-2">
           <Button
             type="button"
@@ -427,8 +387,7 @@ function NotesViewInner() {
             size="sm"
             className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
             onClick={() => {
-              manualTreeToggleRef.current = true
-              setNotesTreeExpanded(true)
+              setDrawerOpen(true)
               setLeftPanel('tree')
             }}
             aria-label="Open vault tree"
@@ -443,8 +402,7 @@ function NotesViewInner() {
             size="sm"
             className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
             onClick={() => {
-              manualTreeToggleRef.current = true
-              setNotesTreeExpanded(true)
+              setDrawerOpen(true)
               setLeftPanel('search')
             }}
             aria-label="Search vault"
@@ -466,25 +424,8 @@ function NotesViewInner() {
         </div>
       )}
 
-      {notesTreeExpanded &&
-        !isMobileTree &&
-        (leftPanel === 'search' ? (
-          <VaultLeftSearch onClose={() => setLeftPanel('tree')} />
-        ) : (
-          <NotesFileTree {...treeProps} />
-        ))}
-
       {isMobileTree && (
-        <MobileDrawer
-          open={notesTreeExpanded}
-          onOpenChange={(open) => {
-            if (!open) {
-              manualTreeToggleRef.current = true
-              setNotesTreeExpanded(false)
-            }
-          }}
-          title="Vault files"
-        >
+        <MobileDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="Vault files">
           {leftPanel === 'search' ? (
             <VaultLeftSearch
               onClose={() => setLeftPanel('tree')}

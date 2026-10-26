@@ -16,11 +16,12 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: 'f', ctrl: true, description: 'Search the vault', category: 'Global' },
   // Ctrl+<digit> view switching, straight from the view registry.
   ...views
-    .nav()
-    .filter((v) => v.nav?.shortcut)
+    .all()
+    .filter((v) => v.shortcut)
+    .sort((a, b) => a.shortcut!.localeCompare(b.shortcut!))
     .map(
       (v): KeyboardShortcut => ({
-        key: v.nav!.shortcut!,
+        key: v.shortcut!,
         ctrl: true,
         description: `Switch to ${v.label} view`,
         category: 'Global',

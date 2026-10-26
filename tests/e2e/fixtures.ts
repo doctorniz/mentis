@@ -70,47 +70,54 @@ async function seedVault(page: Page) {
   await page.waitForSelector(SHELL_SELECTOR, { timeout: 30_000 })
 }
 
+/** Run a command palette entry by its title ("Go to Vault"). */
+export async function runCommand(page: Page, title: string) {
+  await page.keyboard.press('Control+k')
+  await page.getByRole('textbox', { name: 'Command or file name' }).fill(title)
+  await page
+    .getByRole('option', { name: new RegExp(`^${title}`) })
+    .first()
+    .click()
+}
+
 /**
- * Navigate to a view the way the current nav actually works:
- * Ctrl+0 Chat · Ctrl+1 Vault · Ctrl+2 Board · Ctrl+3 Organizer
- * (Tasks / Lists / Calendar / Reminders sub-tabs) · Ctrl+4 Bookmarks ·
- * Ctrl+5 Files. Graph opens from inside Vault; Search is Vault's left
- * search panel (Ctrl+F).
+ * Navigate to a view the way the current nav actually works. The sidebar
+ * lists Today (Ctrl+1), Chat (2), Calendar (3), Tasks (4), Thoughts (5) and
+ * Bookmarks (6), then the file tree; Tasks and Calendar keep Lists and
+ * Reminders as tabs. The vault view (the editor) and Files are reached from
+ * the palette, Graph from the tree's heading, Search from the sidebar.
  */
 export async function navigateTo(page: Page, view: ViewName) {
   switch (view) {
     case 'chat':
-      await page.keyboard.press('Control+0')
-      break
-    case 'vault':
-      await page.keyboard.press('Control+1')
-      break
-    case 'board':
       await page.keyboard.press('Control+2')
       break
+    case 'vault':
+      await runCommand(page, 'Go to Vault')
+      break
+    case 'board':
+      await page.keyboard.press('Control+5')
+      break
     case 'tasks':
-      await page.keyboard.press('Control+3')
-      await page.getByRole('button', { name: 'Tasks', exact: true }).first().click()
+      await page.keyboard.press('Control+4')
+      await page.getByRole('button', { name: 'All tasks', exact: true }).click()
       break
     case 'calendar':
       await page.keyboard.press('Control+3')
-      await page.getByRole('button', { name: 'Calendar', exact: true }).first().click()
+      await page.getByRole('main').getByRole('button', { name: 'Calendar', exact: true }).click()
       break
     case 'bookmarks':
-      await page.keyboard.press('Control+4')
+      await page.keyboard.press('Control+6')
       break
     case 'files':
-      await page.keyboard.press('Control+5')
+      await runCommand(page, 'Go to Files')
       break
     case 'graph':
-      await page.keyboard.press('Control+1')
       await page.locator('[aria-label="Open graph"]').first().click()
       break
     case 'search':
-      // Search lives in Vault's left panel. Click the tree/rail button
-      // rather than pressing Ctrl+F — with focus inside the note editor,
-      // Ctrl+F opens the in-note find bar instead (by design).
-      await page.keyboard.press('Control+1')
+      // Click the sidebar's Search rather than pressing Ctrl+F — with focus
+      // inside the note editor, Ctrl+F opens the in-note find bar instead.
       await page.locator('button[aria-label="Search vault"]').first().click()
       break
   }

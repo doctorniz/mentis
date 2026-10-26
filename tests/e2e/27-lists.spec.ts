@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 import { test, expect, navigateTo } from './fixtures'
 
 async function openLists(page: Page) {
-  await page.keyboard.press('Control+3')
+  await page.keyboard.press('Control+4')
   await page.getByRole('button', { name: 'Lists', exact: true }).first().click()
 }
 

@@ -32,7 +32,7 @@ export function openReminder(row: ReminderRow): void {
     useJournalStore.getState().openDay(row.at.slice(0, 10))
     return
   }
-  useUiStore.getState().setActiveView('organizer')
+  useUiStore.getState().setActiveView(row.kind === 'task' ? 'tasks' : 'calendar')
   requestOpen(row.kind, row.path)
 }
 

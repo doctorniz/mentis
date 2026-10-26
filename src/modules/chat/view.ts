@@ -15,7 +15,8 @@ const view: ViewDefinition = {
     import('@/components/views/vault-chat-view').then((m) => ({
       default: m.VaultChatView as ViewComponent,
     })),
-  nav: { order: 0, shortcut: '0' },
+  nav: { order: 0 },
+  shortcut: '2',
 }
 
 export default view

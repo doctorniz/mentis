@@ -8,7 +8,7 @@ import { cn } from '@/utils/cn'
 export const OPEN_MAIN_MENU_EVENT = 'ink:open-main-menu'
 
 /** The views on the bar, by id: their names and icons come from the view registry. */
-const VIEW_TABS = ['vault', 'board', 'organizer'] as const
+const VIEW_TABS = ['vault', 'board', 'tasks'] as const
 
 /** Whether an on-screen keyboard has taken the bottom of the screen. */
 function useKeyboardOpen(): boolean {
@@ -24,7 +24,7 @@ function useKeyboardOpen(): boolean {
 }
 
 /**
- * The main way around on a narrow screen: Vault, Capture, Organizer, Search
+ * The main way around on a narrow screen: Vault, Thoughts, Tasks, Search
  * and More (the menu sheet, for everything else). Hidden while the keyboard
  * is up, so it never sits on top of what is being typed.
  */

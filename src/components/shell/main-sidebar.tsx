@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import {
   Camera,
-  ChevronDown,
   FileStack,
   Loader2,
   LogOut,
@@ -12,6 +11,7 @@ import {
   PanelLeft,
   Plus,
   RefreshCw,
+  Search,
   Settings,
   StickyNote,
   Sun,
@@ -25,6 +25,8 @@ import { useJournalStore } from '@/stores/journal'
 import { useNewFileActions, type NewMenuItem } from '@/lib/notes/use-new-file-actions'
 import { cn } from '@/utils/cn'
 import { views } from '@/core/registries'
+import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
+import { useMediaQuery } from '@/lib/browser/use-media-query'
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -32,45 +34,41 @@ const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'dark', label: 'Dark', icon: Moon },
 ]
 
-/** Sidebar date pill — opens today in the journal view. */
-function DailyNoteDate() {
+// The tree loads after the shell: it is not part of startup.
+const SidebarFiles = lazy(() => import('@/components/shell/sidebar-files'))
+
+/** The date card at the top of the sidebar — opens today in the journal view. */
+function TodayCard({ active }: { active: boolean }) {
   const config = useVaultStore((s) => s.config)
-  const [busy, setBusy] = useState(false)
-
-  const enabled = config?.dailyNotesEnabled !== false
-
-  if (!enabled) return null
+  if (config?.dailyNotesEnabled === false) return null
 
   const now = new Date()
-  const label = now.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  })
-
-  async function handleClick() {
-    if (busy) return
-    setBusy(true)
-    try {
-      useJournalStore.getState().openDay()
-    } finally {
-      setBusy(false)
-    }
-  }
+  const month = now.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+  const weekday = now.toLocaleDateString('en-US', { weekday: 'long' })
 
   return (
     <button
       type="button"
-      onClick={() => void handleClick()}
-      disabled={busy}
-      title="Open today's daily note"
+      onClick={() => useJournalStore.getState().openDay()}
+      title="Open today's journal"
+      aria-label={`Today, ${weekday}`}
       className={cn(
-        'w-full rounded-lg px-3 py-2 text-center transition-colors',
-        'text-fg-secondary hover:bg-sidebar-hover hover:text-fg',
-        busy && 'opacity-60',
+        'mb-1 flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors',
+        active ? 'bg-accent/10' : 'hover:bg-sidebar-hover',
       )}
     >
-      <span className="block truncate text-sm font-medium">{label}</span>
+      <span className="border-border bg-bg flex size-9 shrink-0 flex-col items-center justify-center rounded-md border leading-none">
+        <span className="text-[9px] font-semibold tracking-wide text-red-600 dark:text-red-400">
+          {month}
+        </span>
+        <span className="text-fg text-sm font-bold">{now.getDate()}</span>
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className={cn('text-sm font-semibold', active ? 'text-accent' : 'text-fg')}>
+          Today
+        </span>
+        <span className="text-fg-tertiary truncate text-xs">{weekday}</span>
+      </span>
     </button>
   )
 }
@@ -92,6 +90,8 @@ export function MainSidebar({
   const theme = useUiStore((s) => s.theme)
   const setTheme = useUiStore((s) => s.setTheme)
   const sync = useSync()
+  // The sidebar is hidden on a phone; the tree opens in the vault view there.
+  const showFiles = !useMediaQuery(MOBILE_NAV_MEDIA_QUERY)
 
   const [newOpen, setNewOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -220,10 +220,57 @@ export function MainSidebar({
         </Button>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 p-2" aria-label="Main views">
-        <DailyNoteDate />
-        {views.nav().map(({ id, label, icon: Icon, nav }) => {
-          const shortcut = nav?.shortcut
+      <div className="flex shrink-0 flex-col gap-0.5 p-2 pb-0">
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => useUiStore.getState().requestVaultSearch()}
+            aria-label="Search vault"
+            title="Search (Ctrl+F)"
+            className="border-border bg-bg text-fg-tertiary hover:text-fg-secondary flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-sm transition-colors"
+          >
+            <Search className="size-4 shrink-0" aria-hidden />
+            <span className="flex-1 truncate">Search</span>
+            <kbd className="hidden font-mono text-[10px] sm:inline">⌃F</kbd>
+          </button>
+          <button
+            type="button"
+            onClick={() => setNewOpen((o) => !o)}
+            aria-expanded={newOpen}
+            className={cn(
+              'flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors',
+              newOpen ? 'bg-accent/10 text-accent' : 'bg-accent text-white hover:opacity-90',
+            )}
+          >
+            <Plus
+              className={cn('size-4 shrink-0 transition-transform', newOpen && 'rotate-45')}
+              aria-hidden
+            />
+            New
+          </button>
+        </div>
+
+        {newOpen && (
+          <div className="flex flex-col gap-0.5 py-1">
+            {NEW_ITEMS.map(({ label, icon: Icon, accent, action }) => (
+              <button
+                key={label}
+                type="button"
+                disabled={newBusy}
+                onClick={action}
+                className="text-fg-secondary hover:bg-sidebar-hover hover:text-fg flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors disabled:opacity-40"
+              >
+                <Icon className={cn('size-4 shrink-0', accent)} aria-hidden />
+                <span className="truncate">{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <nav className="flex shrink-0 flex-col gap-0.5 p-2" aria-label="Main views">
+        <TodayCard active={activeView === 'journal'} />
+        {views.nav().map(({ id, label, icon: Icon, shortcut }) => {
           const active = activeHighlight === id
 
           return (
@@ -271,53 +318,19 @@ export function MainSidebar({
             e.currentTarget.value = ''
           }}
         />
-
-        {/* New — inline expand */}
-        <button
-          type="button"
-          onClick={() => setNewOpen((o) => !o)}
-          className={cn(
-            'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors',
-            newOpen
-              ? 'bg-accent/10 text-accent'
-              : 'text-fg-secondary hover:bg-sidebar-hover hover:text-fg',
-          )}
-        >
-          <Plus
-            className={cn(
-              'size-5 shrink-0 opacity-90 transition-transform',
-              newOpen && 'rotate-45',
-            )}
-            aria-hidden
-          />
-          <span className="flex-1 truncate">New</span>
-          <ChevronDown
-            className={cn('size-3.5 shrink-0 transition-transform', newOpen && 'rotate-180')}
-            aria-hidden
-          />
-        </button>
-
-        {newOpen && (
-          <div className="flex flex-col gap-0.5 pl-3">
-            {NEW_ITEMS.map(({ label, icon: Icon, accent, action }) => (
-              <button
-                key={label}
-                type="button"
-                disabled={newBusy}
-                onClick={action}
-                className="text-fg-secondary hover:bg-sidebar-hover hover:text-fg flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors disabled:opacity-40"
-              >
-                <Icon className={cn('size-4 shrink-0', accent)} aria-hidden />
-                <span className="truncate">{label}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </nav>
 
-      <div className="border-border mt-auto border-t p-2">
+      <div className="border-border flex min-h-0 flex-1 flex-col border-t">
+        {showFiles && (
+          <Suspense fallback={null}>
+            <SidebarFiles />
+          </Suspense>
+        )}
+      </div>
+
+      <div className="border-border flex shrink-0 items-center gap-1 border-t p-2">
         <div
-          className="bg-bg-tertiary mb-1 flex rounded-lg p-0.5"
+          className="bg-bg-tertiary flex flex-1 rounded-lg p-0.5"
           role="radiogroup"
           aria-label="Theme"
         >
@@ -343,20 +356,21 @@ export function MainSidebar({
         </div>
         <Button
           variant="ghost"
-          className="text-fg-secondary hover:text-fg h-9 w-full justify-start gap-3 px-3"
+          className="text-fg-secondary hover:text-fg size-8 shrink-0 p-0"
           onClick={onOpenSettings}
           aria-label="Open settings"
+          title="Settings"
         >
-          <Settings className="size-5 shrink-0" />
-          Settings
+          <Settings className="size-4" />
         </Button>
         <Button
           variant="ghost"
-          className="text-fg-secondary hover:text-fg h-9 w-full justify-start gap-3 px-3"
+          className="text-fg-secondary hover:text-fg size-8 shrink-0 p-0"
           onClick={onCloseVault}
+          aria-label="Close vault"
+          title="Close vault"
         >
-          <LogOut className="size-5 shrink-0" />
-          Close vault
+          <LogOut className="size-4" />
         </Button>
       </div>
     </aside>
