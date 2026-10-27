@@ -89,8 +89,15 @@ the app comes back), and `src/modules/capture/share-host.tsx` acts on them:
 
 Narrow screens (the phone app and the web app on a phone) share one layout:
 
-- A bottom tab bar (`mobile-tab-bar.tsx`): Vault, Thoughts, Tasks, Search,
-  More (the menu sheet). Hidden while the on-screen keyboard is up.
+- A bottom tab bar (`mobile-tab-bar.tsx`): Capture in the middle (the capture
+  bar in a sheet, over any view) and four tabs around it — Today, Calendar,
+  Notes and Chat until Settings › Phone picks others (Tasks, Thoughts,
+  Bookmarks, Search). The choice is this device's (`localStorage`). Hidden
+  while the on-screen keyboard is up.
+- The masthead's menu button opens the menu sheet: Today, Notes, every view
+  in the sidebar's list, New, theme, Settings and Close vault.
+- Notes is the file tree full screen (the `tree` view); a file opened from it
+  shows in the editor, full width.
 - The page draws under the status and navigation bars (`viewport-fit=cover`);
   `safe-top` / `safe-bottom` / `safe-x` utilities in `globals.css` keep content
   clear of them.

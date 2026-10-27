@@ -1,17 +1,14 @@
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Editor as TiptapEditor } from '@tiptap/core'
-import { FileText, GitFork, Search, Vault } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { NotesWorkspaceProvider, useNotesWorkspace } from '@/contexts/notes-workspace-context'
-import { NotesFileTree } from '@/components/notes/notes-file-tree'
-import { VaultLeftSearch } from '@/components/notes/vault-left-search'
 import { EditorTabBar } from '@/components/notes/editor-tab-bar'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { EditorRightColumn } from '@/components/notes/editor-right-column'
 import { BacklinksSection } from '@/components/notes/backlinks-section'
 import { OutlineSection } from '@/components/notes/outline-section'
-import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import { ensureChatAssetIdForPath, movePdfChatAssetId } from '@/lib/chat/asset-index'
 import { fileTypes, titleForPath } from '@/core/registries'
 import type { FileEditorHandle } from '@/core/registries/file-types'
@@ -20,7 +17,7 @@ import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
 import { Button } from '@/components/ui/button'
-import { MOBILE_NAV_MEDIA_QUERY, CANVAS_SIDEBAR_MEDIA_QUERY } from '@/lib/browser/breakpoints'
+import { CANVAS_SIDEBAR_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { useMediaQuery } from '@/lib/browser/use-media-query'
 import { createUntitledNote } from '@/lib/notes/new-note'
 import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
@@ -38,7 +35,6 @@ export function NotesView() {
 }
 
 function NotesViewInner() {
-  const treeRefresh = useFileTreeStore((s) => s.refreshToken)
   const [scanPulse, setScanPulse] = useState(0)
   const { vaultFs } = useVaultSession()
   const { markdownPaths, refreshMarkdownPaths } = useNotesWorkspace()
@@ -51,8 +47,6 @@ function NotesViewInner() {
   const pendingVaultOpenPath = useEditorStore((s) => s.pendingVaultOpenPath)
   const setPendingVaultOpenPath = useEditorStore((s) => s.setPendingVaultOpenPath)
   const setSelectedPath = useFileTreeStore((s) => s.setSelectedPath)
-  const starredPaths = useFileTreeStore((s) => s.starredPaths)
-  const setActiveView = useUiStore((s) => s.setActiveView)
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
   // Unknown ids open as markdown, as unknown files always have.
@@ -72,8 +66,6 @@ function NotesViewInner() {
       else window.clearTimeout(idle)
     }
   }, [])
-
-  const starredList = useMemo(() => starredPaths, [starredPaths])
 
   async function handleRenameVaultFile(
     tabId: string,
@@ -263,25 +255,12 @@ function NotesViewInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab?.path, activeTab?.type, vaultFs])
 
-  // On a wide screen the tree and search live in the sidebar (SidebarFiles);
-  // on a phone they open here, in a drawer over the editor.
-  const isMobileTree = useMediaQuery(MOBILE_NAV_MEDIA_QUERY)
   const isCanvasSidebarNarrow = useMediaQuery(CANVAS_SIDEBAR_MEDIA_QUERY)
   const isCanvasTab = activeDef?.layout?.narrow === 'canvas'
 
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const isSidebarOpen = useUiStore((s) => s.isSidebarOpen)
   const canvasSidebarAutoCollapsedRef = useRef(false)
-
-  const [drawerOpen, setDrawerOpen] = useState(false)
-
-  // Opening a file from the drawer must close it — it otherwise stays
-  // covering the editor the user just navigated to. (The tree opens tabs
-  // internally, so this keys off the active tab id.)
-  const activeTabIdForDrawer = activeTab?.id
-  useEffect(() => {
-    setDrawerOpen(false)
-  }, [activeTabIdForDrawer])
 
   // Auto-collapse nav sidebar for canvas tabs at ≤1050px. Restores when
   // the tab changes away from canvas or the viewport widens again.
@@ -301,20 +280,6 @@ function NotesViewInner() {
       setSidebarOpen(true)
     }
   }, [isCanvasTab, isCanvasSidebarNarrow, isSidebarOpen, setSidebarOpen])
-
-  // The drawer shows the file tree or the search panel.
-  const [leftPanel, setLeftPanel] = useState<'tree' | 'search'>('tree')
-
-  // On a phone, Ctrl+F or the Search tab → the drawer's search panel. A
-  // request made while switching to this view waits in the UI store until it
-  // mounts. (On a wide screen the sidebar takes it.)
-  const searchRequested = useUiStore((s) => s.vaultSearchRequested)
-  useEffect(() => {
-    if (!isMobileTree) return
-    if (!searchRequested || !useUiStore.getState().takeVaultSearchRequest()) return
-    setDrawerOpen(true)
-    setLeftPanel('search')
-  }, [searchRequested, isMobileTree])
 
   async function handleNewNote() {
     const path = await createUntitledNote(vaultFs)
@@ -336,21 +301,6 @@ function NotesViewInner() {
     setPendingVaultOpenPath(null)
     openNotePath(p)
   }, [pendingVaultOpenPath, setPendingVaultOpenPath, openNotePath])
-
-  const treeProps = {
-    vaultFs,
-    refreshToken: treeRefresh,
-    starredPaths: starredList,
-    onNoteCreated: () => {
-      vaultChanged()
-    },
-    onRequestCollapse: () => setDrawerOpen(false),
-    onSearchOpen: () => setLeftPanel('search'),
-    onGraphOpen: () => {
-      setDrawerOpen(false)
-      setActiveView('graph')
-    },
-  }
 
   const ActiveEditor = activeDef ? lazyEditorFor(activeDef) : undefined
   const editorElement =
@@ -379,67 +329,6 @@ function NotesViewInner() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full">
-      {isMobileTree && (
-        <div className="border-border bg-bg flex h-full w-10 shrink-0 flex-col items-center border-r pt-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
-            onClick={() => {
-              setDrawerOpen(true)
-              setLeftPanel('tree')
-            }}
-            aria-label="Open vault tree"
-            title="Vault"
-          >
-            {/* Section icon (matches the Vault nav entry), not a hamburger */}
-            <Vault className="size-5" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
-            onClick={() => {
-              setDrawerOpen(true)
-              setLeftPanel('search')
-            }}
-            aria-label="Search vault"
-            title="Search (Ctrl+F)"
-          >
-            <Search className="size-5" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-fg-muted hover:text-fg size-9 shrink-0 p-0"
-            onClick={() => setActiveView('graph')}
-            aria-label="Open graph"
-            title="Graph"
-          >
-            <GitFork className="size-5" aria-hidden />
-          </Button>
-        </div>
-      )}
-
-      {isMobileTree && (
-        <MobileDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="Vault files">
-          {leftPanel === 'search' ? (
-            <VaultLeftSearch
-              onClose={() => setLeftPanel('tree')}
-              rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
-            />
-          ) : (
-            <NotesFileTree
-              {...treeProps}
-              rootClassName="h-full w-full min-w-0 max-w-none shrink-0 border-r-0"
-            />
-          )}
-        </MobileDrawer>
-      )}
-
       <div className="bg-bg flex min-h-0 min-w-0 flex-1 flex-col">
         <EditorTabBar />
         {activeTab && activeDef && ActiveEditor ? (

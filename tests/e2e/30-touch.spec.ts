@@ -40,9 +40,19 @@ async function box(page: Page, locator: ReturnType<Page['locator']>) {
 
 const tabBar = (page: Page) => page.getByTestId('mobile-tab-bar')
 const tab = (page: Page, name: string) => tabBar(page).getByRole('button', { name, exact: true })
+const openMenu = (page: Page) =>
+  page.getByTestId('mobile-masthead').getByRole('button', { name: 'Open menu' }).tap()
+
+/** Somewhere the tab bar may not hold, through the masthead menu. */
+async function menuTo(page: Page, label: string) {
+  await openMenu(page)
+  const menu = page.getByRole('dialog')
+  await menu.getByRole('button', { name: label, exact: true }).tap()
+  await expect(menu).toBeHidden()
+}
 
 async function addTask(page: Page, title: string) {
-  await tab(page, 'Tasks').tap()
+  await menuTo(page, 'Tasks')
   await page.getByRole('button', { name: 'All tasks', exact: true }).tap()
   const bar = page.getByPlaceholder('Add a task...')
   await bar.fill(title)
@@ -52,32 +62,66 @@ async function addTask(page: Page, title: string) {
 }
 
 test.describe('30 — Touch', () => {
-  test('30.1 The tab bar reaches Vault, Thoughts, Tasks, Search and More', async ({
+  test('30.1 The tab bar holds Today, Calendar, Capture, Notes and Chat', async ({
     vaultPage: page,
   }) => {
     await expect(tabBar(page)).toBeVisible()
 
-    await tab(page, 'Tasks').tap()
-    await expect(page.getByRole('button', { name: 'All tasks', exact: true })).toBeVisible()
-    await expect(tab(page, 'Tasks')).toHaveAttribute('aria-current', 'page')
+    await tab(page, 'Today').tap()
+    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible({ timeout: 10_000 })
+    await expect(tab(page, 'Today')).toHaveAttribute('aria-current', 'page')
 
-    await tab(page, 'Thoughts').tap()
-    await expect(tab(page, 'Thoughts')).toHaveAttribute('aria-current', 'page')
+    await tab(page, 'Calendar').tap()
+    await expect(page.getByRole('button', { name: 'day', exact: true })).toBeVisible()
+    await expect(tab(page, 'Calendar')).toHaveAttribute('aria-current', 'page')
 
+    await tab(page, 'Notes').tap()
+    await expect(page.getByRole('tree', { name: 'Vault file tree' })).toBeVisible()
+
+    await tab(page, 'Chat').tap()
+    await expect(page.locator('textarea').first()).toBeVisible()
+    await expect(tab(page, 'Chat')).toHaveAttribute('aria-current', 'page')
+  })
+
+  test('30.1.1 Capture saves a thought from any tab', async ({ vaultPage: page }) => {
+    await tab(page, 'Calendar').tap()
+    await tab(page, 'Capture').tap()
+    const sheet = page.getByRole('dialog', { name: 'Capture' })
+    const input = sheet.getByRole('textbox', { name: 'Capture' })
+    await expect(input).toBeFocused()
+    await input.fill('Ring the plumber')
+    await input.press('Enter')
+    await expect(sheet).toBeHidden()
+
+    await menuTo(page, 'Thoughts')
+    await expect(page.getByText('Ring the plumber').first()).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('30.1.2 Settings › Phone picks the tabs around Capture', async ({ vaultPage: page }) => {
+    await openMenu(page)
+    await page.getByRole('dialog').getByRole('button', { name: 'Open settings' }).tap()
+    const settings = page.getByRole('dialog', { name: 'Settings' })
+    await settings.getByRole('tab', { name: 'Phone' }).tap()
+    await settings.getByRole('checkbox', { name: 'Chat' }).tap()
+    await settings.getByRole('checkbox', { name: 'Search' }).tap()
+    // Four chosen: the rest wait for one to be taken off.
+    await expect(settings.getByRole('checkbox', { name: 'Bookmarks' })).toBeDisabled()
+    await settings.getByRole('button', { name: 'Close settings' }).tap()
+
+    await expect(tab(page, 'Chat')).toHaveCount(0)
     await tab(page, 'Search').tap()
-    await expect(page.getByPlaceholder(/search/i).first()).toBeVisible({ timeout: 10_000 })
-    // Search opens in the vault drawer, over the bar; close it to go on.
-    await page.keyboard.press('Escape')
+    await expect(page.locator('input[aria-label="Search vault"]')).toBeVisible({ timeout: 10_000 })
 
-    await tab(page, 'More').tap()
-    const menu = page.getByRole('dialog')
-    await expect(menu.getByRole('button', { name: 'Settings' })).toBeVisible()
+    // This device's choice, kept across a reload.
+    await page.reload()
+    await expect(tab(page, 'Search')).toBeVisible({ timeout: 30_000 })
+    await expect(tab(page, 'Chat')).toHaveCount(0)
   })
 
   test('30.2 A sheet closes with a swipe down from its top', async ({ vaultPage: page }) => {
     // Swipe-to-close starts a moment after the shell appears.
     await expect(page.locator('html[data-touch-shell]')).toBeAttached()
-    await tab(page, 'More').tap()
+    await openMenu(page)
     const menu = page.getByRole('dialog')
     await expect(menu).toBeVisible()
     const b = await box(page, menu)
@@ -118,13 +162,7 @@ test.describe('30 — Touch', () => {
   })
 
   test('30.4 Swipe between days in the journal', async ({ vaultPage: page }) => {
-    await tab(page, 'More').tap()
-    const today = new Date().toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-    })
-    await page.getByRole('dialog').getByRole('button', { name: today }).tap()
+    await tab(page, 'Today').tap()
     const heading = page.getByRole('heading', { level: 1 }).first()
     await expect(heading).toBeVisible({ timeout: 10_000 })
     const first = await heading.textContent()
@@ -138,7 +176,7 @@ test.describe('30 — Touch', () => {
   })
 
   test('30.5 Press and hold a list item, then drag it to reorder', async ({ vaultPage: page }) => {
-    await tab(page, 'Tasks').tap()
+    await menuTo(page, 'Tasks')
     await page.getByRole('button', { name: 'Lists', exact: true }).first().tap()
     await page.getByLabel('Kind of new list').selectOption({ label: 'Checklist' })
     const name = page.getByLabel('New list name')

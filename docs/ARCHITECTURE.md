@@ -63,7 +63,7 @@ glob over `src/modules/*/`, so adding a module never edits a central list.
 | Registry                 | A module contributes                                                                              | Used by                                      |
 | ------------------------ | ------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | **File types**           | `{ id, suffixes, editor (lazy), layout, appearance, search, createNew, convertTo, thumbnail, … }` | tree, tabs, New menu, graph, search, convert |
-| **Views**                | `{ id, label, icon, component (lazy), nav, shortcut, aliases }`                                   | sidebar, tab bar, view router, shortcuts     |
+| **Views**                | `{ id, label, icon, component (lazy), nav, shortcut, palette, aliases }`                          | sidebar, tab bar, view router, shortcuts     |
 | **Commands**             | `{ id, title, scope, run }`                                                                       | command palette (Ctrl+K), editor slash menu  |
 | **Capture destinations** | `{ sigil, parse, fields, validate, enrich, write }`                                               | capture bar, confirm dialog, overlay, shares |
 | **Settings**             | sections of fields (`get`/`set` on the vault config) or a lazy panel                              | the settings dialog                          |
@@ -81,7 +81,9 @@ file from the tree or search shows it in the vault view, the editor with its
 tabs, from whichever view is up. The vault view, Files and Graph have no
 sidebar entry: the tree opens files, the palette reaches every view, and Graph
 is on the tree's heading. On a phone the sidebar is replaced by the masthead
-menu and the bottom tab bar, and the tree opens in a drawer over the editor.
+menu and the bottom tab bar — Capture between four tabs chosen in Settings ›
+Phone — and the tree is its own full-screen view (`tree`, the Notes tab,
+`palette: false`). Both load only on a narrow screen.
 
 ---
 

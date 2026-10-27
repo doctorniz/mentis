@@ -4,14 +4,14 @@ import { test, expect } from './fixtures'
 /**
  * Mobile-native flows, run ONLY by the `mobile` Playwright project
  * (Pixel 5 profile: touch, mobile UA, 393×851). Everything here drives
- * the app the way a phone user does — masthead hamburger for section
- * navigation, taps, MobileDrawers — no Ctrl shortcuts, no static
+ * the app the way a phone user does — the tab bar and the masthead menu
+ * for section navigation, taps, MobileDrawers — no Ctrl shortcuts, no static
  * sidebars. Desktop-viewport responsive checks live in
  * 19-responsive.spec.ts.
  */
 
 async function openMastheadMenu(page: Page) {
-  await page.getByTestId('mobile-tab-bar').getByRole('button', { name: 'More', exact: true }).tap()
+  await page.getByTestId('mobile-masthead').getByRole('button', { name: 'Open menu' }).tap()
   await expect(page.getByRole('dialog')).toBeVisible()
 }
 
@@ -30,9 +30,9 @@ test.describe('20 — Mobile (Pixel 5)', () => {
 
     const sections: { label: string; probe: () => Promise<void> }[] = [
       {
-        label: 'Vault',
+        label: 'Notes',
         probe: async () => {
-          await expect(page.getByRole('button', { name: 'Open vault tree' })).toBeVisible()
+          await expect(page.getByRole('tree', { name: 'Vault file tree' })).toBeVisible()
         },
       },
       {
@@ -59,12 +59,6 @@ test.describe('20 — Mobile (Pixel 5)', () => {
         },
       },
       {
-        label: 'Files',
-        probe: async () => {
-          await expect(page.getByText('_mentis').first()).toBeVisible()
-        },
-      },
-      {
         label: 'Chat',
         probe: async () => {
           await expect(page.locator('textarea').first()).toBeVisible()
@@ -88,22 +82,19 @@ test.describe('20 — Mobile (Pixel 5)', () => {
     await expect(page.locator('input[aria-label="Note title"]')).toBeVisible()
   })
 
-  test('20.3 Vault tree drawer closes when a file is opened', async ({ vaultPage: page }) => {
-    await mastheadNavigate(page, 'Vault')
+  test('20.3 Notes shows the tree full screen; a file opens in the editor', async ({
+    vaultPage: page,
+  }) => {
+    const notes = page.getByTestId('mobile-tab-bar').getByRole('button', { name: 'Notes' })
+    await notes.tap()
+    const tree = page.getByRole('tree', { name: 'Vault file tree' })
+    await expect(tree).toBeVisible()
 
-    // The tree collapses to the rail on mobile; its trigger is the Vault icon
-    await page.getByRole('button', { name: 'Open vault tree' }).tap()
-    const drawer = page.getByRole('dialog')
-    await expect(drawer).toBeVisible()
-
-    // Tapping a file opens it AND dismisses the drawer — it must not stay
-    // covering the editor the user just navigated to.
-    await drawer
-      .getByRole('tree', { name: 'Vault file tree' })
-      .getByRole('button', { name: 'Welcome', exact: true })
-      .tap()
-    await expect(drawer).toBeHidden({ timeout: 5_000 })
+    await tree.getByRole('button', { name: 'Welcome', exact: true }).tap()
+    await expect(tree).toBeHidden()
     await expect(page.locator('.tiptap').first()).toBeVisible({ timeout: 15_000 })
+    // The editor still counts as Notes.
+    await expect(notes).toHaveAttribute('aria-current', 'page')
   })
 
   test('20.4 Projects drawer works with touch', async ({ vaultPage: page }) => {

@@ -50,6 +50,8 @@ export interface ViewDefinition {
   component: () => Promise<{ default: ViewComponent }>
   /** Show in the sidebar list, at this position. */
   nav?: { order: number }
+  /** Leave out of the command palette's "Go to" list. */
+  palette?: false
   /** Ctrl+<digit> switches to this view. */
   shortcut?: string
   /** For views outside the nav: the nav item to highlight while shown. */

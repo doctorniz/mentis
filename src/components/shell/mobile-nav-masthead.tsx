@@ -9,6 +9,7 @@ import {
   Moon,
   Plus,
   LogOut,
+  Menu,
   Settings,
   StickyNote,
   Sun,
@@ -23,7 +24,6 @@ import { useJournalStore } from '@/stores/journal'
 import { cn } from '@/utils/cn'
 import { views } from '@/core/registries'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
-import { OPEN_MAIN_MENU_EVENT } from '@/components/shell/mobile-tab-bar'
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -31,12 +31,9 @@ const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { value: 'dark', label: 'Dark', icon: Moon },
 ]
 
-/**
- * The menu's views: the sidebar's, plus the vault and Files, which a wide
- * screen reaches from its tree and the command palette.
- */
+/** The menu's views: Notes (the tree, a wide screen's sidebar), then the sidebar's list. */
 function menuViews() {
-  return [views.get('vault'), ...views.nav(), views.get('files')].filter((v) => v !== undefined)
+  return [views.get('tree'), ...views.nav()].filter((v) => v !== undefined)
 }
 
 /** Sidebar date pill — opens today in the journal view. */
@@ -94,7 +91,8 @@ export function MobileNavMasthead({
   const [newExpanded, setNewExpanded] = useState(false)
   const activeView = useUiStore((s) => s.activeView)
   const resolved = views.resolve(activeView)
-  const activeHighlight = resolved?.highlight ?? resolved?.def.id
+  // A file opened from the tree shows in the vault view: still Notes.
+  const activeId = resolved?.def.id === 'vault' ? 'tree' : (resolved?.highlight ?? resolved?.def.id)
   const setActiveView = useUiStore((s) => s.setActiveView)
   const config = useVaultStore((s) => s.config)
   const theme = useUiStore((s) => s.theme)
@@ -123,13 +121,7 @@ export function MobileNavMasthead({
       }
     }
     window.addEventListener('ink:open-new-popover', onOpenNewPopover)
-    // The tab bar's More.
-    const onOpenMenu = () => setOpen(true)
-    window.addEventListener(OPEN_MAIN_MENU_EVENT, onOpenMenu)
-    return () => {
-      window.removeEventListener('ink:open-new-popover', onOpenNewPopover)
-      window.removeEventListener(OPEN_MAIN_MENU_EVENT, onOpenMenu)
-    }
+    return () => window.removeEventListener('ink:open-new-popover', onOpenNewPopover)
   }, [])
 
   // File types come from their modules (createNew.menu.order); the rest are
@@ -211,7 +203,7 @@ export function MobileNavMasthead({
               <DailyNoteDate onClose={closeMenu} />
 
               {menuViews().map(({ id, label, icon: Icon }) => {
-                const active = activeHighlight === id
+                const active = activeId === id
                 return (
                   <button
                     key={id}
@@ -356,9 +348,16 @@ export function MobileNavMasthead({
         </Dialog.Portal>
       </Dialog.Root>
 
-      <div className="bg-accent-light text-accent flex size-8 shrink-0 items-center justify-center rounded-lg">
-        <FileStack className="size-4" aria-hidden />
-      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="size-9 shrink-0 p-0"
+        aria-label="Open menu"
+        onClick={() => setOpen(true)}
+      >
+        <Menu className="size-5" aria-hidden />
+      </Button>
       <div className="min-w-0 flex-1">
         <p className="text-fg truncate text-sm font-semibold">Mentis</p>
         <p className="text-fg-tertiary truncate text-xs">{config?.name ?? 'Vault'}</p>

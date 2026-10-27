@@ -95,16 +95,19 @@ const commandRegistrations = import.meta.glob<{ default: readonly AnyCommand[] }
   { eager: true },
 )
 
-/** "Go to <view>" for every view, with its Ctrl+digit — the palette reaches the views the sidebar does not list. */
-const viewCommands: AnyCommand[] = views.all().map((v) => ({
-  id: `view.${v.id}`,
-  title: `Go to ${v.label}`,
-  keywords: ['view', 'switch', v.id],
-  icon: v.icon,
-  shortcut: v.shortcut ? `Ctrl+${v.shortcut}` : undefined,
-  scope: 'global',
-  run: () => useUiStore.getState().setActiveView(v.id),
-}))
+/** "Go to <view>" for every view not marked `palette: false`, with its Ctrl+digit — the palette reaches the views the sidebar does not list. */
+const viewCommands: AnyCommand[] = views
+  .all()
+  .filter((v) => v.palette !== false)
+  .map((v) => ({
+    id: `view.${v.id}`,
+    title: `Go to ${v.label}`,
+    keywords: ['view', 'switch', v.id],
+    icon: v.icon,
+    shortcut: v.shortcut ? `Ctrl+${v.shortcut}` : undefined,
+    scope: 'global',
+    run: () => useUiStore.getState().setActiveView(v.id),
+  }))
 
 /** "New <type>" for every file type that can be created. */
 const newFileCommands: AnyCommand[] = fileTypes.all().flatMap((def): AnyCommand[] =>

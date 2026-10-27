@@ -365,8 +365,10 @@ export const checklist = {
           title: 'Masthead + section drawers',
           steps: [
             'Hamburger opens the app nav sheet; every section reachable',
-            'Vault tree / task lists / bookmark categories / chat threads open as drawers with the section\'s own icon',
-            'Opening a file from the vault drawer closes the drawer',
+            'Tab bar: Today, Calendar, Capture, Notes, Chat; Settings › Phone swaps the four around Capture',
+            'Capture opens the capture bar in a sheet over any view; a save closes it',
+            'Notes shows the file tree full screen; a file opens in the editor',
+            'Task lists / bookmark categories / chat threads open as drawers with the section\'s own icon',
             'Escape / scrim tap closes; focus stays trapped while open',
           ],
         },

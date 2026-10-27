@@ -81,21 +81,14 @@ test.describe('19 — Responsive layout consistency', () => {
     await expect(page.getByRole('dialog')).toBeHidden()
   })
 
-  test('19.5 Vault: tree opens as a drawer on mobile', async ({ vaultPage: page }) => {
+  test('19.5 Vault: the tree is the Notes tab on a phone', async ({ vaultPage: page }) => {
     await page.setViewportSize(PHONE)
-    await navigateTo(page, 'vault')
+    await page.getByTestId('mobile-tab-bar').getByRole('button', { name: 'Notes' }).click()
 
-    // Tree auto-collapses to the rail on mobile; its toggle is the Vault icon
-    const trigger = page.getByRole('button', { name: 'Open vault tree' })
-    await expect(trigger).toBeVisible()
-    await trigger.click()
-
-    const drawer = page.getByRole('dialog')
-    await expect(drawer).toBeVisible()
-    await expect(drawer.getByRole('tree', { name: 'Vault file tree' })).toBeVisible()
-
-    await page.keyboard.press('Escape')
-    await expect(drawer).toBeHidden()
+    const tree = page.getByRole('tree', { name: 'Vault file tree' })
+    await expect(tree).toBeVisible()
+    await tree.getByRole('button', { name: 'Welcome', exact: true }).click()
+    await expect(page.locator('.tiptap').first()).toBeVisible({ timeout: 15_000 })
   })
 
   test('19.6 Calendar: defaults to day view on mobile, toolbar intact', async ({

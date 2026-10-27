@@ -1,7 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { MainSidebar } from '@/components/shell/main-sidebar'
-import { MobileNavMasthead } from '@/components/shell/mobile-nav-masthead'
-import { MobileTabBar } from '@/components/shell/mobile-tab-bar'
 import { markShellReady } from '@/lib/startup-mark'
 import { ViewRouter } from '@/components/shell/view-router'
 import { VaultSearchBootstrap } from '@/components/search/vault-search-bootstrap'
@@ -16,6 +14,8 @@ import { usePdfStore } from '@/stores/pdf'
 import { useCanvasStore } from '@/stores/canvas'
 import { views } from '@/core/registries'
 import { currentCommandContexts, type CommandScopes } from '@/core/registries/commands'
+import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
+import { useMediaQuery } from '@/lib/browser/use-media-query'
 
 // The shortcuts list is loaded the first time it is asked for (Ctrl+Shift+?).
 const KeyboardShortcutsDialog = lazy(() =>
@@ -78,6 +78,14 @@ async function refreshAfterCapture(vaultFs: FileSystemAdapter, destination?: str
 }
 
 // The phone app's way in from other apps (shares, shortcuts, a reminder's item).
+// A phone's masthead and tab bar: loaded only on a narrow screen.
+const MobileNavMasthead = lazy(() =>
+  import('@/components/shell/mobile-nav-masthead').then((m) => ({ default: m.MobileNavMasthead })),
+)
+const MobileTabBar = lazy(() =>
+  import('@/components/shell/mobile-tab-bar').then((m) => ({ default: m.MobileTabBar })),
+)
+
 const ShareHost = lazy(() => import('@/modules/capture/share-host'))
 
 // Reminders start once the shell is up, so their code is not part of startup.
@@ -261,6 +269,8 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [setActiveView, toggleSidebar])
 
+  const isPhone = useMediaQuery(MOBILE_NAV_MEDIA_QUERY)
+
   return (
     <div className="bg-bg safe-top safe-x md:safe-bottom flex h-screen w-full overflow-hidden">
       <MainSidebar
@@ -271,16 +281,24 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         }}
       />
       <main className="bg-bg-secondary flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <MobileNavMasthead
-          onCloseVault={onCloseVault}
-          onOpenSettings={() => {
-            setSettingsInitialTab('vault')
-            setSettingsOpen(true)
-          }}
-        />
+        {isPhone && (
+          <Suspense fallback={null}>
+            <MobileNavMasthead
+              onCloseVault={onCloseVault}
+              onOpenSettings={() => {
+                setSettingsInitialTab('vault')
+                setSettingsOpen(true)
+              }}
+            />
+          </Suspense>
+        )}
         <VaultSearchBootstrap />
         <ViewRouter />
-        <MobileTabBar />
+        {isPhone && (
+          <Suspense fallback={null}>
+            <MobileTabBar />
+          </Suspense>
+        )}
       </main>
       {shortcutsOpen && (
         <Suspense fallback={null}>

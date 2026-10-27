@@ -16,15 +16,15 @@ interface UiState {
   theme: ThemeChoice
   activeModal: string | null
   /**
-   * Vault search was asked for (Ctrl+F, the Search tab). Kept until the vault
-   * view takes it, so a request made while switching to it is not lost.
+   * Vault search was asked for (Ctrl+F, the Search tab). Kept until a search
+   * panel takes it, so a request made while switching to it is not lost.
    */
   vaultSearchRequested: boolean
   /** Capture was asked for from outside (a shortcut, the widget): focus the shown capture bar. */
   captureFocusRequested: boolean
 
   setActiveView: (view: ViewId) => void
-  /** Open search: in the sidebar, or on a phone over the vault view. */
+  /** Open search: in the sidebar, or on a phone in Notes. */
   requestVaultSearch: () => void
   /** The search panel on screen: take a pending search request. */
   takeVaultSearchRequest: () => boolean
@@ -102,7 +102,7 @@ export const useUiStore = create<UiState>()(
       set((state) => {
         state.vaultSearchRequested = true
         // On a phone search opens over the vault view; wide, it is in the sidebar beside any view.
-        if (window.matchMedia(MOBILE_NAV_MEDIA_QUERY).matches) state.activeView = HOME_VIEW
+        if (window.matchMedia(MOBILE_NAV_MEDIA_QUERY).matches) state.activeView = 'tree'
       }),
 
     takeVaultSearchRequest: () => {

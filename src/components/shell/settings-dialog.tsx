@@ -146,13 +146,13 @@ export function SettingsDialog({
             onValueChange={setActiveTab}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <Tabs.List className="border-border bg-bg-secondary flex shrink-0 gap-0 border-b px-5">
+            <Tabs.List className="border-border bg-bg-secondary flex shrink-0 gap-0 overflow-x-auto border-b px-5">
               {tabs.map(({ id, label }) => (
                 <Tabs.Trigger
                   key={id}
                   value={id}
                   className={cn(
-                    'border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
+                    'shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
                     activeTab === id
                       ? 'border-accent text-accent'
                       : 'text-fg-secondary hover:text-fg border-transparent',
