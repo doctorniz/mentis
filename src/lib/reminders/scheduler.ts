@@ -159,10 +159,12 @@ export function startReminders(
 
   async function reconcile(): Promise<ReminderRow[]> {
     const now = Date.now()
+    if (!useTasksStore.getState().loaded) await useTasksStore.getState().loadTasks()
     const fromFiles = await readReminderRows(
       vaultFs,
       new Date(now - MISSED_REACH),
       new Date(now + AHEAD),
+      useTasksStore.getState().items,
     )
     const config = useVaultStore.getState().config
     const journal = config

@@ -5,6 +5,7 @@ import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { ReminderRow } from '@/core/index/protocol'
 import { IndexStore } from '@/core/index/store'
 import { readReminderRows, reminderId, settleReminder } from '@/lib/reminders/sources'
+import { parseTasks } from '@/lib/tasks/line'
 import { dueBetween } from '@/lib/reminders/scheduler'
 import { requestOpen, takeOpen, pendingOpenKind } from '@/lib/reminders/open'
 
@@ -37,18 +38,23 @@ function memoryFs(files: Record<string, string>): FileSystemAdapter {
 const task = (fm: string, title: string) => `---\n${fm}\n---\n\n# ${title}\n`
 
 describe('readReminderRows', () => {
-  it('reads task reminders and event alerts from their folders, in order', async () => {
+  it('reads task reminders from the tasks and event alerts from their folder, in order', async () => {
     const fs = memoryFs({
-      '_mentis/_tasks/a.md': task('status: todo\nremind: 2026-10-12T09:00', 'Call mum'),
-      '_mentis/_tasks/Home/b.md': task('status: todo\nremind: 2026-10-11T18:00', 'Bins'),
-      '_mentis/_tasks/c.md': task('status: done\nremind: 2026-10-11T08:00', 'Done already'),
       '_mentis/_calendar/evt.md': task(
         'start: 2026-10-11T10:00\nend: 2026-10-11T11:00\nallDay: false\nalert: 15',
         'Standup',
       ),
-      '_mentis/_tasks/broken.md': 'not front matter at all',
     })
-    const rows = await readReminderRows(fs, new Date(2026, 9, 11), new Date(2026, 9, 13))
+    const tasks = parseTasks(
+      'Inbox.md',
+      [
+        '- [ ] Call mum >2026-10-12 09:00',
+        '- [ ] Bins >2026-10-11 18:00',
+        '- [x] Done already >2026-10-11 08:00 done:2026-10-10',
+        '- [ ] No time >2026-10-11',
+      ].join('\n'),
+    )
+    const rows = await readReminderRows(fs, new Date(2026, 9, 11), new Date(2026, 9, 13), tasks)
     expect(rows.map((r) => [r.kind, r.title, r.at])).toEqual([
       ['event', 'Standup', '2026-10-11T09:45'],
       ['task', 'Bins', '2026-10-11T18:00'],
@@ -56,46 +62,42 @@ describe('readReminderRows', () => {
     ])
   })
 
-  it('has none when the folders do not exist yet', async () => {
+  it('has none when there are no tasks and no calendar folder yet', async () => {
     expect(
-      await readReminderRows(memoryFs({}), new Date(2026, 9, 11), new Date(2026, 9, 13)),
+      await readReminderRows(memoryFs({}), new Date(2026, 9, 11), new Date(2026, 9, 13), []),
     ).toEqual([])
   })
 })
 
 describe('settleReminder', () => {
-  it('writes Done and Snooze into the file, keeping everything else', async () => {
+  it('writes Done and Snooze into an event file, keeping everything else', async () => {
+    const path = '_mentis/_calendar/evt.md'
     const files = {
-      '_mentis/_tasks/a.md': task(
-        'uid: x1\nstatus: todo\nremind: 2026-10-12T09:00\ncustom: kept',
-        'Call mum',
+      [path]: task(
+        'start: 2026-10-12T10:00\nend: 2026-10-12T11:00\nallDay: false\nalert: 15\ncustom: kept',
+        'Standup',
       ),
     }
     const fs = memoryFs(files)
-    await settleReminder(fs, '_mentis/_tasks/a.md', {
-      reminderAck: '2026-10-12T09:01',
-      snoozeUntil: '2026-10-12T09:11',
+    await settleReminder(fs, path, {
+      reminderAck: '2026-10-12T09:46',
+      snoozeUntil: '2026-10-12T09:56',
     })
-    const first = matter(files['_mentis/_tasks/a.md'])
+    const first = matter(files[path])
     expect(first.data).toMatchObject({
-      uid: 'x1',
       custom: 'kept',
-      remind: '2026-10-12T09:00',
-      reminderAck: '2026-10-12T09:01',
-      snoozeUntil: '2026-10-12T09:11',
+      reminderAck: '2026-10-12T09:46',
+      snoozeUntil: '2026-10-12T09:56',
     })
-    expect(first.content).toContain('# Call mum')
+    expect(first.content).toContain('# Standup')
 
-    await settleReminder(fs, '_mentis/_tasks/a.md', {
-      reminderAck: '2026-10-12T09:12',
-      snoozeUntil: '',
-    })
-    const { data } = matter(files['_mentis/_tasks/a.md'])
-    expect(data.reminderAck).toBe('2026-10-12T09:12')
+    await settleReminder(fs, path, { reminderAck: '2026-10-12T09:57', snoozeUntil: '' })
+    const { data } = matter(files[path])
+    expect(data.reminderAck).toBe('2026-10-12T09:57')
     expect('snoozeUntil' in data).toBe(false)
 
     // Once done, the occurrence no longer reminds.
-    const rows = await readReminderRows(fs, new Date(2026, 9, 11), new Date(2026, 9, 13))
+    const rows = await readReminderRows(fs, new Date(2026, 9, 11), new Date(2026, 9, 13), [])
     expect(rows).toEqual([])
   })
 })
@@ -152,5 +154,39 @@ describe('IndexStore reminders', () => {
     expect(store.reminders('2026-10-11T00:00', '2026-10-13T00:00')).toEqual([
       row('2026-10-11T10:00', 'c.md'),
     ])
+  })
+})
+
+describe('IndexStore tasks', () => {
+  let sqlite3: Awaited<ReturnType<typeof sqlite3InitModule>>
+  beforeAll(async () => {
+    sqlite3 = await sqlite3InitModule()
+  })
+
+  const doc = (path: string, text: string) => ({
+    path,
+    type: 'markdown',
+    title: path,
+    content: text,
+    tags: [],
+    size: text.length,
+    mtime: 1,
+    tasks: parseTasks(path, text),
+  })
+
+  it("keeps each note's tasks, replaced on reindex and dropped with the note", () => {
+    const store = new IndexStore(new sqlite3.oo1.DB(':memory:'))
+    store.upsert([doc('b.md', '- [ ] Two\n- [x] Three'), doc('a.md', '- [ ] One >2026-10-30')])
+    expect(store.tasks().map((t) => [t.path, t.title, t.due])).toEqual([
+      ['a.md', 'One', '2026-10-30'],
+      ['b.md', 'Two', null],
+      ['b.md', 'Three', null],
+    ])
+
+    store.upsert([doc('b.md', 'No tasks left')])
+    expect(store.tasks().map((t) => t.title)).toEqual(['One'])
+
+    store.remove(['a.md'])
+    expect(store.tasks()).toEqual([])
   })
 })

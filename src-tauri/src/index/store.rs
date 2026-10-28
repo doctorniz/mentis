@@ -14,7 +14,7 @@ use super::titles::TitleIndex;
 
 /// Bump when the schema or what an extractor produces changes; an index built
 /// by another version is dropped and rebuilt. Kept equal to the TypeScript store's.
-pub const INDEX_VERSION: i64 = 6;
+pub const INDEX_VERSION: i64 = 7;
 
 /// Content kept in the full-text table (`SEARCH_CONTENT_CAP` in `content-cap.ts`).
 const SEARCH_CONTENT_CAP: usize = 14_000;
@@ -36,6 +36,10 @@ pub struct IndexDocument {
     pub tags: Vec<String>,
     #[serde(default)]
     pub links: Vec<String>,
+    /// The file's checkbox tasks, kept as the app sent them: the index only
+    /// stores and returns them.
+    #[serde(default)]
+    pub tasks: Vec<serde_json::Value>,
     pub size: f64,
     pub mtime: f64,
 }
@@ -273,6 +277,20 @@ impl IndexStore {
         tx.commit()
     }
 
+    /// Every checkbox task in the indexed notes, in file order.
+    pub fn tasks(&self) -> rusqlite::Result<Vec<serde_json::Value>> {
+        let mut stmt = self
+            .db
+            .prepare("SELECT data FROM tasks ORDER BY path, line")?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+        let data = rows.collect::<rusqlite::Result<Vec<_>>>()?;
+        // Only the app writes these; a row that does not parse is skipped.
+        Ok(data
+            .iter()
+            .filter_map(|d| serde_json::from_str(d).ok())
+            .collect())
+    }
+
     pub fn links(&self) -> rusqlite::Result<Vec<LinkRow>> {
         let mut stmt = self.db.prepare("SELECT source, target FROM links")?;
         let rows = stmt.query_map([], |r| {
@@ -391,6 +409,14 @@ impl IndexStore {
                     params![doc.path, target],
                 )?;
             }
+            tx.execute("DELETE FROM tasks WHERE path = ?", [&doc.path])?;
+            for task in &doc.tasks {
+                let line = task.get("line").and_then(|l| l.as_i64()).unwrap_or(0);
+                tx.execute(
+                    "INSERT OR REPLACE INTO tasks (path, line, data) VALUES (?, ?, ?)",
+                    params![doc.path, line, task.to_string()],
+                )?;
+            }
         }
         tx.commit()?;
         for doc in docs {
@@ -413,6 +439,7 @@ impl IndexStore {
             delete_chunks(&tx, id)?;
             tx.execute("DELETE FROM files WHERE id = ?", [id])?;
             tx.execute("DELETE FROM links WHERE source = ?", [path])?;
+            tx.execute("DELETE FROM tasks WHERE path = ?", [path])?;
         }
         tx.commit()?;
         for path in paths {
@@ -618,6 +645,7 @@ fn migrate(db: &Connection) -> rusqlite::Result<()> {
         DROP TABLE IF EXISTS tree;
         DROP TABLE IF EXISTS listed;
         DROP TABLE IF EXISTS reminders;
+        DROP TABLE IF EXISTS tasks;
         CREATE TABLE files (
           id INTEGER PRIMARY KEY,
           path TEXT NOT NULL UNIQUE,
@@ -666,6 +694,12 @@ fn migrate(db: &Connection) -> rusqlite::Result<()> {
           title TEXT NOT NULL,
           about TEXT NOT NULL,
           PRIMARY KEY (at, path)
+        ) WITHOUT ROWID;
+        CREATE TABLE tasks (
+          path TEXT NOT NULL,
+          line INTEGER NOT NULL,
+          data TEXT NOT NULL,
+          PRIMARY KEY (path, line)
         ) WITHOUT ROWID;
         PRAGMA user_version = {INDEX_VERSION};
         "

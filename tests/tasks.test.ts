@@ -1,23 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import type { TaskFrontmatter } from '@/types/tasks'
-import { defaultTaskFrontmatter, serializeTask, bodyFromTitle, formatDueLabel } from '@/lib/tasks'
+import { dateGroupOf, formatDueLabel } from '@/lib/tasks'
 
-describe('tasks serialize', () => {
-  it('defaultTaskFrontmatter ignores undefined overrides so priority stays 3', () => {
-    const fm = defaultTaskFrontmatter({
-      priority: undefined,
-      due: '',
-      tags: [],
-      parent: '',
-    })
-    expect(fm.priority).toBe(3)
-    expect(() => serializeTask(fm, bodyFromTitle('Hello'))).not.toThrow()
-  })
-
-  it('serializeTask strips undefined keys from frontmatter', () => {
-    const fm = defaultTaskFrontmatter({})
-    const dirty = { ...(fm as Record<string, unknown>), stray: undefined }
-    expect(() => serializeTask(dirty as unknown as TaskFrontmatter, '\n# T\n')).not.toThrow()
+describe('dateGroupOf', () => {
+  const now = new Date(2026, 9, 28, 23, 30)
+  it.each([
+    [null, 'No date'],
+    ['2026-10-27', 'Overdue'],
+    ['2026-10-28', 'Today'],
+    ['2026-10-29', 'Next 7 days'],
+    ['2026-11-04', 'Next 7 days'],
+    ['2026-11-05', 'Later'],
+  ] as const)('puts %s under %s', (due, group) => {
+    expect(dateGroupOf({ due }, now)).toBe(group)
   })
 })
 

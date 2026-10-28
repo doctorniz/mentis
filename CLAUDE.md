@@ -33,9 +33,14 @@ Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
 - **Build:** Vite + React 19 + TypeScript. Migrated off Next.js (2026-09-28).
 - **Storage:** the user's chosen folder. Folder identity == vault identity.
   One vault open at a time; keep a recent-vaults list.
-- **App data:** `_mentis/` inside the chosen folder, containing `_tasks`,
+- **App data:** `_mentis/` inside the chosen folder, containing
   `_bookmarks`, `_chats`, `_calendar`, `_drawings`, `signatures`,
   `snapshots`, `templates`, `config.json`, `search-index.json`.
+- **Tasks are checkbox lines in notes:** a line like
+  `- [ ] text >date HH:mm !2 #tag every monday`. Ticking writes
+  `done:YYYY-MM-DD`, a snooze writes `snooze:…`, and indented checkboxes are
+  subtasks. New tasks go to `Inbox.md` (a setting). The index's `tasks`
+  table is derived. (Replaced `_mentis/_tasks` on 2026-10-29. No migration.)
 - **User content is visible:** Thoughts, the journal and attachments are
   ordinary folders at the root — `Thoughts/`, `Journal/`, `Attachments/` —
   each changeable in Settings. Nothing the user wrote is hidden in

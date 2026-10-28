@@ -96,6 +96,7 @@ async function fileToDocument(
     content: extracted.content,
     tags: extracted.tags ?? [],
     links: extracted.links ?? [],
+    tasks: extracted.tasks ?? [],
     size,
     mtime,
   }

@@ -22,6 +22,7 @@ import { VaultVideoExtension } from '@/lib/editor/vault-video-extension'
 import { PdfEmbedNode } from '@/lib/editor/pdf-embed-node'
 import { PdfEmbedExtension } from '@/lib/editor/pdf-embed-extension'
 import { FindReplace } from '@/lib/editor/find-replace'
+import { TaskDone } from '@/lib/editor/task-done-extension'
 import { createInkWikiLinkSuggestion } from '@/lib/editor/wiki-link-suggestion'
 
 const lowlight = createLowlight(common)
@@ -67,6 +68,7 @@ export function getNoteEditorExtensions(
     Link.configure({ openOnClick: false, autolink: true }),
     TaskList,
     TaskItem.configure({ nested: true }),
+    TaskDone,
     Table.configure({ resizable: false, HTMLAttributes: { class: 'ink-table' } }),
     TableRow,
     TableCell.extend({ addAttributes: alignedCell }),

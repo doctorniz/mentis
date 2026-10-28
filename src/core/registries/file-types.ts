@@ -1,5 +1,6 @@
 import type { ComponentType, Ref } from 'react'
 import type { LucideIcon } from 'lucide-react'
+import type { TaskItem } from '@/types/tasks'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 
 /**
@@ -126,6 +127,8 @@ export interface SearchExtraction {
   tags?: string[]
   /** Raw `[[wiki-link]]` targets in the file, for the link index. */
   links?: string[]
+  /** Checkbox tasks in the file, for the task index. */
+  tasks?: TaskItem[]
 }
 
 /** A file already read by the caller: text, or bytes for binary formats. */

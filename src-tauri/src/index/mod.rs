@@ -202,6 +202,10 @@ impl IndexHost {
                 Some((_, s)) => to_json(s.links().map_err(sql)?),
                 None => Ok(json!([])),
             },
+            "tasks" => match &self.open {
+                Some((_, s)) => Ok(Value::Array(s.tasks().map_err(sql)?)),
+                None => Ok(json!([])),
+            },
             "search" => {
                 let SearchArg { query, filters } = arg(op, input)?;
                 match &self.open {
@@ -466,5 +470,36 @@ mod tests {
             host.call("reminders", range).unwrap(),
             json!([row("2026-10-11T10:00", "c.md")])
         );
+    }
+
+    #[test]
+    fn tasks_follow_their_note() {
+        let mut host = in_memory_host();
+        host.call("open", json!({ "vaultId": "v" })).unwrap();
+        let task = |line: i64, title: &str| json!({ "line": line, "title": title });
+        let doc = |path: &str, tasks: Value| {
+            json!({ "path": path, "type": "markdown", "title": path, "content": "",
+                    "tags": [], "size": 1, "mtime": 1, "tasks": tasks })
+        };
+        host.call(
+            "upsert",
+            json!({ "vaultId": "v", "docs": [
+                doc("b.md", json!([task(0, "Two"), task(3, "Three")])),
+                doc("a.md", json!([task(2, "One")])),
+            ] }),
+        )
+        .unwrap();
+        assert_eq!(
+            host.call("tasks", Value::Null).unwrap(),
+            json!([task(2, "One"), task(0, "Two"), task(3, "Three")])
+        );
+        host.call(
+            "upsert",
+            json!({ "vaultId": "v", "docs": [doc("b.md", json!([]))] }),
+        )
+        .unwrap();
+        host.call("remove", json!({ "vaultId": "v", "paths": ["a.md"] }))
+            .unwrap();
+        assert_eq!(host.call("tasks", Value::Null).unwrap(), json!([]));
     }
 }

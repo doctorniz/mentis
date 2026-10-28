@@ -6,13 +6,15 @@ import { useTasksStore } from '@/stores/tasks'
 import { useCalendarStore } from '@/stores/calendar'
 import { useJournalStore } from '@/stores/journal'
 import { settleReminder } from './sources'
+import { taskRef } from './task-ref'
 import { requestOpen } from './open'
 import { loadJournalPromptState, saveJournalPromptState } from './journal-prompt'
 
 /**
  * What can be done with a reminder, wherever it shows: Open its item, Done,
- * or Snooze. Done and Snooze are written into the item's file (`reminderAck`,
- * `snoozeUntil`), except the journal prompt's, which has no file yet.
+ * or Snooze. Done and Snooze are written into the item's file: an event's
+ * `reminderAck` and `snoozeUntil`; a task's Done ticks it and its Snooze
+ * writes `snooze:` on its line. The journal prompt has no file yet.
  */
 
 export const SNOOZES: Array<{ label: string; until: (now: Date) => Date }> = [
@@ -66,6 +68,10 @@ export async function settleReminders(
       )
       continue
     }
+    if (row.kind === 'task') {
+      await settleTask(fs, path, how)
+      continue
+    }
     await settleReminder(fs, path, {
       reminderAck: how.done && at > nowAt ? at : nowAt,
       snoozeUntil: how.done ? '' : toDateTimeStr(how.until),
@@ -73,9 +79,18 @@ export async function settleReminders(
   }
 
   const paths = [...latest.keys()]
-  const tasks = useTasksStore.getState()
-  if (tasks.items.some((t) => paths.includes(t.path))) await tasks.loadTasks(fs)
   const calendar = useCalendarStore.getState()
   if (calendar.events.some((e) => paths.includes(e.path))) await calendar.loadEvents(fs)
   window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+}
+
+/** A task reminder's Done ticks the task; Snooze writes when to remind again on its line. */
+async function settleTask(fs: FileSystemAdapter, ref: string, how: Settle): Promise<void> {
+  const store = useTasksStore.getState()
+  if (!store.loaded) await store.loadTasks()
+  const task = useTasksStore.getState().items.find((t) => taskRef(t) === ref)
+  // Ticked or rewritten since the reminder was made: nothing left to settle.
+  if (!task) return
+  if (how.done) await store.toggleTask(fs, task)
+  else await store.updateTask(fs, task, { snoozeUntil: toDateTimeStr(how.until) })
 }

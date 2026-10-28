@@ -1,4 +1,5 @@
 import type { SearchFilters, SearchResult } from '@/types/search'
+import type { TaskItem } from '@/types/tasks'
 
 /**
  * Search filters as the index stores take them. The date range is already
@@ -22,6 +23,8 @@ export interface IndexDocument {
   tags: string[]
   /** Raw wiki-link targets in the file (unresolved). */
   links?: string[]
+  /** The file's checkbox tasks. */
+  tasks?: TaskItem[]
   size: number
   /** Last-modified time, ms since epoch. */
   mtime: number
@@ -100,6 +103,8 @@ export interface IndexOps {
   manifest: [void, ManifestEntry[]]
   /** Every wiki-link in the vault, as written. Resolving them is the caller's job. */
   links: [void, LinkRow[]]
+  /** Every checkbox task in the vault's notes, in file order. */
+  tasks: [void, TaskItem[]]
   upsert: [{ vaultId: string; docs: IndexDocument[] }, void]
   remove: [{ vaultId: string; paths: string[] }, void]
   search: [{ query: string; filters?: IndexSearchFilters }, SearchResult[]]

@@ -1,40 +1,20 @@
-import { test, expect, navigateTo, writeVaultFile } from './fixtures'
+import type { Page } from '@playwright/test'
+import { test, expect, navigateTo, readVaultFile, writeVaultFile } from './fixtures'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-const local = (d: Date) => `${ymd(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+const hm = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
 
-const taskFile = (title: string, remind: string) =>
-  [
-    '---',
-    'uid: r1',
-    'status: todo',
-    'priority: 3',
-    `remind: ${remind}`,
-    '---',
-    '',
-    `# ${title}`,
-    '',
-  ].join('\n')
-
-/** A vault file's text, read straight from OPFS; '' while the app is writing
- *  it (OPFS refuses the read), so `expect.poll` tries again. */
-async function readVaultFile(page: import('@playwright/test').Page, relPath: string) {
-  return page.evaluate(async (relPath) => {
-    try {
-      const root = await navigator.storage.getDirectory()
-      const vaults = await root.getDirectoryHandle('vaults')
-      const iter = (vaults as unknown as { values(): AsyncIterable<FileSystemHandle> }).values()
-      let dir: FileSystemDirectoryHandle | null = null
-      for await (const e of iter) if (e.kind === 'directory') dir = e as FileSystemDirectoryHandle
-      const parts = relPath.split('/')
-      const name = parts.pop()!
-      for (const part of parts) dir = await dir!.getDirectoryHandle(part)
-      return await (await (await dir!.getFileHandle(name)).getFile()).text()
-    } catch {
-      return ''
-    }
-  }, relPath)
+/** Add a task with a reminder at `at` through the Tasks bar: `>date time`. */
+async function addTimedTask(page: Page, title: string, at: Date) {
+  await navigateTo(page, 'tasks')
+  const bar = page.getByPlaceholder('Add a task...')
+  await bar.fill(`${title} >${ymd(at)} ${hm(at)}`)
+  await expect(page.getByText(`Remind ${hm(at)}`)).toBeVisible({ timeout: 10_000 })
+  await bar.press('Enter')
+  await expect
+    .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+    .toContain(`- [ ] ${title} >${ymd(at)} ${hm(at)}`)
 }
 
 test.describe('29 — Reminders: data', () => {
@@ -89,7 +69,12 @@ test.describe('29 — Reminders: data', () => {
     await page.getByText('Call mum', { exact: true }).click()
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
-    await expect(page.getByLabel('Remind')).toHaveValue(`${ymd(tomorrow)}T09:00`)
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByLabel('Due date')).toHaveValue(ymd(tomorrow))
+    await expect(dialog.getByLabel('Remind at')).toHaveValue('09:00')
+    await expect
+      .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+      .toContain(`- [ ] Call mum >${ymd(tomorrow)} 09:00`)
   })
 })
 
@@ -102,7 +87,7 @@ test.describe('29 — Reminders: delivery', () => {
     const at = new Date()
     at.setSeconds(0, 0)
     at.setMinutes(at.getMinutes() + 1)
-    await writeVaultFile(page, '_mentis/_tasks/soon.md', taskFile('Water plants', local(at)))
+    await addTimedTask(page, 'Water plants', at)
 
     const card = page.getByRole('alert').filter({ hasText: 'Water plants' })
     await expect(card).toBeVisible({ timeout: 100_000 })
@@ -110,15 +95,15 @@ test.describe('29 — Reminders: delivery', () => {
     await page.getByRole('menuitem', { name: '10 minutes' }).click()
     await expect(card).toBeHidden()
     await expect
-      .poll(() => readVaultFile(page, '_mentis/_tasks/soon.md'), { timeout: 10_000 })
-      .toMatch(/snoozeUntil: '?\d{4}-\d\d-\d\dT\d\d:\d\d/)
+      .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+      .toMatch(/- \[ \] Water plants .* snooze:\d{4}-\d\d-\d\dT\d\d:\d\d/)
   })
 
   test('29.4 Reminders that fell due while closed are offered once, together', async ({
     vaultPage: page,
   }) => {
     const past = new Date(Date.now() - 30 * 60_000)
-    await writeVaultFile(page, '_mentis/_tasks/past.md', taskFile('Take pills', local(past)))
+    await addTimedTask(page, 'Take pills', past)
     // The app last looked an hour ago.
     await page.evaluate(
       (seen) => {
@@ -137,8 +122,8 @@ test.describe('29 — Reminders: delivery', () => {
     await summary.getByRole('button', { name: 'Done all' }).click()
     await expect(summary).toBeHidden()
     await expect
-      .poll(() => readVaultFile(page, '_mentis/_tasks/past.md'), { timeout: 10_000 })
-      .toMatch(/reminderAck: /)
+      .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+      .toMatch(/- \[x\] Take pills .* done:/)
 
     // Offered once: the next launch has nothing missed.
     await page.reload()
@@ -164,8 +149,8 @@ test.describe('29 — Reminders: tab', () => {
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
     tomorrow.setHours(10, 0, 0, 0)
-    await writeVaultFile(page, '_mentis/_tasks/late.md', taskFile('Renew passport', local(past)))
-    await writeVaultFile(page, '_mentis/_tasks/next.md', taskFile('Book flights', local(tomorrow)))
+    await addTimedTask(page, 'Renew passport', past)
+    await addTimedTask(page, 'Book flights', tomorrow)
     await openRemindersTab(page)
 
     const missed = page.getByRole('region', { name: 'Missed' })
@@ -179,8 +164,8 @@ test.describe('29 — Reminders: tab', () => {
     await expect(missed).toBeHidden()
     await expect(page.getByLabel('1 missed')).toBeHidden({ timeout: 10_000 })
     await expect
-      .poll(() => readVaultFile(page, '_mentis/_tasks/late.md'), { timeout: 10_000 })
-      .toMatch(/reminderAck: /)
+      .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+      .toMatch(/- \[x\] Renew passport .* done:/)
   })
 
   test('29.6 The evening prompt shows until the day has a journal', async ({ vaultPage: page }) => {

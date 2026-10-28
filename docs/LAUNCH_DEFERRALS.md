@@ -69,6 +69,8 @@ _Last reviewed 2026-10-13._
 
 - [ ] **One sidebar** — the desktop app and the website at full width: the sidebar shows Search, New, the Today card, Chat, Calendar, Tasks, Thoughts, Bookmarks and the file tree. Open a PDF, a canvas and a .kan.md from the tree while Calendar is showing: each opens in its own editor. Ctrl+F opens search in the sidebar without leaving the view; Esc goes back to the tree. Ctrl+1–6 reach Today, Chat, Calendar, Tasks, Thoughts and Bookmarks. Narrow the window until a canvas collapses the sidebar, then widen it again. A reminder's Open lands on Tasks or Calendar. (E2E: `02-navigation.spec.ts`.)
 
+- [ ] **Checkbox tasks** — desktop, website, Android: write `- [ ] Pay rent >tomorrow 09:00 !2` in a note: it shows in Tasks under Next 7 days and By note under that note, and on the calendar. Tick it in the note: the line gets `done:` with today's date and leaves Tasks. Add a task with a time a minute ahead and leave its note open in the editor: the notification comes; Snooze writes `snooze:` on the line, Done ticks it and the open note shows the tick. Sync a note with tasks from another device: they appear without a restart. (E2E: `07-tasks.spec.ts`, `29-reminders.spec.ts`.)
+
 - [ ] **Phone tab bar** — on an Android and an iPhone release build: the bar shows Today, Calendar, Capture, Notes and Chat clear of the home indicator. Capture opens the sheet with the keyboard up and the field focused; a thought saves and the sheet closes; the mic starts a voice thought. Notes shows the tree; a file opens full width. Settings › Phone: swap Chat for Tasks, the bar changes at once and after a relaunch. The masthead's menu reaches every view. (E2E: `30-touch.spec.ts`, `20-mobile.spec.ts`.)
 
 - [ ] **Open vault only** — desktop, Android and iOS, with two recent vaults: relaunch, the last one reopens with no dialog; switch to the other from the landing page: it opens, and capture from the overlay saves into it. (Unit-tested: `opening_a_vault_closes_the_last_one`.)
@@ -97,7 +99,7 @@ _Last reviewed 2026-10-13._
 - [ ] **Audio / Whisper** — first transcribe downloads whisper-tiny (no 401), progress events fire, transcript persists.
 - [ ] **Bookmarks** — add via URL (OG fetch or graceful degrade), categories, edit/delete.
 - [ ] **Calendar** — week title month+year, aligned grid, event CRUD, task-due chips, day/week/month.
-- [ ] **Tasks** — quick-add parsing (`!1`, `#tag`, `>tomorrow`, `every tuesday`), detail dialog, subtasks, lists, `.ics` export, recurrence roll-forward.
+- [ ] **Tasks** — quick-add parsing (`!1`, `#tag`, `>tomorrow`, `every tuesday`), detail dialog, subtasks, By date / By note, ticking a weekly task adds the next.
 - [ ] **Kanban** — create from New menu, drag cards/columns, colors, reopen, external readability.
 - [ ] **Mindmap** — keyboard editing (Tab/Enter/F2/Delete), drag-connect with cycle rejection, undo, persistence, mobile FAB/pinch.
 - [ ] **Chat — Settings tab** — per-provider key hints; keys round-trip through IndexedDB and NEVER appear in `config.json`.

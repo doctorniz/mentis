@@ -97,17 +97,6 @@ test.describe('20 — Mobile (Pixel 5)', () => {
     await expect(notes).toHaveAttribute('aria-current', 'page')
   })
 
-  test('20.4 Projects drawer works with touch', async ({ vaultPage: page }) => {
-    await mastheadNavigate(page, 'Tasks')
-    await page.getByRole('button', { name: 'All tasks', exact: true }).tap()
-
-    await page.getByRole('button', { name: 'Open projects' }).tap()
-    const drawer = page.getByRole('dialog')
-    await expect(drawer).toBeVisible()
-    await drawer.getByRole('button', { name: 'Inbox' }).tap()
-    await expect(drawer).toBeHidden()
-  })
-
   test('20.5 Bookmark categories drawer works with touch', async ({ vaultPage: page }) => {
     await mastheadNavigate(page, 'Bookmarks')
 

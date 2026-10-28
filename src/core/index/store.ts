@@ -1,6 +1,7 @@
 import MiniSearch from 'minisearch'
 import type { Database } from '@sqlite.org/sqlite-wasm'
 import type { SearchResult } from '@/types/search'
+import type { TaskItem } from '@/types/tasks'
 import { parseSearchQuery } from '@/lib/search/parse-query'
 import { buildSnippet } from '@/lib/search/snippet'
 import { SEARCH_CONTENT_CAP } from '@/lib/search/content-cap'
@@ -55,7 +56,7 @@ import type {
  * Bump when the schema or what an extractor produces changes: an index built
  * by another version is dropped and rebuilt from the files.
  */
-export const INDEX_VERSION = 6
+export const INDEX_VERSION = 7
 
 // bm25 weights in fts column order: title, content, tags.
 const BM25 = 'bm25(fts, 3.0, 1.0, 2.0)'
@@ -105,6 +106,7 @@ export class IndexStore {
       DROP TABLE IF EXISTS tree;
       DROP TABLE IF EXISTS listed;
       DROP TABLE IF EXISTS reminders;
+      DROP TABLE IF EXISTS tasks;
       CREATE TABLE files (
         id INTEGER PRIMARY KEY,
         path TEXT NOT NULL UNIQUE,
@@ -153,6 +155,12 @@ export class IndexStore {
         title TEXT NOT NULL,
         about TEXT NOT NULL,
         PRIMARY KEY (at, path)
+      ) WITHOUT ROWID;
+      CREATE TABLE tasks (
+        path TEXT NOT NULL,
+        line INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        PRIMARY KEY (path, line)
       ) WITHOUT ROWID;
       PRAGMA user_version = ${INDEX_VERSION};
     `)
@@ -255,6 +263,13 @@ export class IndexStore {
     return this.db.selectObjects('SELECT source, target FROM links') as unknown as LinkRow[]
   }
 
+  tasks(): TaskItem[] {
+    const rows = this.db.selectObjects('SELECT data FROM tasks ORDER BY path, line') as {
+      data: string
+    }[]
+    return rows.map((r) => JSON.parse(r.data) as TaskItem)
+  }
+
   /**
    * Given every file sync can see now, forget cached hashes for files that are
    * gone and return the ones still valid (same size and mtime), by path.
@@ -339,6 +354,13 @@ export class IndexStore {
             bind: [doc.path, target],
           })
         }
+        this.db.exec({ sql: 'DELETE FROM tasks WHERE path = ?', bind: [doc.path] })
+        for (const task of doc.tasks ?? []) {
+          this.db.exec({
+            sql: 'INSERT OR REPLACE INTO tasks (path, line, data) VALUES (?, ?, ?)',
+            bind: [doc.path, task.line, JSON.stringify({ ...task, children: [] })],
+          })
+        }
       }
     })
     for (const doc of docs) {
@@ -357,6 +379,7 @@ export class IndexStore {
         this.deleteChunks(Number(id))
         this.db.exec({ sql: 'DELETE FROM files WHERE id = ?', bind: [id] })
         this.db.exec({ sql: 'DELETE FROM links WHERE source = ?', bind: [path] })
+        this.db.exec({ sql: 'DELETE FROM tasks WHERE path = ?', bind: [path] })
       }
     })
     for (const path of paths) {

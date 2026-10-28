@@ -1,5 +1,6 @@
 import { extractLinkTargets, extractTags, parseNote } from '@/lib/markdown/parse'
 import { FULL_TEXT_CAP } from '@/lib/search/content-cap'
+import { parseTasks } from '@/lib/tasks/line'
 import type { SearchExtractor } from '@/core/registries/file-types'
 import type { NoteFrontmatter } from '@/types/editor'
 
@@ -33,6 +34,7 @@ const extract: SearchExtractor<string> = ({ path, data }) => {
       content,
       tags: normalizeDocTags(doc.frontmatter, doc.content),
       links: extractLinkTargets(data),
+      tasks: parseTasks(path, data),
     }
   } catch {
     return null

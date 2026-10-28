@@ -7,6 +7,7 @@ import { generateHTML, generateJSON } from '@tiptap/html'
 import { marked } from 'marked'
 import TurndownService from 'turndown'
 import type { Extensions, JSONContent } from '@tiptap/core'
+import { TaskDone } from '@/lib/editor/task-done-extension'
 
 export function getBoardEditorExtensions(): Extensions {
   return [
@@ -18,6 +19,7 @@ export function getBoardEditorExtensions(): Extensions {
     Link.configure({ openOnClick: false, autolink: true }),
     TaskList,
     TaskItem.configure({ nested: false }),
+    TaskDone,
   ]
 }
 

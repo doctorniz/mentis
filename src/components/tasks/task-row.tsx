@@ -8,6 +8,9 @@ import { toast } from '@/stores/toast'
 import type { TaskItem } from '@/types/tasks'
 import { cn } from '@/utils/cn'
 
+/** A note's name for showing beside its task: the file name without `.md`. */
+export const noteName = (path: string) => path.split('/').pop()!.replace(/\.md$/i, '')
+
 // Priority ring colours for the checkbox border
 const PRIORITY_RING: Record<number, string> = {
   1: 'border-red-500',
@@ -20,10 +23,13 @@ export function TaskRow({
   item,
   depth = 0,
   onEdit,
+  showNote = false,
 }: {
   item: TaskItem
   depth?: number
   onEdit: (item: TaskItem) => void
+  /** Name the note the task is in (By date, where tasks from many notes mix). */
+  showNote?: boolean
 }) {
   const { vaultFs } = useVaultSession()
   const toggleTask = useTasksStore((s) => s.toggleTask)
@@ -31,24 +37,24 @@ export function TaskRow({
   const [collapsed, setCollapsed] = useState(false)
   const [hovered, setHovered] = useState(false)
 
-  const isDone = item.status === 'done' || item.status === 'cancelled'
+  const isDone = item.done
   const hasChildren = item.children.length > 0
-  const doneChildren = item.children.filter((c) => c.status === 'done').length
+  const doneChildren = item.children.filter((c) => c.done).length
 
   const handleToggle = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      void toggleTask(vaultFs, item.path)
+      void toggleTask(vaultFs, item)
     },
-    [vaultFs, item.path, toggleTask],
+    [vaultFs, item, toggleTask],
   )
 
   const handleDelete = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      void removeTask(vaultFs, item.path)
+      void removeTask(vaultFs, item)
     },
-    [vaultFs, item.path, removeTask],
+    [vaultFs, item, removeTask],
   )
 
   const handleEdit = useCallback(
@@ -63,23 +69,19 @@ export function TaskRow({
 
   // Touch: swipe right to complete (or reopen), left to delete with Undo.
   const swipeDelete = useCallback(async () => {
-    const { items } = useTasksStore.getState()
-    const paths = [item.path, ...items.filter((i) => i.parent === item.uid).map((i) => i.path)]
-    const saved = await Promise.all(
-      paths.map(async (p) => [p, await vaultFs.readTextFile(p).catch(() => null)] as const),
-    )
-    await removeTask(vaultFs, item.path)
+    // Undo puts the note back as it was.
+    const saved = await vaultFs.readTextFile(item.path).catch(() => null)
+    await removeTask(vaultFs, item)
     toast.withAction(`Deleted “${item.title || 'Untitled'}”`, {
       label: 'Undo',
       run: () =>
         void (async () => {
-          for (const [p, raw] of saved) if (raw !== null) await vaultFs.writeTextFile(p, raw)
-          await useTasksStore.getState().loadTasks(vaultFs)
+          if (saved !== null) await useTasksStore.getState().restoreNote(vaultFs, item.path, saved)
         })(),
     })
   }, [vaultFs, item, removeTask])
   const swipe = useSwipe({
-    onRight: () => void toggleTask(vaultFs, item.path),
+    onRight: () => void toggleTask(vaultFs, item),
     onLeft: () => void swipeDelete(),
   })
 
@@ -156,6 +158,11 @@ export function TaskRow({
           >
             {item.title || 'Untitled'}
           </span>
+          {showNote && (
+            <span className="text-fg-muted max-w-[30%] shrink-0 truncate text-xs">
+              {noteName(item.path)}
+            </span>
+          )}
 
           {/* Right-side metadata */}
           <div className="flex shrink-0 items-center gap-1.5">
@@ -228,7 +235,7 @@ export function TaskRow({
       {hasChildren &&
         !collapsed &&
         item.children.map((child) => (
-          <TaskRow key={child.path} item={child} depth={depth + 1} onEdit={onEdit} />
+          <TaskRow key={child.id} item={child} depth={depth + 1} onEdit={onEdit} />
         ))}
     </>
   )

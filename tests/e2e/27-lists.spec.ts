@@ -77,11 +77,6 @@ test.describe('27 — Lists', () => {
     await expect(page.getByText('2 × semi-skimmed')).toBeVisible()
   })
 
-  test('27.5 Projects are what task groupings are called now', async ({ vaultPage: page }) => {
-    await navigateTo(page, 'tasks')
-    await expect(page.getByText('Add project')).toBeVisible()
-  })
-
   test('27.6 New → List makes a .list.md in the vault that opens in the list editor', async ({
     vaultPage: page,
   }) => {

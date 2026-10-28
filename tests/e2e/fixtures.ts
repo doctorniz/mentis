@@ -235,6 +235,26 @@ export async function writeVaultFile(
   await page.waitForTimeout(800)
 }
 
+/** A vault file's text, read straight from OPFS; '' while the app is writing
+ *  it (OPFS refuses the read), so `expect.poll` tries again. */
+export async function readVaultFile(page: Page, relPath: string) {
+  return page.evaluate(async (relPath) => {
+    try {
+      const root = await navigator.storage.getDirectory()
+      const vaults = await root.getDirectoryHandle('vaults')
+      const iter = (vaults as unknown as { values(): AsyncIterable<FileSystemHandle> }).values()
+      let dir: FileSystemDirectoryHandle | null = null
+      for await (const e of iter) if (e.kind === 'directory') dir = e as FileSystemDirectoryHandle
+      const parts = relPath.split('/')
+      const name = parts.pop()!
+      for (const part of parts) dir = await dir!.getDirectoryHandle(part)
+      return await (await (await dir!.getFileHandle(name)).getFile()).text()
+    } catch {
+      return ''
+    }
+  }, relPath)
+}
+
 /** Type in the active editor. */
 export async function typeInEditor(page: Page, text: string) {
   const editor = page.locator('.tiptap, .ProseMirror').first()

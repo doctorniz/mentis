@@ -255,8 +255,10 @@ export const checklist = {
           title: 'Tasks',
           steps: [
             'Quick-add: "!1 Fix bug #work >tomorrow" parses priority/tag/due; "every tuesday" shows the weekly chip',
-            'Detail dialog: edit fields, subtasks, move between lists; export .ics',
-            'Complete a repeating task — due rolls forward',
+            'A new task is a "- [ ]" line in Inbox.md; a checkbox typed in any note shows in Tasks',
+            'By date: Overdue / Today / Next 7 days / Later / No date; By note groups under each note',
+            'Detail dialog: edit due, time, priority, repeat, subtasks; Open in note',
+            'Tick in the note or in Tasks: the line gets done:<today>; a weekly task adds the next one above',
           ],
         },
         {

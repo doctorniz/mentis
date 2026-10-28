@@ -144,6 +144,9 @@ test.describe('30 — Touch', () => {
       { x: b.x + 40, y: b.y + b.height / 2 },
       { x: b.x + 260, y: b.y + b.height / 2 },
     )
+    // Done tasks leave the list until Show done.
+    await expect(row).toBeHidden()
+    await page.getByRole('button', { name: /^Show done/ }).tap()
     await expect(row.getByRole('button', { name: 'Mark incomplete' })).toBeVisible()
 
     // Measure the row's frame: the row itself may still be sliding back from

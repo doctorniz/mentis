@@ -42,19 +42,13 @@ export function nextWeeklyDueAfterCompletion(completedAt: Date, weekday: number)
   return formatLocalDate(nextWeekdayOnOrAfter(dayAfter, weekday))
 }
 
-/** Effective due for filters / display: handles stale `due` for weekly tasks. */
-export function getEffectiveDueDate(task: TaskItem, ref: Date = new Date()): string | null {
-  if (task.repeat !== 'weekly' || task.repeatWeekday == null) {
-    return task.due
-  }
-  const start = startOfLocalDay(ref)
-  if (task.due) {
-    const stored = parseLocalDate(task.due)
-    if (stored && stored >= start) {
-      return task.due
-    }
-  }
-  return formatLocalDate(nextWeekdayOnOrAfter(ref, task.repeatWeekday))
+/**
+ * The day a task is due, for filters and the calendar. A weekly task's line
+ * holds its current occurrence (ticking it writes the next), so this is its
+ * `due` as written.
+ */
+export function getEffectiveDueDate(task: Pick<TaskItem, 'due'>): string | null {
+  return task.due
 }
 
 export function isSameLocalDay(a: Date, isoDate: string): boolean {

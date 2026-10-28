@@ -26,7 +26,7 @@ function toParseResult(
 }
 
 /**
- * A task in `_mentis/_tasks/<list>/`. Explicit modifiers first (`!2 #home
+ * A task: a checkbox line added to the inbox note (Settings › Vault). Explicit modifiers first (`!2 #home
  * >friday`, `every monday`); then, if no date was given, a natural-language
  * one — a day only, since a task has no time or range to keep the rest in.
  */
@@ -87,18 +87,18 @@ const task: CaptureDestination = {
     return chips
   },
   async write(values, { vaultFs }) {
-    const v = values as unknown as QuickAddResult & { list: string | null }
+    const v = values as unknown as QuickAddResult
     if (!v.title) return null
     // The store loads with the first task saved, not with the app.
     const { useTasksStore } = await import('@/stores/tasks')
-    await useTasksStore.getState().addTask(vaultFs, v.title, {
-      list: v.list ?? undefined,
+    // Tags stay in the line's text, where the note shows them.
+    const tags = (v.tags ?? []).map((t) => `#${t}`).join(' ')
+    const remind = (values as { remind?: string }).remind
+    await useTasksStore.getState().addTask(vaultFs, tags ? `${v.title} ${tags}` : v.title, {
       priority: v.priority,
       due: v.due,
-      tags: v.tags,
-      repeat: v.repeat,
-      repeatWeekday: v.repeatWeekday,
-      remind: (values as { remind?: string }).remind,
+      time: remind?.slice(11),
+      repeatWeekday: v.repeat === 'weekly' ? v.repeatWeekday : undefined,
     })
     return {}
   },

@@ -1,6 +1,22 @@
-import { test, expect, waitForView } from './fixtures'
+import type { Page } from '@playwright/test'
+import { test, expect, navigateTo, readVaultFile, waitForView } from './fixtures'
 
-test.describe('7 — Task Manager', () => {
+const pad = (n: number) => String(n).padStart(2, '0')
+const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+
+/** Add a task through the Tasks view's bar and wait for its row. */
+async function addTask(page: Page, text: string, shows: string) {
+  const input = page.getByPlaceholder('Add a task...')
+  await input.fill(text)
+  await input.press('Enter')
+  await expect(page.getByText(shows).first()).toBeVisible({ timeout: 10_000 })
+}
+
+/** A task's row in the list. */
+const row = (page: Page, title: string) =>
+  page.getByRole('main').locator('div[role="button"]', { hasText: title }).first()
+
+test.describe('7 — Tasks', () => {
   test.beforeEach(async ({ vaultPage: page }) => {
     await waitForView(page, 'tasks')
   })
@@ -14,68 +30,39 @@ test.describe('7 — Task Manager', () => {
       const input = page.getByPlaceholder('Add a task...')
       await input.fill('Buy milk !1 #grocery >today')
 
-      // Preview tokens should appear below the input
       await expect(page.getByText('Urgent')).toBeVisible({ timeout: 3_000 })
       await expect(page.getByText('#grocery')).toBeVisible()
+      await expect(page.getByText(ymd(new Date()))).toBeVisible()
 
-      const today = new Date()
-      const yyyy = today.getFullYear()
-      const mm = String(today.getMonth() + 1).padStart(2, '0')
-      const dd = String(today.getDate()).padStart(2, '0')
-      const todayStr = `${yyyy}-${mm}-${dd}`
-      await expect(page.getByText(todayStr)).toBeVisible()
-
-      // Submit
       await input.press('Enter')
-      await page.waitForTimeout(1_000)
-
-      // Task should appear in the list
-      await expect(page.getByText('Buy milk')).toBeVisible({ timeout: 5_000 })
+      await expect(row(page, 'Buy milk')).toBeVisible({ timeout: 10_000 })
     })
 
     test('7.1.2 "Weekly standup every monday" sets repeat=weekly', async ({ vaultPage: page }) => {
       const input = page.getByPlaceholder('Add a task...')
       await input.fill('Weekly standup every monday')
-
-      // The parse-preview chip reads "Weekly · Monday". Match the combined
-      // chip text — a bare /Monday/ collides with the sidebar's daily-note
-      // button ("Monday, July 13") whenever the suite runs on a Monday.
       await expect(page.getByText('Weekly · Monday')).toBeVisible({ timeout: 3_000 })
-
       await input.press('Enter')
-      await page.waitForTimeout(1_000)
-
-      await expect(page.getByText('Weekly standup')).toBeVisible({ timeout: 5_000 })
+      await expect(row(page, 'Weekly standup')).toBeVisible({ timeout: 10_000 })
     })
 
     test('7.1.4 "Call dentist >tomorrow" sets due to tomorrow', async ({ vaultPage: page }) => {
-      const input = page.getByPlaceholder('Add a task...')
-      await input.fill('Call dentist >tomorrow')
-
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
-      const yyyy = tomorrow.getFullYear()
-      const mm = String(tomorrow.getMonth() + 1).padStart(2, '0')
-      const dd = String(tomorrow.getDate()).padStart(2, '0')
-      const tomorrowStr = `${yyyy}-${mm}-${dd}`
-      await expect(page.getByText(tomorrowStr)).toBeVisible({ timeout: 3_000 })
-
+      const input = page.getByPlaceholder('Add a task...')
+      await input.fill('Call dentist >tomorrow')
+      await expect(page.getByText(ymd(tomorrow))).toBeVisible({ timeout: 3_000 })
       await input.press('Enter')
-      await page.waitForTimeout(1_000)
-
-      await expect(page.getByText('Call dentist')).toBeVisible({ timeout: 5_000 })
-      // Due badge should show "Tomorrow"
-      await expect(page.getByText('Tomorrow')).toBeVisible()
+      await expect(row(page, 'Call dentist').getByText('Tomorrow')).toBeVisible({
+        timeout: 10_000,
+      })
     })
 
     test('7.1.9 priority only accepts 1–4', async ({ vaultPage: page }) => {
       const input = page.getByPlaceholder('Add a task...')
-
-      // Valid priority !2 should show "High"
       await input.fill('Test task !2')
       await expect(page.getByText('High')).toBeVisible({ timeout: 3_000 })
 
-      // !5 is out of range — no priority token should appear
       await input.clear()
       await input.fill('Test task !5')
       await page.waitForTimeout(500)
@@ -85,183 +72,148 @@ test.describe('7 — Task Manager', () => {
     })
   })
 
-  // ─── 7.2 Smart Filters ─────────────────────────────────────────────────────
+  // ─── 7.2 Checkbox lines ────────────────────────────────────────────────────
 
-  test.describe('7.2 Smart Filters', () => {
-    test('7.2.1 Inbox shows tasks with no list', async ({ vaultPage: page }) => {
-      // Add a task to Inbox (no list)
-      const input = page.getByPlaceholder('Add a task...')
-      await input.fill('Inbox task test')
-      await input.press('Enter')
-      await page.waitForTimeout(1_000)
-
-      // Click Inbox in sidebar
-      const inboxBtn = page.locator('button', { hasText: 'Inbox' }).first()
-      await inboxBtn.click()
-      await page.waitForTimeout(500)
-
-      await expect(page.getByText('Inbox task test')).toBeVisible({ timeout: 5_000 })
+  test.describe('7.2 Tasks are lines in notes', () => {
+    test('7.2.1 A new task is a checkbox line in Inbox.md', async ({ vaultPage: page }) => {
+      await addTask(page, 'Pay rent !2 #home >tomorrow', 'Pay rent')
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      await expect
+        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .toContain(`- [ ] Pay rent #home >${ymd(tomorrow)} !2`)
     })
 
-    test('7.2.2 Today shows tasks due today', async ({ vaultPage: page }) => {
-      // Add a task due today
-      const input = page.getByPlaceholder('Add a task...')
-      await input.fill('Due today task >today')
-      await input.press('Enter')
-      await page.waitForTimeout(1_000)
+    test('7.2.2 By date sorts tasks under Overdue, Today, Next 7 days, Later, No date', async ({
+      vaultPage: page,
+    }) => {
+      await addTask(page, 'Due today task >today', 'Due today task')
+      await addTask(page, 'Someday task', 'Someday task')
 
-      // Click "Today" smart filter in sidebar
-      const todayBtn = page.getByRole('main').locator('button', { hasText: 'Today' }).first()
-      await todayBtn.click()
-      await page.waitForTimeout(500)
+      await expect(
+        page.getByRole('region', { name: 'Today' }).getByText('Due today task'),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('region', { name: 'No date' }).getByText('Someday task'),
+      ).toBeVisible()
+    })
 
-      await expect(page.getByText('Due today task')).toBeVisible({ timeout: 5_000 })
+    test('7.2.3 A checkbox written in any note shows under that note', async ({
+      vaultPage: page,
+    }) => {
+      await navigateTo(page, 'vault')
+      await page.getByRole('button', { name: 'New note' }).first().click()
+      const editor = page.locator('.tiptap').first()
+      await expect(editor).toBeVisible({ timeout: 10_000 })
+      await editor.click()
+      await page.keyboard.type('[ ] Pick up parcel')
+      // The note saves and is indexed; then Tasks has it.
+      await page.waitForTimeout(2_500)
+
+      await navigateTo(page, 'tasks')
+      await page.getByRole('radio', { name: 'By note' }).click()
+      await expect(
+        page.getByRole('region', { name: 'Untitled' }).getByText('Pick up parcel'),
+      ).toBeVisible({ timeout: 15_000 })
+    })
+
+    test('7.2.4 Ticking a checkbox in the note records the day', async ({ vaultPage: page }) => {
+      await addTask(page, 'Water the ferns', 'Water the ferns')
+      await row(page, 'Water the ferns').click()
+      await page.getByRole('dialog').getByRole('button', { name: 'Open in Inbox' }).click()
+
+      const item = page.locator('.tiptap li[data-checked]', { hasText: 'Water the ferns' })
+      await expect(item).toBeVisible({ timeout: 10_000 })
+      await item.locator('input[type="checkbox"]').check()
+      await expect
+        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .toContain(`- [x] Water the ferns done:${ymd(new Date())}`)
     })
   })
 
   // ─── 7.3 Task Operations ───────────────────────────────────────────────────
 
   test.describe('7.3 Task Operations', () => {
-    test('7.3.1 create task — appears in list', async ({ vaultPage: page }) => {
-      const input = page.getByPlaceholder('Add a task...')
-      await input.fill('A brand new task')
-      await input.press('Enter')
-      await page.waitForTimeout(1_000)
+    test('7.3.2 Ticking hides a task until Show done', async ({ vaultPage: page }) => {
+      await addTask(page, 'Task to complete', 'Task to complete')
+      await row(page, 'Task to complete').getByRole('button', { name: 'Mark complete' }).click()
+      await expect(row(page, 'Task to complete')).toBeHidden()
 
-      await expect(page.getByText('A brand new task')).toBeVisible({ timeout: 5_000 })
+      await page.getByRole('button', { name: /^Show done/ }).click()
+      await expect(row(page, 'Task to complete').getByText('Task to complete')).toHaveClass(
+        /line-through/,
+      )
+      await expect
+        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .toContain(`- [x] Task to complete done:${ymd(new Date())}`)
     })
 
-    test('7.3.2 check task done — status changes', async ({ vaultPage: page }) => {
-      // Create a task first
-      const input = page.getByPlaceholder('Add a task...')
-      await input.fill('Task to complete')
-      await input.press('Enter')
-      await page.waitForTimeout(1_000)
-
-      // Find the task row and its toggle (checkbox) button
-      const taskText = page.getByText('Task to complete')
-      await expect(taskText).toBeVisible({ timeout: 5_000 })
-
-      const taskRow = taskText.locator('..')
-      const toggleBtn = taskRow.locator('button[aria-label="Mark complete"]')
-      await toggleBtn.click()
-      await page.waitForTimeout(1_000)
-
-      // Task should have line-through styling when done
-      await expect(taskText).toHaveClass(/line-through/)
+    test('7.3.3 Unticking reopens it', async ({ vaultPage: page }) => {
+      await addTask(page, 'Task to uncomplete', 'Task to uncomplete')
+      await page
+        .getByRole('button', { name: /^Show done|^Hide done/ })
+        .waitFor({ state: 'detached' })
+      await row(page, 'Task to uncomplete').getByRole('button', { name: 'Mark complete' }).click()
+      await page.getByRole('button', { name: /^Show done/ }).click()
+      await row(page, 'Task to uncomplete').getByRole('button', { name: 'Mark incomplete' }).click()
+      await expect(row(page, 'Task to uncomplete').getByText('Task to uncomplete')).not.toHaveClass(
+        /line-through/,
+      )
+      await expect
+        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .toContain('- [ ] Task to uncomplete')
     })
 
-    test('7.3.3 uncheck task — status reverts', async ({ vaultPage: page }) => {
-      // Create and complete a task
-      const input = page.getByPlaceholder('Add a task...')
-      await input.fill('Task to uncomplete')
-      await input.press('Enter')
-      await page.waitForTimeout(1_000)
-
-      const taskText = page.getByText('Task to uncomplete')
-      await expect(taskText).toBeVisible({ timeout: 5_000 })
-
-      // Mark complete
-      const taskRow = taskText.locator('..')
-      const completeBtn = taskRow.locator('button[aria-label="Mark complete"]')
-      await completeBtn.click()
-      await page.waitForTimeout(500)
-
-      // Now mark incomplete
-      const incompleteBtn = taskRow.locator('button[aria-label="Mark incomplete"]')
-      await incompleteBtn.click()
-      await page.waitForTimeout(500)
-
-      // Should no longer have line-through
-      await expect(taskText).not.toHaveClass(/line-through/)
+    test('7.3.4 Delete removes its line', async ({ vaultPage: page }) => {
+      await addTask(page, 'Task to delete', 'Task to delete')
+      const r = row(page, 'Task to delete')
+      await r.hover()
+      await r.getByRole('button', { name: 'Delete task' }).click()
+      await expect(r).toBeHidden({ timeout: 5_000 })
+      await expect
+        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .not.toContain('Task to delete')
     })
 
-    test('7.3.4 delete task — removed from list', async ({ vaultPage: page }) => {
-      const input = page.getByPlaceholder('Add a task...')
-      await input.fill('Task to delete')
-      await input.press('Enter')
-      await page.waitForTimeout(1_000)
+    test('7.3.5 The dialog edits the line, and adds subtasks under it', async ({
+      vaultPage: page,
+    }) => {
+      await addTask(page, 'Plan trip', 'Plan trip')
+      await row(page, 'Plan trip').click()
+      const dialog = page.getByRole('dialog')
+      await dialog.getByLabel('Due date').fill('2030-05-01')
+      await dialog.getByLabel('Remind at').fill('08:30')
+      await dialog.getByRole('button', { name: 'Low' }).click()
+      await dialog.getByPlaceholder('Add subtask').fill('Book hotel')
+      await dialog.getByPlaceholder('Add subtask').press('Enter')
+      await expect(dialog.getByText('Book hotel')).toBeVisible()
+      await dialog.getByRole('button', { name: 'Save' }).click()
 
-      const taskText = page.getByText('Task to delete')
-      await expect(taskText).toBeVisible({ timeout: 5_000 })
-
-      // Hover over the task to show action buttons
-      const taskRow = taskText.locator('xpath=ancestor::div[@role="button"]')
-      await taskRow.hover()
-      await page.waitForTimeout(300)
-
-      // Click delete
-      const deleteBtn = taskRow.locator('button[aria-label="Delete task"]')
-      await deleteBtn.click()
-      await page.waitForTimeout(1_000)
-
-      await expect(taskText).not.toBeVisible({ timeout: 5_000 })
-    })
-
-    test('7.3.7 create a project — subfolder created', async ({ vaultPage: page }) => {
-      // Click "Add project" in the sidebar (task groupings are Projects)
-      const addListBtn = page.getByText('Add project')
-      await addListBtn.click()
-      await page.waitForTimeout(300)
-
-      // Fill in the new project name
-      const listInput = page.getByPlaceholder('Project name')
-      await listInput.fill('My Project')
-      await listInput.press('Enter')
-      await page.waitForTimeout(1_000)
-
-      // The new list appears in the sidebar (and opens as the active view)
-      await expect(page.getByRole('button', { name: 'My Project', exact: true })).toBeVisible({
-        timeout: 5_000,
-      })
+      await expect
+        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .toContain('- [ ] Plan trip >2030-05-01 08:30 !4\n  - [ ] Book hotel')
     })
   })
 
   // ─── 7.4 Recurring Tasks ───────────────────────────────────────────────────
 
   test.describe('7.4 Recurring Tasks', () => {
-    test.fixme('7.4.1 complete repeating task — due rolls forward', async ({ vaultPage: page }) => {
-      // Create a recurring task
-      const input = page.getByPlaceholder('Add a task...')
-      await input.fill('Standup every monday')
-      await input.press('Enter')
-      await page.waitForTimeout(1_000)
+    test('7.4.1 Ticking a weekly task adds the next one', async ({ vaultPage: page }) => {
+      await addTask(page, 'Standup every monday', 'Standup')
+      const first = await readVaultFile(page, 'Inbox.md')
+      const due = /- \[ \] Standup >(\d{4}-\d\d-\d\d) every monday/.exec(first)?.[1]
+      expect(due).toBeTruthy()
 
-      const taskText = page.getByText('Standup')
-      await expect(taskText).toBeVisible({ timeout: 5_000 })
-
-      // Click the task to open detail dialog
-      const taskRow = taskText.locator('xpath=ancestor::div[@role="button"]')
-      await taskRow.click()
-      await page.waitForTimeout(500)
-
-      // Note the current due date in the dialog
-      const dueDateInput = page.locator('[role="dialog"]').locator('input[type="date"]')
-      const dueBefore = await dueDateInput.inputValue()
-
-      // Close dialog
-      const cancelBtn = page.locator('[role="dialog"]').getByText('Cancel')
-      await cancelBtn.click()
-      await page.waitForTimeout(300)
-
-      // Toggle complete — should roll due forward, not mark done
-      const toggleBtn = taskRow.locator(
-        'button[aria-label="Mark complete"], button[aria-label="Mark incomplete"]',
-      )
-      await toggleBtn.click()
-      await page.waitForTimeout(1_500)
-
-      // Re-open detail dialog
-      await taskRow.click()
-      await page.waitForTimeout(500)
-
-      const dueAfter = await page
-        .locator('[role="dialog"]')
-        .locator('input[type="date"]')
-        .inputValue()
-
-      // Due should have moved forward (later date)
-      expect(dueAfter > dueBefore).toBe(true)
+      await row(page, 'Standup').getByRole('button', { name: 'Mark complete' }).click()
+      const next = new Date()
+      next.setDate(next.getDate() + 1)
+      while (next.getDay() !== 1) next.setDate(next.getDate() + 1)
+      await expect
+        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .toContain(
+          `- [ ] Standup >${ymd(next)} every monday\n- [x] Standup >${due} every monday done:${ymd(new Date())}`,
+        )
+      await expect(row(page, 'Standup')).toBeVisible()
     })
   })
 })

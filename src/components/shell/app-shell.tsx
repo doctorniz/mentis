@@ -61,9 +61,15 @@ async function refreshAfterCapture(vaultFs: FileSystemAdapter, destination?: str
     case 'thought':
       await (await import('@/stores/board')).useBoardStore.getState().loadBoard(vaultFs)
       break
-    case 'task':
-      await (await import('@/stores/tasks')).useTasksStore.getState().loadTasks(vaultFs)
+    case 'task': {
+      // The overlay added a line to the inbox note: index it here, and Tasks shows it.
+      const [{ taskInbox }, { reindexFilePath }] = await Promise.all([
+        import('@/stores/tasks'),
+        import('@/lib/search/build-vault-index'),
+      ])
+      await reindexFilePath(vaultFs, taskInbox())
       break
+    }
     case 'calendar':
       await (await import('@/stores/calendar')).useCalendarStore.getState().loadEvents(vaultFs)
       break

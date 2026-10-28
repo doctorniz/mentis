@@ -1,4 +1,3 @@
-export type TaskStatus = 'todo' | 'in-progress' | 'done' | 'cancelled'
 export type TaskPriority = 1 | 2 | 3 | 4
 
 export const PRIORITY_LABELS: Record<TaskPriority, string> = {
@@ -33,48 +32,39 @@ export const WEEKDAY_LABEL: string[] = [
   'Saturday',
 ]
 
-export interface TaskFrontmatter {
-  uid: string
-  status: TaskStatus
-  priority: TaskPriority
-  due: string
-  created: string
-  modified: string
-  completed: string
-  tags: string[]
-  parent: string
-  order: number
-  /** CalDAV-style weekly repeat; `repeatWeekday` uses `Date#getDay()` (0=Sun … 6=Sat). */
-  repeat?: 'weekly' | ''
-  repeatWeekday?: number
-  /** When to remind, local `YYYY-MM-DDTHH:mm`. On a repeating task, its time of day applies to each occurrence. */
-  remind?: string
-  /** Every reminder occurrence up to this time has been dealt with (Done). */
-  reminderAck?: string
-  /** Remind again at this time (Snooze). */
-  snoozeUntil?: string
-  [key: string]: unknown
-}
-
+/**
+ * A task: one checkbox line in a note, `- [ ] Call the bank >2026-10-30 09:00 !2 #money`.
+ * Read from the note by `lib/tasks/line.ts`; the index keeps a derived copy.
+ */
 export interface TaskItem {
+  /** `path:line`. Changes when lines above it move; the line's text finds it again. */
+  id: string
+  /** The note it is written in. */
   path: string
-  uid: string
+  /** 0-based line in the file when it was read. */
+  line: number
+  /** The whole line as written, to find it again after edits elsewhere. */
+  raw: string
+  /** Columns of indent; deeper checkbox lines under a task are its subtasks. */
+  indent: number
+  /** The text with the task tokens taken out; inline `#tags` stay in it. */
   title: string
-  body: string
-  status: TaskStatus
-  priority: TaskPriority
-  due: string | null
-  created: string
-  modified: string
+  done: boolean
+  /** `done:YYYY-MM-DD`. */
   completed: string | null
+  /** `>YYYY-MM-DD`. */
+  due: string | null
+  /** `>YYYY-MM-DD HH:mm`: the time is when to remind. */
+  time: string | null
+  /** `!1`–`!4`; Normal (3) when none is written. */
+  priority: TaskPriority
   tags: string[]
-  list: string | null
-  parent: string | null
-  order: number
+  /** `every monday`. */
   repeat: 'weekly' | null
   repeatWeekday: number | null
-  remind: string | null
-  reminderAck: string | null
+  /** `snooze:YYYY-MM-DDTHH:mm`: remind again then. */
   snoozeUntil: string | null
+  /** The line of the task it is a subtask of. */
+  parentLine: number | null
   children: TaskItem[]
 }

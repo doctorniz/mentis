@@ -1,190 +1,32 @@
-import matter from 'gray-matter'
-import type { TaskItem, TaskFrontmatter, TaskPriority, TaskStatus } from '@/types/tasks'
-import { getEffectiveDueDate, parseLocalDate, startOfLocalDay } from '@/lib/tasks/recurrence'
+import type { TaskItem } from '@/types/tasks'
+import { parseLocalDate, startOfLocalDay } from '@/lib/tasks/recurrence'
 
-export const TASKS_DIR = '_mentis/_tasks'
+/** The note new tasks are added to when no note is named. */
+export const DEFAULT_TASK_INBOX = 'Inbox.md'
 
-const H1_RE = /^#\s+(.+)$/m
-
-const pad2 = (n: number) => String(n).padStart(2, '0')
-
-/** A date-time field as local `YYYY-MM-DDTHH:mm`, or null. YAML may have read one with seconds as a Date. */
-function localDateTimeField(value: unknown): string | null {
-  if (value instanceof Date) {
-    return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}T${pad2(value.getHours())}:${pad2(value.getMinutes())}`
-  }
-  return typeof value === 'string' && value.trim() ? value.trim().slice(0, 16) : null
+/** Days from today to `due` (negative when past), counted in local calendar days. */
+function daysUntil(due: string, now: Date): number | null {
+  const d = parseLocalDate(due)
+  if (!d) return null
+  // Rounding absorbs the 23h/25h days on either side of a DST change.
+  return Math.round((d.getTime() - startOfLocalDay(now).getTime()) / 86_400_000)
 }
 
-/** The reminder fields to write: kept from the task, changed by `patch`, empty ones left out. */
-export function reminderFields(
-  existing: Pick<TaskItem, 'remind' | 'reminderAck' | 'snoozeUntil'>,
-  patch: Partial<TaskFrontmatter> = {},
-): Partial<TaskFrontmatter> {
-  const pick = (key: 'remind' | 'reminderAck' | 'snoozeUntil') =>
-    patch[key] !== undefined ? String(patch[key] ?? '') : (existing[key] ?? '')
-  return Object.fromEntries(
-    (['remind', 'reminderAck', 'snoozeUntil'] as const)
-      .map((k) => [k, pick(k)] as const)
-      .filter(([, v]) => v),
-  )
+export function isOverdue(task: Pick<TaskItem, 'done' | 'due'>, now = new Date()): boolean {
+  if (task.done || !task.due) return false
+  const days = daysUntil(task.due, now)
+  return days !== null && days < 0
 }
 
-export function parseTaskItem(path: string, raw: string): TaskItem {
-  const { data, content } = matter(raw)
-  const fm = data as Partial<TaskFrontmatter>
-  const h1 = H1_RE.exec(content)
-
-  const rawTags = fm.tags as unknown
-  const tags = Array.isArray(rawTags)
-    ? (rawTags as unknown[]).map(String)
-    : typeof rawTags === 'string'
-      ? (rawTags as string).split(/[,\s]+/).filter(Boolean)
-      : []
-
-  const repeatFm = (fm.repeat as string) === 'weekly' ? ('weekly' as const) : null
-  const rw = fm.repeatWeekday
-  const repeatWeekday =
-    typeof rw === 'number' && rw >= 0 && rw <= 6
-      ? rw
-      : typeof rw === 'string' && /^[0-6]$/.test(rw)
-        ? Number(rw)
-        : null
-
-  return {
-    path,
-    uid: (fm.uid as string) ?? '',
-    title: h1 ? h1[1].trim() : '',
-    body: content,
-    status: (fm.status as TaskStatus) ?? 'todo',
-    priority: (fm.priority as TaskPriority) ?? 3,
-    due: fm.due || null,
-    created: (fm.created as string) ?? new Date().toISOString(),
-    modified: (fm.modified as string) ?? new Date().toISOString(),
-    completed: fm.completed || null,
-    tags,
-    list: listFromPath(path),
-    parent: fm.parent || null,
-    order: (fm.order as number) ?? 0,
-    repeat: repeatFm && repeatWeekday != null ? repeatFm : null,
-    repeatWeekday: repeatFm && repeatWeekday != null ? repeatWeekday : null,
-    remind: localDateTimeField(fm.remind),
-    reminderAck: localDateTimeField(fm.reminderAck),
-    snoozeUntil: localDateTimeField(fm.snoozeUntil),
-    children: [],
-  }
-}
-
-/** js-yaml rejects `undefined`; strip before stringify */
-function yamlSafeFrontmatter(fm: TaskFrontmatter): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(fm as Record<string, unknown>).filter(([, v]) => v !== undefined),
-  )
-}
-
-export function serializeTask(fm: TaskFrontmatter, body: string): string {
-  const updated: TaskFrontmatter = { ...fm, modified: new Date().toISOString() }
-  return matter.stringify(body, yamlSafeFrontmatter(updated))
-}
-
-export function generateTaskFilename(): string {
-  const ts = Date.now().toString(36)
-  const rand = Math.random().toString(36).slice(2, 8)
-  return `${ts}-${rand}.md`
-}
-
-export function generateUid(): string {
-  return crypto.randomUUID()
-}
-
-export function defaultTaskFrontmatter(overrides?: Partial<TaskFrontmatter>): TaskFrontmatter {
-  const now = new Date().toISOString()
-  const base: TaskFrontmatter = {
-    uid: generateUid(),
-    status: 'todo',
-    priority: 3,
-    due: '',
-    created: now,
-    modified: now,
-    completed: '',
-    tags: [],
-    parent: '',
-    order: 0,
-  }
-  if (!overrides) return base
-  return {
-    ...base,
-    ...Object.fromEntries(Object.entries(overrides).filter(([, v]) => v !== undefined)),
-  } as TaskFrontmatter
-}
-
-export function listFromPath(path: string): string | null {
-  const rel = path.startsWith(TASKS_DIR + '/') ? path.slice(TASKS_DIR.length + 1) : path
-  const parts = rel.split('/')
-  return parts.length > 1 ? parts[0] : null
-}
-
-export function buildTaskTree(flat: TaskItem[]): TaskItem[] {
-  const byUid = new Map<string, TaskItem>()
-  for (const t of flat) {
-    byUid.set(t.uid, { ...t, children: [] })
-  }
-
-  const roots: TaskItem[] = []
-  for (const t of byUid.values()) {
-    if (t.parent && byUid.has(t.parent)) {
-      byUid.get(t.parent)!.children.push(t)
-    } else {
-      roots.push(t)
-    }
-  }
-
-  const sortFn = (a: TaskItem, b: TaskItem) => {
-    const aDone = a.status === 'done' || a.status === 'cancelled' ? 1 : 0
-    const bDone = b.status === 'done' || b.status === 'cancelled' ? 1 : 0
-    if (aDone !== bDone) return aDone - bDone
-    if (a.order !== b.order) return a.order - b.order
-    return new Date(b.modified).getTime() - new Date(a.modified).getTime()
-  }
-
-  roots.sort(sortFn)
-  for (const t of byUid.values()) {
-    if (t.children.length > 1) t.children.sort(sortFn)
-  }
-
-  return roots
-}
-
-export function isOverdue(task: TaskItem): boolean {
-  if (task.status === 'done' || task.status === 'cancelled') return false
-  const today = startOfLocalDay(new Date())
-  const eff = getEffectiveDueDate(task, today)
-  if (!eff) return false
-  const d = parseLocalDate(eff)
-  if (!d) return false
-  return d < today
-}
-
-export function isDueToday(task: TaskItem): boolean {
-  const today = new Date()
-  const eff = getEffectiveDueDate(task, today)
-  if (!eff) return false
-  const d = parseLocalDate(eff)
-  if (!d) return false
-  return (
-    d.getFullYear() === today.getFullYear() &&
-    d.getMonth() === today.getMonth() &&
-    d.getDate() === today.getDate()
-  )
+export function isDueToday(task: Pick<TaskItem, 'due'>, now = new Date()): boolean {
+  return task.due ? daysUntil(task.due, now) === 0 : false
 }
 
 /** Badge text for a `YYYY-MM-DD` due date, counted in local calendar days. */
 export function formatDueLabel(due: string, now: Date = new Date()): string {
   const d = parseLocalDate(due)
-  if (!d) return due
-  const today = startOfLocalDay(now)
-  // Rounding absorbs the 23h/25h days on either side of a DST change.
-  const days = Math.round((d.getTime() - today.getTime()) / 86_400_000)
+  const days = daysUntil(due, now)
+  if (!d || days === null) return due
   if (days < 0) return `${Math.abs(days)}d overdue`
   if (days === 0) return 'Today'
   if (days === 1) return 'Tomorrow'
@@ -192,62 +34,31 @@ export function formatDueLabel(due: string, now: Date = new Date()): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-export function isDueThisWeek(task: TaskItem): boolean {
-  const today = startOfLocalDay(new Date())
-  const weekEnd = new Date(today)
-  weekEnd.setDate(weekEnd.getDate() + 7)
+export type DateGroup = 'Overdue' | 'Today' | 'Next 7 days' | 'Later' | 'No date'
+export const DATE_GROUPS: readonly DateGroup[] = [
+  'Overdue',
+  'Today',
+  'Next 7 days',
+  'Later',
+  'No date',
+]
 
-  const eff = getEffectiveDueDate(task, today)
-  if (!eff) return false
-  const d = parseLocalDate(eff)
-  if (!d) return false
-  return d >= today && d <= weekEnd
+/** Which By date section an open task belongs in. */
+export function dateGroupOf(task: Pick<TaskItem, 'due'>, now = new Date()): DateGroup {
+  const days = task.due ? daysUntil(task.due, now) : null
+  if (days === null) return 'No date'
+  if (days < 0) return 'Overdue'
+  if (days === 0) return 'Today'
+  if (days <= 7) return 'Next 7 days'
+  return 'Later'
 }
 
-export function bodyFromTitle(title: string): string {
-  return title ? `\n# ${title}\n` : '\n'
-}
-
-/** Build frontmatter for disk write; preserves or clears `repeat` from `patch` / `existing`. */
-export function mergeTaskFrontmatterForSave(
-  existing: TaskItem,
-  patch: Partial<TaskFrontmatter>,
-): TaskFrontmatter {
-  const repeatResolved =
-    patch.repeat === '' || patch.repeat === null
-      ? null
-      : patch.repeat === 'weekly'
-        ? 'weekly'
-        : existing.repeat
-
-  const repeatWeekdayResolved =
-    typeof patch.repeatWeekday === 'number' ? patch.repeatWeekday : existing.repeatWeekday
-
-  const weekly =
-    repeatResolved === 'weekly' &&
-    repeatWeekdayResolved != null &&
-    repeatWeekdayResolved >= 0 &&
-    repeatWeekdayResolved <= 6
-
-  const fm: TaskFrontmatter = {
-    uid: existing.uid,
-    status: (patch.status as TaskStatus) ?? existing.status,
-    priority: (patch.priority as TaskPriority) ?? existing.priority,
-    due: patch.due !== undefined ? String(patch.due) : (existing.due ?? ''),
-    created: existing.created,
-    modified: new Date().toISOString(),
-    completed:
-      patch.completed !== undefined ? String(patch.completed) : (existing.completed ?? '') || '',
-    tags: patch.tags ?? existing.tags,
-    parent: patch.parent !== undefined ? String(patch.parent) : (existing.parent ?? '') || '',
-    order: patch.order ?? existing.order,
-    ...reminderFields(existing, patch),
-  }
-
-  if (weekly) {
-    fm.repeat = 'weekly'
-    fm.repeatWeekday = repeatWeekdayResolved as number
-  }
-
-  return fm
+/** Earliest due first (undated last), then most urgent, then as written. */
+export function compareTasks(a: TaskItem, b: TaskItem): number {
+  const ad = a.due ?? '9999-99-99'
+  const bd = b.due ?? '9999-99-99'
+  if (ad !== bd) return ad < bd ? -1 : 1
+  if ((a.time ?? '') !== (b.time ?? '')) return (a.time ?? '99') < (b.time ?? '99') ? -1 : 1
+  if (a.priority !== b.priority) return a.priority - b.priority
+  return a.path === b.path ? a.line - b.line : a.path.localeCompare(b.path)
 }

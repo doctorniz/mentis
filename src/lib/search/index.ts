@@ -1,4 +1,5 @@
 import type { SearchFilters, SearchResult } from '@/types/search'
+import type { TaskItem } from '@/types/tasks'
 import { toIndexFilters } from './filters'
 import { callIndex, indexWorkerStarted } from '@/core/index/client'
 import type {
@@ -85,6 +86,12 @@ export function putReminderRows(rows: ReminderRow[]): Promise<void> {
 
 export function getIndexManifest(): Promise<ManifestEntry[]> {
   return callIndex('manifest', undefined)
+}
+
+/** Every checkbox task in the indexed notes, once the index is open. */
+export async function getIndexTasks(): Promise<TaskItem[]> {
+  await opened
+  return callIndex('tasks', undefined)
 }
 
 /** Every wiki-link in the indexed vault, as written (unresolved). */

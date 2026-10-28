@@ -28,6 +28,7 @@ import type { NoteFrontmatter } from '@/types/editor'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useVaultStore } from '@/stores/vault'
+import { NOTE_WRITTEN_EVENT } from '@/lib/notes/note-written'
 import { toast } from '@/stores/toast'
 import { cn } from '@/utils/cn'
 import { Mic } from 'lucide-react'
@@ -616,6 +617,27 @@ export const MarkdownNoteEditor = forwardRef<
       })
     }
   }, [editor, path, vaultFs, tabId, updateTab, markDirty, syncPush])
+
+  // A task in this note was ticked or changed elsewhere (a reminder's Done):
+  // show the note as it is now, unless there are edits here still to save.
+  useEffect(() => {
+    if (!editor) return
+    const onWritten = (e: Event) => {
+      if ((e as CustomEvent<{ path: string }>).detail?.path !== pathRef.current) return
+      const tab = useEditorStore.getState().tabs.find((t) => t.id === tabIdRef.current)
+      if (tab?.isDirty || showRawRef.current || loadingRef.current) return
+      void vaultFs
+        .readTextFile(pathRef.current)
+        .then((raw) => {
+          const doc = parseNote(pathRef.current, raw)
+          frontmatterRef.current = doc.frontmatter
+          editor.commands.setContent(markdownToTiptapJSON(doc.content), false)
+        })
+        .catch(() => {})
+    }
+    window.addEventListener(NOTE_WRITTEN_EVENT, onWritten)
+    return () => window.removeEventListener(NOTE_WRITTEN_EVENT, onWritten)
+  }, [editor, vaultFs])
 
   // Auto-focus and select the title for newly created notes
   const clearNew = useEditorStore((s) => s.clearNew)

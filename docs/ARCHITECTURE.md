@@ -104,7 +104,7 @@ writes hand Rust a file descriptor (§9).
 
 **Vault layout:** user notes and folders at the top level (root folders are
 notebooks; `_`-prefixed ones are system), and app data under `_mentis/`:
-`_tasks`, `_calendar`, `_bookmarks`, `_chats`, `_drawings`, `signatures`,
+`_calendar`, `_bookmarks`, `_chats`, `_drawings`, `signatures`,
 `snapshots`, `templates`, `config.json`. Thoughts, journal entries and
 attachments are ordinary visible folders, each set in Settings: `Thoughts/`
 (one note per thought, named by time and first words; every note in the
@@ -140,6 +140,7 @@ deleting it loses nothing, and it is rebuilt from them.
 | `tree`      | each folder's last listing, so the tree draws before the disk is read |
 | `hashes`    | SHA-256 per file at size+mtime, so sync re-hashes only what changed   |
 | `reminders` | reminder occurrences from tasks, events and the journal prompt        |
+| `tasks`     | every checkbox line in the notes, parsed (`src/lib/tasks/line.ts`)    |
 
 - **Web:** sqlite-wasm in a Web Worker, persisted in the OPFS SAH pool
   (`src/core/index/worker.ts`). **Shells:** rusqlite in Rust
@@ -147,7 +148,7 @@ deleting it loses nothing, and it is rebuilt from them.
   stores implement the same protocol (`src/core/index/protocol.ts`) and share
   `INDEX_VERSION` — a different version rebuilds the index.
 - **Extraction** runs in a worker: each module's `search.ts` turns a file into
-  `{ title, content, tags, links }` (`src/core/index/extract-worker.ts`).
+  `{ title, content, tags, links, tasks }` (`src/core/index/extract-worker.ts`).
 - **PDF edits** (pdf-lib: saving annotations, page operations, forms) run in
   a worker too (`src/lib/pdf/pdf-ops.ts`), started on the first edit.
 - **Launch:** the tree and search answer from the index at once; a background
@@ -178,8 +179,22 @@ from the capture bar, the command palette, the desktop's global hotkey and
 overlay window, and on the phone from shares, app shortcuts, a widget and a
 Quick Settings tile.
 
-**Calendar and Tasks.** Tasks (projects, recurrence, `remind`) with Lists
-(checklists, ordered lists, scheduled reset) as a second tab; the Calendar
+**Tasks** are checkbox lines in any note:
+`- [ ] Call the bank >2026-10-30 09:00 !2 #money every friday`. `>date` is
+the due day and a time on it the reminder; `!1`–`!4` the priority; `every
+<weekday>` a weekly repeat; indented checkboxes are subtasks. Ticking writes
+`done:YYYY-MM-DD` (in the Tasks view or the editor, `task-done-extension.ts`);
+ticking a weekly task adds the next one above it. A reminder's Snooze writes
+`snooze:…`, its Done ticks the task. The markdown extractor parses the lines
+into the index's `tasks` table, which the Tasks view, the calendar and
+reminders read; edits rewrite the one line in its note (found again by its
+text if lines above it moved) and reindex that note. New tasks are added to
+`Inbox.md` (Settings › Vault). Kanban, slides and mindmap files are not read
+for tasks.
+
+**Calendar and Tasks.** Tasks, grouped By date (Overdue, Today, Next 7 days,
+Later, No date) or By note, with Lists (checklists, ordered lists, scheduled
+reset) as a second tab; the Calendar
 (repeating events, alerts, tasks on their due days, a mark on days with a
 journal entry) with Reminders as a second tab; and the Journal (a note per day,
 with tabs from a template).

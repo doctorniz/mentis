@@ -1,366 +1,144 @@
 import { create } from 'zustand'
-import { immer } from 'zustand/middleware/immer'
 import type { FileSystemAdapter } from '@/lib/fs/types'
-import type { TaskItem, TaskFrontmatter, TaskPriority } from '@/types/tasks'
+import type { TaskItem, TaskPriority } from '@/types/tasks'
+import { DEFAULT_TASK_INBOX } from '@/lib/tasks'
 import {
-  TASKS_DIR,
-  parseTaskItem,
-  serializeTask,
-  generateTaskFilename,
-  defaultTaskFrontmatter,
-  reminderFields,
-  bodyFromTitle,
-  mergeTaskFrontmatterForSave,
-} from '@/lib/tasks'
-import { nextWeeklyDueAfterCompletion } from '@/lib/tasks/recurrence'
+  editTaskInText,
+  formatTaskLine,
+  insertSubtaskInText,
+  newTaskFields,
+  parseTasks,
+  toggledLines,
+  type TaskFields,
+} from '@/lib/tasks/line'
+import { getIndexTasks } from '@/lib/search/index'
+import { reindexFilePath } from '@/lib/search/build-vault-index'
+import { INDEX_CHANGED_EVENTS } from '@/lib/search/index-events'
+import { announceNoteWritten } from '@/lib/notes/note-written'
+import { useVaultStore } from '@/stores/vault'
 
-export type TaskFilter = 'all' | 'today' | 'upcoming'
+/** What a new task can be given besides its text. */
+export interface NewTask {
+  due?: string
+  time?: string
+  priority?: TaskPriority
+  repeatWeekday?: number
+  /** The note to add it to; the inbox note when absent. */
+  note?: string
+}
 
 interface TasksState {
+  /** Every task in the vault's notes, in file order. */
   items: TaskItem[]
-  lists: string[]
-  activeList: string | null
-  activeFilter: TaskFilter
   loading: boolean
+  /** Read at least once: `items` is the vault's, not the empty start. */
+  loaded: boolean
 
-  loadTasks: (fs: FileSystemAdapter) => Promise<void>
-  addTask: (
-    fs: FileSystemAdapter,
-    title: string,
-    opts?: {
-      list?: string | null
-      priority?: TaskPriority
-      due?: string
-      tags?: string[]
-      parent?: string
-      repeat?: 'weekly'
-      repeatWeekday?: number
-      /** When to remind, local `YYYY-MM-DDTHH:mm`. */
-      remind?: string
-    },
-  ) => Promise<TaskItem>
-  updateTask: (
-    fs: FileSystemAdapter,
-    path: string,
-    fields: Partial<TaskFrontmatter & { body: string }>,
-  ) => Promise<void>
-  toggleTask: (fs: FileSystemAdapter, path: string) => Promise<void>
-  removeTask: (fs: FileSystemAdapter, path: string) => Promise<void>
-  clearCompleted: (fs: FileSystemAdapter, list?: string | null) => Promise<void>
-  moveToList: (fs: FileSystemAdapter, path: string, newList: string | null) => Promise<void>
-  reorderTask: (fs: FileSystemAdapter, path: string, newOrder: number) => Promise<void>
-  createList: (fs: FileSystemAdapter, name: string) => Promise<void>
-  removeList: (fs: FileSystemAdapter, name: string) => Promise<void>
-  setActiveList: (list: string | null) => void
-  setActiveFilter: (filter: TaskFilter) => void
+  /** Read the tasks from the index. Called again whenever the index changes. */
+  loadTasks: (fs?: FileSystemAdapter) => Promise<void>
+  addTask: (fs: FileSystemAdapter, title: string, opts?: NewTask) => Promise<TaskItem | undefined>
+  updateTask: (fs: FileSystemAdapter, task: TaskItem, patch: Partial<TaskFields>) => Promise<void>
+  toggleTask: (fs: FileSystemAdapter, task: TaskItem) => Promise<void>
+  /** Delete the task's line and the lines under it. */
+  removeTask: (fs: FileSystemAdapter, task: TaskItem) => Promise<void>
+  addSubtask: (fs: FileSystemAdapter, parent: TaskItem, title: string) => Promise<void>
+  /** Write a note back as it was (Undo). */
+  restoreNote: (fs: FileSystemAdapter, path: string, text: string) => Promise<void>
 }
 
-async function collectTaskFiles(fs: FileSystemAdapter, dir: string, acc: string[]): Promise<void> {
-  const entries = await fs.readdir(dir)
-  for (const e of entries) {
-    if (e.isDirectory) {
-      await collectTaskFiles(fs, e.path, acc)
-    } else if (e.name.endsWith('.md')) {
-      acc.push(e.path)
-    }
+/** The note new tasks go to, from Settings. */
+export function taskInbox(): string {
+  const configured = useVaultStore.getState().config?.taskInbox?.trim()
+  return (configured || DEFAULT_TASK_INBOX).replace(/^\/+/, '')
+}
+
+let generation = 0
+
+export const useTasksStore = create<TasksState>()((set, get) => {
+  /** Write a note and show its tasks at once; the index catches up behind. */
+  async function writeNote(fs: FileSystemAdapter, path: string, text: string, created = false) {
+    await fs.writeTextFile(path, text)
+    generation++
+    set((s) => ({
+      items: [...s.items.filter((t) => t.path !== path), ...parseTasks(path, text)],
+    }))
+    announceNoteWritten(path)
+    if (created) window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+    void reindexFilePath(fs, path).catch(() => {})
   }
-}
 
-async function collectLists(fs: FileSystemAdapter): Promise<string[]> {
-  const entries = await fs.readdir(TASKS_DIR)
-  return entries.filter((e) => e.isDirectory).map((e) => e.name)
-}
+  async function editLine(
+    fs: FileSystemAdapter,
+    task: TaskItem,
+    edit: Parameters<typeof editTaskInText>[2],
+  ) {
+    const text = await fs.readTextFile(task.path)
+    await writeNote(fs, task.path, editTaskInText(text, task, edit))
+  }
 
-export const useTasksStore = create<TasksState>()(
-  immer((set, get) => ({
+  return {
     items: [],
-    lists: [],
-    activeList: null,
-    activeFilter: 'all' as TaskFilter,
     loading: false,
+    loaded: false,
 
-    loadTasks: async (fs) => {
-      set((s) => {
-        s.loading = true
-      })
+    loadTasks: async () => {
+      const mine = ++generation
+      set({ loading: get().items.length === 0 })
       try {
-        const exists = await fs.exists(TASKS_DIR)
-        if (!exists) {
-          await fs.mkdir(TASKS_DIR)
-          set((s) => {
-            s.items = []
-            s.lists = []
-            s.loading = false
-          })
-          return
-        }
-
-        const paths: string[] = []
-        await collectTaskFiles(fs, TASKS_DIR, paths)
-
-        const items: TaskItem[] = []
-        for (const p of paths) {
-          try {
-            const raw = await fs.readTextFile(p)
-            items.push(parseTaskItem(p, raw))
-          } catch {
-            /* skip unreadable */
-          }
-        }
-
-        const lists = await collectLists(fs)
-        set((s) => {
-          s.items = items
-          s.lists = lists
-          s.loading = false
-        })
-      } catch {
-        set((s) => {
-          s.loading = false
-        })
+        const items = await getIndexTasks()
+        // A write since the request started is newer than what the index had.
+        if (mine === generation) set({ items, loaded: true })
+      } finally {
+        set({ loading: false })
       }
     },
 
-    addTask: async (fs, title, opts) => {
-      const exists = await fs.exists(TASKS_DIR)
-      if (!exists) await fs.mkdir(TASKS_DIR)
-
-      const list = opts?.list ?? get().activeList
-      const dir = list ? `${TASKS_DIR}/${list}` : TASKS_DIR
-      if (list) {
-        const catExists = await fs.exists(dir)
-        if (!catExists) await fs.mkdir(dir)
-      }
-
-      const fm = defaultTaskFrontmatter({
-        priority: opts?.priority,
-        due: opts?.due ?? '',
-        tags: opts?.tags ?? [],
-        parent: opts?.parent ?? '',
-        ...(opts?.remind ? { remind: opts.remind } : {}),
-        ...(opts?.repeat === 'weekly' && opts.repeatWeekday != null
-          ? { repeat: 'weekly' as const, repeatWeekday: opts.repeatWeekday }
-          : {}),
+    addTask: async (fs, title, opts = {}) => {
+      const path = opts.note ?? taskInbox()
+      const exists = await fs.exists(path)
+      const before = exists ? await fs.readTextFile(path) : ''
+      const line = formatTaskLine({
+        ...newTaskFields(title),
+        due: opts.due ?? null,
+        time: opts.due ? (opts.time ?? null) : null,
+        priority: opts.priority ?? 3,
+        repeatWeekday: opts.repeatWeekday ?? null,
       })
-
-      const filename = generateTaskFilename()
-      const path = `${dir}/${filename}`
-      const body = bodyFromTitle(title)
-      const raw = serializeTask(fm, body)
-      await fs.writeTextFile(path, raw)
-
-      const item = parseTaskItem(path, raw)
-      set((s) => {
-        s.items.push(item)
-        if (list && !s.lists.includes(list)) {
-          s.lists.push(list)
-          s.lists.sort()
-        }
-      })
-      return item
+      const eol = before.includes('\r\n') ? '\r\n' : '\n'
+      const text =
+        before && !before.endsWith('\n') ? `${before}${eol}${line}${eol}` : `${before}${line}${eol}`
+      if (!exists) {
+        const dir = path.split('/').slice(0, -1).join('/')
+        if (dir && !(await fs.exists(dir))) await fs.mkdir(dir)
+      }
+      await writeNote(fs, path, text, !exists)
+      return get()
+        .items.filter((t) => t.path === path)
+        .at(-1)
     },
 
-    updateTask: async (fs, path, fields) => {
-      const state = get()
-      const existing = state.items.find((i) => i.path === path)
-      if (!existing) return
+    updateTask: (fs, task, patch) =>
+      editLine(fs, task, (f, l) => [formatTaskLine({ ...f, ...patch }, l.indent, l.bullet)]),
 
-      const { body: bodyField, ...fmPatch } = fields as Partial<TaskFrontmatter> & {
-        body?: string
-      }
-      const fm = mergeTaskFrontmatterForSave(existing, fmPatch)
-      const body = bodyField ?? existing.body
-      const raw = serializeTask(fm, body)
-      await fs.writeTextFile(path, raw)
+    toggleTask: (fs, task) => editLine(fs, task, (f, l) => toggledLines(f, l)),
 
-      const updated = parseTaskItem(path, raw)
-      set((s) => {
-        const idx = s.items.findIndex((i) => i.path === path)
-        if (idx !== -1) s.items[idx] = updated
-      })
+    removeTask: (fs, task) => editLine(fs, task, () => null),
+
+    restoreNote: (fs, path, text) => writeNote(fs, path, text),
+
+    addSubtask: async (fs, parent, title) => {
+      const text = await fs.readTextFile(parent.path)
+      await writeNote(fs, parent.path, insertSubtaskInText(text, parent, title))
     },
+  }
+})
 
-    toggleTask: async (fs, path) => {
-      const state = get()
-      const existing = state.items.find((i) => i.path === path)
-      if (!existing) return
-
-      const isDone = existing.status === 'done'
-      const now = new Date().toISOString()
-
-      const rollWeekly = !isDone && existing.repeat === 'weekly' && existing.repeatWeekday != null
-
-      const newStatus = rollWeekly ? 'todo' : isDone ? 'todo' : 'done'
-      const nextDue =
-        rollWeekly && existing.repeatWeekday != null
-          ? nextWeeklyDueAfterCompletion(new Date(), existing.repeatWeekday)
-          : (existing.due ?? '')
-      const nextCompleted = rollWeekly ? '' : isDone ? '' : now
-
-      const fm: TaskFrontmatter = {
-        uid: existing.uid,
-        status: newStatus,
-        priority: existing.priority,
-        due: nextDue,
-        created: existing.created,
-        modified: now,
-        completed: nextCompleted,
-        tags: existing.tags,
-        parent: existing.parent ?? '',
-        order: existing.order,
-        ...reminderFields(existing),
-      }
-
-      if (existing.repeat === 'weekly' && existing.repeatWeekday != null) {
-        fm.repeat = 'weekly'
-        fm.repeatWeekday = existing.repeatWeekday
-      }
-
-      const raw = serializeTask(fm, existing.body)
-      await fs.writeTextFile(path, raw)
-
-      const updated = parseTaskItem(path, raw)
-      set((s) => {
-        const idx = s.items.findIndex((i) => i.path === path)
-        if (idx !== -1) s.items[idx] = updated
-      })
-    },
-
-    removeTask: async (fs, path) => {
-      const state = get()
-      const target = state.items.find((i) => i.path === path)
-      if (!target) return
-
-      const childPaths = state.items.filter((i) => i.parent === target.uid).map((i) => i.path)
-
-      for (const cp of childPaths) {
-        try {
-          await fs.remove(cp)
-        } catch {
-          /* already gone */
-        }
-      }
-      try {
-        await fs.remove(path)
-      } catch {
-        /* already gone */
-      }
-
-      set((s) => {
-        const uid = target.uid
-        s.items = s.items.filter((i) => i.path !== path && i.parent !== uid)
-      })
-    },
-
-    clearCompleted: async (fs, list) => {
-      const state = get()
-      const toRemove = state.items.filter(
-        (i) => i.status === 'done' && (list === undefined ? true : i.list === list),
-      )
-
-      for (const item of toRemove) {
-        try {
-          await fs.remove(item.path)
-        } catch {
-          /* ignore */
-        }
-      }
-
-      const removePaths = new Set(toRemove.map((i) => i.path))
-      set((s) => {
-        s.items = s.items.filter((i) => !removePaths.has(i.path))
-      })
-    },
-
-    moveToList: async (fs, path, newList) => {
-      const state = get()
-      const target = state.items.find((i) => i.path === path)
-      if (!target) return
-
-      const dir = newList ? `${TASKS_DIR}/${newList}` : TASKS_DIR
-      if (newList) {
-        const catExists = await fs.exists(dir)
-        if (!catExists) await fs.mkdir(dir)
-      }
-
-      const filename = path.split('/').pop()!
-      const newPath = `${dir}/${filename}`
-      if (newPath === path) return
-
-      await fs.rename(path, newPath)
-
-      const children = state.items.filter((i) => i.parent === target.uid)
-      for (const child of children) {
-        const childFilename = child.path.split('/').pop()!
-        const childNewPath = `${dir}/${childFilename}`
-        if (childNewPath !== child.path) {
-          await fs.rename(child.path, childNewPath)
-        }
-      }
-
-      set((s) => {
-        const item = s.items.find((i) => i.path === path)
-        if (item) {
-          item.path = newPath
-          item.list = newList
-        }
-        for (const child of s.items) {
-          if (child.parent === target.uid) {
-            const cf = child.path.split('/').pop()!
-            child.path = `${dir}/${cf}`
-            child.list = newList
-          }
-        }
-        if (newList && !s.lists.includes(newList)) {
-          s.lists.push(newList)
-          s.lists.sort()
-        }
-      })
-    },
-
-    reorderTask: async (fs, path, newOrder) => {
-      const store = get()
-      const existing = store.items.find((i) => i.path === path)
-      if (!existing) return
-
-      await store.updateTask(fs, path, { order: newOrder })
-    },
-
-    createList: async (fs, name) => {
-      const dir = `${TASKS_DIR}/${name}`
-      const exists = await fs.exists(TASKS_DIR)
-      if (!exists) await fs.mkdir(TASKS_DIR)
-      await fs.mkdir(dir)
-      set((s) => {
-        if (!s.lists.includes(name)) {
-          s.lists.push(name)
-          s.lists.sort()
-        }
-      })
-    },
-
-    removeList: async (fs, name) => {
-      const dir = `${TASKS_DIR}/${name}`
-      try {
-        await fs.removeDir(dir)
-      } catch {
-        /* ignore */
-      }
-      set((s) => {
-        s.lists = s.lists.filter((l) => l !== name)
-        s.items = s.items.filter((i) => i.list !== name)
-        if (s.activeList === name) s.activeList = null
-      })
-    },
-
-    setActiveList: (list) =>
-      set((s) => {
-        s.activeList = list
-      }),
-
-    setActiveFilter: (filter) =>
-      set((s) => {
-        s.activeFilter = filter
-      }),
-  })),
-)
+// The index changed (a note saved, a sync, a reconcile): its tasks are current.
+if (typeof window !== 'undefined') {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const reload = () => {
+    clearTimeout(timer)
+    timer = setTimeout(() => void useTasksStore.getState().loadTasks(), 150)
+  }
+  for (const name of INDEX_CHANGED_EVENTS) window.addEventListener(name, reload)
+}

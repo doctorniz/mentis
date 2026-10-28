@@ -51,6 +51,8 @@ export interface VaultConfig {
    * Defaults to 'Thoughts'. Every note directly in it is a thought.
    */
   thoughtsFolder: string
+  /** Vault-relative note new tasks are added to when none is named. Defaults to 'Inbox.md'. */
+  taskInbox: string
   /** Start each journal entry added from capture with its time (`**14:32** — `). Defaults to true. */
   journalTimestamps: boolean
   /** File name of the journal template in the templates folder; '' for none. */
@@ -122,6 +124,7 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   dailyNotesEnabled: true,
   dailyNotesFolder: DAILY_NOTES_DIR,
   thoughtsFolder: THOUGHTS_DIR,
+  taskInbox: 'Inbox.md',
   journalTimestamps: true,
   journalTemplate: '',
   journalPrompt: '',

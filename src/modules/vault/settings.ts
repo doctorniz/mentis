@@ -23,6 +23,14 @@ const sections: readonly SettingsSection[] = [
         set: (_, defaultNewFileFolder) => ({ defaultNewFileFolder }),
       },
       {
+        id: 'taskInbox',
+        kind: 'text',
+        label: 'New tasks go to',
+        placeholder: 'Inbox.md',
+        get: (c) => c.taskInbox,
+        set: (_, taskInbox) => ({ taskInbox }),
+      },
+      {
         id: 'templateFolder',
         kind: 'folder',
         label: 'Template folder',

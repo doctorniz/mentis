@@ -36,7 +36,7 @@ through `@/core` or a registry. `core/` imports neither `modules/` nor
 | Tests                           | `*.test.ts(x)`; e2e `NN-topic.spec.ts`                                 | `pen.test.ts`, `30-touch.spec.ts`  |
 | Components, types, interfaces   | PascalCase                                                             | `TaskRow`, `VaultConfig`           |
 | Functions, variables            | camelCase                                                              | `createVault`, `searchResults`     |
-| Constants                       | SCREAMING_SNAKE_CASE                                                   | `TASKS_DIR`                        |
+| Constants                       | SCREAMING_SNAKE_CASE                                                   | `DEFAULT_TASK_INBOX`               |
 | Zustand stores                  | `use[Name]Store`                                                       | `useTasksStore`                    |
 | Hooks                           | `use[Name]`                                                            | `useHoldToReorder`                 |
 | Event handlers                  | `handle[Event]` / `on[Event]`                                          | `handleToggle`, `onSaved`          |

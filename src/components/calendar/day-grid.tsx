@@ -48,7 +48,7 @@ export function DayGrid({
     })
 
   const dayTasks = tasks.filter((t) => {
-    if (t.status === 'done' || t.status === 'cancelled') return false
+    if (t.done) return false
     const eff = getEffectiveDueDate(t)
     return eff ? eff.slice(0, 10) === dateStr : false
   })
@@ -137,7 +137,7 @@ export function DayGrid({
             <div className="flex flex-col gap-1.5">
               {dayTasks.map((t) => (
                 <div
-                  key={t.path}
+                  key={t.id}
                   className="border-border bg-bg-secondary flex items-center gap-3 rounded-lg border px-3 py-2.5"
                 >
                   <div className="border-border size-4 shrink-0 rounded-full border-2" />

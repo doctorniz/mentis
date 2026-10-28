@@ -13,35 +13,14 @@ import { test, expect, navigateTo } from './fixtures'
  */
 
 const PHONE = { width: 375, height: 667 }
-/** Inside the old 640–767px gap where Tasks used to stay desktop-mode. */
-const TABLET_GAP = { width: 700, height: 900 }
 
 test.describe('19 — Responsive layout consistency', () => {
-  test('19.1 Tasks: drawer below md, including the 640–767 gap', async ({ vaultPage: page }) => {
-    for (const viewport of [PHONE, TABLET_GAP]) {
-      await page.setViewportSize(viewport)
-      await navigateTo(page, 'tasks')
-
-      // Desktop sidebar hidden; section-icon trigger shown
-      const trigger = page.getByRole('button', { name: 'Open projects' })
-      await expect(trigger).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Inbox' })).toBeHidden()
-
-      // Trigger opens the drawer; picking a list closes it
-      await trigger.click()
-      const drawer = page.getByRole('dialog')
-      await expect(drawer).toBeVisible()
-      await drawer.getByRole('button', { name: 'Inbox' }).click()
-      await expect(drawer).toBeHidden()
-    }
-  })
-
-  test('19.2 Tasks: static sidebar at md+', async ({ vaultPage: page }) => {
-    await page.setViewportSize({ width: 900, height: 700 })
+  test('19.1 Tasks: the groupings and the add bar fit a phone', async ({ vaultPage: page }) => {
+    await page.setViewportSize(PHONE)
     await navigateTo(page, 'tasks')
-
-    await expect(page.getByRole('button', { name: 'Inbox' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Open projects' })).toBeHidden()
+    await expect(page.getByRole('radio', { name: 'By date' })).toBeVisible()
+    await expect(page.getByRole('radio', { name: 'By note' })).toBeVisible()
+    await expect(page.getByPlaceholder('Add a task...')).toBeVisible()
   })
 
   test('19.3 Bookmarks: drawer below md with Bookmark icon trigger', async ({

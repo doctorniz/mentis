@@ -1,7 +1,7 @@
 import matter from 'gray-matter'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { ReminderRow } from '@/core/index/protocol'
-import { TASKS_DIR, parseTaskItem } from '@/lib/tasks'
+import type { TaskItem } from '@/types/tasks'
 import { CALENDAR_DIR, parseCalendarEvent, parseEventDate } from '@/lib/calendar'
 import { eventReminders, taskReminders } from '@/lib/reminders'
 
@@ -17,13 +17,15 @@ async function markdownFiles(fs: FileSystemAdapter, dir: string): Promise<string
 }
 
 /**
- * Every reminder in [from, to] (and every snooze, whenever it falls), read
- * from the task and event files. Unreadable files are skipped.
+ * Every reminder in [from, to] (and every snooze, whenever it falls): from
+ * `tasks`, the vault's checkbox tasks, and from the event files. Unreadable
+ * files are skipped.
  */
 export async function readReminderRows(
   fs: FileSystemAdapter,
   from: Date,
   to: Date,
+  tasks: readonly TaskItem[],
 ): Promise<ReminderRow[]> {
   const rows: ReminderRow[] = []
   const read = async (dir: string, toRows: (path: string, raw: string) => ReminderRow[]) => {
@@ -35,7 +37,7 @@ export async function readReminderRows(
       }
     }
   }
-  await read(TASKS_DIR, (path, raw) => taskReminders(parseTaskItem(path, raw), from, to))
+  for (const task of tasks) rows.push(...taskReminders(task, from, to))
   await read(CALENDAR_DIR, (path, raw) => eventReminders(parseCalendarEvent(path, raw), from, to))
   return rows.sort((a, b) => a.at.localeCompare(b.at) || a.path.localeCompare(b.path))
 }

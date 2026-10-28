@@ -2,20 +2,21 @@ import type { TaskItem } from '@/types/tasks'
 import type { CalendarEvent } from '@/types/calendar'
 import { parseEventDate, toDateStr, toDateTimeStr } from '@/lib/calendar'
 import { expandEvent } from '@/lib/calendar/recurrence'
+import { taskRef } from './task-ref'
 
 /**
- * When reminders fire. The settings live in each item's file — a task's
- * `remind`, an event's `alert` — and so does what was done about them:
- * `reminderAck` (every occurrence up to then is done) and `snoozeUntil` (fire
- * once more then). Everything here is derived from those, so it can always
- * be recomputed.
+ * When reminders fire. The settings live in the files — a task's time on its
+ * due day (`>2026-10-30 09:00`), an event's `alert` — and so does what was
+ * done about them: an event's `reminderAck` (every occurrence up to then is
+ * done) and either's `snoozeUntil` (fire once more then). A task's Done ticks
+ * it. Everything here is derived from those, so it can always be recomputed.
  *
  * Times are local `YYYY-MM-DDTHH:mm`, which compare correctly as strings.
  */
 
 export interface ReminderOccurrence {
   kind: 'task' | 'event'
-  /** The item's file: what the reminder opens. */
+  /** What the reminder opens: the event's file, or the task's `taskRef`. */
   path: string
   title: string
   /** When it fires. */
@@ -44,28 +45,17 @@ function unsettled(
 }
 
 /**
- * A task's reminders in [from, to]. A repeating (weekly) task reminds on each
- * occurrence of its weekday from the `remind` date on, at the same time of
- * day. Done and cancelled tasks do not remind.
+ * A task's reminder in [from, to]: at its due day's time, or at its snooze
+ * when it has one (the reminder it snoozed is dealt with). A task with no
+ * time, or done, does not remind. A weekly task's line holds its current
+ * occurrence; ticking it writes the next.
  */
 export function taskReminders(task: TaskItem, from: Date, to: Date): ReminderOccurrence[] {
-  if (!task.remind || task.status === 'done' || task.status === 'cancelled') return []
-  const first = parseEventDate(task.remind)
-  if (!first) return []
-  const base = { kind: 'task' as const, path: task.path, title: task.title }
-  const times: Date[] = []
-  if (task.repeat === 'weekly' && task.repeatWeekday != null) {
-    const d = new Date(first)
-    d.setDate(d.getDate() + ((task.repeatWeekday - d.getDay() + 7) % 7))
-    // Start near `from` rather than walking every week since the first.
-    const weeks = Math.floor((from.getTime() - d.getTime()) / (7 * 86_400_000))
-    if (weeks > 0) d.setDate(d.getDate() + 7 * (weeks - 1))
-    for (; d <= to; d.setDate(d.getDate() + 7)) if (d >= from) times.push(new Date(d))
-  } else if (first >= from && first <= to) {
-    times.push(first)
-  }
-  const occurrences = times.map((t) => ({ ...base, at: at(t), about: at(t) }))
-  return unsettled(occurrences, task, { ...base, about: task.remind })
+  if (task.done || !task.due || !task.time) return []
+  const about = `${task.due}T${task.time}`
+  const when = task.snoozeUntil ?? about
+  if (when < at(from) || when > at(to)) return []
+  return [{ kind: 'task', path: taskRef(task), title: task.title, at: when, about }]
 }
 
 /** An event's alerts in [from, to], one per occurrence of a repeating event. */

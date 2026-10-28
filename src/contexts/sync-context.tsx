@@ -129,6 +129,8 @@ export function SyncProvider({
             // After any syncing → idle transition, local FS may have changed
             if (s === 'idle' && prevStatusRef.current === 'syncing') {
               window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+              // Index what came down, so search and Tasks show it.
+              void import('@/lib/search/build-vault-index').then((m) => m.reconcileSoon(vaultFs))
             }
             prevStatusRef.current = s
             setStatus(s)

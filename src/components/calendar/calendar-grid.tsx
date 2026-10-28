@@ -66,7 +66,7 @@ export function CalendarGrid({
   const tasksForDate = useCallback(
     (dateStr: string) =>
       tasks.filter((t) => {
-        if (t.status === 'done' || t.status === 'cancelled') return false
+        if (t.done) return false
         const eff = getEffectiveDueDate(t)
         return eff ? eff.slice(0, 10) === dateStr : false
       }),
@@ -182,7 +182,7 @@ export function CalendarGrid({
                       {/* Task due chips */}
                       {dayTasks.slice(0, Math.max(0, 3 - dayEvents.length)).map((t) => (
                         <div
-                          key={t.path}
+                          key={t.id}
                           className="bg-bg-tertiary text-fg-muted w-full truncate rounded px-1.5 py-0.5 text-[10px] leading-snug font-medium"
                         >
                           ✓ {t.title || 'Untitled'}
