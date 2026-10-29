@@ -41,6 +41,10 @@ Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
   `done:YYYY-MM-DD`, a snooze writes `snooze:…`, and indented checkboxes are
   subtasks. New tasks go to `Inbox.md` (a setting). The index's `tasks`
   table is derived. (Replaced `_mentis/_tasks` on 2026-10-29. No migration.)
+- **Lists:** a `.list.md` file, or any note whose frontmatter says
+  `type: list`; both open in the list editor, and their checkboxes are not
+  tasks. New lists go to `Lists/` (a setting). (`_mentis/_lists` stopped
+  being read on 2026-10-30. No migration.)
 - **User content is visible:** Thoughts, the journal and attachments are
   ordinary folders at the root — `Thoughts/`, `Journal/`, `Attachments/` —
   each changeable in Settings. Nothing the user wrote is hidden in
@@ -62,7 +66,7 @@ Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
 - **Date parsing:** chrono-node. Deterministic, never AI. Do not attempt to
   parse locations.
 - **File extensions:** `.md`, `.canvas`, `.map.md`, `.kan.md`, `.slides.md`
-  (Marp dialect). Compound suffixes must be matched before the last segment.
+  (Marp dialect), `.list.md`. Compound suffixes must be matched before the last segment.
 - **Office:** view only. Convert docx to markdown (mammoth → turndown) and
   pptx to `.slides.md`. No xlsx editing in v1.
 - **Licence:** BSL 1.1. No third-party plugin system — "modular" means

@@ -88,6 +88,10 @@ describe('parseTasks', () => {
     expect(tasks[3]).toMatchObject({ done: true, completed: null })
   })
 
+  it('reads no tasks from a note marked as a list', () => {
+    expect(parseTasks('Shop.md', '---\ntitle: Shop\ntype: list\n---\n- [ ] Milk')).toEqual([])
+  })
+
   it('nests subtasks under their parents', () => {
     const roots = nestTasks(tasks)
     expect(roots.map((t) => t.children.map((c) => c.title))).toEqual([['Find the letter'], [], []])

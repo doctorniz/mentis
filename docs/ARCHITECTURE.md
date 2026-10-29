@@ -71,7 +71,9 @@ glob over `src/modules/*/`, so adding a module never edits a central list.
 File types are matched by suffix, longest first, so compound extensions work:
 `.md`, `.canvas`, `.map.md`, `.kan.md`, `.slides.md`, `.list.md`. Editors and
 views are `React.lazy` — opening a note never loads the PDF engine, the
-canvas or the spreadsheet grid.
+canvas or the spreadsheet grid. A type can also claim another type's files
+on their contents (`claims`): a markdown note whose frontmatter says
+`type: list` opens in the list editor, and the index records it as a `list`.
 
 **Layout.** On a wide screen one sidebar holds everything: Search and New, a
 date card that opens today's journal (Ctrl+1), the views with `nav` — Chat,
@@ -189,8 +191,13 @@ ticking a weekly task adds the next one above it. A reminder's Snooze writes
 into the index's `tasks` table, which the Tasks view, the calendar and
 reminders read; edits rewrite the one line in its note (found again by its
 text if lines above it moved) and reindex that note. New tasks are added to
-`Inbox.md` (Settings › Vault). Kanban, slides and mindmap files are not read
-for tasks.
+`Inbox.md` (Settings › Vault). Kanban, slides, mindmap and list files are not
+read for tasks.
+
+**Lists** are `.list.md` files, or notes marked `type: list` (the note
+editor's "Make this a list"; the list editor's "Turn into a note" takes it
+off). Tasks › Lists and `/list` find them in the index by type
+(`pathsOfType`). New lists go to `Lists/` (Settings › Vault).
 
 **Calendar and Tasks.** Tasks, grouped By date (Overdue, Today, Next 7 days,
 Later, No date) or By note, with Lists (checklists, ordered lists, scheduled

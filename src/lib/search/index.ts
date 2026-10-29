@@ -94,6 +94,12 @@ export async function getIndexTasks(): Promise<TaskItem[]> {
   return callIndex('tasks', undefined)
 }
 
+/** Paths of the indexed files of one type, once the index is open. */
+export async function getIndexPathsOfType(type: string): Promise<string[]> {
+  await opened
+  return callIndex('pathsOfType', { type })
+}
+
 /** Every wiki-link in the indexed vault, as written (unresolved). */
 export function getIndexLinks(): Promise<LinkRow[]> {
   return callIndex('links', undefined)

@@ -116,6 +116,12 @@ struct HashesArg {
 }
 
 #[derive(Deserialize)]
+struct TypeArg {
+    #[serde(rename = "type")]
+    kind: String,
+}
+
+#[derive(Deserialize)]
 struct DirArg {
     dir: String,
 }
@@ -206,6 +212,13 @@ impl IndexHost {
                 Some((_, s)) => Ok(Value::Array(s.tasks().map_err(sql)?)),
                 None => Ok(json!([])),
             },
+            "pathsOfType" => {
+                let TypeArg { kind } = arg(op, input)?;
+                match &self.open {
+                    Some((_, s)) => to_json(s.paths_of_type(&kind).map_err(sql)?),
+                    None => Ok(json!([])),
+                }
+            }
             "search" => {
                 let SearchArg { query, filters } = arg(op, input)?;
                 match &self.open {
@@ -501,5 +514,26 @@ mod tests {
         host.call("remove", json!({ "vaultId": "v", "paths": ["a.md"] }))
             .unwrap();
         assert_eq!(host.call("tasks", Value::Null).unwrap(), json!([]));
+    }
+
+    #[test]
+    fn paths_of_one_type() {
+        let mut host = in_memory_host();
+        host.call("open", json!({ "vaultId": "v" })).unwrap();
+        let doc = |path: &str, kind: &str| {
+            json!({ "path": path, "type": kind, "title": path, "content": "",
+                    "tags": [], "size": 1, "mtime": 1 })
+        };
+        host.call(
+            "upsert",
+            json!({ "vaultId": "v", "docs": [
+                doc("b.md", "list"), doc("a.list.md", "list"), doc("c.md", "markdown"),
+            ] }),
+        )
+        .unwrap();
+        assert_eq!(
+            host.call("pathsOfType", json!({ "type": "list" })).unwrap(),
+            json!(["a.list.md", "b.md"])
+        );
     }
 }

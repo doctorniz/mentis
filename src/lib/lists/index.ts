@@ -1,8 +1,12 @@
 import matter from 'gray-matter'
 import { formatLocalDate } from '@/lib/tasks/recurrence'
+import { LISTS_DIR, type VaultConfig } from '@/types/vault'
+
+export { isListNote } from './detect'
 
 /**
- * Lists: one markdown file per list, `Name.list.md`.
+ * Lists: one markdown file per list, either `Name.list.md` or any note whose
+ * frontmatter says `type: list`. New ones go to `Lists/` (a setting).
  *
  *     ---
  *     type: list
@@ -19,8 +23,12 @@ import { formatLocalDate } from '@/lib/tasks/recurrence'
  * so a hand-edited list survives being opened here.
  */
 
-export const LISTS_DIR = '_mentis/_lists'
 export const LIST_SUFFIX = '.list.md'
+
+/** The folder new lists are made in. */
+export function listsDir(config?: Pick<VaultConfig, 'listsFolder'> | null): string {
+  return config?.listsFolder?.replace(/^\/+|\/+$/g, '') || LISTS_DIR
+}
 
 export type ListKind = 'checklist' | 'ordered'
 export type ListReset = 'daily' | 'weekly' | 'monthly'
@@ -62,10 +70,12 @@ export function emptyList(kind: ListKind = 'checklist'): ListDoc {
   return { kind, items: [], extraFrontmatter: {}, preamble: '', trailer: '' }
 }
 
-/** The list's title: its file name without `.list.md`. */
+/** The list's title: its file name without `.list.md` (or `.md`). */
 export function listTitle(path: string): string {
   const name = path.split('/').pop() ?? path
-  return name.toLowerCase().endsWith(LIST_SUFFIX) ? name.slice(0, -LIST_SUFFIX.length) : name
+  const lower = name.toLowerCase()
+  if (lower.endsWith(LIST_SUFFIX)) return name.slice(0, -LIST_SUFFIX.length)
+  return lower.endsWith('.md') ? name.slice(0, -3) : name
 }
 
 export function isListPath(path: string): boolean {
@@ -173,6 +183,15 @@ export function listAsText(title: string, doc: ListDoc): string {
     return `${n}${box} ${item.text}${note}`
   })
   return [title, '', ...lines].join('\n')
+}
+
+/** A list note's text without what makes it a list (`type`, `kind`, `reset`, `lastReset`). */
+export function listToNote(raw: string): string {
+  const { data, content } = matter(raw)
+  const fm = { ...(data as Record<string, unknown>) }
+  for (const k of ['type', 'kind', 'reset', 'lastReset']) delete fm[k]
+  const body = content.replace(/^(\r?\n)+/, '')
+  return Object.keys(fm).length > 0 ? matter.stringify(`\n${body}`, fm) : body
 }
 
 /** Add an item to the end of a list's file text, keeping everything else. */

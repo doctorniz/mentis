@@ -20,7 +20,7 @@ const parseItem = (input: string): ParseResult => ({
 
 /**
  * An item added to the end of a list, by name. A name no list has yet
- * creates that list (a checklist in `_mentis/_lists/`).
+ * creates that list (a checklist in the lists folder).
  */
 const list: CaptureDestination = {
   id: 'list',
@@ -67,7 +67,7 @@ const list: CaptureDestination = {
     const path = existing?.path ?? (await store.createList(vaultFs, name, 'checklist'))
     const raw = await vaultFs.readTextFile(path)
     await vaultFs.writeTextFile(path, appendToList(raw, item, note))
-    if (!path.startsWith('_mentis/')) await reindexFilePath(vaultFs, path)
+    await reindexFilePath(vaultFs, path)
     try {
       localStorage.setItem(LAST_LIST_KEY, existing?.title ?? name)
     } catch {

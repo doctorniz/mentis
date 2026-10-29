@@ -31,6 +31,13 @@ const sections: readonly SettingsSection[] = [
         set: (_, taskInbox) => ({ taskInbox }),
       },
       {
+        id: 'listsFolder',
+        kind: 'folder',
+        label: 'New lists go to',
+        get: (c) => c.listsFolder,
+        set: (_, listsFolder) => ({ listsFolder }),
+      },
+      {
         id: 'templateFolder',
         kind: 'folder',
         label: 'Template folder',

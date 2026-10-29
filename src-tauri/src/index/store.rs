@@ -291,6 +291,15 @@ impl IndexStore {
             .collect())
     }
 
+    /// Paths of the indexed files of one type, in path order.
+    pub fn paths_of_type(&self, kind: &str) -> rusqlite::Result<Vec<String>> {
+        let mut stmt = self
+            .db
+            .prepare("SELECT path FROM files WHERE type = ? ORDER BY path")?;
+        let rows = stmt.query_map([kind], |r| r.get::<_, String>(0))?;
+        rows.collect()
+    }
+
     pub fn links(&self) -> rusqlite::Result<Vec<LinkRow>> {
         let mut stmt = self.db.prepare("SELECT source, target FROM links")?;
         let rows = stmt.query_map([], |r| {

@@ -1,5 +1,6 @@
 import type { TaskItem, TaskPriority } from '@/types/tasks'
 import { formatLocalDate, nextWeeklyDueAfterCompletion } from '@/lib/tasks/recurrence'
+import { isListNote } from '@/lib/lists/detect'
 
 /**
  * Tasks are checkbox lines in ordinary notes:
@@ -123,6 +124,8 @@ function frontmatterEnd(lines: string[]): number {
 
 /** Every task in a note, in file order, with subtasks linked by `parentLine` (children left empty). */
 export function parseTasks(path: string, text: string): TaskItem[] {
+  // A list's items are ticked off, not scheduled: they are not tasks.
+  if (isListNote(text)) return []
   const lines = text.split(/\r?\n/)
   const out: TaskItem[] = []
   // Open tasks above the current line, innermost last: a deeper task is a subtask.

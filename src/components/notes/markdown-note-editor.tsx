@@ -18,6 +18,8 @@ import { setPdfEmbedVaultFs } from '@/lib/editor/pdf-embed-extension'
 import { markdownToTiptapJSON, tiptapJSONToMarkdown } from '@/lib/editor/markdown-bridge'
 import { parseNote, resolveWikiLinkPath, serializeNote } from '@/lib/markdown'
 import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
+import { detectEditorTabType } from '@/lib/notes/editor-tab-from-path'
+import { fileTypes } from '@/core/registries'
 import { removeSearchDocument } from '@/lib/search/index'
 import { saveAsset, assetToBlobUrl } from '@/lib/notes/assets'
 import type { FileEntry } from '@/types/files'
@@ -835,6 +837,42 @@ export const MarkdownNoteEditor = forwardRef<
     }
   }, [vaultFs, onRenamed])
 
+  /**
+   * Mark the note `type: list` and show it in this tab in whichever editor
+   * now claims it (the list editor). Saves first, so nothing typed is lost.
+   */
+  async function handleMakeList() {
+    if (loadingRef.current) return
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    try {
+      let raw: string
+      if (showRawRef.current) {
+        const doc = parseNote(pathRef.current, rawTextRef.current)
+        frontmatterRef.current = { ...doc.frontmatter, type: 'list' }
+        raw = serializeNote(frontmatterRef.current, doc.content)
+      } else {
+        const ed = editorRef.current
+        if (!ed) return
+        frontmatterRef.current = { ...frontmatterRef.current, type: 'list' }
+        raw = serializeNote(frontmatterRef.current, tiptapJSONToMarkdown(ed.getJSON()))
+      }
+      // The save on leaving writes this same text.
+      rawTextRef.current = raw
+      await vaultFs.writeTextFile(pathRef.current, raw)
+      syncPush(pathRef.current)
+      markDirty(tabId, false)
+      await reindexMarkdownPath(vaultFs, pathRef.current)
+      const type = await detectEditorTabType(vaultFs, pathRef.current)
+      updateTab(tabId, { type, showRawSource: false })
+    } catch (e) {
+      console.error('Make list failed', e)
+      toast.error('Could not make this a list')
+    }
+  }
+
   function getTiptapDocForExport(): JSONContent | null {
     if (loadingRef.current) return null
     if (showRawSource) {
@@ -901,6 +939,7 @@ export const MarkdownNoteEditor = forwardRef<
         onFind={showRawSource ? undefined : openFind}
         onExportMarkdown={() => handleExportMarkdown()}
         onPrint={() => void handlePrint()}
+        onMakeList={fileTypes.get('list') ? () => void handleMakeList() : undefined}
         onVisual={() => {
           if (!showRawSource) return
           handleShowVisual()

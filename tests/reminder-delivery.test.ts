@@ -189,4 +189,14 @@ describe('IndexStore tasks', () => {
     store.remove(['a.md'])
     expect(store.tasks()).toEqual([])
   })
+
+  it('lists the paths of one type', () => {
+    const store = new IndexStore(new sqlite3.oo1.DB(':memory:'))
+    store.upsert([
+      { ...doc('b.md', ''), type: 'list' },
+      { ...doc('a.list.md', ''), type: 'list' },
+      doc('c.md', ''),
+    ])
+    expect(store.pathsOfType('list')).toEqual(['a.list.md', 'b.md'])
+  })
 })

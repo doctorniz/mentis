@@ -1,5 +1,14 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { ChevronDown, FileCode, FileDown, FileText, PenLine, Printer, Search } from 'lucide-react'
+import {
+  ChevronDown,
+  FileCode,
+  FileDown,
+  FileText,
+  ListChecks,
+  PenLine,
+  Printer,
+  Search,
+} from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { formatWordCount } from '@/lib/notes/word-count'
 
@@ -10,6 +19,7 @@ export function NoteEditorModeBar({
   onFind,
   onExportMarkdown,
   onPrint,
+  onMakeList,
   busy,
   wordCount,
 }: {
@@ -21,6 +31,8 @@ export function NoteEditorModeBar({
   onExportMarkdown?: () => void
   /** Opens browser print dialog with print-styled HTML (save as PDF from the dialog). */
   onPrint?: () => void
+  /** Marks the note `type: list`, so it opens in the list editor. */
+  onMakeList?: () => void
   /** Disable switching while file is loading into the editor. */
   busy?: boolean
   /** Body word count, shown with an estimated reading time. */
@@ -84,6 +96,19 @@ export function NoteEditorModeBar({
           className="text-fg-muted hover:text-fg hover:bg-bg-hover inline-flex size-8 items-center justify-center rounded-md transition-colors disabled:opacity-50"
         >
           <Search className="size-4" aria-hidden />
+        </button>
+      )}
+
+      {onMakeList && (
+        <button
+          type="button"
+          disabled={busy}
+          title="Make this a list"
+          aria-label="Make this a list"
+          onClick={onMakeList}
+          className="text-fg-muted hover:text-fg hover:bg-bg-hover inline-flex size-8 items-center justify-center rounded-md transition-colors disabled:opacity-50"
+        >
+          <ListChecks className="size-4" aria-hidden />
         </button>
       )}
 

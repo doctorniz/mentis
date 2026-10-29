@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { test, expect, navigateTo } from './fixtures'
+import { test, expect, navigateTo, openVaultFile, readVaultFile, writeVaultFile } from './fixtures'
 
 async function openLists(page: Page) {
   await page.keyboard.press('Control+4')
@@ -91,5 +91,47 @@ test.describe('27 — Lists', () => {
     })
     await addItems(page, 'First thing')
     await expect(page.getByLabel('Item', { exact: true })).toHaveValue('First thing')
+  })
+
+  test('27.7 A new list is a .list.md in the Lists folder', async ({ vaultPage: page }) => {
+    await createList(page, 'Packing', 'Checklist')
+    await addItems(page, 'Passport')
+    await expect
+      .poll(() => readVaultFile(page, 'Lists/Packing.list.md'), { timeout: 10_000 })
+      .toContain('- [ ] Passport')
+  })
+
+  test('27.8 A note marked as a list opens as one, keeps out of Tasks, and turns back', async ({
+    vaultPage: page,
+  }) => {
+    await writeVaultFile(page, 'Shop.md', '---\ntype: list\n---\n- [ ] Milk\n- [ ] Bread\n')
+    await writeVaultFile(page, 'Todo.md', '- [ ] Real task\n')
+    // Files written behind the app's back are indexed when the vault opens.
+    await page.reload()
+    await page.waitForSelector('[data-testid="main-sidebar"]:visible, nav:visible', {
+      timeout: 30_000,
+    })
+
+    // In Tasks: the real task, not the list's items; the list under Lists.
+    await page.keyboard.press('Control+4')
+    await page.getByRole('button', { name: 'All tasks', exact: true }).first().click()
+    await expect(page.getByText('Real task')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('Milk')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Lists', exact: true }).first().click()
+    await expect(page.getByRole('button', { name: /^Shop.*0 of 2 done/ })).toBeVisible({
+      timeout: 10_000,
+    })
+
+    // From the tree it opens in the list editor.
+    await openVaultFile(page, 'Shop.md')
+    await expect(page.getByLabel('Done: Milk')).toBeVisible({ timeout: 10_000 })
+
+    await page.getByRole('button', { name: 'Turn into a note' }).click()
+    await expect(page.locator('.tiptap').first()).toContainText('Milk', { timeout: 10_000 })
+    await expect.poll(() => readVaultFile(page, 'Shop.md')).not.toContain('type: list')
+
+    await page.getByRole('button', { name: 'Make this a list' }).click()
+    await expect(page.getByLabel('Done: Milk')).toBeVisible({ timeout: 10_000 })
+    await expect.poll(() => readVaultFile(page, 'Shop.md')).toContain('type: list')
   })
 })

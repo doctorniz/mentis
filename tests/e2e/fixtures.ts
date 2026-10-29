@@ -104,7 +104,12 @@ export async function navigateTo(page: Page, view: ViewName) {
       break
     case 'calendar':
       await page.keyboard.press('Control+3')
-      await page.getByRole('main').getByRole('button', { name: 'Calendar', exact: true }).click()
+      // The view's own tab; on a phone the tab bar's Calendar (after it) matches too.
+      await page
+        .getByRole('main')
+        .getByRole('button', { name: 'Calendar', exact: true })
+        .first()
+        .click()
       break
     case 'bookmarks':
       await page.keyboard.press('Control+6')

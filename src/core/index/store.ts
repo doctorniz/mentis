@@ -270,6 +270,13 @@ export class IndexStore {
     return rows.map((r) => JSON.parse(r.data) as TaskItem)
   }
 
+  pathsOfType(type: string): string[] {
+    const rows = this.db.selectObjects('SELECT path FROM files WHERE type = ? ORDER BY path', [
+      type,
+    ]) as { path: string }[]
+    return rows.map((r) => r.path)
+  }
+
   /**
    * Given every file sync can see now, forget cached hashes for files that are
    * gone and return the ones still valid (same size and mtime), by path.

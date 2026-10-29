@@ -259,6 +259,12 @@ describe('reindexFilePath', () => {
     expect(indexed).toHaveLength(1)
     expect(indexed[0]).toMatchObject({ path: 'a.md', type: 'markdown', content: 'hello' })
   })
+
+  it('records a note marked as a list as a list, with no tasks', async () => {
+    const text = '---\ntype: list\n---\n- [ ] Milk\n'
+    await reindexFilePath(fakeFs({ 'Shop.md': text }), 'Shop.md', echo)
+    expect(indexed.at(-1)).toMatchObject({ path: 'Shop.md', type: 'list', tasks: [] })
+  })
 })
 
 describe('extractor discovery', () => {

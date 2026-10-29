@@ -3,6 +3,7 @@ import * as Popover from '@radix-ui/react-popover'
 import {
   Copy,
   Download,
+  FileText,
   GripVertical,
   Loader2,
   RotateCcw,
@@ -12,8 +13,10 @@ import {
 } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import {
+  isListPath,
   listAsText,
   listTitle,
+  listToNote,
   newItem,
   serializeList,
   uncheckAll,
@@ -23,6 +26,7 @@ import {
   type ListReset,
 } from '@/lib/lists'
 import { reindexFilePath } from '@/lib/search/build-vault-index'
+import { detectEditorTabType } from '@/lib/notes/editor-tab-from-path'
 import { readListFile } from '@/stores/lists'
 import { useEditorStore } from '@/stores/editor'
 import { toast } from '@/stores/toast'
@@ -94,7 +98,7 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
     if (!d) return
     try {
       await vaultFs.writeTextFile(pathRef.current, serializeList(d))
-      if (!pathRef.current.startsWith('_mentis/')) await reindexFilePath(vaultFs, pathRef.current)
+      await reindexFilePath(vaultFs, pathRef.current)
       if (tabId) updateTab(tabId, { isDirty: false })
       onPersisted?.()
     } catch (err) {
@@ -149,6 +153,24 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
     setNewText('')
   }
 
+  /** A note marked as a list goes back to being an ordinary note, in this tab. */
+  async function turnIntoNote() {
+    if (!tabId) return
+    try {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current)
+        await save()
+      }
+      const raw = await vaultFs.readTextFile(path)
+      await vaultFs.writeTextFile(path, listToNote(raw))
+      await reindexFilePath(vaultFs, path)
+      updateTab(tabId, { type: await detectEditorTabType(vaultFs, path) })
+    } catch (err) {
+      console.error('Failed to turn the list into a note', err)
+      toast.error('Could not turn the list into a note')
+    }
+  }
+
   async function copyAsText() {
     try {
       await navigator.clipboard.writeText(listAsText(title, doc!))
@@ -197,6 +219,16 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
           <RotateCcw className="size-3.5" />
           Uncheck all
         </button>
+        {tabId && !isListPath(path) && (
+          <button
+            type="button"
+            onClick={() => void turnIntoNote()}
+            className="text-fg-secondary hover:text-fg flex items-center gap-1 rounded-md px-2 py-1 text-xs"
+          >
+            <FileText className="size-3.5" />
+            Turn into a note
+          </button>
+        )}
         <Popover.Root>
           <Popover.Trigger asChild>
             <button

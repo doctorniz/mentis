@@ -15,7 +15,7 @@ interface EditorState {
   markDirty: (tabId: string, isDirty: boolean) => void
   updateTab: (
     tabId: string,
-    updates: Partial<Pick<EditorTab, 'title' | 'isDirty' | 'showRawSource' | 'isNew'>>,
+    updates: Partial<Pick<EditorTab, 'title' | 'isDirty' | 'showRawSource' | 'isNew' | 'type'>>,
   ) => void
   clearNew: (tabId: string) => void
   /** After renaming a file on disk, move the tab to the new path. */
@@ -75,6 +75,7 @@ export const useEditorStore = create<EditorState>()(
         if (updates.isDirty !== undefined) tab.isDirty = updates.isDirty
         if (updates.showRawSource !== undefined) tab.showRawSource = updates.showRawSource
         if (updates.isNew !== undefined) tab.isNew = updates.isNew
+        if (updates.type !== undefined) tab.type = updates.type
       }),
 
     clearNew: (tabId) =>

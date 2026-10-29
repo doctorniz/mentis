@@ -105,6 +105,8 @@ export interface IndexOps {
   links: [void, LinkRow[]]
   /** Every checkbox task in the vault's notes, in file order. */
   tasks: [void, TaskItem[]]
+  /** Paths of the indexed files of one type (`list`, say), in path order. */
+  pathsOfType: [{ type: string }, string[]]
   upsert: [{ vaultId: string; docs: IndexDocument[] }, void]
   remove: [{ vaultId: string; paths: string[] }, void]
   search: [{ query: string; filters?: IndexSearchFilters }, SearchResult[]]

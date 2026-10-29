@@ -53,6 +53,8 @@ export interface VaultConfig {
   thoughtsFolder: string
   /** Vault-relative note new tasks are added to when none is named. Defaults to 'Inbox.md'. */
   taskInbox: string
+  /** Vault-relative folder new lists are made in. Defaults to 'Lists'. */
+  listsFolder: string
   /** Start each journal entry added from capture with its time (`**14:32** — `). Defaults to true. */
   journalTimestamps: boolean
   /** File name of the journal template in the templates folder; '' for none. */
@@ -95,6 +97,7 @@ export interface VaultMetadata {
 
 export const DAILY_NOTES_DIR = 'Journal'
 export const THOUGHTS_DIR = 'Thoughts'
+export const LISTS_DIR = 'Lists'
 export const MENTIS_DIR = '_mentis'
 export const ASSETS_DIR = 'Attachments'
 export const SIGNATURES_DIR = `${MENTIS_DIR}/signatures`
@@ -125,6 +128,7 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   dailyNotesFolder: DAILY_NOTES_DIR,
   thoughtsFolder: THOUGHTS_DIR,
   taskInbox: 'Inbox.md',
+  listsFolder: LISTS_DIR,
   journalTimestamps: true,
   journalTemplate: '',
   journalPrompt: '',
