@@ -17,9 +17,10 @@ import { setVideoVaultFs } from '@/lib/editor/vault-video-extension'
 import { setPdfEmbedVaultFs } from '@/lib/editor/pdf-embed-extension'
 import { markdownToTiptapJSON, tiptapJSONToMarkdown } from '@/lib/editor/markdown-bridge'
 import { parseNote, resolveWikiLinkPath, serializeNote } from '@/lib/markdown'
-import { reindexMarkdownPath } from '@/lib/search/build-vault-index'
+import { reindexFilePath, reindexMarkdownPath } from '@/lib/search/build-vault-index'
+import { listPathForNote } from '@/lib/lists'
 import { detectEditorTabType } from '@/lib/notes/editor-tab-from-path'
-import { fileTypes } from '@/core/registries'
+import { fileTypes, titleForPath } from '@/core/registries'
 import { removeSearchDocument } from '@/lib/search/index'
 import { saveAsset, assetToBlobUrl } from '@/lib/notes/assets'
 import type { FileEntry } from '@/types/files'
@@ -838,11 +839,17 @@ export const MarkdownNoteEditor = forwardRef<
   }, [vaultFs, onRenamed])
 
   /**
-   * Mark the note `type: list` and show it in this tab in whichever editor
-   * now claims it (the list editor). Saves first, so nothing typed is lost.
+   * Rename the note to `.list.md` and show it in this tab in the list editor.
+   * Saves first, so nothing typed is lost.
    */
   async function handleMakeList() {
     if (loadingRef.current) return
+    const oldPath = pathRef.current
+    const listPath = listPathForNote(oldPath)
+    if (await vaultFs.exists(listPath)) {
+      toast.error('A list with that name already exists')
+      return
+    }
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current)
       saveTimerRef.current = null
@@ -850,23 +857,25 @@ export const MarkdownNoteEditor = forwardRef<
     try {
       let raw: string
       if (showRawRef.current) {
-        const doc = parseNote(pathRef.current, rawTextRef.current)
-        frontmatterRef.current = { ...doc.frontmatter, type: 'list' }
-        raw = serializeNote(frontmatterRef.current, doc.content)
+        raw = rawTextRef.current
       } else {
         const ed = editorRef.current
         if (!ed) return
-        frontmatterRef.current = { ...frontmatterRef.current, type: 'list' }
         raw = serializeNote(frontmatterRef.current, tiptapJSONToMarkdown(ed.getJSON()))
       }
-      // The save on leaving writes this same text.
-      rawTextRef.current = raw
-      await vaultFs.writeTextFile(pathRef.current, raw)
-      syncPush(pathRef.current)
+      await vaultFs.writeTextFile(oldPath, raw)
+      await vaultFs.rename(oldPath, listPath)
+      // Leaving this editor must not write the note back under its old name.
+      pathRef.current = listPath
       markDirty(tabId, false)
-      await reindexMarkdownPath(vaultFs, pathRef.current)
-      const type = await detectEditorTabType(vaultFs, pathRef.current)
+      removeSearchDocument(oldPath)
+      await reindexFilePath(vaultFs, listPath)
+      const type = await detectEditorTabType(vaultFs, listPath)
+      useEditorStore.getState().retargetTabPath(tabId, listPath, titleForPath(listPath))
       updateTab(tabId, { type, showRawSource: false })
+      const tree = useFileTreeStore.getState()
+      if (tree.selectedPath === oldPath) tree.setSelectedPath(listPath)
+      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
     } catch (e) {
       console.error('Make list failed', e)
       toast.error('Could not make this a list')

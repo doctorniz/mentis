@@ -41,10 +41,10 @@ Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
   `done:YYYY-MM-DD`, a snooze writes `snooze:…`, and indented checkboxes are
   subtasks. New tasks go to `Inbox.md` (a setting). The index's `tasks`
   table is derived. (Replaced `_mentis/_tasks` on 2026-10-29. No migration.)
-- **Lists:** a `.list.md` file, or any note whose frontmatter says
-  `type: list`; both open in the list editor, and their checkboxes are not
-  tasks. New lists go to `Lists/` (a setting). (`_mentis/_lists` stopped
-  being read on 2026-10-30. No migration.)
+- **Lists:** a `.list.md` file, opened in the list editor; its checkboxes
+  are not tasks. A file's type comes from its name, never its contents.
+  New lists go to `Lists/` (a setting). (`_mentis/_lists` stopped being
+  read on 2026-10-30. No migration.)
 - **User content is visible:** Thoughts, the journal and attachments are
   ordinary folders at the root — `Thoughts/`, `Journal/`, `Attachments/` —
   each changeable in Settings. Nothing the user wrote is hidden in

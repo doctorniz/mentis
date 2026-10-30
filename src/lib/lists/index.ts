@@ -2,11 +2,9 @@ import matter from 'gray-matter'
 import { formatLocalDate } from '@/lib/tasks/recurrence'
 import { LISTS_DIR, type VaultConfig } from '@/types/vault'
 
-export { isListNote } from './detect'
-
 /**
- * Lists: one markdown file per list, either `Name.list.md` or any note whose
- * frontmatter says `type: list`. New ones go to `Lists/` (a setting).
+ * Lists: one markdown file per list, `Name.list.md`. New ones go to `Lists/`
+ * (a setting).
  *
  *     ---
  *     type: list
@@ -70,12 +68,20 @@ export function emptyList(kind: ListKind = 'checklist'): ListDoc {
   return { kind, items: [], extraFrontmatter: {}, preamble: '', trailer: '' }
 }
 
-/** The list's title: its file name without `.list.md` (or `.md`). */
+/** The list's title: its file name without `.list.md`. */
 export function listTitle(path: string): string {
   const name = path.split('/').pop() ?? path
-  const lower = name.toLowerCase()
-  if (lower.endsWith(LIST_SUFFIX)) return name.slice(0, -LIST_SUFFIX.length)
-  return lower.endsWith('.md') ? name.slice(0, -3) : name
+  return name.toLowerCase().endsWith(LIST_SUFFIX) ? name.slice(0, -LIST_SUFFIX.length) : name
+}
+
+/** A note's path as a list: `Shop.md` → `Shop.list.md`. */
+export function listPathForNote(path: string): string {
+  return path.replace(/\.md$/i, '') + LIST_SUFFIX
+}
+
+/** A list's path as a note: `Shop.list.md` → `Shop.md`. */
+export function notePathForList(path: string): string {
+  return isListPath(path) ? `${path.slice(0, -LIST_SUFFIX.length)}.md` : path
 }
 
 export function isListPath(path: string): boolean {
@@ -185,7 +191,7 @@ export function listAsText(title: string, doc: ListDoc): string {
   return [title, '', ...lines].join('\n')
 }
 
-/** A list note's text without what makes it a list (`type`, `kind`, `reset`, `lastReset`). */
+/** A list's text as a note's: without `type`, `kind`, `reset` and `lastReset`. */
 export function listToNote(raw: string): string {
   const { data, content } = matter(raw)
   const fm = { ...(data as Record<string, unknown>) }

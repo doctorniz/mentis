@@ -18,7 +18,7 @@ Android.
   tilt-sensitive brushes, eraser, fill, eyedropper, selection, blend modes,
   PNG/PDF export.
 - **More file types** — mindmaps (`.map.md`), kanban boards (`.kan.md`), Marp
-  slides (`.slides.md`), lists (`.list.md`, or any note marked as a list); view Word, PowerPoint and
+  slides (`.slides.md`), lists (`.list.md`); view Word, PowerPoint and
   spreadsheets, and convert Word to Markdown and PowerPoint to slides; edit
   code and plain text.
 - **Capture** — type anything and it lands in Thoughts; `/task`, `/cal`,

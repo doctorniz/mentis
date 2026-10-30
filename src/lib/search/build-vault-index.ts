@@ -51,29 +51,21 @@ async function listIndexableFiles(
   }
 }
 
-/**
- * The file's searchable parts, and its type: the suffix's, unless a module
- * claims the file on its contents (a note whose frontmatter makes it a list).
- */
 async function extractFor(
   def: FileTypeDefinition,
   fs: FileSystemAdapter,
   path: string,
   run: ExtractRunner,
-): Promise<{ extracted: SearchExtraction | null; type: string }> {
+): Promise<SearchExtraction | null> {
   const read = def.search?.read
-  if (!read) return { extracted: { content: '' }, type: def.id } // by title only (e.g. drawings)
-  let type = def.id
+  if (!read) return { content: '' } // indexed by title only (e.g. drawings)
   try {
     const data = read === 'text' ? await fs.readTextFile(path) : await fs.readFile(path)
-    if (typeof data === 'string') {
-      type = (await fileTypes.detect(path, async () => data))?.id ?? def.id
-    }
-    return { extracted: await run({ typeId: def.id, path, data }), type }
+    return await run({ typeId: def.id, path, data })
   } catch {
     // Unreadable, or the extractor could not run. The file still appears in
     // results by title.
-    return { extracted: { content: '' }, type }
+    return { content: '' }
   }
 }
 
@@ -94,12 +86,12 @@ async function fileToDocument(
     mtime = stat?.modifiedAt.getTime() ?? 0
   }
 
-  const { extracted, type } = await extractFor(def, fs, path, run)
+  const extracted = await extractFor(def, fs, path, run)
   if (!extracted) return null
 
   return {
     path,
-    type,
+    type: def.id,
     title: extracted.title || titleForPath(path),
     content: extracted.content,
     tags: extracted.tags ?? [],

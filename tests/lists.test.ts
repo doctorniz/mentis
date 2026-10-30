@@ -3,11 +3,12 @@ import {
   appendToList,
   applyDueReset,
   emptyList,
-  isListNote,
   listAsText,
+  listPathForNote,
   listTitle,
   listToNote,
   newItem,
+  notePathForList,
   parseList,
   periodStart,
   serializeList,
@@ -98,22 +99,19 @@ describe('list files', () => {
 
   it('takes its title from the file name', () => {
     expect(listTitle('Lists/Weekly shop.list.md')).toBe('Weekly shop')
-    expect(listTitle('Home/Shop.md')).toBe('Shop')
   })
 })
 
-describe('notes marked as lists', () => {
-  it('is a list when the frontmatter says type: list', () => {
-    expect(isListNote('---\ntitle: Shop\ntype: list\n---\n- [ ] Milk')).toBe(true)
-    expect(isListNote('---\r\ntype: "List"\r\n---\r\n')).toBe(true)
-    expect(isListNote('---\ntype: kanban\n---\ntype: list')).toBe(false)
-    expect(isListNote('type: list')).toBe(false)
+describe('turning notes into lists and back', () => {
+  it('renames between .md and .list.md', () => {
+    expect(listPathForNote('Home/Shop.md')).toBe('Home/Shop.list.md')
+    expect(notePathForList('Home/Shop.list.md')).toBe('Home/Shop.md')
   })
 
   it('turns back into a note, keeping other frontmatter and the text', () => {
     const raw = serializeList({ ...parseList('- [ ] Milk'), extraFrontmatter: { title: 'Shop' } })
     const note = listToNote(raw)
-    expect(isListNote(note)).toBe(false)
+    expect(note).not.toContain('type: list')
     expect(note).toContain('title: Shop')
     expect(note).toContain('- [ ] Milk')
     expect(listToNote('---\ntype: list\n---\n\n- [ ] Milk\n')).toBe('- [ ] Milk\n')

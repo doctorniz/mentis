@@ -31,8 +31,6 @@ import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
 import { awaitPendingMarkdownSave } from '@/lib/notes/pending-saves'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 import { useFileTreeStore } from '@/stores/file-tree'
-import { useListPathsStore } from '@/stores/list-paths'
-import { INDEX_CHANGED_EVENTS } from '@/lib/search/index-events'
 import { useEditorStore } from '@/stores/editor'
 import { removeSearchDocument } from '@/lib/search/index'
 import { Button } from '@/components/ui/button'
@@ -103,16 +101,6 @@ export function NotesFileTree({
       cancelled = true
     }
   }, [refresh, refreshToken])
-
-  // Notes marked as lists, from the index: they show as lists.
-  useEffect(() => {
-    const refreshLists = () => void useListPathsStore.getState().refresh()
-    refreshLists()
-    for (const name of INDEX_CHANGED_EVENTS) window.addEventListener(name, refreshLists)
-    return () => {
-      for (const name of INDEX_CHANGED_EVENTS) window.removeEventListener(name, refreshLists)
-    }
-  }, [vaultFs])
 
   async function handleNewNote() {
     const path = await createUntitledNote(vaultFs)
@@ -567,7 +555,6 @@ function TreeNode({
   const toggleExpanded = useFileTreeStore((s) => s.toggleExpanded)
   const toggleStarred = useFileTreeStore((s) => s.toggleStarred)
   const starred = useFileTreeStore((s) => s.starredPaths.includes(entry.path))
-  const markedList = useListPathsStore((s) => s.paths.has(entry.path))
   const expanded = Boolean(expandedPaths[entry.path])
   const [children, setChildren] = useState<FileEntry[] | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -588,10 +575,9 @@ function TreeNode({
   if (!entry.isDirectory) {
     const selected = selectedPath === entry.path
     const displayName = titleFromVaultPath(entry.path)
-    // Icon and colour come from the file's module (a note marked as a list
-    // shows as one). Only registered types reach the tree (isNotesTreeEntry),
-    // so the fallback is defensive.
-    const fileDef = (markedList && fileTypes.get('list')) || fileTypes.resolve(entry.path)
+    // Icon and colour come from the file's module. Only registered types
+    // reach the tree (isNotesTreeEntry), so the fallback is defensive.
+    const fileDef = fileTypes.resolve(entry.path)
     const FileIcon = fileDef?.appearance.icon ?? FileText
 
     function commitInline() {

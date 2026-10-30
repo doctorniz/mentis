@@ -13,11 +13,11 @@ import {
 } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import {
-  isListPath,
   listAsText,
   listTitle,
   listToNote,
   newItem,
+  notePathForList,
   serializeList,
   uncheckAll,
   type ListDoc,
@@ -26,6 +26,8 @@ import {
   type ListReset,
 } from '@/lib/lists'
 import { reindexFilePath } from '@/lib/search/build-vault-index'
+import { removeSearchDocument } from '@/lib/search/index'
+import { titleForPath } from '@/core/registries'
 import { detectEditorTabType } from '@/lib/notes/editor-tab-from-path'
 import { readListFile } from '@/stores/lists'
 import { useEditorStore } from '@/stores/editor'
@@ -153,18 +155,28 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
     setNewText('')
   }
 
-  /** A note marked as a list goes back to being an ordinary note, in this tab. */
+  /** The list becomes an ordinary note (`Shop.list.md` → `Shop.md`), in this tab. */
   async function turnIntoNote() {
     if (!tabId) return
+    const notePath = notePathForList(path)
+    if (await vaultFs.exists(notePath)) {
+      toast.error('A note with that name already exists')
+      return
+    }
     try {
       if (saveTimer.current) {
         clearTimeout(saveTimer.current)
         await save()
       }
       const raw = await vaultFs.readTextFile(path)
-      await vaultFs.writeTextFile(path, listToNote(raw))
-      await reindexFilePath(vaultFs, path)
-      updateTab(tabId, { type: await detectEditorTabType(vaultFs, path) })
+      await vaultFs.rename(path, notePath)
+      await vaultFs.writeTextFile(notePath, listToNote(raw))
+      removeSearchDocument(path)
+      await reindexFilePath(vaultFs, notePath)
+      const type = await detectEditorTabType(vaultFs, notePath)
+      useEditorStore.getState().retargetTabPath(tabId, notePath, titleForPath(notePath))
+      updateTab(tabId, { type })
+      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
     } catch (err) {
       console.error('Failed to turn the list into a note', err)
       toast.error('Could not turn the list into a note')
@@ -219,7 +231,7 @@ export function ListEditor({ path, tabId, onPersisted }: ListEditorProps) {
           <RotateCcw className="size-3.5" />
           Uncheck all
         </button>
-        {tabId && !isListPath(path) && (
+        {tabId && (
           <button
             type="button"
             onClick={() => void turnIntoNote()}

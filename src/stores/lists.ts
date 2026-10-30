@@ -13,7 +13,6 @@ import {
 } from '@/lib/lists'
 import { getIndexPathsOfType, removeSearchDocument } from '@/lib/search'
 import { reindexFilePath } from '@/lib/search/build-vault-index'
-import { useListPathsStore } from '@/stores/list-paths'
 import { useVaultStore } from '@/stores/vault'
 
 export interface ListSummary {
@@ -28,7 +27,7 @@ export interface ListSummary {
 interface ListsState {
   lists: ListSummary[]
   loading: boolean
-  /** Every list the index knows: `.list.md` files and notes marked `type: list`. */
+  /** Every list (`.list.md` file) the index knows. */
   loadLists: (fs: FileSystemAdapter) => Promise<void>
   /** A new, empty list in the lists folder. Resolves to its path. */
   createList: (fs: FileSystemAdapter, name: string, kind: ListKind) => Promise<string>
@@ -51,7 +50,6 @@ export const useListsStore = create<ListsState>()((set, get) => ({
   loadLists: async (fs) => {
     set({ loading: get().lists.length === 0 })
     const paths = await getIndexPathsOfType('list').catch(() => [] as string[])
-    useListPathsStore.getState().setPaths(paths)
     const summaries: ListSummary[] = []
     for (const path of paths) {
       try {

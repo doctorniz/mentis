@@ -215,21 +215,16 @@ describe('markdown formats for boards and maps (replacing .kanban / .mind)', () 
     expect(fileTypes.resolve('ideas.mind')).toBeUndefined()
   })
 
-  it('no longer turns markdown into a board by frontmatter', async () => {
-    const read = async () => '---\ntype: kanban\n---\n## Todo\n'
+  it('no longer turns markdown into a board by frontmatter, and never reads to decide', async () => {
+    let reads = 0
+    const read = async () => {
+      reads++
+      return '---\ntype: kanban\n---\n## Todo\n'
+    }
     expect((await fileTypes.detect('board.md', read, { fallback: 'markdown' }))?.id).toBe(
       'markdown',
     )
-  })
-
-  it('opens a note marked type: list as a list, and never reads other files to decide', async () => {
-    const read = async () => '---\ntype: list\n---\n- [ ] Milk\n'
-    expect((await fileTypes.detect('Shop.md', read, { fallback: 'markdown' }))?.id).toBe('list')
-    const boom = async () => {
-      throw new Error('should not read')
-    }
-    expect((await fileTypes.detect('board.kan.md', boom))?.id).toBe('kanban')
-    expect((await fileTypes.detect('Shop.list.md', boom))?.id).toBe('list')
+    expect(reads).toBe(0)
   })
 
   it('keeps boards and maps linkable from [[wiki-links]]', () => {

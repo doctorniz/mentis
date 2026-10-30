@@ -31,7 +31,7 @@ export function NoteEditorModeBar({
   onExportMarkdown?: () => void
   /** Opens browser print dialog with print-styled HTML (save as PDF from the dialog). */
   onPrint?: () => void
-  /** Marks the note `type: list`, so it opens in the list editor. */
+  /** Renames the note to `.list.md`, so it opens in the list editor. */
   onMakeList?: () => void
   /** Disable switching while file is loading into the editor. */
   busy?: boolean

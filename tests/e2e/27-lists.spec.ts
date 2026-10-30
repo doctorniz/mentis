@@ -101,10 +101,10 @@ test.describe('27 — Lists', () => {
       .toContain('- [ ] Passport')
   })
 
-  test('27.8 A note marked as a list opens as one, keeps out of Tasks, and turns back', async ({
+  test('27.8 A list keeps out of Tasks, turns into a note and back by renaming', async ({
     vaultPage: page,
   }) => {
-    await writeVaultFile(page, 'Shop.md', '---\ntype: list\n---\n- [ ] Milk\n- [ ] Bread\n')
+    await writeVaultFile(page, 'Shop.list.md', '---\ntype: list\n---\n- [ ] Milk\n- [ ] Bread\n')
     await writeVaultFile(page, 'Todo.md', '- [ ] Real task\n')
     // Files written behind the app's back are indexed when the vault opens.
     await page.reload()
@@ -122,16 +122,18 @@ test.describe('27 — Lists', () => {
       timeout: 10_000,
     })
 
-    // From the tree it opens in the list editor.
-    await openVaultFile(page, 'Shop.md')
+    // From the tree (titled without the suffix) it opens in the list editor.
+    await openVaultFile(page, 'Shop.list.md')
     await expect(page.getByLabel('Done: Milk')).toBeVisible({ timeout: 10_000 })
 
     await page.getByRole('button', { name: 'Turn into a note' }).click()
     await expect(page.locator('.tiptap').first()).toContainText('Milk', { timeout: 10_000 })
-    await expect.poll(() => readVaultFile(page, 'Shop.md')).not.toContain('type: list')
+    await expect.poll(() => readVaultFile(page, 'Shop.md')).toContain('- [ ] Milk')
+    await expect.poll(() => readVaultFile(page, 'Shop.list.md')).toBe('')
 
     await page.getByRole('button', { name: 'Make this a list' }).click()
     await expect(page.getByLabel('Done: Milk')).toBeVisible({ timeout: 10_000 })
-    await expect.poll(() => readVaultFile(page, 'Shop.md')).toContain('type: list')
+    await expect.poll(() => readVaultFile(page, 'Shop.list.md')).toContain('- [ ] Milk')
+    await expect.poll(() => readVaultFile(page, 'Shop.md')).toBe('')
   })
 })

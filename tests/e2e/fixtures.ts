@@ -181,8 +181,8 @@ export async function waitForView(page: Page, view: ViewName) {
 export async function openVaultFile(page: Page, filename: string) {
   await navigateTo(page, 'vault')
   // The tree shows titles without the type's suffix. Compound suffixes
-  // (mirroring the registered .kan.md / .map.md / .slides.md) go whole.
-  const stem = filename.replace(/\.(kan|map|slides)\.md$/i, '').replace(/\.[^/.]+$/, '')
+  // (mirroring the registered .kan.md / .map.md / .slides.md / .list.md) go whole.
+  const stem = filename.replace(/\.(kan|map|slides|list)\.md$/i, '').replace(/\.[^/.]+$/, '')
   const tree = page.getByRole('tree', { name: 'Vault file tree' })
   await tree.getByRole('button', { name: stem, exact: true }).first().click()
   await page.waitForTimeout(1000)

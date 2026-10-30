@@ -254,16 +254,16 @@ describe('reconcileSoon', () => {
 })
 
 describe('reindexFilePath', () => {
+  it('records a .list.md as a list, with no tasks', async () => {
+    const text = '---\ntype: list\n---\n- [ ] Milk\n'
+    await reindexFilePath(fakeFs({ 'Shop.list.md': text }), 'Shop.list.md', echo)
+    expect(indexed.at(-1)).toMatchObject({ path: 'Shop.list.md', type: 'list', tasks: [] })
+  })
+
   it('extracts one file and upserts it', async () => {
     await reindexFilePath(fakeFs({ 'a.md': 'hello' }), 'a.md', echo)
     expect(indexed).toHaveLength(1)
     expect(indexed[0]).toMatchObject({ path: 'a.md', type: 'markdown', content: 'hello' })
-  })
-
-  it('records a note marked as a list as a list, with no tasks', async () => {
-    const text = '---\ntype: list\n---\n- [ ] Milk\n'
-    await reindexFilePath(fakeFs({ 'Shop.md': text }), 'Shop.md', echo)
-    expect(indexed.at(-1)).toMatchObject({ path: 'Shop.md', type: 'list', tasks: [] })
   })
 })
 

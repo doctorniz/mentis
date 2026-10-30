@@ -13,8 +13,7 @@ const RESET_LABEL: Record<string, string> = {
 }
 
 /**
- * Tasks' Lists tab: every list in the vault — `.list.md` files and notes
- * marked `type: list` — opened here in the list editor.
+ * Tasks' Lists tab: every `.list.md` file in the vault, opened here in the list editor.
  */
 export function ListsPanel() {
   const { vaultFs } = useVaultSession()
