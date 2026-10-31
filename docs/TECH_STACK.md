@@ -44,7 +44,7 @@ bundle cost (`CLAUDE.md`). _Last reviewed 2026-10-13._
 
 | Tool                    | Use                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------- |
-| pnpm                    | packages (CI: 9.15; the lockfile is written by pnpm 10)                                           |
+| pnpm                    | packages; pinned to pnpm 10 by `packageManager` in package.json (CI and local alike)             |
 | ESLint (flat), Prettier | lint (including import boundaries between modules) and formatting                                 |
 | Vitest (+ happy-dom)    | unit tests in `tests/`                                                                            |
 | Playwright              | end-to-end in `tests/e2e/`: desktop Chromium and a Pixel 5 profile, on the production build in CI |

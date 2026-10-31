@@ -48,7 +48,7 @@ Android.
 
 ## Getting started
 
-Prerequisites: Node.js 22, [pnpm](https://pnpm.io/) (CI uses 9.15), and for
+Prerequisites: Node.js 22, [pnpm](https://pnpm.io/) (any version: it switches to the pinned pnpm 10), and for
 the apps the [Tauri prerequisites](https://tauri.app/start/prerequisites/)
 (Rust; for Android the SDK, NDK 27 and a JDK).
 
