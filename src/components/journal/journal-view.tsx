@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, FileText, Loader2, Plus } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { SectionEditor } from '@/components/journal/section-editor'
+import { JournalDue } from '@/components/journal/journal-due'
+import { NOTE_WRITTEN_EVENT } from '@/lib/notes/note-written'
 import {
   defaultJournalTab,
   journalPath,
@@ -70,6 +72,8 @@ export function JournalView() {
   const [tab, setTab] = useState<string | null>(null)
   const [addingTab, setAddingTab] = useState(false)
   const [newTab, setNewTab] = useState('')
+  /** Bumped when the day's file changes from outside (a task ticked above): the editor remounts. */
+  const [revision, setRevision] = useState(0)
   const pending = useRef<{ tab: string; markdown: string } | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -139,8 +143,28 @@ export function JournalView() {
   // Changing day, or leaving, writes what is pending first.
   useEffect(() => flush, [flush])
 
+  // A task in this day was ticked or changed elsewhere: show the file as it is
+  // now, unless there are edits here still to save.
+  useEffect(() => {
+    const path = day?.path
+    if (!path) return
+    function onWritten(e: Event) {
+      if ((e as CustomEvent<{ path: string }>).detail?.path !== path) return
+      if (pending.current) return
+      void vaultFs.readTextFile(path!).then((raw) => {
+        setDay((d) => (d && d.path === path ? { ...d, raw } : d))
+        setRevision((r) => r + 1)
+      })
+    }
+    window.addEventListener(NOTE_WRITTEN_EVENT, onWritten)
+    return () => window.removeEventListener(NOTE_WRITTEN_EVENT, onWritten)
+  }, [day?.path, vaultFs])
+
   function onChange(markdown: string) {
     if (!tab) return
+    // The editor reports the text back as it mounts: that is not an edit.
+    const shown = day ? tabContent(splitJournal(day.raw ?? day.preview), tab) : null
+    if (!pending.current && markdown.trim() === shown?.trim()) return
     pending.current = { tab, markdown }
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => void save(), SAVE_DEBOUNCE)
@@ -237,6 +261,8 @@ export function JournalView() {
         </button>
       </div>
 
+      <JournalDue date={date} />
+
       {!day || !tab ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="text-fg-muted size-6 animate-spin" />
@@ -310,7 +336,7 @@ export function JournalView() {
 
           <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto">
             <SectionEditor
-              key={`${date}/${tab}/${locked}`}
+              key={`${date}/${tab}/${locked}/${revision}`}
               markdown={markdown}
               onChange={onChange}
               editable={!locked}

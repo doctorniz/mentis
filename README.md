@@ -28,7 +28,7 @@ Android.
 - **Calendar and Tasks** — tasks are checkboxes in any note (`- [ ] Call the bank >friday 09:00 !2`),
   gathered By date or By note; lists, a calendar with repeating events,
   reminders (desktop and phone notifications with Snooze and Done), and a
-  daily journal with tabs from a template.
+  daily journal with tabs from a template and the day's due tasks.
 - **Search and graph** — full-text search across every file type, and a
   wiki-link graph, both from an on-disk index rebuilt from your files.
 - **AI chat** — ask about the open document or the whole vault, with cited

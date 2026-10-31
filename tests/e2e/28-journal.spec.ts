@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test'
-import { test, expect, writeVaultFile } from './fixtures'
+import { test, expect, readVaultFile, writeVaultFile } from './fixtures'
+
+const isoDay = (offset: number) => {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
 
 const longDate = (d: Date) =>
   d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
@@ -105,5 +112,54 @@ test.describe('28 — Journal', () => {
       'contenteditable',
       'false',
     )
+  })
+
+  test('28.5 Shows the tasks due that day, and today the overdue ones', async ({
+    vaultPage: page,
+  }) => {
+    await writeVaultFile(
+      page,
+      'Inbox.md',
+      `- [ ] Pay rent >${isoDay(0)}\n- [ ] Send the form >${isoDay(-1)}\n- [ ] Book flights >${isoDay(1)}\n`,
+    )
+    await writeVaultFile(page, `Journal/${isoDay(0)}.md`, `- [ ] Water plants >${isoDay(0)}\n`)
+    // Files written behind the app's back are indexed when the vault opens.
+    await page.reload()
+    await page.waitForSelector('[data-testid="main-sidebar"]:visible, nav:visible', {
+      timeout: 30_000,
+    })
+    await openToday(page)
+
+    const due = page.getByRole('region', { name: 'Due' })
+    await expect(due.getByRole('button', { name: /Due · 3/ })).toBeVisible({ timeout: 10_000 })
+    await expect(due.getByText('Pay rent')).toBeVisible()
+    await expect(due.getByText('Send the form')).toBeVisible()
+    await expect(due.getByText('Book flights')).toHaveCount(0)
+
+    // Yesterday shows only its own.
+    await page.getByRole('button', { name: 'Previous day' }).click()
+    await expect(due.getByRole('button', { name: /Due · 1/ })).toBeVisible()
+    await expect(due.getByText('Send the form')).toBeVisible()
+    await page.getByRole('button', { name: 'Today', exact: true }).click()
+
+    // Ticked here, it is done in its note and leaves the list.
+    await due
+      .locator('div[role="button"]', { hasText: 'Pay rent' })
+      .getByRole('button', { name: 'Mark complete' })
+      .click()
+    await expect.poll(() => readVaultFile(page, 'Inbox.md')).toContain('- [x] Pay rent')
+    await expect(due.getByText('Pay rent')).toHaveCount(0)
+
+    // A task in the day's own journal: the page below shows it ticked.
+    await due
+      .locator('div[role="button"]', { hasText: 'Water plants' })
+      .getByRole('button', { name: 'Mark complete' })
+      .click()
+    await expect
+      .poll(() => readVaultFile(page, `Journal/${isoDay(0)}.md`))
+      .toContain('- [x] Water plants')
+    await expect(
+      page.getByRole('textbox', { name: 'Journal entry' }).locator('li[data-checked="true"]'),
+    ).toHaveCount(1)
   })
 })

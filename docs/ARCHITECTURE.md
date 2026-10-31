@@ -208,7 +208,8 @@ Later, No date) or By note, with Lists (checklists, ordered lists, scheduled
 reset) as a second tab; the Calendar
 (repeating events, alerts, tasks on their due days, a mark on days with a
 journal entry) with Reminders as a second tab; and the Journal (a note per day,
-with tabs from a template).
+with tabs from a template, under a strip of the tasks due that day, and on
+today's page the overdue ones, from the tasks store).
 
 **Reminders.** Occurrences are worked out from the files
 (`src/lib/reminders/`), recorded in the index, and delivered by the platform:
