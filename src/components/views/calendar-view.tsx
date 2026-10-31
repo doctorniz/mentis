@@ -47,9 +47,13 @@ function addDays(date: Date, n: number): Date {
   return d
 }
 
+/** The same day `n` months on, or that month's last day (31 Oct + 1 → 30 Nov, not 1 Dec). */
 function addMonths(date: Date, n: number): Date {
   const d = new Date(date)
+  const day = d.getDate()
+  d.setDate(1)
   d.setMonth(d.getMonth() + n)
+  d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()))
   return d
 }
 
