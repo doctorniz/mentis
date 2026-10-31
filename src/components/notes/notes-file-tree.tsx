@@ -31,6 +31,7 @@ import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
 import { awaitPendingMarkdownSave } from '@/lib/notes/pending-saves'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 import { useFileTreeStore } from '@/stores/file-tree'
+import { updateLinksAfterRename } from '@/lib/links/rename'
 import { useEditorStore } from '@/stores/editor'
 import { removeSearchDocument } from '@/lib/search/index'
 import { Button } from '@/components/ui/button'
@@ -205,6 +206,7 @@ export function NotesFileTree({
       await vaultFs.rename(oldPath, newPath)
       removeSearchDocument(oldPath)
       if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
+      void updateLinksAfterRename(vaultFs, oldPath, newPath)
       const { tabs, retargetTabPath } = useEditorStore.getState()
       const tab = tabs.find((t) => t.path === oldPath)
       if (tab) retargetTabPath(tab.id, newPath, fileTitleFromPath(newPath))

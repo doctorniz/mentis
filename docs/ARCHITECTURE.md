@@ -136,11 +136,16 @@ deleting it loses nothing, and it is rebuilt from them.
 | `files`     | the manifest: path, type, size, mtime, title, tags                    |
 | `fts`       | full-text search (FTS5) over title, content, tags                     |
 | `chunks`    | ~1,500-character passages (FTS5) for AI chat retrieval                |
-| `links`     | wiki-link targets as written, for backlinks and the graph             |
+| `links`     | wiki-link targets as written, for backlinks, the graph and renames    |
 | `tree`      | each folder's last listing, so the tree draws before the disk is read |
 | `hashes`    | SHA-256 per file at size+mtime, so sync re-hashes only what changed   |
 | `reminders` | reminder occurrences from tasks, events and the journal prompt        |
 | `tasks`     | every checkbox line in the notes, parsed (`src/lib/tasks/line.ts`)    |
+
+Renaming a file updates the wiki-links and embeds that name it
+(`lib/links/rename.ts`): the `links` table says which files to read, and each
+link keeps its folder, `#heading` and `|alias`. A move, or Make this a list,
+keeps the name, so nothing is rewritten.
 
 - **Web:** sqlite-wasm in a Web Worker, persisted in the OPFS SAH pool
   (`src/core/index/worker.ts`). **Shells:** rusqlite in Rust

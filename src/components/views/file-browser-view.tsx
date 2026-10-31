@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { updateLinksAfterRename } from '@/lib/links/rename'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import type { FileSystemAdapter } from '@/lib/fs'
 import { useFileBrowserStore } from '@/stores/file-browser'
@@ -388,6 +389,7 @@ export function FileBrowserView({ showHidden = false }: { showHidden?: boolean }
       await vaultFs.rename(item.path, newPath)
       removeSearchDocument(item.path)
       if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
+      void updateLinksAfterRename(vaultFs, item.path, newPath)
       const tab = useEditorStore.getState().tabs.find((t) => t.path === item.path)
       if (tab)
         useEditorStore.getState().retargetTabPath(tab.id, newPath, titleFromVaultPath(newPath))

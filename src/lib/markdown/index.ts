@@ -29,7 +29,7 @@ function normStr(s: string): string {
  * Basename / link target key: lowercase, strip extension, remove spaces, hyphens, underscores
  * so `My Note`, `my-note`, and `my_note` match the same file.
  */
-function wikiStemKey(s: string): string {
+export function wikiStemKey(s: string): string {
   return stripVaultExt(s)
     .toLowerCase()
     .replace(/[\s_-]+/g, '')

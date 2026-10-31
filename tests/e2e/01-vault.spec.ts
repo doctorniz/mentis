@@ -1,4 +1,12 @@
-import { test, expect, createMarkdownNote, navigateTo } from './fixtures'
+import {
+  test,
+  expect,
+  createMarkdownNote,
+  navigateTo,
+  openVaultFile,
+  readVaultFile,
+  writeVaultFile,
+} from './fixtures'
 
 /** The Vault file tree (lives in the main content area, not the nav sidebar). */
 function vaultTree(page: import('@playwright/test').Page) {
@@ -179,6 +187,25 @@ test.describe('1.2 — File CRUD Operations', () => {
 
     // No crash — the app is still functional
     await expect(page.locator('aside, nav').first()).toBeVisible()
+  })
+
+  test('1.2.12 Rename a note — links to it in other notes follow', async ({
+    vaultPage: page,
+  }) => {
+    await writeVaultFile(page, 'Shop.md', '- Milk\n')
+    await writeVaultFile(page, 'Plans.md', 'Buy [[Shop|the list]] and see [[Shop#Fruit]].\n')
+    // Files written behind the app's back are indexed when the vault opens.
+    await page.reload()
+    await page.waitForSelector('[data-testid="main-sidebar"]:visible, nav:visible', {
+      timeout: 30_000,
+    })
+
+    await openVaultFile(page, 'Shop.md')
+    await renameOpenNote(page, 'Groceries')
+    await expect
+      .poll(() => readVaultFile(page, 'Plans.md'), { timeout: 10_000 })
+      .toBe('Buy [[Groceries|the list]] and see [[Groceries#Fruit]].\n')
+    await expect(page.getByText('Updated links in 1 note')).toBeVisible()
   })
 })
 

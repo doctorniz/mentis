@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Plus } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { updateLinksAfterRename } from '@/lib/links/rename'
 import { parseKanban, serializeKanban } from '@/lib/kanban'
 import type { KanbanBoard, KanbanCard, KanbanColumnColor } from '@/types/kanban'
 import { useEditorStore } from '@/stores/editor'
@@ -253,6 +254,7 @@ export function KanbanEditor({
       try {
         await vaultFs.rename(oldPath, newPath)
         await reindexFilePath(vaultFs, newPath)
+        void updateLinksAfterRename(vaultFs, oldPath, newPath)
         retargetTabPath(tabId, newPath, newStem)
         pathRef.current = newPath
         onRenamed()

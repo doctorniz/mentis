@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { FileSystemAdapter } from '@/lib/fs'
+import { updateLinksAfterRename } from '@/lib/links/rename'
 import { Button } from '@/components/ui/button'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
@@ -74,6 +75,7 @@ export function RenameNoteDialog({
       await vaultFs.rename(currentPath, newPath)
       removeSearchDocument(currentPath)
       await reindexMarkdownPath(vaultFs, newPath)
+      void updateLinksAfterRename(vaultFs, currentPath, newPath)
       const newTitle = titleFromPath(newPath)
       const tabs = useEditorStore.getState().tabs
       for (const tab of tabs) {

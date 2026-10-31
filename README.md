@@ -9,8 +9,8 @@ Android.
 
 ## What it does
 
-- **Notes** — WYSIWYG Markdown (Tiptap) with a source mode, wiki-links and
-  backlinks, slash commands, tables, KaTeX, templates, image embeds.
+- **Notes** — WYSIWYG Markdown (Tiptap) with a source mode, wiki-links
+  (kept up to date when a file is renamed) and backlinks, slash commands, tables, KaTeX, templates, image embeds.
 - **PDFs** — annotate, highlight, draw, sign, comment, fill forms; reorder,
   insert, merge and extract pages. Edits are written into the PDF itself, with
   a snapshot taken before the first edit.

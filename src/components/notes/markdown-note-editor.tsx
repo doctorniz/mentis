@@ -19,6 +19,7 @@ import { markdownToTiptapJSON, tiptapJSONToMarkdown } from '@/lib/editor/markdow
 import { parseNote, resolveWikiLinkPath, serializeNote } from '@/lib/markdown'
 import { reindexFilePath, reindexMarkdownPath } from '@/lib/search/build-vault-index'
 import { listPathForNote } from '@/lib/lists'
+import { updateLinksAfterRename } from '@/lib/links/rename'
 import { detectEditorTabType } from '@/lib/notes/editor-tab-from-path'
 import { fileTypes, titleForPath } from '@/core/registries'
 import { removeSearchDocument } from '@/lib/search/index'
@@ -824,6 +825,7 @@ export const MarkdownNoteEditor = forwardRef<
       await vaultFs.rename(pathRef.current, newPath)
       removeSearchDocument(pathRef.current)
       await reindexMarkdownPath(vaultFs, newPath)
+      void updateLinksAfterRename(vaultFs, pathRef.current, newPath)
 
       useEditorStore.getState().retargetTabPath(tabIdRef.current, newPath, sanitized)
       const sel = useFileTreeStore.getState().selectedPath

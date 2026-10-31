@@ -2,6 +2,7 @@ import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } f
 import type { Editor as TiptapEditor } from '@tiptap/core'
 import { FileText } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { updateLinksAfterRename } from '@/lib/links/rename'
 import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { NotesWorkspaceProvider, useNotesWorkspace } from '@/contexts/notes-workspace-context'
 import { EditorTabBar } from '@/components/notes/editor-tab-bar'
@@ -87,6 +88,7 @@ function NotesViewInner() {
       await vaultFs.rename(oldPath, newPath)
       removeSearchDocument(oldPath)
       if (isIndexableTextPath(newPath)) await reindexFilePath(vaultFs, newPath)
+      void updateLinksAfterRename(vaultFs, oldPath, newPath)
       // Types whose chatAssetId lives in the path-keyed chat index — migrate
       // the entry so chat threads follow the rename. (Renames that miss this
       // are healed later by fingerprint reconciliation.)

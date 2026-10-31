@@ -14,6 +14,7 @@ import { bracketMatching, foldGutter, foldKeymap, indentOnInput } from '@codemir
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { updateLinksAfterRename } from '@/lib/links/rename'
 import { useEditorStore } from '@/stores/editor'
 import { useAutoSave } from '@/hooks/use-auto-save'
 import { InlineFileTitle } from '@/components/shell/inline-file-title'
@@ -185,6 +186,7 @@ export function CodeFileEditor({
           return
         }
         await vaultFs.rename(oldPath, newPath)
+        void updateLinksAfterRename(vaultFs, oldPath, newPath)
         retargetTabPath(tabId, newPath, newPath.split('/').pop() ?? newPath)
         pathRef.current = newPath
         onRenamed?.()

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Download } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { updateLinksAfterRename } from '@/lib/links/rename'
 import { useEditorStore } from '@/stores/editor'
 import { InlineFileTitle } from '@/components/shell/inline-file-title'
 import { ConvertButton } from '@/components/notes/convert-button'
@@ -96,6 +97,7 @@ export function DocxViewer({
           return
         }
         await vaultFs.rename(oldPath, newPath)
+        void updateLinksAfterRename(vaultFs, oldPath, newPath)
         retargetTabPath(tabId, newPath, fullName.replace(/\.docx$/i, ''))
         pathRef.current = newPath
         onRenamed()
