@@ -34,7 +34,7 @@ Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
 - **Storage:** the user's chosen folder. Folder identity == vault identity.
   One vault open at a time; keep a recent-vaults list.
 - **App data:** `_mentis/` inside the chosen folder, containing
-  `_bookmarks`, `_chats`, `_calendar`, `_drawings`, `signatures`,
+  `_bookmarks`, `_chats`, `_drawings`, `signatures`,
   `snapshots`, `templates`, `config.json`, `search-index.json`.
 - **Tasks are checkbox lines in notes:** a line like
   `- [ ] text >date HH:mm !2 #tag every monday`. Ticking writes
@@ -45,11 +45,16 @@ Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
   are not tasks. A file's type comes from its name, never its contents.
   New lists go to `Lists/` (a setting). (`_mentis/_lists` stopped being
   read on 2026-10-30. No migration.)
-- **User content is visible:** Thoughts, the journal and attachments are
-  ordinary folders at the root — `Thoughts/`, `Journal/`, `Attachments/` —
-  each changeable in Settings. Nothing the user wrote is hidden in
-  `_mentis/`. (Moved out of `_mentis/_thoughts`, `_mentis/_journals` and
-  `_assets` on 2026-10-24. No migration — there were no users.)
+- **User content is visible:** Thoughts, the journal, attachments and the
+  calendar are ordinary folders at the root — `Thoughts/`, `Journal/`,
+  `Attachments/`, `Calendar/` — each changeable in Settings. Nothing the
+  user wrote is hidden in `_mentis/`. (Moved out of `_mentis/_thoughts`,
+  `_mentis/_journals` and `_assets` on 2026-10-24, and `_mentis/_calendar`
+  on 2026-11-01. No migration.)
+- **Calendar:** one note per event directly in `Calendar/`, named
+  `YYYY-MM-DD Title.md` and renamed when its day or title changes. In the
+  tree the folder opens the Calendar view and lists no files; an event
+  opened from search or a link opens in the calendar.
 - **Notebooks:** every root folder is a notebook; every subfolder is a section;
   sections nest. Root folders starting with `_` are system, not notebooks.
   Loose root-level files appear as an implicit "Unfiled" notebook.

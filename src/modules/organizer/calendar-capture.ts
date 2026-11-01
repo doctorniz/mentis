@@ -102,7 +102,7 @@ const ALERT_OPTIONS = [
 
 const day = (v: unknown) => String(v ?? '').slice(0, 10)
 
-/** An event in `_mentis/_calendar/`. Always confirmed: dates are the riskiest parse. */
+/** An event in the Calendar folder. Always confirmed: dates are the riskiest parse. */
 export const calendarDestination: CaptureDestination = {
   id: 'calendar',
   sigil: '/cal',

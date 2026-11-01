@@ -26,7 +26,7 @@ Android.
   From the desktop, a global hotkey; from the phone, share sheet, shortcuts,
   a widget and a Quick Settings tile.
 - **Calendar and Tasks** — tasks are checkboxes in any note (`- [ ] Call the bank >friday 09:00 !2`),
-  gathered By date or By note; lists, a calendar with repeating events,
+  gathered By date or By note; lists, a calendar with repeating events (a note per event in `Calendar/`),
   reminders (desktop and phone notifications with Snooze and Done), and a
   daily journal with tabs from a template and the day's due tasks.
 - **Search and graph** — full-text search across every file type, and a

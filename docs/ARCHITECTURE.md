@@ -104,13 +104,16 @@ writes hand Rust a file descriptor (§9).
 
 **Vault layout:** user notes and folders at the top level (root folders are
 notebooks; `_`-prefixed ones are system), and app data under `_mentis/`:
-`_calendar`, `_bookmarks`, `_chats`, `_drawings`, `signatures`,
-`snapshots`, `templates`, `config.json`. Thoughts, journal entries and
-attachments are ordinary visible folders, each set in Settings: `Thoughts/`
-(one note per thought, named by time and first words; every note in the
-folder is a thought), `Journal/` (`YYYY-MM-DD.md`) and `Attachments/`
-(pasted images, recordings, Thoughts' images too). Being outside
-`_mentis/`, they appear in the tree, search and graph.
+`_bookmarks`, `_chats`, `_drawings`, `signatures`,
+`snapshots`, `templates`, `config.json`. Thoughts, journal entries,
+attachments and events are ordinary visible folders, each set in Settings:
+`Thoughts/` (one note per thought, named by time and first words; every note
+in the folder is a thought), `Journal/` (`YYYY-MM-DD.md`), `Attachments/`
+(pasted images, recordings, Thoughts' images too) and `Calendar/` (one note
+per event, `YYYY-MM-DD Title.md`; every note directly in the folder is an
+event). Being outside `_mentis/`, they appear in search and graph, and all
+but `Calendar/` in the tree: there the Calendar folder opens the Calendar
+view and lists no files.
 
 **Markdown notes** load into the editor through marked and save through
 turndown (`src/lib/editor/markdown-bridge.ts`). Opening and saving a note
@@ -210,6 +213,14 @@ reset) as a second tab; the Calendar
 journal entry) with Reminders as a second tab; and the Journal (a note per day,
 with tabs from a template, under a strip of the tasks due that day, and on
 today's page the overdue ones, from the tasks store).
+
+**Events** are notes in the Calendar folder (`src/lib/calendar/`): the
+start, end, colour, repeat and alert in frontmatter, the title as a `#`
+heading, notes below. The calendar store reads the folder when the view
+opens. Saving an event whose title or day changed renames its file to
+match, and the links to it follow (`updateLinksAfterRename`). An event file
+opened as a tab — from search, a link or chat — is closed again by the
+notes view, which shows the Calendar on that day with the event open.
 
 **Reminders.** Occurrences are worked out from the files
 (`src/lib/reminders/`), recorded in the index, and delivered by the platform:

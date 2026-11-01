@@ -51,6 +51,11 @@ export interface VaultConfig {
    * Defaults to 'Thoughts'. Every note directly in it is a thought.
    */
   thoughtsFolder: string
+  /**
+   * Vault-relative folder that holds the calendar, one note per event.
+   * Defaults to 'Calendar'. Every note directly in it is an event.
+   */
+  calendarFolder: string
   /** Vault-relative note new tasks are added to when none is named. Defaults to 'Inbox.md'. */
   taskInbox: string
   /** Vault-relative folder new lists are made in. Defaults to 'Lists'. */
@@ -97,6 +102,7 @@ export interface VaultMetadata {
 
 export const DAILY_NOTES_DIR = 'Journal'
 export const THOUGHTS_DIR = 'Thoughts'
+export const CALENDAR_DIR = 'Calendar'
 export const LISTS_DIR = 'Lists'
 export const MENTIS_DIR = '_mentis'
 export const ASSETS_DIR = 'Attachments'
@@ -127,6 +133,7 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   dailyNotesEnabled: true,
   dailyNotesFolder: DAILY_NOTES_DIR,
   thoughtsFolder: THOUGHTS_DIR,
+  calendarFolder: CALENDAR_DIR,
   taskInbox: 'Inbox.md',
   listsFolder: LISTS_DIR,
   journalTimestamps: true,

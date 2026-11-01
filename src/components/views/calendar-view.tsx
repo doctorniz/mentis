@@ -11,7 +11,7 @@ import { WeekGrid } from '@/components/calendar/week-grid'
 import { DayGrid } from '@/components/calendar/day-grid'
 import { EventDialog } from '@/components/calendar/event-dialog'
 import type { CalendarEvent } from '@/types/calendar'
-import { toDateStr } from '@/lib/calendar'
+import { calendarDir, parseEventDate, toDateStr } from '@/lib/calendar'
 import { expandEvents } from '@/lib/calendar/recurrence'
 import { OPEN_REMINDER_EVENT, takeOpen } from '@/lib/reminders/open'
 import { useSwipe } from '@/lib/browser/use-swipe'
@@ -131,10 +131,11 @@ export function CalendarView() {
   const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null)
   const [clickedDate, setClickedDate] = useState<string | undefined>()
 
+  const calendarFolder = calendarDir(config)
   useEffect(() => {
     void loadEvents(vaultFs)
     void loadTasks(vaultFs)
-  }, [vaultFs, loadEvents, loadTasks])
+  }, [vaultFs, loadEvents, loadTasks, calendarFolder])
 
   useEffect(() => {
     void listDailyNoteDates(vaultFs, dailyFolder).then(setDailyNoteDates)
@@ -192,6 +193,7 @@ export function CalendarView() {
       const path = takeOpen('event', (p) => events.some((e) => e.path === p))
       const ev = path && events.find((e) => e.path === path)
       if (!ev) return
+      setRefDate(parseEventDate(ev.start) ?? new Date())
       setEditEvent(ev)
       setClickedDate(undefined)
       setDialogOpen(true)

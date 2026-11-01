@@ -5,7 +5,7 @@ import { getReminderRows, putReminderRows } from '@/lib/search'
 import { useTasksStore } from '@/stores/tasks'
 import { useCalendarStore } from '@/stores/calendar'
 import { useVaultStore } from '@/stores/vault'
-import { toDateTimeStr } from '@/lib/calendar'
+import { calendarDir, toDateTimeStr } from '@/lib/calendar'
 import { describeReminder, readReminderRows, reminderId, reminderTime } from './sources'
 import { openReminder } from './actions'
 import { REMINDERS_CHANGED } from './events'
@@ -165,6 +165,7 @@ export function startReminders(
       new Date(now - MISSED_REACH),
       new Date(now + AHEAD),
       useTasksStore.getState().items,
+      calendarDir(useVaultStore.getState().config),
     )
     const config = useVaultStore.getState().config
     const journal = config

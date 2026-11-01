@@ -2,43 +2,37 @@ import matter from 'gray-matter'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { ReminderRow } from '@/core/index/protocol'
 import type { TaskItem } from '@/types/tasks'
-import { CALENDAR_DIR, parseCalendarEvent, parseEventDate } from '@/lib/calendar'
+import { isEventPath, parseCalendarEvent, parseEventDate } from '@/lib/calendar'
 import { eventReminders, taskReminders } from '@/lib/reminders'
 
-/** Every Markdown file under `dir`, at any depth. A missing folder has none. */
-async function markdownFiles(fs: FileSystemAdapter, dir: string): Promise<string[]> {
+/** Every event file in the Calendar folder `dir`. A missing folder has none. */
+async function eventFiles(fs: FileSystemAdapter, dir: string): Promise<string[]> {
   if (!(await fs.exists(dir))) return []
-  const out: string[] = []
-  for (const e of await fs.readdir(dir)) {
-    if (e.isDirectory) out.push(...(await markdownFiles(fs, e.path)))
-    else if (e.name.endsWith('.md')) out.push(e.path)
-  }
-  return out
+  return (await fs.readdir(dir)).map((e) => e.path).filter((p) => isEventPath(p, dir))
 }
 
 /**
  * Every reminder in [from, to] (and every snooze, whenever it falls): from
- * `tasks`, the vault's checkbox tasks, and from the event files. Unreadable
- * files are skipped.
+ * `tasks`, the vault's checkbox tasks, and from the event files in
+ * `calendarFolder`. Unreadable files are skipped.
  */
 export async function readReminderRows(
   fs: FileSystemAdapter,
   from: Date,
   to: Date,
   tasks: readonly TaskItem[],
+  calendarFolder: string,
 ): Promise<ReminderRow[]> {
   const rows: ReminderRow[] = []
-  const read = async (dir: string, toRows: (path: string, raw: string) => ReminderRow[]) => {
-    for (const path of await markdownFiles(fs, dir)) {
-      try {
-        rows.push(...toRows(path, await fs.readTextFile(path)))
-      } catch {
-        /* skip unreadable */
-      }
+  for (const task of tasks) rows.push(...taskReminders(task, from, to))
+  for (const path of await eventFiles(fs, calendarFolder)) {
+    try {
+      const event = parseCalendarEvent(path, await fs.readTextFile(path))
+      rows.push(...eventReminders(event, from, to))
+    } catch {
+      /* skip unreadable */
     }
   }
-  for (const task of tasks) rows.push(...taskReminders(task, from, to))
-  await read(CALENDAR_DIR, (path, raw) => eventReminders(parseCalendarEvent(path, raw), from, to))
   return rows.sort((a, b) => a.at.localeCompare(b.at) || a.path.localeCompare(b.path))
 }
 

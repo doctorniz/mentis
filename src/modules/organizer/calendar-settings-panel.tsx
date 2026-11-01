@@ -1,17 +1,80 @@
+import { useEffect, useState } from 'react'
 import { CalendarDays } from 'lucide-react'
-import { SectionHeader } from '@/components/settings/fields'
+import type { SettingsPanelProps } from '@/core/registries/settings'
+import { useVaultSession } from '@/contexts/vault-fs-context'
+import { calendarDir } from '@/lib/calendar/folder'
+// Moving a folder of one-note-per-item files is the same for events as for thoughts.
+import { moveThoughtsFolder } from '@/lib/board/move-folder'
+import { BUTTON_CLS, INPUT_CLS, Row, SectionHeader } from '@/components/settings/fields'
+import { CALENDAR_DIR } from '@/types/vault'
+import { toast } from '@/stores/toast'
 
-/** The Calendar section of the settings dialog. External sync is not built yet. */
-export default function CalendarSettingsPanel() {
+/**
+ * The Calendar section of the settings dialog. The folder changes only through
+ * Move, so a half-typed path never becomes a destination. External sync is not built yet.
+ */
+export default function CalendarSettingsPanel({ config, saveNow }: SettingsPanelProps) {
+  const { vaultFs } = useVaultSession()
+  const current = calendarDir(config)
+  const [value, setValue] = useState(current)
+  const [moving, setMoving] = useState(false)
+
+  useEffect(() => setValue(current), [current])
+
+  const next = value.trim().replace(/^\/+|\/+$/g, '')
+  const canMove = !moving && next !== '' && next !== current
+
+  async function move() {
+    setMoving(true)
+    try {
+      await moveThoughtsFolder(vaultFs, current, next)
+      await saveNow({ ...config, calendarFolder: next })
+      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+      toast.success(`Calendar folder is now ${next}`)
+    } catch (err) {
+      console.error('Moving the calendar failed:', err)
+      toast.error(
+        err instanceof Error
+          ? `Could not move the calendar: ${err.message}`
+          : 'Could not move the calendar',
+      )
+    } finally {
+      setMoving(false)
+    }
+  }
+
   return (
     <div>
+      <div className="divide-border mb-4 divide-y">
+        <Row
+          label="Calendar folder"
+          hint="Move to an empty or new folder. Every note in it is an event."
+        >
+          <div className="flex items-center gap-1.5">
+            <input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && canMove) void move()
+              }}
+              placeholder={CALENDAR_DIR}
+              aria-label="Calendar folder"
+              className={INPUT_CLS}
+            />
+            <button
+              type="button"
+              disabled={!canMove}
+              onClick={() => void move()}
+              className={BUTTON_CLS}
+            >
+              {moving ? 'Moving…' : 'Move'}
+            </button>
+          </div>
+        </Row>
+      </div>
       <SectionHeader>Calendar sync</SectionHeader>
       <p className="text-fg-secondary mb-4 text-xs leading-relaxed">
-        Calendar events are stored locally in your vault as markdown files (
-        <code className="bg-bg-tertiary rounded px-1 font-mono text-[10px]">
-          _mentis/_calendar/
-        </code>
-        ). External sync options are coming soon.
+        External sync options are coming soon.
       </p>
       <div className="divide-border divide-y">
         {/* Google Calendar — coming soon */}

@@ -40,7 +40,7 @@ const task = (fm: string, title: string) => `---\n${fm}\n---\n\n# ${title}\n`
 describe('readReminderRows', () => {
   it('reads task reminders from the tasks and event alerts from their folder, in order', async () => {
     const fs = memoryFs({
-      '_mentis/_calendar/evt.md': task(
+      'Calendar/2026-10-11 Standup.md': task(
         'start: 2026-10-11T10:00\nend: 2026-10-11T11:00\nallDay: false\nalert: 15',
         'Standup',
       ),
@@ -54,7 +54,13 @@ describe('readReminderRows', () => {
         '- [ ] No time >2026-10-11',
       ].join('\n'),
     )
-    const rows = await readReminderRows(fs, new Date(2026, 9, 11), new Date(2026, 9, 13), tasks)
+    const rows = await readReminderRows(
+      fs,
+      new Date(2026, 9, 11),
+      new Date(2026, 9, 13),
+      tasks,
+      'Calendar',
+    )
     expect(rows.map((r) => [r.kind, r.title, r.at])).toEqual([
       ['event', 'Standup', '2026-10-11T09:45'],
       ['task', 'Bins', '2026-10-11T18:00'],
@@ -64,14 +70,20 @@ describe('readReminderRows', () => {
 
   it('has none when there are no tasks and no calendar folder yet', async () => {
     expect(
-      await readReminderRows(memoryFs({}), new Date(2026, 9, 11), new Date(2026, 9, 13), []),
+      await readReminderRows(
+        memoryFs({}),
+        new Date(2026, 9, 11),
+        new Date(2026, 9, 13),
+        [],
+        'Calendar',
+      ),
     ).toEqual([])
   })
 })
 
 describe('settleReminder', () => {
   it('writes Done and Snooze into an event file, keeping everything else', async () => {
-    const path = '_mentis/_calendar/evt.md'
+    const path = 'Calendar/2026-10-12 Standup.md'
     const files = {
       [path]: task(
         'start: 2026-10-12T10:00\nend: 2026-10-12T11:00\nallDay: false\nalert: 15\ncustom: kept',
@@ -97,7 +109,13 @@ describe('settleReminder', () => {
     expect('snoozeUntil' in data).toBe(false)
 
     // Once done, the occurrence no longer reminds.
-    const rows = await readReminderRows(fs, new Date(2026, 9, 11), new Date(2026, 9, 13), [])
+    const rows = await readReminderRows(
+      fs,
+      new Date(2026, 9, 11),
+      new Date(2026, 9, 13),
+      [],
+      'Calendar',
+    )
     expect(rows).toEqual([])
   })
 })

@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import { toast } from '@/stores/toast'
 import {
+  CalendarDays,
   ChevronRight,
   ChevronDown,
   ExternalLink,
@@ -28,6 +29,9 @@ import { vaultPathsPointToSameFile } from '@/lib/fs/vault-path-equiv'
 import { createUntitledNote } from '@/lib/notes/new-note'
 import { showEditor } from '@/lib/notes/show-editor'
 import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
+import { calendarDir } from '@/lib/calendar/folder'
+import { useUiStore } from '@/stores/ui'
+import { useVaultStore } from '@/stores/vault'
 import { awaitPendingMarkdownSave } from '@/lib/notes/pending-saves'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
 import { useFileTreeStore } from '@/stores/file-tree'
@@ -563,16 +567,35 @@ function TreeNode({
   const inlineInputRef = useRef<HTMLInputElement>(null)
   const childrenShown = useRef(false)
   const isEditing = inlineEditPath === entry.path
+  const isCalendar = useVaultStore((s) => entry.isDirectory && calendarDir(s.config) === entry.path)
 
   useEffect(() => {
-    if (!entry.isDirectory || !expanded) return
+    if (!entry.isDirectory || !expanded || isCalendar) return
     let cancelled = false
     void listFolder(vaultFs, entry.path, setChildren, () => cancelled, !childrenShown.current)
     childrenShown.current = true
     return () => {
       cancelled = true
     }
-  }, [entry.isDirectory, entry.path, expanded, vaultFs, refreshToken])
+  }, [entry.isDirectory, entry.path, expanded, vaultFs, refreshToken, isCalendar])
+
+  // The Calendar folder opens the calendar; its event files are not listed.
+  if (isCalendar) {
+    return (
+      <div role="treeitem" aria-level={depth + 1} aria-selected={false}>
+        <button
+          type="button"
+          onClick={() => useUiStore.getState().setActiveView('calendar')}
+          className="text-fg hover:bg-bg-hover mx-1 flex w-[calc(100%-0.5rem)] items-center gap-1 rounded-md py-1 pr-1 text-left text-[13px] transition-colors"
+          style={{ paddingLeft: 2 + depth * 14 }}
+        >
+          <span className="size-4 shrink-0" aria-hidden />
+          <CalendarDays className="text-fg-muted size-4 shrink-0" aria-hidden />
+          <span className="min-w-0 truncate font-medium">{entry.name}</span>
+        </button>
+      </div>
+    )
+  }
 
   if (!entry.isDirectory) {
     const selected = selectedPath === entry.path

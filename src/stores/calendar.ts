@@ -3,12 +3,18 @@ import { immer } from 'zustand/middleware/immer'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { CalendarEvent, CalendarEventColor } from '@/types/calendar'
 import {
-  CALENDAR_DIR,
+  calendarDir,
   parseCalendarEvent,
   serializeCalendarEvent,
-  generateEventFilename,
+  eventFilename,
+  hasEventFilename,
   defaultEventFrontmatter,
 } from '@/lib/calendar'
+import { uniqueVaultPath } from '@/lib/fs/unique-path'
+import { reindexFilePath } from '@/lib/search/build-vault-index'
+import { removeSearchDocument } from '@/lib/search/index'
+import { updateLinksAfterRename } from '@/lib/links/rename'
+import { useVaultStore } from '@/stores/vault'
 
 interface EventOpts {
   title: string
@@ -34,15 +40,16 @@ interface CalendarState {
   removeEvent: (fs: FileSystemAdapter, path: string) => Promise<void>
 }
 
-async function collectEventFiles(fs: FileSystemAdapter, dir: string, acc: string[]): Promise<void> {
-  const entries = await fs.readdir(dir)
-  for (const e of entries) {
-    if (e.isDirectory) {
-      await collectEventFiles(fs, e.path, acc)
-    } else if (e.name.endsWith('.md')) {
-      acc.push(e.path)
-    }
+const currentDir = () => calendarDir(useVaultStore.getState().config)
+
+/** A new event's path in the Calendar folder, made if missing (the tree then shows it). */
+async function newEventPath(fs: FileSystemAdapter, title: string, start: string): Promise<string> {
+  const dir = currentDir()
+  if (!(await fs.exists(dir))) {
+    await fs.mkdir(dir)
+    window.dispatchEvent(new CustomEvent('ink:vault-changed'))
   }
+  return uniqueVaultPath(fs, `${dir}/${eventFilename(title, start)}`)
 }
 
 export const useCalendarStore = create<CalendarState>()(
@@ -55,7 +62,8 @@ export const useCalendarStore = create<CalendarState>()(
         s.loading = true
       })
       try {
-        const exists = await fs.exists(CALENDAR_DIR)
+        const dir = currentDir()
+        const exists = await fs.exists(dir)
         if (!exists) {
           set((s) => {
             s.events = []
@@ -63,8 +71,9 @@ export const useCalendarStore = create<CalendarState>()(
           })
           return
         }
-        const paths: string[] = []
-        await collectEventFiles(fs, CALENDAR_DIR, paths)
+        const paths = (await fs.readdir(dir))
+          .filter((e) => !e.isDirectory && e.name.toLowerCase().endsWith('.md'))
+          .map((e) => e.path)
         const events: CalendarEvent[] = []
         for (const p of paths) {
           try {
@@ -86,9 +95,6 @@ export const useCalendarStore = create<CalendarState>()(
     },
 
     addEvent: async (fs, opts) => {
-      const exists = await fs.exists(CALENDAR_DIR)
-      if (!exists) await fs.mkdir(CALENDAR_DIR)
-
       const fm = defaultEventFrontmatter({
         start: opts.start,
         end: opts.end,
@@ -101,10 +107,10 @@ export const useCalendarStore = create<CalendarState>()(
         ...(opts.alert != null ? { alert: opts.alert } : {}),
       })
 
-      const filename = generateEventFilename()
-      const path = `${CALENDAR_DIR}/${filename}`
+      const path = await newEventPath(fs, opts.title, opts.start)
       const raw = serializeCalendarEvent(fm, opts.title, opts.body ?? '')
       await fs.writeTextFile(path, raw)
+      void reindexFilePath(fs, path)
 
       const ev = parseCalendarEvent(path, raw)
       set((s) => {
@@ -135,10 +141,19 @@ export const useCalendarStore = create<CalendarState>()(
         created: existing.created,
       })
 
+      // A new title or day renames the file, and the links to it follow.
       const raw = serializeCalendarEvent(fm, opts.title, opts.body ?? '')
-      await fs.writeTextFile(path, raw)
+      const renamed = !hasEventFilename(path, opts.title, opts.start)
+      const nextPath = renamed ? await newEventPath(fs, opts.title, opts.start) : path
+      await fs.writeTextFile(nextPath, raw)
+      if (renamed) {
+        await fs.remove(path)
+        removeSearchDocument(path)
+      }
+      void reindexFilePath(fs, nextPath)
+      if (renamed) void updateLinksAfterRename(fs, path, nextPath)
 
-      const updated = parseCalendarEvent(path, raw)
+      const updated = parseCalendarEvent(nextPath, raw)
       set((s) => {
         const idx = s.events.findIndex((e) => e.path === path)
         if (idx !== -1) s.events[idx] = updated
@@ -151,6 +166,7 @@ export const useCalendarStore = create<CalendarState>()(
       } catch {
         /* already gone */
       }
+      removeSearchDocument(path)
       set((s) => {
         s.events = s.events.filter((e) => e.path !== path)
       })

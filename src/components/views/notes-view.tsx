@@ -25,6 +25,9 @@ import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-
 import { toast } from '@/stores/toast'
 import { removeSearchDocument } from '@/lib/search/index'
 import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
+import { calendarDir, isEventPath } from '@/lib/calendar/folder'
+import { requestOpen } from '@/lib/reminders/open'
+import { useVaultStore } from '@/stores/vault'
 
 export function NotesView() {
   const { vaultFs } = useVaultSession()
@@ -50,6 +53,8 @@ function NotesViewInner() {
   const setSelectedPath = useFileTreeStore((s) => s.setSelectedPath)
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
+  const calendarFolder = useVaultStore((s) => calendarDir(s.config))
+  const activeIsEvent = activeTab ? isEventPath(activeTab.path, calendarFolder) : false
   // Unknown ids open as markdown, as unknown files always have.
   const activeDef = activeTab
     ? (fileTypes.get(activeTab.type) ?? fileTypes.get('markdown'))
@@ -304,7 +309,16 @@ function NotesViewInner() {
     openNotePath(p)
   }, [pendingVaultOpenPath, setPendingVaultOpenPath, openNotePath])
 
-  const ActiveEditor = activeDef ? lazyEditorFor(activeDef) : undefined
+  // An event's file opens in the calendar, not as a note — from search, a link or chat alike.
+  useEffect(() => {
+    if (!activeTab || !activeIsEvent) return
+    useEditorStore.getState().closeTab(activeTab.id)
+    useUiStore.getState().setActiveView('calendar')
+    requestOpen('event', activeTab.path)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab?.id, activeIsEvent])
+
+  const ActiveEditor = activeDef && !activeIsEvent ? lazyEditorFor(activeDef) : undefined
   const editorElement =
     activeTab && ActiveEditor ? (
       // Blank while a type's chunk loads for the first time — no spinner text,

@@ -26,7 +26,7 @@ test.describe('29 — Reminders: data', () => {
     const first = new Date(now.getFullYear(), now.getMonth(), 1)
     await writeVaultFile(
       page,
-      '_mentis/_calendar/evt-gym.md',
+      `Calendar/${ymd(first)} Gym.md`,
       [
         '---',
         'uid: gym',

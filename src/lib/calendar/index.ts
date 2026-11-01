@@ -1,7 +1,7 @@
 import matter from 'gray-matter'
 import type { CalendarEvent, CalendarEventFrontmatter, CalendarEventColor } from '@/types/calendar'
 
-export const CALENDAR_DIR = '_mentis/_calendar'
+export { calendarDir, isEventPath } from './folder'
 
 const H1_RE = /^#\s+(.+)$/m
 const REPEATS = ['daily', 'weekly', 'monthly', 'yearly']
@@ -9,6 +9,26 @@ const REPEATS = ['daily', 'weekly', 'monthly', 'yearly']
 function safeColor(raw: unknown): CalendarEventColor {
   const valid: CalendarEventColor[] = ['violet', 'sky', 'emerald', 'amber', 'rose', 'slate']
   return valid.includes(raw as CalendarEventColor) ? (raw as CalendarEventColor) : 'violet'
+}
+
+/**
+ * A start or end as written. YAML reads an unquoted `2026-11-03` (or
+ * `2026-11-03 09:30:00`) as a Date at that wall-clock time in UTC, so it is
+ * turned back into the text a person typed.
+ */
+/** `created` / `modified`: an ISO string, whichever way YAML read it. */
+const stamp = (v: unknown): string =>
+  v instanceof Date && !isNaN(v.getTime())
+    ? v.toISOString()
+    : typeof v === 'string' && v
+      ? v
+      : new Date().toISOString()
+
+function eventDateField(v: unknown): string {
+  if (typeof v === 'string') return v
+  if (!(v instanceof Date) || isNaN(v.getTime())) return ''
+  const iso = v.toISOString()
+  return iso.slice(11, 16) === '00:00' ? iso.slice(0, 10) : iso.slice(0, 16)
 }
 
 export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
@@ -32,8 +52,8 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
     uid: (fm.uid as string) ?? '',
     title: h1 ? h1[1].trim() : '',
     body: bodyWithoutH1,
-    start: (fm.start as string) ?? '',
-    end: (fm.end as string) ?? '',
+    start: eventDateField(fm.start),
+    end: eventDateField(fm.end),
     allDay: Boolean(fm.allDay),
     color: safeColor(fm.color),
     ...(location ? { location } : {}),
@@ -43,8 +63,8 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
     ...(alert != null ? { alert } : {}),
     ...(reminderAck ? { reminderAck } : {}),
     ...(snoozeUntil ? { snoozeUntil } : {}),
-    created: (fm.created as string) ?? new Date().toISOString(),
-    modified: (fm.modified as string) ?? new Date().toISOString(),
+    created: stamp(fm.created),
+    modified: stamp(fm.modified),
   }
 }
 
@@ -64,10 +84,25 @@ export function serializeCalendarEvent(
   return matter.stringify(mdBody, yamlSafe(updated))
 }
 
-export function generateEventFilename(): string {
-  const ts = Date.now().toString(36)
-  const rand = Math.random().toString(36).slice(2, 8)
-  return `evt-${ts}-${rand}.md`
+/**
+ * An event's file name: its start day, then its title —
+ * `2026-11-03 Dentist.md`. Characters a file or a wiki-link cannot hold are dropped.
+ */
+export function eventFilename(title: string, start: string): string {
+  const stem = title
+    .replace(/[/\\:*?"<>|#^[\]]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60)
+    .replace(/[.\s]+$/, '')
+  return `${[start.slice(0, 10), stem].filter(Boolean).join(' ') || 'Event'}.md`
+}
+
+/** True when `path` is already named for the event (`name.md`, or `name 2.md` after a clash). */
+export function hasEventFilename(path: string, title: string, start: string): boolean {
+  const base = path.slice(path.lastIndexOf('/') + 1)
+  const stem = eventFilename(title, start).slice(0, -3)
+  return base === `${stem}.md` || (base.startsWith(`${stem} `) && /^ \d+\.md$/.test(base.slice(stem.length)))
 }
 
 export function generateEventUid(): string {

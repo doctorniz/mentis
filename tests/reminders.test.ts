@@ -26,7 +26,7 @@ const task = (over: Partial<TaskItem>): TaskItem => ({
 })
 
 const event = (over: Partial<CalendarEvent>): CalendarEvent => ({
-  path: '_mentis/_calendar/e.md',
+  path: 'Calendar/e.md',
   uid: 'e',
   title: 'Dentist',
   body: '',
