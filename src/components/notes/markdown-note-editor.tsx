@@ -37,11 +37,12 @@ import { toast } from '@/stores/toast'
 import { cn } from '@/utils/cn'
 import { Mic } from 'lucide-react'
 import { AudioPlayer } from '@/components/audio/audio-player'
-import { NoteEditorToolbar } from '@/components/notes/note-editor-toolbar'
-import type { InsertImageFn } from '@/components/notes/note-editor-toolbar'
+import { NoteEditorDialogs } from '@/components/notes/note-editor-dialogs'
+import type { InsertImageFn } from '@/components/notes/note-editor-dialogs'
 import { NoteEditorModeBar } from '@/components/notes/note-editor-mode-bar'
 import { MarkdownSourceEditor } from '@/components/notes/markdown-source-editor'
 import { TableControlsMenu } from '@/components/notes/table-controls-menu'
+import { SelectionMenu } from '@/components/notes/selection-menu'
 import { FindReplaceBar } from '@/components/notes/find-replace-bar'
 import { countWords } from '@/lib/notes/word-count'
 import { pendingMarkdownSaves } from '@/lib/notes/pending-saves'
@@ -961,7 +962,7 @@ export const MarkdownNoteEditor = forwardRef<
         }}
       />
       {!showRawSource && (
-        <NoteEditorToolbar
+        <NoteEditorDialogs
           editor={editor}
           vaultFs={vaultFs}
           allPaths={allPaths}
@@ -989,6 +990,7 @@ export const MarkdownNoteEditor = forwardRef<
           )}
         >
           <TableControlsMenu editor={editor} scrollContainer={visualScrollRef} />
+          <SelectionMenu editor={editor} scrollContainer={visualScrollRef} />
           <div className="px-10 pt-6">
             <input
               ref={titleInputRef}

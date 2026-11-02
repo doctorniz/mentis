@@ -128,6 +128,33 @@ test.describe('Markdown Editor', () => {
       const boldItalic = editor.locator('strong em, em strong', { hasText: 'bold italic' })
       await expect(boldItalic).toBeVisible()
     })
+
+    test('3.2.7 No toolbar; selecting text shows bold, italic, underline, heading and link', async ({
+      vaultPage: page,
+    }) => {
+      await expect(page.getByRole('toolbar', { name: 'Formatting' })).toHaveCount(0)
+      const editor = page.locator('.tiptap').first()
+      await editor.click()
+      await editor.press('Enter')
+      await page.keyboard.type('plain words')
+
+      const menu = page.getByRole('toolbar', { name: 'Format' })
+      await expect(menu).toHaveCount(0)
+      await page.keyboard.press('Shift+Home')
+      await expect(menu).toBeVisible()
+
+      await menu.getByRole('button', { name: 'Bold' }).click()
+      await menu.getByRole('button', { name: 'Underline' }).click()
+      await expect(editor.locator('strong u, u strong', { hasText: 'plain words' })).toBeVisible()
+
+      await menu.getByRole('button', { name: 'Heading' }).click()
+      await expect(editor.locator('h2', { hasText: 'plain words' })).toBeVisible()
+      await menu.getByRole('button', { name: 'Heading' }).click()
+      await expect(editor.locator('h2')).toHaveCount(0)
+
+      await page.keyboard.press('End')
+      await expect(menu).toHaveCount(0)
+    })
   })
 
   // ── 3.3 Wiki-Links & Navigation ────────────────────────────────────
