@@ -98,20 +98,23 @@ test.describe('28 — Journal', () => {
     )
   })
 
-  test('28.4 A day open as a note tab is read-only in the journal view', async ({
+  test('28.4 A day open as a note tab closes, and is edited in the journal', async ({
     vaultPage: page,
   }) => {
     await openToday(page)
     await write(page, 'Draft')
     await page.getByRole('button', { name: 'Open as note' }).click()
-    await expect(page.locator('.tiptap').first()).toContainText('Draft', { timeout: 10_000 })
+    const note = page.locator('.tiptap').first()
+    await expect(note).toContainText('Draft', { timeout: 10_000 })
+    await note.click()
+    await page.keyboard.press('End')
+    await page.keyboard.type(' from the note')
 
     await openToday(page)
-    await expect(page.getByText('This day is open in a note tab')).toBeVisible()
-    await expect(page.getByRole('textbox', { name: 'Journal entry' })).toHaveAttribute(
-      'contenteditable',
-      'false',
-    )
+    const entry = page.getByRole('textbox', { name: 'Journal entry' })
+    await expect(entry).toHaveAttribute('contenteditable', 'true')
+    await expect(entry).toContainText('Draft from the note', { timeout: 10_000 })
+    await expect(page.getByText('open in a note tab')).toHaveCount(0)
   })
 
   test('28.5 Shows the tasks due that day, and today the overdue ones', async ({

@@ -4,6 +4,7 @@ import { useVaultSession } from '@/contexts/vault-fs-context'
 import { SectionEditor } from '@/components/journal/section-editor'
 import { JournalDue } from '@/components/journal/journal-due'
 import { NOTE_WRITTEN_EVENT } from '@/lib/notes/note-written'
+import { awaitPendingMarkdownSave } from '@/lib/notes/pending-saves'
 import {
   defaultJournalTab,
   journalPath,
@@ -55,8 +56,8 @@ interface Day {
 /**
  * A day's journal as tabs: its `##` sections (or, for a day not written yet,
  * the journal template's). Each tab edits only its section; saving re-reads
- * the file and replaces just that section. A day open in a note tab is shown
- * read-only, so the two editors cannot overwrite each other.
+ * the file and replaces just that section. A day open in a note tab is closed
+ * and edited here, so two editors never write the file at once.
  */
 export function JournalView() {
   const { vaultFs } = useVaultSession()
@@ -65,9 +66,6 @@ export function JournalView() {
   const requestedTab = useJournalStore((s) => s.tab)
   const setDate = useJournalStore((s) => s.setDate)
   const setRequestedTab = useJournalStore((s) => s.setTab)
-  const openInTab = useEditorStore((s) =>
-    s.tabs.find((t) => t.path === journalPath(config, dayFrom(date))),
-  )
   const [day, setDay] = useState<Day | null>(null)
   const [tab, setTab] = useState<string | null>(null)
   const [addingTab, setAddingTab] = useState(false)
@@ -79,6 +77,10 @@ export function JournalView() {
 
   const load = useCallback(async () => {
     const path = journalPath(config, dayFrom(date))
+    // Open as a note tab: close it, and read the file once its last save has landed.
+    const open = useEditorStore.getState().tabs.find((t) => t.path === path)
+    if (open) useEditorStore.getState().closeTab(open.id)
+    await awaitPendingMarkdownSave(path)
     const raw = (await vaultFs.exists(path)) ? await vaultFs.readTextFile(path) : null
     const template = await readJournalTemplate(vaultFs, config)
     const preview = template
@@ -206,7 +208,6 @@ export function JournalView() {
   }
 
   const today = formatLocalDate(new Date())
-  const locked = !!openInTab
   // An unwritten day shows what it will start as, so the first save keeps the template's text.
   const markdown = day && tab ? tabContent(splitJournal(day.raw ?? day.preview), tab) : ''
 
@@ -291,55 +292,38 @@ export function JournalView() {
                 {t}
               </button>
             ))}
-            {!locked &&
-              (addingTab ? (
-                <input
-                  autoFocus
-                  value={newTab}
-                  onChange={(e) => setNewTab(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void addTab()
-                    if (e.key === 'Escape') setAddingTab(false)
-                  }}
-                  onBlur={() => void addTab()}
-                  placeholder="Tab name"
-                  aria-label="New tab name"
-                  className="border-border bg-bg text-fg w-32 rounded-md border px-2 py-0.5 text-sm"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAddingTab(true)}
-                  aria-label="Add a tab"
-                  className="text-fg-muted hover:text-fg rounded p-1"
-                >
-                  <Plus className="size-4" />
-                </button>
-              ))}
-          </div>
-
-          {locked && (
-            <div className="bg-accent/5 text-fg-secondary flex items-center gap-2 px-4 py-2 text-xs">
-              This day is open in a note tab, so it is read-only here.
+            {addingTab ? (
+              <input
+                autoFocus
+                value={newTab}
+                onChange={(e) => setNewTab(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void addTab()
+                  if (e.key === 'Escape') setAddingTab(false)
+                }}
+                onBlur={() => void addTab()}
+                placeholder="Tab name"
+                aria-label="New tab name"
+                className="border-border bg-bg text-fg w-32 rounded-md border px-2 py-0.5 text-sm"
+              />
+            ) : (
               <button
                 type="button"
-                onClick={() => {
-                  useEditorStore.getState().setActiveTab(openInTab!.id)
-                  useUiStore.getState().setActiveView(HOME_VIEW)
-                }}
-                className="text-accent hover:underline"
+                onClick={() => setAddingTab(true)}
+                aria-label="Add a tab"
+                className="text-fg-muted hover:text-fg rounded p-1"
               >
-                Go to the note
+                <Plus className="size-4" />
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto">
             <SectionEditor
-              key={`${date}/${tab}/${locked}/${revision}`}
+              key={`${date}/${tab}/${revision}`}
               markdown={markdown}
               onChange={onChange}
-              editable={!locked}
+              editable
               placeholder={`Write in ${tab}…`}
               journalPath={day.path}
             />
