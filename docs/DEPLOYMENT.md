@@ -2,7 +2,7 @@
 
 The web build is a static site in `out/` (`pnpm build`); there is no server.
 The desktop and Android apps embed the same front end and are built by Tauri —
-see the README and [`ANDROID.md`](./ANDROID.md).
+see the README, [`ANDROID.md`](./ANDROID.md) and Releasing below.
 
 ## What the host must do
 
@@ -57,9 +57,52 @@ that caused it (`tests/e2e/fixtures.ts`).
 
 Workflows use third-party actions pinned to a commit, with the tag as a
 comment; Dependabot (`.github/dependabot.yml`) proposes updates monthly. CI
-runs with read-only repository access. The Android release job, which holds
-the signing secrets, restores no caches, so it builds only from what it
-fetched itself.
+runs with read-only repository access. The release jobs, which hold the
+signing secrets, restore no caches, so they build only from what they
+fetched themselves.
+
+## Releasing
+
+A version tag builds every app and publishes them as one GitHub release
+(`.github/workflows/release.yml`):
+
+| Platform | Files                                                      | Built on     |
+| -------- | ---------------------------------------------------------- | ------------ |
+| Windows  | `Mentis_<version>_x64-setup.exe`                           | Windows      |
+| macOS    | `Mentis_<version>_universal.dmg` (Apple silicon and Intel) | macOS 15     |
+| Linux    | `.AppImage` and `.deb` (x64)                               | Ubuntu 22.04 |
+| Android  | `mentis-v<version>.apk` and `.aab` (for Play)              | Ubuntu       |
+
+The release is a draft until all four builds have attached their files; if
+one fails, re-run the failed jobs and it publishes then.
+
+1. Set the same version in `package.json`, `src-tauri/tauri.conf.json` and
+   `src-tauri/Cargo.toml`, and merge it.
+2. `git tag v0.2.0 && git push origin v0.2.0`.
+3. Upload the `.aab` in the Play Console.
+
+**Once:** the Android secrets ([`ANDROID.md`](./ANDROID.md), Releasing) and
+the `NEXT_PUBLIC_DROPBOX_CLIENT_ID` variable; a release without it stops
+before building.
+
+**Signing.** The Windows installer is not signed: Windows SmartScreen warns
+on first run (More info › Run anyway). Linux packages are not signed. The Mac
+app is signed ad hoc until the Apple secrets below are set, so macOS will not
+open it until it is allowed in System Settings › Privacy & Security. With
+them it is signed with the Developer ID and notarized, and opens normally.
+In GitHub, Settings › Secrets and variables › Actions:
+
+| Secret                       | Value                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| `APPLE_CERTIFICATE`          | the Developer ID Application certificate, exported as `.p12`, `base64 -i cert.p12` |
+| `APPLE_CERTIFICATE_PASSWORD` | the password given when exporting it                                               |
+| `APPLE_SIGNING_IDENTITY`     | `Developer ID Application: <name> (<team id>)`                                     |
+| `APPLE_ID`                   | the Apple ID email of the developer account                                        |
+| `APPLE_PASSWORD`             | an app-specific password for it (account.apple.com)                                |
+| `APPLE_TEAM_ID`              | the team ID (developer.apple.com, Membership)                                      |
+
+iOS is not in the release: an iPhone installs only from TestFlight or the
+App Store ([`IOS.md`](./IOS.md)).
 
 ## Audits
 

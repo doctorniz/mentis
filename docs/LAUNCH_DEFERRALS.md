@@ -87,6 +87,7 @@ _Last reviewed 2026-10-13._
 
 - [ ] **Ollama on phones** — with Ollama on a PC on the LAN (`OLLAMA_HOST=0.0.0.0`, `OLLAMA_ORIGINS` set): on an Android release build and on an iPhone, Settings › AI › Ollama at `http://<pc-ip>:11434` connects and a chat reply streams; iOS asks for local network access first.
 
+- [ ] **Desktop — macOS and Linux** — install the release's `.dmg` on a Mac (Apple silicon and, if one is to hand, Intel) and the `.AppImage` or `.deb` on Linux: the app opens a vault in a picked folder, saves and searches; the tray, the capture hotkey (Cmd+Shift+Space on a Mac), launch at login and a reminder notification work; Dropbox sign-in through the browser. Neither has been run before. Unsigned Mac app: it opens after allowing it in System Settings › Privacy & Security; once the Apple secrets are set, it opens with no warning. (`docs/DEPLOYMENT.md`, Releasing.)
 - [ ] **Desktop — capture hotkey and tray** — the global hotkey opens the overlay over another app; rebinding in Settings › Desktop; launch at login; close to tray and reopen from the tray.
 - [ ] **Desktop — reminders** — a task with Remind a minute ahead, app hidden in the tray: the Windows notification appears on time; the in-app card offers Snooze and Done.
 - [ ] **Journal and lists** — journal tabs from a template, the evening prompt; list hold-to-reorder with a mouse, scheduled reset.

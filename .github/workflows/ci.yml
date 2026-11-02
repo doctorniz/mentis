@@ -159,7 +159,7 @@ jobs:
 
   # The phone-only code (Rust under cfg(mobile), the Kotlin in gen/android)
   # is compiled nowhere else. An unsigned 64-bit ARM build is enough to catch
-  # breakage; releases build every CPU type (android-release.yml).
+  # breakage; releases build every CPU type (release.yml).
   android:
     runs-on: ubuntu-latest
     env:

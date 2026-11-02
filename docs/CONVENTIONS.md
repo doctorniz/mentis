@@ -21,7 +21,7 @@ mentis/
 ├── scripts/           # budgets, cold-start measurement, release version check, QA checklist server
 ├── public/            # PWA manifest, icons, service worker, worker assets
 ├── docs/              # documentation (index in README); docs/archive — historical
-└── .github/workflows/ # ci.yml, android-release.yml
+└── .github/workflows/ # ci.yml, release.yml
 ```
 
 **Import boundaries** (ESLint): a module never imports another module — go

@@ -215,9 +215,10 @@ keyPassword=…
 1. Set the same version in `package.json`, `src-tauri/tauri.conf.json` and
    `src-tauri/Cargo.toml` (e.g. `0.2.0`), and merge it.
 2. Tag it and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
-3. `android-release.yml` checks the tag matches the version, builds the bundle
-   and an APK for all four CPU types (64- and 32-bit ARM, x86_64, x86), signs
-   them, and attaches them to a GitHub release.
+3. `release.yml` checks the tag matches the version, builds the bundle and
+   an APK for all four CPU types (64- and 32-bit ARM, x86_64, x86), signs
+   them, and attaches them to the GitHub release with the desktop apps
+   (`docs/DEPLOYMENT.md`, Releasing).
 4. Upload `mentis-v0.2.0.aab` in the Play Console.
 
 The Play version code comes from the version: `major × 1,000,000 + minor ×

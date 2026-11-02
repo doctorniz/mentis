@@ -292,8 +292,8 @@ CI (`.github/workflows/ci.yml`) on every push to `main` and every pull
 request: typecheck, lint, unit tests, build and budgets; the full Playwright
 suite on the production build (desktop Chromium and a Pixel 5 profile); the
 Windows desktop build with Rust format, clippy and tests; an Android build;
-and an iOS simulator build, launched with a screenshot kept. Signed Android releases come from a version tag
-(`android-release.yml`, see `docs/ANDROID.md`).
+and an iOS simulator build, launched with a screenshot kept. A version tag builds the release for
+Windows, macOS, Linux and Android (`release.yml`, see `docs/DEPLOYMENT.md`).
 
 ---
 

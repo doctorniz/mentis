@@ -44,12 +44,12 @@ bundle cost (`CLAUDE.md`). _Last reviewed 2026-10-13._
 
 | Tool                    | Use                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------- |
-| pnpm                    | packages; pinned to pnpm 10 by `packageManager` in package.json (CI and local alike)             |
+| pnpm                    | packages; pinned to pnpm 10 by `packageManager` in package.json (CI and local alike)              |
 | ESLint (flat), Prettier | lint (including import boundaries between modules) and formatting                                 |
 | Vitest (+ happy-dom)    | unit tests in `tests/`                                                                            |
 | Playwright              | end-to-end in `tests/e2e/`: desktop Chromium and a Pixel 5 profile, on the production build in CI |
 | cargo fmt, clippy, test | the Rust shell                                                                                    |
-| GitHub Actions          | `ci.yml` (verify, e2e, desktop, android) and `android-release.yml` (signed releases)              |
+| GitHub Actions          | `ci.yml` (verify, e2e, desktop, android) and `release.yml` (every platform, from a version tag)   |
 
 ## Key decisions
 
