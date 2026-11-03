@@ -1,6 +1,6 @@
 [package]
 name = "mentis"
-version = "0.1.0"
+version = "0.1.1"
 description = "Mentis: a local-first personal knowledge system"
 license = "BUSL-1.1"
 edition = "2024"
