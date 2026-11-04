@@ -16,7 +16,12 @@ export default function CaptureSheet({ onClose }: { onClose: () => void }) {
           <CaptureBar
             placement="bottom"
             focusSignal={1}
-            onSaved={(_, { stay }) => !stay && onClose()}
+            onSaved={(result, { stay }) => {
+              if (stay) return
+              onClose()
+              // A new note opens straight away: the bar's Open goes with the sheet.
+              result.open?.()
+            }}
             onEscapeEmpty={onClose}
             onRecord={() => {
               onClose()

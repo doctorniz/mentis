@@ -97,7 +97,9 @@ test.describe('30 — Touch', () => {
     await expect(page.getByText('Ring the plumber').first()).toBeVisible({ timeout: 10_000 })
   })
 
-  test('30.1.3 Capture /note: Save in its dialog creates the note', async ({ vaultPage: page }) => {
+  test('30.1.3 Capture /note: Save in its dialog creates the note and opens it', async ({
+    vaultPage: page,
+  }) => {
     await tab(page, 'Capture').tap()
     const sheet = page.getByRole('dialog', { name: 'Capture' })
     const input = sheet.getByRole('textbox', { name: 'Capture' })
@@ -109,8 +111,9 @@ test.describe('30 — Touch', () => {
     await confirm.getByRole('button', { name: 'Save' }).tap()
     await expect(confirm).toBeHidden()
     await expect(sheet).toBeHidden()
-    await tab(page, 'Notes').tap()
-    await expect(page.getByText('Weekend plan').first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('input[aria-label="Note title"]')).toHaveValue('Weekend plan', {
+      timeout: 10_000,
+    })
   })
 
   test('30.1.2 Settings › Phone picks the tabs around Capture', async ({ vaultPage: page }) => {
