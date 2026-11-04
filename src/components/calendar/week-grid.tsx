@@ -19,6 +19,8 @@ const SCROLL_TO_HOUR = 7 // scroll to 7am on mount
  * lives inside the same container so it pans in lockstep.
  */
 const GRID_TRACKS = `${GUTTER_WIDTH}px repeat(7, minmax(110px, 1fr))` as const
+/** The header and body are at least this wide, so the header's background covers every column. */
+const MIN_WIDTH = GUTTER_WIDTH + 7 * 110
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 
@@ -163,6 +165,14 @@ export function WeekGrid({
     }
   }, [])
 
+  // On a narrow screen, start the week at today's column (or at its start).
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const index = days.findIndex((d) => toDateStr(d) === toDateStr(new Date()))
+    el.scrollLeft = index > 0 ? index * ((el.scrollWidth - GUTTER_WIDTH) / 7) : 0
+  }, [days])
+
   // Current-time indicator position
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
   const nowTop = (nowMinutes / 60) * HOUR_HEIGHT
@@ -203,9 +213,12 @@ export function WeekGrid({
         ref={scrollRef}
         className="border-border bg-bg min-h-0 flex-1 overflow-auto [scrollbar-gutter:stable]"
       >
-        <div className="bg-bg border-border sticky top-0 z-30 border-b">
+        <div
+          className="bg-bg border-border sticky top-0 z-30 border-b"
+          style={{ minWidth: MIN_WIDTH }}
+        >
           <div className="border-border grid" style={{ gridTemplateColumns: GRID_TRACKS }}>
-            <div className="border-border border-r" aria-hidden />
+            <div className="border-border bg-bg sticky left-0 z-10 border-r" aria-hidden />
             {days.map((day, i) => {
               const dateStr = toDateStr(day)
               const isToday = dateStr === today
@@ -237,7 +250,7 @@ export function WeekGrid({
               className="border-border grid border-t"
               style={{ gridTemplateColumns: GRID_TRACKS }}
             >
-              <div className="border-border border-r" aria-hidden />
+              <div className="border-border bg-bg sticky left-0 z-10 border-r" aria-hidden />
               {days.map((day, i) => {
                 const dateStr = toDateStr(day)
                 const allDay = allDayEventsForDate(dateStr)
@@ -247,7 +260,7 @@ export function WeekGrid({
                 return (
                   <div
                     key={i}
-                    className="border-border flex min-h-[2rem] flex-col items-center gap-0.5 border-r p-1 last:border-r-0"
+                    className="border-border flex min-h-[2rem] flex-col items-center justify-center gap-0.5 border-r p-1 last:border-r-0"
                   >
                     {hasDailyNote && (
                       <button
@@ -260,29 +273,31 @@ export function WeekGrid({
                         className="size-2 shrink-0 rounded-full bg-amber-400 hover:opacity-70 dark:bg-amber-500"
                       />
                     )}
-                    <div className="flex w-full flex-col gap-0.5">
-                      {allDay.map((ev) => (
-                        <button
-                          key={`${ev.path}@${ev.start}`}
-                          type="button"
-                          onClick={() => onEventClick(ev)}
-                          className={cn(
-                            'w-full truncate rounded px-1.5 py-0.5 text-left text-[10px] font-medium transition-opacity hover:opacity-80',
-                            COLOR_CLS[ev.color] ?? COLOR_CLS['violet']!,
-                          )}
-                        >
-                          {ev.title || 'Untitled'}
-                        </button>
-                      ))}
-                      {dayTasks.map((t) => (
-                        <div
-                          key={t.id}
-                          className="bg-bg-tertiary text-fg-secondary w-full truncate rounded px-1.5 py-0.5 text-[10px]"
-                        >
-                          ○ {t.title}
-                        </div>
-                      ))}
-                    </div>
+                    {(allDay.length > 0 || dayTasks.length > 0) && (
+                      <div className="flex w-full flex-col gap-0.5">
+                        {allDay.map((ev) => (
+                          <button
+                            key={`${ev.path}@${ev.start}`}
+                            type="button"
+                            onClick={() => onEventClick(ev)}
+                            className={cn(
+                              'w-full truncate rounded px-1.5 py-0.5 text-left text-[10px] font-medium transition-opacity hover:opacity-80',
+                              COLOR_CLS[ev.color] ?? COLOR_CLS['violet']!,
+                            )}
+                          >
+                            {ev.title || 'Untitled'}
+                          </button>
+                        ))}
+                        {dayTasks.map((t) => (
+                          <div
+                            key={t.id}
+                            className="bg-bg-tertiary text-fg-secondary w-full truncate rounded px-1.5 py-0.5 text-[10px]"
+                          >
+                            ○ {t.title}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -290,9 +305,12 @@ export function WeekGrid({
           )}
         </div>
 
-        <div className="grid" style={{ gridTemplateColumns: GRID_TRACKS, height: TOTAL_HEIGHT }}>
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: GRID_TRACKS, height: TOTAL_HEIGHT, minWidth: MIN_WIDTH }}
+        >
           <div
-            className="border-border pointer-events-none relative shrink-0 border-r"
+            className="border-border bg-bg pointer-events-none sticky left-0 z-[25] shrink-0 border-r"
             style={{ height: TOTAL_HEIGHT }}
           >
             {HOURS.map((h) => (
