@@ -370,7 +370,8 @@ export default function CaptureConfirmDialog({
   return (
     <Dialog.Root open onOpenChange={(open) => !open && requestCancel()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[199] bg-black/30" />
+        {/* Above the phone's capture sheet (z-240), which it opens from. */}
+        <Dialog.Overlay className="fixed inset-0 z-[250] bg-black/30" />
         <Dialog.Content
           aria-describedby={undefined}
           onKeyDown={onKeyDown}
@@ -382,7 +383,7 @@ export default function CaptureConfirmDialog({
             e.preventDefault()
             requestCancel()
           }}
-          className="border-border bg-bg fixed top-[12vh] left-1/2 z-[200] flex max-h-[80vh] w-[min(100vw-2rem,520px)] -translate-x-1/2 flex-col overflow-hidden rounded-xl border shadow-xl outline-none"
+          className="border-border bg-bg fixed top-[12vh] left-1/2 z-[251] flex max-h-[80vh] w-[min(100vw-2rem,520px)] -translate-x-1/2 flex-col overflow-hidden rounded-xl border shadow-xl outline-none"
         >
           <div className="border-border flex items-center gap-2 border-b px-5 py-3.5">
             <Icon className="text-accent size-4" aria-hidden />
