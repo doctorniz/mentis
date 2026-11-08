@@ -16,8 +16,8 @@ Android.
   insert, merge and extract pages. Edits are written into the PDF itself, with
   a snapshot taken before the first edit.
 - **Drawing canvas** — layered raster drawing (PixiJS/WebGL): pressure and
-  tilt-sensitive brushes, eraser, fill, eyedropper, selection, blend modes,
-  PNG/PDF export.
+  tilt-sensitive brushes with a pressure curve and tapered stroke ends,
+  eraser, fill, eyedropper, selection, blend modes, PNG/PDF export.
 - **More file types** — mindmaps (`.map.md`), kanban boards (`.kan.md`), Marp
   slides (`.slides.md`), lists (`.list.md`); view Word, PowerPoint and
   spreadsheets, and convert Word to Markdown and PowerPoint to slides; edit

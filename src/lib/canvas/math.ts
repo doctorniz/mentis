@@ -71,6 +71,10 @@ export interface InterpolatedStamp {
   /** Pen tilt in degrees (Pointer Events `tiltX` / `tiltY`); 0 for an upright pen, a mouse or a finger. */
   tiltX?: number
   tiltY?: number
+  /** How far along the stroke, in pixels, when the stroke's points carry it. */
+  along?: number
+  /** The fraction of full size the stamp is drawn at: a stroke's taper. */
+  scale?: number
 }
 
 /** How far a pen tilts before the tip is fully on its side, in degrees. */
@@ -96,15 +100,23 @@ export function tiltShape(tiltX = 0, tiltY = 0): { stretch: number; angle: numbe
 
 /**
  * Given a list of raw stroke points, produce evenly-spaced stamp positions
- * using Catmull-Rom interpolation. `spacingPx` is the distance between stamps.
+ * using Catmull-Rom interpolation. `spacingPx` is the distance between stamps,
+ * or a function of how far along the stroke the last stamp is (a tapered tip
+ * wants its stamps closer).
  *
- * Returns an array of stamps (position + interpolated pressure).
+ * Returns an array of stamps (position + interpolated pressure, and how far
+ * along the stroke when the points say).
  */
-export function interpolateStroke(points: StrokePoint[], spacingPx: number): InterpolatedStamp[] {
+export function interpolateStroke(
+  points: StrokePoint[],
+  spacingPx: number | ((along: number) => number),
+): InterpolatedStamp[] {
   if (points.length === 0) return []
   if (points.length === 1) {
     const p = points[0]
-    return [{ x: p.x, y: p.y, pressure: p.pressure, tiltX: p.tiltX, tiltY: p.tiltY }]
+    return [
+      { x: p.x, y: p.y, pressure: p.pressure, tiltX: p.tiltX, tiltY: p.tiltY, along: p.along },
+    ]
   }
 
   const stamps: InterpolatedStamp[] = []
@@ -121,16 +133,23 @@ export function interpolateStroke(points: StrokePoint[], spacingPx: number): Int
     if (segLen < 0.01) continue
 
     // Walk along the segment, placing stamps every spacingPx
-    const steps = Math.ceil(segLen / spacingPx) * 4 // oversample for accuracy
+    // Oversample for accuracy, by the closest spacing the segment has.
+    const closest =
+      typeof spacingPx === 'number'
+        ? spacingPx
+        : Math.max(0.5, Math.min(spacingPx(p1.along ?? 0), spacingPx(p2.along ?? 0)))
+    const steps = Math.ceil(segLen / closest) * 4
     for (let s = 0; s <= steps; s++) {
       const t = s / steps
       const pt = catmullRomPoint(p0, p1, p2, p3, t)
       const press = lerp(p1.pressure, p2.pressure, t)
       const tiltX = lerp(p1.tiltX ?? 0, p2.tiltX ?? 0, t)
       const tiltY = lerp(p1.tiltY ?? 0, p2.tiltY ?? 0, t)
+      const along =
+        p1.along !== undefined && p2.along !== undefined ? lerp(p1.along, p2.along, t) : undefined
 
       if (stamps.length === 0) {
-        stamps.push({ x: pt.x, y: pt.y, pressure: press, tiltX, tiltY })
+        stamps.push({ x: pt.x, y: pt.y, pressure: press, tiltX, tiltY, along })
         distAccum = 0
         continue
       }
@@ -139,8 +158,9 @@ export function interpolateStroke(points: StrokePoint[], spacingPx: number): Int
       const d = distanceBetween(last, pt)
       distAccum += d
 
-      if (distAccum >= spacingPx) {
-        stamps.push({ x: pt.x, y: pt.y, pressure: press, tiltX, tiltY })
+      const spacing = typeof spacingPx === 'number' ? spacingPx : spacingPx(last.along ?? 0)
+      if (distAccum >= spacing) {
+        stamps.push({ x: pt.x, y: pt.y, pressure: press, tiltX, tiltY, along })
         distAccum = 0
       }
     }

@@ -99,6 +99,10 @@ export interface BrushSettings {
    * hand jitter at the cost of the stroke trailing the cursor.
    */
   smoothing?: number
+  /** Taper, 0–1: strokes thin out at their ends (optional; the default is on). 0 = none. */
+  taper?: number
+  /** Pen pressure curve, 0 (firm) – 1 (soft); 0.5 is linear (optional). */
+  pressure?: number
 }
 
 /** A single point in a stroke, captured from PointerEvent. */
@@ -109,6 +113,8 @@ export interface StrokePoint {
   tiltX: number
   tiltY: number
   timestamp: number
+  /** How far along the stroke, in pixels. The stroke engine sets it. */
+  along?: number
 }
 
 /* ------------------------------------------------------------------ */

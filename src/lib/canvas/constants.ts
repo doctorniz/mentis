@@ -1,4 +1,5 @@
 import type { BrushSettings, ViewportState } from '@/types/canvas'
+import { DEFAULT_PRESSURE, DEFAULT_TAPER } from '@/lib/canvas/brush-shaping'
 
 export const DEFAULT_CANVAS_WIDTH = 2048
 export const DEFAULT_CANVAS_HEIGHT = 2048
@@ -49,6 +50,8 @@ export const DEFAULT_BRUSH: BrushSettings = {
   spacing: 0.15,
   color: '#212529',
   smoothing: 0,
+  taper: DEFAULT_TAPER,
+  pressure: DEFAULT_PRESSURE,
 }
 
 export const DEFAULT_VIEWPORT: ViewportState = { x: 0, y: 0, zoom: 1 }

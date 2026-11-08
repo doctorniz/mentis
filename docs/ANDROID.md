@@ -119,7 +119,11 @@ Shared by the canvas and PDF ink (`src/lib/browser/pen.ts`):
   zoom for the session), _Pen only_, or _Pen and finger_. On a phone a pen also
   sends touch events; the PDF layer tells them from a finger (`touchType`,
   and the pen's pointerdown just before).
-- **Pressure** sets the canvas brush's size and strength. PDF ink is one
+- **Pressure** sets the canvas brush's size and strength, through a curve
+  (Pressure in the brush panel, firm to soft) and eased between samples
+  (`src/lib/canvas/brush-shaping.ts`). **Taper** thins a stroke's ends, for
+  a pen, a finger and a mouse alike; it is redrawn once as the stroke ends,
+  when its length is known. The eraser uses neither. PDF ink is one
   width per stroke (it is drawn into the page content on auto-save; per-segment
   widths would be possible but were not chosen).
 - **Tilt** shades like a pencil on its side: the canvas brush tip lengthens

@@ -18,6 +18,7 @@ import { useCanvasStore } from '@/stores/canvas'
 import { toast } from '@/stores/toast'
 import type { CanvasEngine } from '@/lib/canvas/engine'
 import { COLOR_SWATCHES, STANDARD_BLEND_MODES, HSL_BLEND_MODES } from '@/lib/canvas/constants'
+import { DEFAULT_PRESSURE, DEFAULT_TAPER } from '@/lib/canvas/brush-shaping'
 import { cn } from '@/utils/cn'
 
 interface CanvasPropertiesPanelProps {
@@ -648,6 +649,68 @@ export function CanvasPropertiesPanel({ engineRef, onCollapse }: CanvasPropertie
               <Slider.Thumb className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none" />
             </Slider.Root>
           </section>
+        )}
+
+        {/* ---- Taper and pressure ---- */}
+        {showHardness && (
+          <>
+            <section>
+              <div className="mb-1 flex items-center justify-between">
+                <h3 className="text-fg-secondary text-xs font-semibold tracking-wider uppercase">
+                  Taper
+                </h3>
+                <span className="text-fg-muted text-xs">
+                  {Math.round((brushSettings.taper ?? DEFAULT_TAPER) * 100)}%
+                </span>
+              </div>
+              <Slider.Root
+                min={0}
+                max={100}
+                step={1}
+                value={[Math.round((brushSettings.taper ?? DEFAULT_TAPER) * 100)]}
+                onValueChange={([v]) => setBrushSettings({ taper: v / 100 })}
+                className="relative flex h-5 w-full items-center"
+              >
+                <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
+                  <Slider.Range className="bg-accent absolute h-full rounded-full" />
+                </Slider.Track>
+                <Slider.Thumb
+                  aria-label="Taper"
+                  className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none"
+                />
+              </Slider.Root>
+            </section>
+            <section>
+              <div className="mb-1 flex items-center justify-between">
+                <h3 className="text-fg-secondary text-xs font-semibold tracking-wider uppercase">
+                  Pressure
+                </h3>
+                <span className="text-fg-muted text-xs">
+                  {Math.round((brushSettings.pressure ?? DEFAULT_PRESSURE) * 100)}%
+                </span>
+              </div>
+              <Slider.Root
+                min={0}
+                max={100}
+                step={1}
+                value={[Math.round((brushSettings.pressure ?? DEFAULT_PRESSURE) * 100)]}
+                onValueChange={([v]) => setBrushSettings({ pressure: v / 100 })}
+                className="relative flex h-5 w-full items-center"
+              >
+                <Slider.Track className="bg-bg-tertiary relative h-1.5 grow rounded-full">
+                  <Slider.Range className="bg-accent absolute h-full rounded-full" />
+                </Slider.Track>
+                <Slider.Thumb
+                  aria-label="Pressure"
+                  className="bg-fg border-border block size-4 rounded-full border-2 shadow focus:outline-none"
+                />
+              </Slider.Root>
+              <div className="text-fg-muted mt-0.5 flex justify-between text-[10px]">
+                <span>Firm</span>
+                <span>Soft</span>
+              </div>
+            </section>
+          </>
         )}
 
         {/* ---- Layers ---- */}

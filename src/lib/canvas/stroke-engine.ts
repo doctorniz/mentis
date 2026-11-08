@@ -1,5 +1,13 @@
 import type { StrokePoint, BrushSettings } from '@/types/canvas'
-import { interpolateStroke, tiltShape } from '@/lib/canvas/math'
+import { interpolateStroke, tiltShape, distanceBetween } from '@/lib/canvas/math'
+import {
+  DEFAULT_PRESSURE,
+  DEFAULT_TAPER,
+  shapePressure,
+  smoothPressure,
+  taperLength,
+  taperScale,
+} from '@/lib/canvas/brush-shaping'
 import type { BrushSystem } from '@/lib/canvas/brush-system'
 import type { LayerManager } from '@/lib/canvas/layer-manager'
 
@@ -32,6 +40,10 @@ export class StrokeEngine {
   private currentPoints: StrokePoint[] = []
   private _isDrawing = false
   private _isEraser = false
+  /** The brush the stroke began with. */
+  private _settings: BrushSettings | null = null
+  /** How far along the stroke its taper runs, in pixels; 0 when it has none. */
+  private _taperLen = 0
 
   /** Dirty-rect accumulator for the in-progress stroke (canvas-space). */
   private boundsMinX = Infinity
@@ -109,6 +121,39 @@ export class StrokeEngine {
     return this.layerManager.getScratchpadRT()
   }
 
+  /** A stroke's taper at `along` pixels in; `total` once the stroke has ended. */
+  private scaleAt(along: number, total?: number): number {
+    return this._taperLen > 0 ? taperScale(along, this._taperLen, total) : 1
+  }
+
+  /** Stamp spacing: even, or closer where a taper makes the stamps small. */
+  private spacing(settings: BrushSettings, total?: number): number | ((along: number) => number) {
+    const base = Math.max(1, settings.size * settings.spacing)
+    if (this._taperLen <= 0) return base
+    return (along) => Math.max(0.75, base * Math.max(0.3, this.scaleAt(along, total)))
+  }
+
+  /**
+   * The stroke ended: draw it again with its end tapered too, now that its
+   * length is known, in place of what the scratchpad has. The brush stamps in
+   * batches so a long stroke does not hold every stamp's sprite at once.
+   */
+  private redrawTapered(): void {
+    const settings = this._settings
+    const points = this.currentPoints
+    const target = this.layerManager.getScratchpadRT()
+    if (!settings || points.length === 0 || !target) return
+    const total = points[points.length - 1]?.along ?? 0
+    const stamps = interpolateStroke(points, this.spacing(settings, total))
+    for (const stamp of stamps) stamp.scale = this.scaleAt(stamp.along ?? 0, total)
+    this.layerManager.clearScratchpad()
+    this.layerManager.setScratchpadOpacity(settings.opacity)
+    const BATCH = 512
+    for (let i = 0; i < stamps.length; i += BATCH) {
+      this.brushSystem.renderStamps(stamps.slice(i, i + BATCH), settings, target, false)
+    }
+  }
+
   beginStroke(
     point: StrokePoint,
     settings: BrushSettings,
@@ -120,6 +165,18 @@ export class StrokeEngine {
 
     this._isDrawing = true
     this._isEraser = isEraser
+    this._settings = settings
+    // Taper and the pressure curve are for ink; the eraser and a ruled line
+    // from the last stroke (which has no points to redraw) keep to the raw input.
+    this._taperLen =
+      isEraser || connectToLast ? 0 : taperLength(settings.size, settings.taper ?? DEFAULT_TAPER)
+    if (!isEraser) {
+      point = {
+        ...point,
+        pressure: shapePressure(point.pressure, settings.pressure ?? DEFAULT_PRESSURE),
+        along: 0,
+      }
+    }
     this.currentPoints = [point]
     this.resetBounds()
     this.trackPoint(point, settings)
@@ -143,6 +200,11 @@ export class StrokeEngine {
       return
     }
 
+    if (this._taperLen > 0) {
+      const stamp = { x: point.x, y: point.y, pressure: point.pressure, scale: this.scaleAt(0) }
+      this.brushSystem.renderStamps([stamp], settings, target, false)
+      return
+    }
     this.brushSystem.stampAt(point.x, point.y, point.pressure, settings, target, isEraser)
   }
 
@@ -163,6 +225,16 @@ export class StrokeEngine {
       }
     }
 
+    if (!this._isEraser && this.currentPoints.length > 0) {
+      const prev = this.currentPoints[this.currentPoints.length - 1]
+      const curve = settings.pressure ?? DEFAULT_PRESSURE
+      point = {
+        ...point,
+        pressure: smoothPressure(prev.pressure, shapePressure(point.pressure, curve)),
+        along: (prev.along ?? 0) + distanceBetween(prev, point),
+      }
+    }
+
     this.currentPoints.push(point)
     this.trackPoint(point, settings)
 
@@ -171,8 +243,10 @@ export class StrokeEngine {
     const recent = this.currentPoints.slice(-4)
     if (recent.length < 2) return
 
-    const spacingPx = Math.max(1, settings.size * settings.spacing)
-    const stamps = interpolateStroke(recent, spacingPx)
+    const stamps = interpolateStroke(recent, this.spacing(settings))
+    if (this._taperLen > 0) {
+      for (const stamp of stamps) stamp.scale = this.scaleAt(stamp.along ?? 0)
+    }
 
     // Skip the first stamp since it was already rendered by the previous
     // call (beginStroke or the prior continueStroke).
@@ -192,6 +266,7 @@ export class StrokeEngine {
     this._lastStrokeEnd = this.currentPoints[this.currentPoints.length - 1] ?? null
 
     if (!this._isEraser) {
+      if (this._taperLen > 0) this.redrawTapered()
       // Normal strokes: commit the accumulated scratchpad to the active
       // layer with normal blend.
       this.layerManager.commitScratchpad(false)
@@ -201,6 +276,8 @@ export class StrokeEngine {
 
     this.currentPoints = []
     this._isEraser = false
+    this._settings = null
+    this._taperLen = 0
 
     this.onStrokeCommitted?.()
   }
@@ -227,6 +304,8 @@ export class StrokeEngine {
     }
     this.currentPoints = []
     this._isEraser = false
+    this._settings = null
+    this._taperLen = 0
     return wasEraser
   }
 }

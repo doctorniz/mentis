@@ -80,6 +80,12 @@ export const useCanvasStore = create<CanvasState>()(
         if (partial.spacing !== undefined) {
           s.brushSettings.spacing = Math.max(0.05, Math.min(1, partial.spacing))
         }
+        if (partial.taper !== undefined) {
+          s.brushSettings.taper = Math.max(0, Math.min(1, partial.taper))
+        }
+        if (partial.pressure !== undefined) {
+          s.brushSettings.pressure = Math.max(0, Math.min(1, partial.pressure))
+        }
       }),
 
     setEraserSize: (size) =>

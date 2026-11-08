@@ -214,7 +214,8 @@ export class BrushSystem {
 
     for (let i = 0; i < stamps.length; i++) {
       const stamp = stamps[i]
-      const radius = (settings.size / 2) * Math.max(0.2, stamp.pressure)
+      // `scale` is the stroke's taper: 1 where it is at full size.
+      const radius = (settings.size / 2) * Math.max(0.2, stamp.pressure) * (stamp.scale ?? 1)
       const diameter = Math.max(1, radius * 2)
       // A tilted pen shades like a pencil on its side: a longer, lighter tip.
       const tilt = tiltShape(stamp.tiltX, stamp.tiltY)
