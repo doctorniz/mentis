@@ -207,6 +207,9 @@ async function selectionMarqueeAndMove(page: Page): Promise<{ x: number; y: numb
 
 test.describe('5.8 Selection', () => {
   test.beforeEach(async ({ vaultPage: page }) => {
+    // CI draws in software: a drag takes about a second a move there, and the
+    // longer tests sit near the default minute.
+    test.slow()
     await navigateTo(page, 'vault')
     await createCanvasWithHooks(page)
   })

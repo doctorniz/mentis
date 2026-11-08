@@ -35,13 +35,13 @@ async function toScreen(page: Page, cx: number, cy: number): Promise<[number, nu
   return [box.x + cx * vp.zoom + vp.x, box.y + cy * vp.zoom + vp.y]
 }
 
-/** A mouse stroke from `from` to `to` (canvas space), many small moves like a real one. */
+/** A mouse stroke from `from` to `to` (canvas space). Few moves: CI draws in software, a move a second. */
 async function stroke(page: Page, from: [number, number], to: [number, number]) {
   const [sx, sy] = await toScreen(page, ...from)
   const [ex, ey] = await toScreen(page, ...to)
   await page.mouse.move(sx, sy)
   await page.mouse.down()
-  await page.mouse.move(ex, ey, { steps: 40 })
+  await page.mouse.move(ex, ey, { steps: 8 })
   await page.mouse.up()
   await page.waitForTimeout(400)
 }
