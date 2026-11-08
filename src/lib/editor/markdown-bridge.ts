@@ -94,7 +94,9 @@ function preprocessTaskLists(md: string): string {
 
   function flushTasks() {
     if (taskBuf.length === 0) return
-    out.push(serializeTaskTree(buildTaskTree(taskBuf)))
+    // A blank line ends the HTML block: without it, a heading or text on the
+    // next line would be read as part of the block and shown as raw text.
+    out.push(serializeTaskTree(buildTaskTree(taskBuf)), '')
     taskBuf = []
   }
 

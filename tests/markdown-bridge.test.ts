@@ -100,6 +100,18 @@ describe('markdownToTiptapJSON', () => {
     expect(tl!.content![1]!.attrs?.checked).toBe(true)
   })
 
+  it('reads a heading on the line right after a task list as a heading', () => {
+    const doc = markdownToTiptapJSON('- [ ] one\n## Next\n- [x] two\nText after')
+    expect(doc.content?.map((n) => n.type)).toEqual([
+      'taskList',
+      'heading',
+      'taskList',
+      'paragraph',
+    ])
+    expect(doc.content?.[1]?.content?.[0]?.text).toBe('Next')
+    expect(doc.content?.[3]?.content?.[0]?.text).toBe('Text after')
+  })
+
   it('handles horizontal rule', () => {
     const doc = markdownToTiptapJSON('---')
     const hr = doc.content?.find((n) => n.type === 'horizontalRule')

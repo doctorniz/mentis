@@ -307,10 +307,10 @@
   margin: 0.25em 0;
 }
 
-/* The <label> wraps the checkbox */
+/* The <label> wraps the checkbox: one line tall, so it centres on the first line */
 .ProseMirror.tiptap-editor ul[data-type='taskList'] li > label {
   flex-shrink: 0;
-  margin-top: 0.2em;
+  height: 1lh;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -328,6 +328,10 @@
 .ProseMirror.tiptap-editor ul[data-type='taskList'] li > div {
   flex: 1;
   min-width: 0;
+}
+
+.ProseMirror.tiptap-editor ul[data-type='taskList'] li > div > p {
+  margin: 0;
 }
 
 /* Strike through checked items */
