@@ -334,6 +334,11 @@
   margin: 0;
 }
 
+/* A ticked task's done: date stays in the file, not on screen */
+.ProseMirror.tiptap-editor .task-done-date {
+  display: none;
+}
+
 /* Strike through checked items */
 .ProseMirror.tiptap-editor ul[data-type='taskList'] li[data-checked='true'] > div {
   color: var(--color-fg-muted);

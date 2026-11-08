@@ -117,7 +117,9 @@ test.describe('7 — Tasks', () => {
       ).toBeVisible({ timeout: 15_000 })
     })
 
-    test('7.2.4 Ticking a checkbox in the note records the day', async ({ vaultPage: page }) => {
+    test('7.2.4 Ticking a checkbox in the note records the day, not shown', async ({
+      vaultPage: page,
+    }) => {
       await addTask(page, 'Water the ferns', 'Water the ferns')
       await row(page, 'Water the ferns').click()
       await page.getByRole('dialog').getByRole('button', { name: 'Open in Inbox' }).click()
@@ -128,6 +130,9 @@ test.describe('7 — Tasks', () => {
       await expect
         .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
         .toContain(`- [x] Water the ferns done:${ymd(new Date())}`)
+      // The date is in the file; the editor hides it.
+      await expect(item.locator('.task-done-date')).toBeHidden()
+      await expect(item).not.toContainText('done:', { useInnerText: true })
     })
   })
 

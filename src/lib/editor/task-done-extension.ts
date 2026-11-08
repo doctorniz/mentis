@@ -1,5 +1,6 @@
 import { Extension } from '@tiptap/core'
-import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state'
+import { Plugin, PluginKey, type EditorState, type Transaction } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { Mapping } from '@tiptap/pm/transform'
 import { formatTaskText, parseTaskText } from '@/lib/tasks/line'
@@ -9,6 +10,26 @@ import { formatLocalDate, nextWeeklyDueAfterCompletion } from '@/lib/tasks/recur
 const DONE_RE = /\s?done:\d{4}-\d{2}-\d{2}(?=\s|$)/
 const SNOOZE_RE = /\s?snooze:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?=\s|$)/
 const LEAF = '￼'
+
+/** `done:YYYY-MM-DD` anywhere in a task's text, for hiding it. */
+const DONE_SHOWN_RE = /\s?done:\d{4}-\d{2}-\d{2}(?=\s|$)/g
+
+/** A task's `done:` date is kept in the file but not shown: the tick says it. */
+function hiddenDoneDates(state: EditorState): DecorationSet {
+  const decorations: Decoration[] = []
+  state.doc.descendants((node, pos) => {
+    if (node.type.name !== 'taskItem') return true
+    const para = textBlock(node)
+    if (!para) return false
+    const text = para.textBetween(0, para.content.size, undefined, LEAF)
+    for (const m of text.matchAll(DONE_SHOWN_RE)) {
+      const from = pos + 2 + m.index
+      decorations.push(Decoration.inline(from, from + m[0].length, { class: 'task-done-date' }))
+    }
+    return true
+  })
+  return DecorationSet.create(state.doc, decorations)
+}
 
 /** The paragraph a task item's text is in: its first child. */
 function textBlock(item: PMNode): PMNode | null {
@@ -85,6 +106,18 @@ export const TaskDone = Extension.create({
             tr.insert(pos, copy)
           }
           return tr
+        },
+      }),
+      new Plugin({
+        key: new PluginKey('taskDoneHidden'),
+        state: {
+          init: (_, state) => hiddenDoneDates(state),
+          apply: (tr, old, _, state) => (tr.docChanged ? hiddenDoneDates(state) : old),
+        },
+        props: {
+          decorations(state) {
+            return this.getState(state)
+          },
         },
       }),
     ]
