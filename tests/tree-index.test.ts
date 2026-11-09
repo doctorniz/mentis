@@ -83,6 +83,7 @@ const index = vi.hoisted(() => ({
   open: true,
   cached: null as TreeRow[] | null,
   cacheDelay: 0,
+  openDelay: 0,
   put: vi.fn(async () => {}),
 }))
 
@@ -93,6 +94,9 @@ vi.mock('@/lib/search/index', () => ({
     return index.cached
   }),
   putTreeListings: index.put,
+  whenSearchIndexOpen: async () => {
+    if (index.openDelay) await new Promise((r) => setTimeout(r, index.openDelay))
+  },
 }))
 
 const { listFolder } = await import('@/lib/notes/tree-listing')
@@ -118,6 +122,7 @@ describe('listFolder', () => {
     index.open = true
     index.cached = null
     index.cacheDelay = 0
+    index.openDelay = 0
     index.put.mockClear()
   })
 
@@ -176,6 +181,22 @@ describe('listFolder', () => {
     await listFolder(diskWith([['fresh.md', false]]), '', (e) => reports.push(e))
     await new Promise((r) => setTimeout(r, 80))
     expect(names(reports)).toEqual([['fresh.md']])
+  })
+
+  it('shows the index once it has opened, while the disk is still being read', async () => {
+    index.cached = [row('saved.md')]
+    index.openDelay = 20
+    const reports: FileEntry[][] = []
+    await listFolder(diskWith([['saved.md', false]], 100), '', (e) => reports.push(e))
+    expect(names(reports)).toEqual([['saved.md']])
+    expect(reports).toHaveLength(1)
+  })
+
+  it('does not hold the listing for an index that never opens', async () => {
+    index.openDelay = 60_000
+    const reports: FileEntry[][] = []
+    await listFolder(diskWith([['a.md', false]]), '', (e) => reports.push(e))
+    expect(names(reports)).toEqual([['a.md']])
   })
 
   it('skips the index when the tree already shows the folder', async () => {

@@ -71,7 +71,8 @@ export function NotesFileTree({
   /** The label over the tree. */
   heading?: string
 }) {
-  const [rootEntries, setRootEntries] = useState<FileEntry[]>([])
+  // Null until the first listing arrives: an empty vault is not the same as a vault not yet read.
+  const [rootEntries, setRootEntries] = useState<FileEntry[] | null>(null)
   const [renamePath, setRenamePath] = useState<string | null>(null)
   const [inlineEditPath, setInlineEditPath] = useState<string | null>(null)
   const [externalDragOver, setExternalDragOver] = useState(false)
@@ -458,11 +459,11 @@ export function NotesFileTree({
               ))}
             </div>
           )}
-          {rootEntries.length === 0 && starredPaths.length === 0 ? (
+          {rootEntries?.length === 0 && starredPaths.length === 0 ? (
             <p className="text-fg-muted px-3 py-4 text-center text-xs">No files yet.</p>
           ) : (
             <div role="tree" aria-label="Vault file tree">
-              {rootEntries.map((entry) => (
+              {rootEntries?.map((entry) => (
                 <TreeNode
                   key={entry.path}
                   entry={entry}
