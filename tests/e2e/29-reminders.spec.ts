@@ -104,15 +104,44 @@ test.describe('29 — Reminders: delivery', () => {
   }) => {
     const past = new Date(Date.now() - 30 * 60_000)
     await addTimedTask(page, 'Take pills', past)
-    // The app last looked an hour ago.
-    await page.evaluate(
+
+    // A launch reads tasks from the saved index. A reload can land while the
+    // old page still holds the index files; the new page then keeps its index
+    // in memory and saves nothing. So reload until the index is saved: the
+    // first such page also catches the index up on the task's note.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __saved?: boolean[] }
+      w.__saved = []
+      window.addEventListener('ink:search-index-reconciled', (e) =>
+        w.__saved!.push((e as CustomEvent<{ persisted: boolean }>).detail.persisted),
+      )
+    })
+    const reloadWithSavedIndex = async () => {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        await page.reload()
+        await page.waitForFunction(
+          () => ((window as unknown as { __saved?: boolean[] }).__saved?.length ?? 0) > 0,
+          undefined,
+          { timeout: 15_000 },
+        )
+        if (await page.evaluate(() => (window as unknown as { __saved: boolean[] }).__saved[0]))
+          return
+      }
+      throw new Error('The search index would not open from its saved files')
+    }
+    await reloadWithSavedIndex()
+
+    // The app last looked an hour ago. Written as each page starts: the open
+    // app writes the time every few seconds and would overwrite it.
+    await page.addInitScript(
       (seen) => {
-        for (const key of Object.keys(localStorage))
-          if (key.startsWith('mentis.reminders.seen:')) localStorage.setItem(key, String(seen))
+        if (localStorage.getItem('test.keep-seen')) return
+        const vault = localStorage.getItem('mentis:active-vault-path')
+        if (vault) localStorage.setItem('mentis.reminders.seen:' + vault, String(seen))
       },
       Date.now() - 60 * 60_000,
     )
-    await page.reload()
+    await reloadWithSavedIndex()
     await page.waitForSelector('aside, nav', { timeout: 30_000 })
 
     const summary = page.getByRole('alert').filter({ hasText: 'You missed 1 reminder' })
@@ -126,6 +155,7 @@ test.describe('29 — Reminders: delivery', () => {
       .toMatch(/- \[x\] Take pills .* done:/)
 
     // Offered once: the next launch has nothing missed.
+    await page.evaluate(() => localStorage.setItem('test.keep-seen', '1'))
     await page.reload()
     await page.waitForSelector('aside, nav', { timeout: 30_000 })
     await page.waitForTimeout(4000)

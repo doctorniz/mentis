@@ -304,14 +304,24 @@ test.describe('11 — Search', () => {
       })
     }
 
+    /**
+     * Reload and wait for the page's first reconcile. A reload can land while
+     * the old page still holds the index files; the new page then keeps its
+     * index in memory (persisted: false) and nothing is saved. Reload again.
+     */
     async function reloadAndReconcile(page: import('@playwright/test').Page) {
-      await page.reload()
-      const handle = await page.waitForFunction(
-        () => (window as unknown as { __reconciled?: unknown[] }).__reconciled?.[0],
-        undefined,
-        { timeout: 15_000 },
-      )
-      return (await handle.jsonValue()) as Reconciled
+      let result: Reconciled
+      let attempts = 0
+      do {
+        await page.reload()
+        const handle = await page.waitForFunction(
+          () => (window as unknown as { __reconciled?: unknown[] }).__reconciled?.[0],
+          undefined,
+          { timeout: 15_000 },
+        )
+        result = (await handle.jsonValue()) as Reconciled
+      } while (!result.persisted && ++attempts < 4)
+      return result
     }
 
     test('11.7.1 Reopening re-reads only what changed', async ({ vaultPage: page }) => {
