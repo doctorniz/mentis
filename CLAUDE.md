@@ -61,11 +61,15 @@ Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
 - **`_config.md`:** YAML frontmatter. Inherits down the tree, nearest wins.
 - **Index:** SQLite + FTS5. Shared table set for search, manifest, sync change
   detection and reminders.
-- **AI:** LiteRT-LM with Gemma 4 on device; bring-your-own cloud keys; Ollama
-  over LAN. Read-and-answer only for v1 — no agentic writes.
+- **AI:** off until switched on in Settings › AI; off, none of it shows or
+  runs (2026-11-10). No on-device model: it is not optimised for devices yet.
+  A fixed list of providers — bring-your-own keys (OpenRouter, Anthropic,
+  OpenAI, Gemini) or a server you run (Ollama, llama.cpp) — and their models
+  fetched from the provider live, never listed in the app. Read-and-answer
+  only for v1 — no agentic writes.
 - **Capture grammar:** `/` for destinations, `@` reserved for file references.
   Destinations: Thoughts (default), Journal, Calendar, Tasks, Lists,
-  Bookmarks, Note, Chat.
+  Bookmarks, Note, Chat (only while chat is on).
 - **Capture behaviour:** bare text and voice commit instantly to Thoughts with
   undo. `/` destinations show a prefilled confirmation modal first.
 - **Date parsing:** chrono-node. Deterministic, never AI. Do not attempt to

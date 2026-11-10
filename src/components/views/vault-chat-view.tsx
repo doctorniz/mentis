@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Copy,
   Download,
-  Loader2,
   MessageSquare,
   PanelLeftClose,
   Plus,
@@ -21,20 +20,10 @@ import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import { VaultChatMessage } from '@/components/chat/vault-chat-message'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { saveVaultChatUpload } from '@/lib/chat/chat-io'
-import {
-  ensureDeviceModelDownloaded,
-  getDeviceModelStatus,
-  type DeviceModelStatus,
-} from '@/lib/chat/device-model-store'
-import { formatUnknownError } from '@/lib/chat/format-chat-error'
 import { getChatKey, CHAT_KEY_CHANGED_EVENT } from '@/lib/chat/key-store'
+import { providerNeedsApiKey } from '@/lib/chat/providers/meta'
+import { useChatModels } from '@/lib/chat/use-chat-models'
 import {
-  fetchModels,
-  getCuratedModels,
-  providerNeedsApiKey,
-} from '@/lib/chat/providers/model-catalog'
-import {
-  chatModelDisplayLabel,
   chatProviderLabel,
   sanitizeExportBasename,
   threadToMarkdown,
@@ -289,9 +278,6 @@ export function VaultChatView() {
   const [keyChecked, setKeyChecked] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
-  const [deviceStatus, setDeviceStatus] = useState<DeviceModelStatus>('missing')
-  const [deviceBusy, setDeviceBusy] = useState(false)
-  const [ollamaModels, setOllamaModels] = useState<{ id: string; label: string }[]>([])
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<VaultChatComposerHandle>(null)
@@ -374,20 +360,17 @@ export function VaultChatView() {
       setKeyChecked(true)
       return
     }
-    if (!providerNeedsApiKey(settings.provider)) {
-      setApiKey('__local__')
-      setKeyChecked(true)
-      return
-    }
+    // A local server needs no key; one is sent only if it was saved.
+    const optional = !providerNeedsApiKey(settings.provider)
     void getChatKey(settings.provider, vaultPath)
       .then((rec) => {
         if (cancelled) return
-        setApiKey(rec?.apiKey ?? null)
+        setApiKey(rec?.apiKey ?? (optional ? '' : null))
         setKeyChecked(true)
       })
       .catch(() => {
         if (cancelled) return
-        setApiKey(null)
+        setApiKey(optional ? '' : null)
         setKeyChecked(true)
       })
     return () => {
@@ -395,36 +378,15 @@ export function VaultChatView() {
     }
   }, [settings.provider, vaultPath, keyVersion])
 
-  useEffect(() => {
-    if (settings.provider !== 'device') {
-      setDeviceStatus('ready')
-      return
-    }
-    void getDeviceModelStatus(settings.model).then(setDeviceStatus)
-  }, [settings.provider, settings.model])
-
-  useEffect(() => {
-    if (settings.provider !== 'ollama') {
-      setOllamaModels([])
-      return
-    }
-    let cancelled = false
-    void fetchModels('ollama', '', settings.baseUrl)
-      .then((rows) => {
-        if (!cancelled) setOllamaModels(rows)
-      })
-      .catch(() => {
-        if (!cancelled) setOllamaModels([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [settings.provider, settings.baseUrl])
+  const { models: modelList } = useChatModels(
+    settings.provider,
+    apiKey,
+    settings.provider ? settings.baseUrls?.[settings.provider] : undefined,
+  )
 
   const providerMissing = !settings.provider
-  const keyMissing =
-    keyChecked && !apiKey && !!settings.provider && providerNeedsApiKey(settings.provider)
-  const deviceNeedsModel = settings.provider === 'device' && deviceStatus === 'missing'
+  const keyMissing = keyChecked && apiKey === null && !!settings.provider
+  const modelMissing = !!settings.provider && !settings.model
   const bindingMismatch = !threadMatchesSettings(activeThread, settings)
 
   const composerDisabled =
@@ -432,7 +394,7 @@ export function VaultChatView() {
     keyMissing ||
     !activeThread ||
     !initialized ||
-    deviceNeedsModel ||
+    modelMissing ||
     bindingMismatch
 
   const displayBinding = activeThread?.chatBinding
@@ -440,25 +402,16 @@ export function VaultChatView() {
   const headerModelId = displayBinding?.model ?? settings.model
   const headerHasPair = Boolean(headerProviderId && headerModelId)
   const headerProviderLabel = chatProviderLabel(headerProviderId)
-  const headerModelLabel =
-    headerProviderId && headerModelId ? chatModelDisplayLabel(headerProviderId, headerModelId) : '—'
+  const headerModelLabel = headerModelId || '—'
 
   const modelOptions = useMemo(() => {
     if (!settings.provider) return []
-    const curated = getCuratedModels(settings.provider)
-    let opts =
-      curated.length > 0
-        ? [...curated]
-        : settings.provider === 'ollama' && ollamaModels.length > 0
-          ? [...ollamaModels]
-          : settings.model
-            ? [{ id: settings.model, label: settings.model }]
-            : []
-    if (settings.model && opts.length > 0 && !opts.some((m) => m.id === settings.model)) {
-      opts = [...opts, { id: settings.model, label: settings.model }]
+    // The list is the provider's own; the saved model is kept even if it has dropped off it.
+    if (settings.model && !modelList.some((m) => m.id === settings.model)) {
+      return [...modelList, { id: settings.model, label: settings.model }]
     }
-    return opts
-  }, [settings.provider, settings.model, ollamaModels])
+    return modelList
+  }, [settings.provider, settings.model, modelList])
 
   const patchChatSettings = useCallback(
     async (patch: Partial<ChatSettings>) => {
@@ -476,7 +429,7 @@ export function VaultChatView() {
 
   const handleSend = useCallback(
     (text: string) => {
-      if (!apiKey || !settings.provider) return
+      if (apiKey === null || !settings.provider) return
       void sendMessage({ vaultFs, settings, apiKey, input: text })
     },
     [apiKey, settings, sendMessage, vaultFs],
@@ -488,8 +441,8 @@ export function VaultChatView() {
   const pendingPrompt = useVaultChatStore((s) => s.pendingPrompt)
   useEffect(() => {
     if (!pendingPrompt || !initialized || !keyChecked || isStreaming) return
-    // The same conditions that disable the composer: a provider, its key, and a loaded local model.
-    const canSend = !!apiKey && !providerMissing && !keyMissing && !deviceNeedsModel
+    // The same conditions that disable the composer: a provider, its key, and a model.
+    const canSend = apiKey !== null && !providerMissing && !keyMissing && !modelMissing
     if (!canSend && !composerRef.current) return
     useVaultChatStore.getState().setPendingPrompt(null)
     if (canSend) {
@@ -505,7 +458,7 @@ export function VaultChatView() {
     apiKey,
     providerMissing,
     keyMissing,
-    deviceNeedsModel,
+    modelMissing,
     createThread,
     handleSend,
   ])
@@ -529,19 +482,6 @@ export function VaultChatView() {
     },
     [toggleFavourite, vaultFs],
   )
-
-  const handleLoadDeviceModel = useCallback(async () => {
-    setDeviceBusy(true)
-    try {
-      await ensureDeviceModelDownloaded(settings.model)
-      setDeviceStatus('ready')
-      toast.success('Model ready')
-    } catch (e) {
-      toast.error(formatUnknownError(e))
-    } finally {
-      setDeviceBusy(false)
-    }
-  }, [settings.model])
 
   const openAiSettings = useCallback(() => {
     window.dispatchEvent(new CustomEvent('ink:open-settings-ai'))
@@ -602,10 +542,10 @@ export function VaultChatView() {
   const composerPlaceholder = useMemo(() => {
     if (providerMissing) return 'Choose a provider in Settings → AI'
     if (keyMissing) return 'Add an API key in Settings → AI'
-    if (deviceNeedsModel) return 'Load the local model first'
+    if (modelMissing) return 'Choose a model in Settings → AI'
     if (bindingMismatch) return 'Match provider and model in Settings to continue this chat'
     return 'Ask your vault anything'
-  }, [providerMissing, keyMissing, deviceNeedsModel, bindingMismatch])
+  }, [providerMissing, keyMissing, modelMissing, bindingMismatch])
 
   const hasMessages = Boolean(activeThread && activeThread.messages.length > 0)
   const showModelSelector = !hasMessages && Boolean(settings.provider && modelOptions.length > 0)
@@ -757,20 +697,6 @@ export function VaultChatView() {
           Answers are grounded in your vault via local search. Artificial intelligence can make
           mistakes—verify important information.
         </p>
-
-        {deviceNeedsModel && (
-          <div className="border-border flex shrink-0 justify-center border-b px-4 py-5">
-            <button
-              type="button"
-              disabled={deviceBusy}
-              onClick={() => void handleLoadDeviceModel()}
-              className="bg-accent text-accent-fg hover:bg-accent-hover flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium shadow-sm transition-colors disabled:opacity-50"
-            >
-              {deviceBusy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-              Load model
-            </button>
-          </div>
-        )}
 
         {!hasMessages ? (
           <>

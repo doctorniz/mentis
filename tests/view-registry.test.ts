@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest'
+// @vitest-environment happy-dom
+import { beforeEach, describe, expect, it } from 'vitest'
 import { File } from 'lucide-react'
 import { createViewRegistry, type ViewDefinition } from '@/core/registries/views'
 import { views } from '@/core/registries'
+import { useVaultStore } from '@/stores/vault'
+import { DEFAULT_CHAT_SETTINGS } from '@/types/chat'
+import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
 
 // Resolution never loads the component.
 const component = () => Promise.reject(new Error('not loaded in tests'))
@@ -78,8 +82,54 @@ describe('createViewRegistry', () => {
   })
 })
 
+describe('createViewRegistry with enabled', () => {
+  let on = false
+  const gated: ViewDefinition = {
+    id: 'vault-chat',
+    label: 'Chat',
+    icon: File,
+    component,
+    nav: { order: 2 },
+    shortcut: '2',
+    aliases: [{ id: 'bookmarks' }],
+    enabled: () => on,
+  }
+  const registry = createViewRegistry([vault, gated], { config: () => null })
+
+  it('hides a disabled view from every way in', () => {
+    on = false
+    expect(registry.nav().map((v) => v.id)).toEqual(['vault'])
+    expect(registry.all().map((v) => v.id)).toEqual(['vault'])
+    expect(registry.get('vault-chat')).toBeUndefined()
+    expect(registry.byShortcut('2')).toBeUndefined()
+    expect(registry.resolve('vault-chat')).toBeUndefined()
+    expect(registry.resolve('bookmarks')).toBeUndefined()
+  })
+
+  it('shows it again the moment it is enabled', () => {
+    on = true
+    expect(registry.nav().map((v) => v.id)).toEqual(['vault', 'vault-chat'])
+    expect(registry.byShortcut('2')?.id).toBe('vault-chat')
+    expect(registry.resolve('bookmarks')?.def.id).toBe('vault-chat')
+  })
+})
+
 describe('registered views', () => {
-  it('list Chat, Calendar, Tasks, Thoughts and Bookmarks in the sidebar', () => {
+  beforeEach(() => {
+    useVaultStore
+      .getState()
+      .setConfig({ ...DEFAULT_VAULT_CONFIG, chat: { ...DEFAULT_CHAT_SETTINGS, enabled: true } })
+  })
+
+  it('leave Chat out until it is switched on, and keep the other shortcuts', () => {
+    useVaultStore.getState().setConfig({ ...DEFAULT_VAULT_CONFIG })
+    expect(views.nav().map((v) => v.id)).toEqual(['calendar', 'tasks', 'board', 'bookmarks'])
+    expect(views.byShortcut('2')).toBeUndefined()
+    expect(views.byShortcut('3')?.id).toBe('calendar')
+    expect(views.resolve('vault-chat')).toBeUndefined()
+  })
+
+  it('list Chat, Calendar, Tasks, Thoughts and Bookmarks in the sidebar once on', () => {
     expect(views.nav().map((v) => [v.id, v.label])).toEqual([
       ['vault-chat', 'Chat'],
       ['calendar', 'Calendar'],

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import { useEditorStore } from '@/stores/editor'
 import { useVaultStore } from '@/stores/vault'
+import { DEFAULT_CHAT_SETTINGS } from '@/types/chat'
 import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
 import type { CaptureContext } from '@/core/registries/capture'
 import { captureDestinations } from '@/core/registries'
@@ -238,7 +239,24 @@ describe('journal template and tabs', () => {
 })
 
 describe('chat destination', () => {
-  it('needs no confirmation', () => {
+  const setChat = (enabled: boolean | undefined) =>
+    useVaultStore.getState().setConfig({
+      ...DEFAULT_VAULT_CONFIG,
+      chat: enabled === undefined ? undefined : { ...DEFAULT_CHAT_SETTINGS, enabled },
+    })
+
+  it('is not offered until chat is switched on', () => {
+    setChat(undefined)
+    expect(captureDestinations.bySigil('/chat')).toBeUndefined()
+    expect(captureDestinations.bySigil('/ask')).toBeUndefined()
+    expect(captureDestinations.search('chat')).toEqual([])
+    setChat(false)
+    expect(captureDestinations.bySigil('/chat')).toBeUndefined()
+  })
+
+  it('needs no confirmation once on', () => {
+    setChat(true)
     expect(captureDestinations.bySigil('/chat')?.immediate).toBe(true)
+    expect(captureDestinations.bySigil('/ask')?.id).toBe('chat')
   })
 })

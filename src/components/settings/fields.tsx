@@ -44,14 +44,18 @@ export const BUTTON_CLS =
 export function Toggle({
   checked,
   onChange,
+  label,
 }: {
   checked: boolean
   onChange: (v: boolean) => void
+  /** The accessible name, where the row's own label is not tied to the switch. */
+  label?: string
 }) {
   return (
     <button
       type="button"
       role="switch"
+      aria-label={label}
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={cn(

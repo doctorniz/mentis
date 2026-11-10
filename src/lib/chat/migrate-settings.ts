@@ -1,0 +1,46 @@
+import { DEFAULT_CHAT_SETTINGS, type ChatProviderId, type ChatSettings } from '@/types/chat'
+
+const KNOWN: readonly string[] = [
+  'openrouter',
+  'anthropic',
+  'openai',
+  'gemini',
+  'ollama',
+  'llamacpp',
+]
+
+/**
+ * Read a saved `chat` block from `config.json`, which may predate this shape:
+ *
+ * - no `enabled`: chat stays off until it is switched on;
+ * - the on-device model is gone, and with it `device`, `webllm` and
+ *   `huggingface`: no provider is chosen;
+ * - one `baseUrl` becomes the URL of the provider that was chosen.
+ */
+export function migrateChatSettings(saved: unknown): ChatSettings {
+  const s = (saved && typeof saved === 'object' ? saved : {}) as Record<string, unknown>
+  const provider =
+    typeof s.provider === 'string' && KNOWN.includes(s.provider)
+      ? (s.provider as ChatProviderId)
+      : null
+
+  const baseUrls: Partial<Record<ChatProviderId, string>> = {
+    ...((s.baseUrls as Partial<Record<ChatProviderId, string>> | undefined) ?? {}),
+  }
+  if (typeof s.baseUrl === 'string' && s.baseUrl.trim() && provider && !baseUrls[provider]) {
+    baseUrls[provider] = s.baseUrl.trim()
+  }
+
+  return {
+    ...DEFAULT_CHAT_SETTINGS,
+    enabled: s.enabled === true,
+    provider,
+    model: provider && typeof s.model === 'string' ? s.model : '',
+    ...(Object.keys(baseUrls).length ? { baseUrls } : {}),
+    ...(typeof s.systemPrompt === 'string' ? { systemPrompt: s.systemPrompt } : {}),
+    maxContextChars:
+      typeof s.maxContextChars === 'number'
+        ? s.maxContextChars
+        : DEFAULT_CHAT_SETTINGS.maxContextChars,
+  }
+}

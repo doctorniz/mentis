@@ -1,83 +1,220 @@
+import type { Page } from '@playwright/test'
 import {
   test,
   expect,
   navigateTo,
   createMarkdownNote,
+  enableChat,
   openVaultFile,
+  readVaultFile,
   waitForAutoSave,
   writeVaultFile,
 } from './fixtures'
 
+const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' }
+
+/** Answer `GET url` (and its CORS preflight) with this JSON. */
+async function serveJson(page: Page, url: string, body: unknown, seen?: { auth?: string }) {
+  await page.route(url, (route) => {
+    const req = route.request()
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
+    if (seen) seen.auth = req.headers()['authorization']
+    return route.fulfill({
+      status: 200,
+      headers: { ...CORS, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  })
+}
+
+/** Chat on, with a llama.cpp server (mocked) offering one model: a composer that works. */
+async function setUpLocalChat(page: Page) {
+  await serveJson(page, 'http://localhost:8080/v1/models', { data: [{ id: 'my-model.gguf' }] })
+  await page.keyboard.press('Control+,')
+  const dialog = page.getByRole('dialog', { name: 'Settings' })
+  await dialog.getByRole('tab', { name: 'AI' }).click()
+  await dialog.getByRole('switch', { name: 'Chat' }).click()
+  await dialog.getByRole('combobox', { name: 'Provider' }).selectOption({ label: 'llama.cpp' })
+  await expect(dialog.getByLabel('Model', { exact: true })).toHaveValue('my-model.gguf', {
+    timeout: 10_000,
+  })
+  await expect
+    .poll(() => readVaultFile(page, '_mentis/config.json'), { timeout: 10_000 })
+    .toContain('my-model.gguf')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+}
+
 test.describe('13 — AI Chat', () => {
-  test.describe('14.1 Settings & Provider Configuration', () => {
-    /** Opens Settings › AI and returns its provider picker. */
-    async function openAISettings(page: import('@playwright/test').Page) {
-      await page.keyboard.press('Control+,')
-      const dialog = page.getByRole('dialog')
-      await dialog.getByRole('tab', { name: 'AI' }).click()
-      // The AI panel loads on demand; its picker is the one offering OpenAI.
-      const providerSelect = dialog.locator('select', {
-        has: page.locator('option', { hasText: 'OpenAI' }),
-      })
-      await expect(providerSelect).toBeVisible({ timeout: 10_000 })
-      return providerSelect
-    }
+  /** Opens Settings › AI. */
+  async function openAISettings(page: Page) {
+    await page.keyboard.press('Control+,')
+    const dialog = page.getByRole('dialog', { name: 'Settings' })
+    await dialog.getByRole('tab', { name: 'AI' }).click()
+    await expect(dialog.getByRole('switch', { name: 'Chat' })).toBeVisible({ timeout: 10_000 })
+    return dialog
+  }
 
-    const keyInput = (page: import('@playwright/test').Page) =>
-      page.locator(
-        'input[type="password"], input[placeholder*="key"], input[placeholder*="Key"], [data-testid="api-key-input"]',
+  test.describe('14.1 Off by default, and Settings', () => {
+    test('14.1.0 Chat is off: only its switch is in Settings › AI', async ({ vaultPage: page }) => {
+      const dialog = await openAISettings(page)
+      await expect(dialog.getByRole('switch', { name: 'Chat' })).toHaveAttribute(
+        'aria-checked',
+        'false',
       )
-
-    test('14.1.1 Provider dropdown — all providers listed', async ({ vaultPage: page }) => {
-      const providerSelect = await openAISettings(page)
-      const labels = await providerSelect.locator('option').allTextContents()
-      expect(labels).toEqual(expect.arrayContaining(['OpenRouter', 'OpenAI', 'Ollama']))
+      await expect(dialog.getByRole('combobox', { name: 'Provider' })).toHaveCount(0)
     })
 
-    test('14.1.2 Select cloud provider — API key field shown', async ({ vaultPage: page }) => {
-      const providerSelect = await openAISettings(page)
-      await providerSelect.selectOption({ label: 'OpenAI' })
-      await expect(keyInput(page).first()).toBeVisible({ timeout: 5_000 })
+    test('14.1.1 On, the providers are a fixed list; no on-device model', async ({
+      vaultPage: page,
+    }) => {
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('switch', { name: 'Chat' }).click()
+      const labels = await dialog
+        .getByRole('combobox', { name: 'Provider' })
+        .locator('option')
+        .allTextContents()
+      expect(labels).toEqual([
+        'Choose…',
+        'OpenRouter',
+        'Anthropic',
+        'OpenAI',
+        'Google Gemini',
+        'Ollama',
+        'llama.cpp',
+      ])
     })
 
-    test('14.1.3 Select local provider — API key field hidden', async ({ vaultPage: page }) => {
-      const providerSelect = await openAISettings(page)
-      await providerSelect.selectOption({ label: 'Ollama' })
-      await expect(keyInput(page)).toBeHidden({ timeout: 5_000 })
+    test('14.1.2 A cloud provider asks for a key; a local one makes it optional', async ({
+      vaultPage: page,
+    }) => {
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('switch', { name: 'Chat' }).click()
+      const provider = dialog.getByRole('combobox', { name: 'Provider' })
+      const key = dialog.getByLabel('API key')
+
+      await provider.selectOption({ label: 'OpenAI' })
+      await expect(key).toBeVisible()
+      await expect(dialog.getByText('API key', { exact: true })).toBeVisible()
+
+      await provider.selectOption({ label: 'llama.cpp' })
+      await expect(dialog.getByText('API key (optional)')).toBeVisible()
+      await expect(dialog.getByLabel('Base URL')).toHaveAttribute(
+        'placeholder',
+        'http://localhost:8080',
+      )
     })
 
-    test.fixme('14.1.11 Change provider — model list resets', async ({ vaultPage: page }) => {
-      // Requires switching between providers and verifying model dropdown resets
-      const providerSelect = await openAISettings(page)
+    test('14.1.3 Models are fetched from the local server, not listed in the app', async ({
+      vaultPage: page,
+    }) => {
+      await serveJson(page, 'http://localhost:11434/v1/models', {
+        data: [{ id: 'llama3.2:3b' }, { id: 'qwen3:8b' }],
+      })
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('switch', { name: 'Chat' }).click()
+      await dialog.getByRole('combobox', { name: 'Provider' }).selectOption({ label: 'Ollama' })
 
-      // Select first provider
-      await providerSelect.click()
-      await page.waitForTimeout(200)
-      const firstOption = page.locator('option, [role="option"]').nth(1)
-      await firstOption.click()
-      await page.waitForTimeout(500)
+      await expect(dialog.getByText('2 models')).toBeVisible({ timeout: 10_000 })
+      await expect(page.locator('datalist option')).toHaveCount(2)
+      // Two to choose from: none is picked for the person.
+      await expect(dialog.getByLabel('Model', { exact: true })).toHaveValue('')
 
-      // Switch to a different provider
-      await providerSelect.click()
-      await page.waitForTimeout(200)
-      const secondOption = page.locator('option, [role="option"]').nth(2)
-      await secondOption.click()
-      await page.waitForTimeout(500)
+      // The server gains one; Refresh shows it.
+      await serveJson(page, 'http://localhost:11434/v1/models', {
+        data: [{ id: 'llama3.2:3b' }, { id: 'qwen3:8b' }, { id: 'gemma3:4b' }],
+      })
+      await dialog.getByRole('button', { name: 'Refresh models' }).click()
+      await expect(dialog.getByText('3 models')).toBeVisible({ timeout: 10_000 })
+    })
 
-      // Model dropdown should reset (not carry over previous provider's model)
-      const modelSelect = page.locator('[data-testid="model-select"], select').nth(1)
-      if (await modelSelect.isVisible().catch(() => false)) {
-        const value = await modelSelect.inputValue().catch(() => '')
-        // Model should be empty or set to a default for the new provider
-        expect(value).not.toContain('gpt') // if we switched away from OpenAI
-      }
+    test('14.1.4 A server with one model is chosen for you', async ({ vaultPage: page }) => {
+      await serveJson(page, 'http://localhost:8080/v1/models', { data: [{ id: 'my-model.gguf' }] })
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('switch', { name: 'Chat' }).click()
+      await dialog.getByRole('combobox', { name: 'Provider' }).selectOption({ label: 'llama.cpp' })
+      await expect(dialog.getByLabel('Model', { exact: true })).toHaveValue('my-model.gguf', {
+        timeout: 10_000,
+      })
+    })
+
+    test('14.1.5 A cloud list is fetched with the key, and only chat models are offered', async ({
+      vaultPage: page,
+    }) => {
+      const seen: { auth?: string } = {}
+      await serveJson(
+        page,
+        'https://api.openai.com/v1/models',
+        { data: [{ id: 'text-embedding-3-large' }, { id: 'gpt-next' }, { id: 'whisper-1' }] },
+        seen,
+      )
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('switch', { name: 'Chat' }).click()
+      await dialog.getByRole('combobox', { name: 'Provider' }).selectOption({ label: 'OpenAI' })
+
+      // No key yet: nothing to ask, nothing to offer.
+      await expect(page.locator('datalist option')).toHaveCount(0)
+
+      await dialog.getByLabel('API key').fill('sk-test-123')
+      await dialog.getByRole('button', { name: 'Test' }).click()
+      await expect(dialog.getByText('Connected')).toBeVisible({ timeout: 10_000 })
+      await expect(page.locator('datalist option')).toHaveCount(1)
+      await expect(page.locator('datalist option')).toHaveAttribute('value', 'gpt-next')
+      expect(seen.auth).toBe('Bearer sk-test-123')
+    })
+
+    test('14.1.6 An address belongs to its provider', async ({ vaultPage: page }) => {
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('switch', { name: 'Chat' }).click()
+      const provider = dialog.getByRole('combobox', { name: 'Provider' })
+      const base = dialog.getByLabel('Base URL')
+
+      await provider.selectOption({ label: 'Ollama' })
+      await base.fill('http://192.168.1.5:11434')
+      await provider.selectOption({ label: 'OpenAI' })
+      await expect(base).toHaveValue('')
+      await provider.selectOption({ label: 'Ollama' })
+      await expect(base).toHaveValue('http://192.168.1.5:11434')
+    })
+
+    test('14.1.7 A failed list says why, and the model can still be typed', async ({
+      vaultPage: page,
+    }) => {
+      await page.route('http://localhost:11434/v1/models', (route) =>
+        route.abort('connectionrefused'),
+      )
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('switch', { name: 'Chat' }).click()
+      await dialog.getByRole('combobox', { name: 'Provider' }).selectOption({ label: 'Ollama' })
+      await expect(
+        dialog.getByText(/Cannot reach Ollama at http:\/\/localhost:11434\/v1/),
+      ).toBeVisible({
+        timeout: 10_000,
+      })
+      await dialog.getByLabel('Model', { exact: true }).fill('my-own-model')
+      await expect(dialog.getByLabel('Model', { exact: true })).toHaveValue('my-own-model')
     })
   })
 
   test.describe('14.2 Per-Document Chat', () => {
-    test('14.2.1 Open note — click sparkle button — chat panel opens', async ({
+    test('14.2.0 Off, opening a note does not write to it and shows no chat', async ({
       vaultPage: page,
     }) => {
+      const before = await readVaultFile(page, 'Welcome.md')
+      expect(before).not.toBe('')
+      await openVaultFile(page, 'Welcome.md')
+      await expect(page.locator('.tiptap').first()).toBeVisible({ timeout: 15_000 })
+      await page.waitForTimeout(3000)
+
+      expect(await readVaultFile(page, 'Welcome.md')).toBe(before)
+      expect(await readVaultFile(page, 'Welcome.md')).not.toContain('chatAssetId')
+      await expect(
+        page.locator('button[aria-label="Expand chat"], button[aria-label="Open chat"]'),
+      ).toHaveCount(0)
+    })
+
+    test('14.2.1 On: open note — chat panel opens', async ({ vaultPage: page }) => {
+      await enableChat(page)
       await createMarkdownNote(page, 'Chat Test Note')
       await waitForAutoSave(page)
 
@@ -88,7 +225,6 @@ test.describe('13 — AI Chat', () => {
         .first()
       await expect(sparkleBtn).toBeVisible({ timeout: 10_000 })
       await sparkleBtn.click()
-      await page.waitForTimeout(500)
 
       // Chat panel open: the collapse control replaces the expand one
       await expect(page.locator('button[aria-label="Collapse chat"]')).toBeVisible({
@@ -100,7 +236,8 @@ test.describe('13 — AI Chat', () => {
       ['Roadmap.kan.md', '---\nkanban-plugin: basic\n---\n\n## Todo\n\n- [ ] Ship it\n'],
       ['Talk.slides.md', '---\nmarp: true\n---\n\n# Hello\n'],
     ] as const) {
-      test(`14.2.9 Chat panel is offered for ${file}`, async ({ vaultPage: page }) => {
+      test(`14.2.9 Chat panel is offered for ${file} once on`, async ({ vaultPage: page }) => {
+        await enableChat(page)
         await writeVaultFile(page, file, content)
         await openVaultFile(page, file)
         const expand = page
@@ -114,7 +251,26 @@ test.describe('13 — AI Chat', () => {
       })
     }
 
+    test('14.2.10 Switching chat off takes the panel away again', async ({ vaultPage: page }) => {
+      await enableChat(page)
+      await openVaultFile(page, 'Welcome.md')
+      const expand = page
+        .locator('button[aria-label="Expand chat"], button[aria-label="Open chat"]')
+        .first()
+      await expect(expand).toBeVisible({ timeout: 10_000 })
+
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('switch', { name: 'Chat' }).click()
+      await expect(dialog.getByRole('switch', { name: 'Chat' })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      )
+      await page.keyboard.press('Escape')
+      await expect(expand).toHaveCount(0)
+    })
+
     test('14.2.8 Close panel — no data loss', async ({ vaultPage: page }) => {
+      await setUpLocalChat(page)
       await createMarkdownNote(page, 'Persistence Test')
       await waitForAutoSave(page)
 
@@ -162,8 +318,8 @@ test.describe('13 — AI Chat', () => {
     test('14.3.1 Switch to Vault Chat view (Ctrl+2) — full-viewport layout', async ({
       vaultPage: page,
     }) => {
+      await enableChat(page)
       await navigateTo(page, 'chat')
-      await page.waitForTimeout(1000)
 
       // The chat composer fills the view
       const chatComposer = page
@@ -173,8 +329,8 @@ test.describe('13 — AI Chat', () => {
     })
 
     test('14.3.5 Thread list sidebar', async ({ vaultPage: page }) => {
+      await enableChat(page)
       await navigateTo(page, 'chat')
-      await page.waitForTimeout(1000)
 
       // Vault chat should have a thread list sidebar
       const sidebar = page
@@ -185,49 +341,13 @@ test.describe('13 — AI Chat', () => {
   })
 
   test.describe('14.6 Reactivity & Edge Cases', () => {
-    test('14.6.3 No provider selected — shows configure message', async ({ vaultPage: page }) => {
+    test('14.6.3 On, with no provider chosen — says to choose one', async ({ vaultPage: page }) => {
+      await enableChat(page)
       await navigateTo(page, 'chat')
-      await page.waitForTimeout(1000)
-
-      // If no provider is configured, the chat should show a prompt to configure
-      // Look for text like "configure", "set up", "select a provider", or "Load model"
-      const configPrompt = page
-        .getByText(/configure|set up|select.*provider|choose.*provider|Load model|add.*key/i)
-        .first()
-      // This may or may not be visible depending on default state
-      const isVisible = await configPrompt.isVisible().catch(() => false)
-      if (isVisible) {
-        await expect(configPrompt).toBeVisible()
-      } else {
-        // If a provider is already configured by default, this test doesn't apply
-        // Just verify chat view loaded without errors
-        const chatArea = page
-          .locator('textarea, [data-testid="chat-input"], [contenteditable="true"]')
-          .first()
-        await expect(chatArea).toBeVisible({ timeout: 10_000 })
-      }
-    })
-
-    test.fixme('14.6.4 Provider but no key — shows add key message', async ({
-      vaultPage: page,
-    }) => {
-      // Requires configuring a cloud provider without providing a key,
-      // then attempting to send a message
-      await navigateTo(page, 'chat')
-      await page.waitForTimeout(1000)
-
-      const chatInput = page
-        .locator('textarea, [data-testid="chat-input"], [contenteditable="true"]')
-        .first()
-      if (await chatInput.isVisible().catch(() => false)) {
-        await chatInput.fill('Hello')
-        await page.keyboard.press('Enter')
-        await page.waitForTimeout(2000)
-
-        // Should show an error or prompt about missing API key
-        const keyError = page.getByText(/key|authenticate|API/i).first()
-        await expect(keyError).toBeVisible({ timeout: 5_000 })
-      }
+      await expect(page.getByPlaceholder('Choose a provider in Settings → AI')).toBeVisible({
+        timeout: 10_000,
+      })
+      await expect(page.locator('textarea').first()).toBeDisabled()
     })
   })
 })

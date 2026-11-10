@@ -30,4 +30,13 @@ describe('content security policy', () => {
     expect(scripts).not.toContain("'unsafe-eval'")
     expect(directives(tauri)['object-src']).toEqual(["'none'"])
   })
+
+  it('lets script load from one CDN only: transcription fetches its ONNX runtime there', () => {
+    // Self-hosting that runtime would drop this; until then, no other origin.
+    expect(directives(tauri)['script-src']).toEqual([
+      "'self'",
+      "'wasm-unsafe-eval'",
+      'https://cdn.jsdelivr.net',
+    ])
+  })
 })

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
 import { useTabBarStore } from '@/stores/tab-bar'
-import { views } from '@/core/registries'
+import { views, useRegistryConfig } from '@/core/registries'
 import { tabOptions, type TabOption } from '@/components/shell/tab-bar-tabs'
 import { cn } from '@/utils/cn'
 
@@ -30,13 +30,16 @@ function useKeyboardOpen(): boolean {
 export function MobileTabBar() {
   const activeView = useUiStore((s) => s.activeView)
   const chosen = useTabBarStore((s) => s.tabs)
+  const config = useRegistryConfig()
   const keyboardOpen = useKeyboardOpen()
   const [capturing, setCapturing] = useState(false)
 
   const tabs = useMemo(() => {
     const byKey = new Map(tabOptions().map((t) => [t.key, t]))
     return chosen.flatMap((k) => byKey.get(k) ?? [])
-  }, [chosen])
+    // The tabs offered depend on the config (a feature switched on or off).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosen, config])
   const activeId = views.resolve(activeView)?.def.id
 
   const tabButton = ({ key, label, icon: Icon, views: lit, run }: TabOption) => {

@@ -91,6 +91,15 @@ export function AppRoot() {
     }
   }, [session])
 
+  // Remove the on-device chat model an earlier version downloaded (once, ever).
+  useEffect(() => {
+    if (!session) return
+    const timer = window.setTimeout(() => {
+      import('@/lib/chat/legacy-model').then((m) => m.removeLegacyDeviceModel()).catch(() => {})
+    }, 10_000)
+    return () => window.clearTimeout(timer)
+  }, [session])
+
   // Clear expired PDF snapshots once per open, after startup has settled.
   useEffect(() => {
     if (!session) return

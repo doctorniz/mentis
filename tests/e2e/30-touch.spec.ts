@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { test, expect } from './fixtures'
+import { test, expect, enableChat } from './fixtures'
 
 /**
  * Touch: the bottom tab bar, swipes and press-and-hold, on a phone-sized
@@ -62,7 +62,7 @@ async function addTask(page: Page, title: string) {
 }
 
 test.describe('30 — Touch', () => {
-  test('30.1 The tab bar holds Today, Calendar, Capture, Notes and Chat', async ({
+  test('30.1 The tab bar holds Today, Calendar, Capture, Notes and Tasks', async ({
     vaultPage: page,
   }) => {
     await expect(tabBar(page)).toBeVisible()
@@ -77,6 +77,31 @@ test.describe('30 — Touch', () => {
 
     await tab(page, 'Notes').tap()
     await expect(page.getByRole('tree', { name: 'Vault file tree' })).toBeVisible()
+
+    await tab(page, 'Tasks').tap()
+    await expect(page.getByRole('button', { name: 'All tasks', exact: true })).toBeVisible()
+    await expect(tab(page, 'Tasks')).toHaveAttribute('aria-current', 'page')
+    await expect(tab(page, 'Chat')).toHaveCount(0)
+  })
+
+  test('30.1.4 Chat is a tab option only once it is switched on', async ({ vaultPage: page }) => {
+    const pickTabs = async () => {
+      await openMenu(page)
+      await page.getByRole('dialog').getByRole('button', { name: 'Open settings' }).tap()
+      const settings = page.getByRole('dialog', { name: 'Settings' })
+      await settings.getByRole('tab', { name: 'Phone' }).tap()
+      return settings
+    }
+
+    let settings = await pickTabs()
+    await expect(settings.getByRole('checkbox', { name: 'Chat' })).toHaveCount(0)
+    await settings.getByRole('button', { name: 'Close settings' }).tap()
+
+    await enableChat(page)
+    settings = await pickTabs()
+    await settings.getByRole('checkbox', { name: 'Tasks' }).tap()
+    await settings.getByRole('checkbox', { name: 'Chat' }).tap()
+    await settings.getByRole('button', { name: 'Close settings' }).tap()
 
     await tab(page, 'Chat').tap()
     await expect(page.locator('textarea').first()).toBeVisible()
@@ -121,20 +146,20 @@ test.describe('30 — Touch', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Open settings' }).tap()
     const settings = page.getByRole('dialog', { name: 'Settings' })
     await settings.getByRole('tab', { name: 'Phone' }).tap()
-    await settings.getByRole('checkbox', { name: 'Chat' }).tap()
+    await settings.getByRole('checkbox', { name: 'Tasks' }).tap()
     await settings.getByRole('checkbox', { name: 'Search' }).tap()
     // Four chosen: the rest wait for one to be taken off.
     await expect(settings.getByRole('checkbox', { name: 'Bookmarks' })).toBeDisabled()
     await settings.getByRole('button', { name: 'Close settings' }).tap()
 
-    await expect(tab(page, 'Chat')).toHaveCount(0)
+    await expect(tab(page, 'Tasks')).toHaveCount(0)
     await tab(page, 'Search').tap()
     await expect(page.locator('input[aria-label="Search vault"]')).toBeVisible({ timeout: 10_000 })
 
     // This device's choice, kept across a reload.
     await page.reload()
     await expect(tab(page, 'Search')).toBeVisible({ timeout: 30_000 })
-    await expect(tab(page, 'Chat')).toHaveCount(0)
+    await expect(tab(page, 'Tasks')).toHaveCount(0)
   })
 
   test('30.2 A sheet closes with a swipe down from its top', async ({ vaultPage: page }) => {

@@ -17,6 +17,7 @@ const view: ViewDefinition = {
     })),
   nav: { order: 0 },
   shortcut: '2',
+  enabled: (config) => config?.chat?.enabled === true,
 }
 
 export default view

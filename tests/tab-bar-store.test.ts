@@ -9,9 +9,9 @@ async function freshStore() {
 describe('tab bar store', () => {
   beforeEach(() => localStorage.clear())
 
-  it('starts on Today, Calendar, Notes and Chat', async () => {
+  it('starts on Today, Calendar, Notes and Tasks', async () => {
     const { useTabBarStore } = await freshStore()
-    expect(useTabBarStore.getState().tabs).toEqual(['today', 'calendar', 'notes', 'chat'])
+    expect(useTabBarStore.getState().tabs).toEqual(['today', 'calendar', 'notes', 'tasks'])
   })
 
   it('keeps a choice for the next launch', async () => {
@@ -36,6 +36,6 @@ describe('tab bar store', () => {
   it('falls back to the default when storage is unreadable', async () => {
     localStorage.setItem('ink-tab-bar', '{not json')
     const { useTabBarStore } = await freshStore()
-    expect(useTabBarStore.getState().tabs).toEqual(['today', 'calendar', 'notes', 'chat'])
+    expect(useTabBarStore.getState().tabs).toEqual(['today', 'calendar', 'notes', 'tasks'])
   })
 })

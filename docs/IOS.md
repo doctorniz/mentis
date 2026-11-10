@@ -12,8 +12,8 @@ iPhone and iPad. It needs a Mac to build; CI builds it on a macOS runner.
   `src/`, a Swift package in `ios/`). Tauri's build step compiles and links the
   package.
 
-Not built yet: reminders, shares and the widget, Dropbox sign-in, on-device
-AI. Their commands answer with nothing on iOS.
+Not built yet: reminders, shares and the widget, Dropbox sign-in. Their
+commands answer with nothing on iOS.
 
 ## Plain http
 

@@ -68,9 +68,6 @@ importers:
       '@marp-team/marp-core':
         specifier: ^4.4.0
         version: 4.4.0
-      '@mediapipe/tasks-genai':
-        specifier: ^0.10.27
-        version: 0.10.27
       '@radix-ui/react-context-menu':
         specifier: ^2.2.0
         version: 2.2.16(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1034,9 +1031,6 @@ packages:
   '@marp-team/marpit@3.2.3':
     resolution: {integrity: sha512-YMSS+LaYM3/cCpB18gtmgHHRcu4R1FHSSj8l5biPTP68ML5pdiQNvgSADmnNGJI0uaW4msmPiVMI1zRJ4VquJw==}
     engines: {node: '>=18'}
-
-  '@mediapipe/tasks-genai@0.10.27':
-    resolution: {integrity: sha512-cv69CPPAtEDBUs6dGZft2S+sBqde1XvEMST367siSyxrhffdWtm4uQIsfdedAbhJ33BwAjuMnAdxDrO9WrzIAQ==}
 
   '@mixmark-io/domino@2.2.0':
     resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
@@ -5734,8 +5728,6 @@ snapshots:
       markdown-it-front-matter: 0.2.4
       postcss: 8.5.28
       postcss-nesting: 13.0.2(postcss@8.5.28)
-
-  '@mediapipe/tasks-genai@0.10.27': {}
 
   '@mixmark-io/domino@2.2.0': {}
 

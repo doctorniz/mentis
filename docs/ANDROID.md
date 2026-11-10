@@ -91,8 +91,8 @@ Narrow screens (the phone app and the web app on a phone) share one layout:
 
 - A bottom tab bar (`mobile-tab-bar.tsx`): Capture in the middle (the capture
   bar in a sheet, over any view) and four tabs around it — Today, Calendar,
-  Notes and Chat until Settings › Phone picks others (Tasks, Thoughts,
-  Bookmarks, Search). The choice is this device's (`localStorage`). Hidden
+  Notes and Tasks until Settings › Phone picks others (Thoughts, Bookmarks,
+  Search, and Chat once it is switched on). The choice is this device's (`localStorage`). Hidden
   while the on-screen keyboard is up.
 - The masthead's menu button opens the menu sheet: Today, Notes, every view
   in the sidebar's list, New, theme, Settings and Close vault.

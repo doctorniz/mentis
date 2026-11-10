@@ -24,7 +24,7 @@ import { useVaultStore } from '@/stores/vault'
 import { useJournalStore } from '@/stores/journal'
 import { useNewFileActions, type NewMenuItem } from '@/lib/notes/use-new-file-actions'
 import { cn } from '@/utils/cn'
-import { views } from '@/core/registries'
+import { views, useRegistryConfig } from '@/core/registries'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { useMediaQuery } from '@/lib/browser/use-media-query'
 
@@ -81,6 +81,7 @@ export function MainSidebar({
   onOpenSettings: () => void
 }) {
   const activeView = useUiStore((s) => s.activeView)
+  useRegistryConfig()
   const activeHighlight = views.resolve(activeView)?.highlight
   const setActiveView = useUiStore((s) => s.setActiveView)
   const isOpen = useUiStore((s) => s.isSidebarOpen)

@@ -1,23 +1,10 @@
-import { getCuratedModels } from '@/lib/chat/providers/model-catalog'
+import { providerMeta } from '@/lib/chat/providers/meta'
 import type { ChatProviderId, ChatThread } from '@/types/chat'
-
-const PROVIDER_LABELS: Record<ChatProviderId, string> = {
-  openrouter: 'OpenRouter',
-  anthropic: 'Anthropic',
-  openai: 'OpenAI',
-  gemini: 'Google Gemini',
-  ollama: 'Ollama',
-  device: 'Local',
-}
 
 export function chatProviderLabel(id: ChatProviderId | null | undefined): string {
   if (!id) return '—'
-  return PROVIDER_LABELS[id] ?? id
-}
-
-export function chatModelDisplayLabel(provider: ChatProviderId, model: string): string {
-  const hit = getCuratedModels(provider).find((m) => m.id === model)
-  return hit?.label ?? model
+  // A thread from a provider that no longer exists keeps its id as its name.
+  return providerMeta(id)?.label ?? id
 }
 
 export function vaultChatGreeting(): string {

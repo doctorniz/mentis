@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { MatchedSpan } from '@/core/capture/parse'
+import type { VaultConfig } from '@/types/vault'
 
 /**
  * Capture destination registry.
@@ -97,6 +98,8 @@ export interface CaptureDestination {
   write(values: Record<string, unknown>, ctx: CaptureContext): Promise<WriteResult | null>
   /** Load whatever `parse` needs, ahead of the first use. */
   preload?(): void
+  /** Absent means always on. Off, the destination is not offered and its sigil is not recognised. */
+  enabled?(config: VaultConfig | null): boolean
 }
 
 /** Where bare text goes. */
@@ -111,9 +114,16 @@ export interface CaptureRegistry {
   search(query: string): CaptureDestination[]
 }
 
+export interface CaptureRegistryOptions {
+  /** The open vault's config, read at each call; `enabled` checks run against it. */
+  config?: () => VaultConfig | null
+}
+
 export function createCaptureRegistry(
   destinations: readonly CaptureDestination[],
+  options: CaptureRegistryOptions = {},
 ): CaptureRegistry {
+  const on = (d: CaptureDestination) => !d.enabled || d.enabled(options.config?.() ?? null)
   const byId = new Map<string, CaptureDestination>()
   const bySigil = new Map<string, CaptureDestination>()
   for (const d of destinations) {
@@ -127,16 +137,23 @@ export function createCaptureRegistry(
     }
   }
   return {
-    all: () => destinations,
-    get: (id) => byId.get(id),
-    bySigil: (word) => bySigil.get(word.toLowerCase()),
+    all: () => destinations.filter(on),
+    get: (id) => {
+      const d = byId.get(id)
+      return d && on(d) ? d : undefined
+    },
+    bySigil: (word) => {
+      const d = bySigil.get(word.toLowerCase())
+      return d && on(d) ? d : undefined
+    },
     search(query) {
       const q = query.replace(/^\//, '').toLowerCase()
       return destinations.filter(
         (d) =>
-          !q ||
-          d.label.toLowerCase().includes(q) ||
-          [d.sigil, ...d.aliases].some((s) => s.slice(1).toLowerCase().startsWith(q)),
+          on(d) &&
+          (!q ||
+            d.label.toLowerCase().includes(q) ||
+            [d.sigil, ...d.aliases].some((s) => s.slice(1).toLowerCase().startsWith(q))),
       )
     },
   }

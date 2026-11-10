@@ -219,10 +219,12 @@ function NotesViewInner() {
     }
   }, [columnCollapsed])
 
-  // Chat panel — always present in the right column. Markdown tabs use
-  // frontmatter via `MarkdownNoteEditor.ensureChatAssetId`; PDFs use
-  // `_mentis/_chats/index.json`. The asset id is resolved eagerly
-  // whenever the active tab changes so chat is ready without a toggle.
+  // Chat panel, in the right column while chat is switched on in Settings. Markdown
+  // tabs use frontmatter via `MarkdownNoteEditor.ensureChatAssetId`; PDFs use
+  // `_mentis/_chats/index.json`. The asset id is resolved eagerly whenever the
+  // active tab changes so chat is ready without a toggle. With chat off nothing
+  // here runs, so opening a file never writes to it or to `_mentis/_chats`.
+  const chatOn = useVaultStore((s) => s.config?.chat?.enabled === true)
   const [chatAssetIdByPath, setChatAssetIdByPath] = useState<Record<string, string>>({})
 
   const onMarkdownChatAssetIdFromDisk = useCallback((notePath: string, chatAssetId: string) => {
@@ -234,7 +236,8 @@ function NotesViewInner() {
   // Ensure chatAssetId for the active markdown tab once its editor is mounted.
   // The editor is loaded lazily, so its handle arrives whenever the chunk does;
   // this ref callback runs at that moment, and again for the next tab's path.
-  const editorChatPath = activeDef?.layout?.chat === 'editor' ? activeTab?.path : undefined
+  const editorChatPath =
+    chatOn && activeDef?.layout?.chat === 'editor' ? activeTab?.path : undefined
   const setEditorHandle = useCallback(
     (handle: FileEditorHandle | null) => {
       if (!handle || !editorChatPath) return
@@ -248,7 +251,7 @@ function NotesViewInner() {
 
   // Auto-ensure chatAssetId for the active PDF tab.
   useEffect(() => {
-    if (!activeTab || activeDef?.layout?.chat !== 'index') return
+    if (!chatOn || !activeTab || activeDef?.layout?.chat !== 'index') return
     if (chatAssetIdByPath[activeTab.path]) return
     void ensureChatAssetIdForPath(vaultFs, activeTab.path)
       .then((id) => {
@@ -260,7 +263,7 @@ function NotesViewInner() {
     // Same rationale as above for activeTab; chatAssetIdByPath is read only as a
     // guard against re-fetching and is set by this effect itself for this path.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab?.path, activeTab?.type, vaultFs])
+  }, [chatOn, activeTab?.path, activeTab?.type, vaultFs])
 
   const isCanvasSidebarNarrow = useMediaQuery(CANVAS_SIDEBAR_MEDIA_QUERY)
   const isCanvasTab = activeDef?.layout?.narrow === 'canvas'
@@ -361,7 +364,7 @@ function NotesViewInner() {
                 columnCollapsed={columnCollapsed}
                 onColumnCollapsedChange={setColumnCollapsed}
                 chat={
-                  chatAssetIdByPath[activeTab.path] ? (
+                  chatOn && chatAssetIdByPath[activeTab.path] ? (
                     <ChatPanel
                       chatAssetId={chatAssetIdByPath[activeTab.path]}
                       documentPath={activeTab.path}

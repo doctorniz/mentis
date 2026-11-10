@@ -15,7 +15,7 @@ export const TAB_KEYS = [
 export type TabKey = (typeof TAB_KEYS)[number]
 
 export const MAX_TABS = 4
-export const DEFAULT_TABS: readonly TabKey[] = ['today', 'calendar', 'notes', 'chat']
+export const DEFAULT_TABS: readonly TabKey[] = ['today', 'calendar', 'notes', 'tasks']
 
 const STORAGE_KEY = 'ink-tab-bar'
 

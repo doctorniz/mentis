@@ -22,7 +22,7 @@ import { useUiStore, type ThemeChoice } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
 import { useJournalStore } from '@/stores/journal'
 import { cn } from '@/utils/cn'
-import { views } from '@/core/registries'
+import { views, useRegistryConfig } from '@/core/registries'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 
 const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
@@ -90,6 +90,7 @@ export function MobileNavMasthead({
   const [open, setOpen] = useState(false)
   const [newExpanded, setNewExpanded] = useState(false)
   const activeView = useUiStore((s) => s.activeView)
+  useRegistryConfig()
   const resolved = views.resolve(activeView)
   // A file opened from the tree shows in the vault view: still Notes.
   const activeId = resolved?.def.id === 'vault' ? 'tree' : (resolved?.highlight ?? resolved?.def.id)

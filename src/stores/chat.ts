@@ -11,7 +11,8 @@ import {
   writeThread,
 } from '@/lib/chat/chat-io'
 import { getProvider, toWire } from '@/lib/chat/providers'
-import type { ChatMessage, ChatSettings, ChatThread, ChatProviderId } from '@/types/chat'
+import { providerNeedsApiKey } from '@/lib/chat/providers/meta'
+import type { ChatMessage, ChatSettings, ChatThread } from '@/types/chat'
 
 /**
  * Per-document chat store.
@@ -180,9 +181,7 @@ export const useChatStore = create<ChatState>()(
         })
         return
       }
-      // Local providers (device, ollama) don't require a real key
-      const LOCAL_PROVIDERS = ['device', 'ollama']
-      if (!apiKey && !LOCAL_PROVIDERS.includes(settings.provider!)) {
+      if (!apiKey && providerNeedsApiKey(settings.provider)) {
         set((s) => {
           s.error = 'Add an API key in Settings → AI to start chatting.'
         })
@@ -263,7 +262,7 @@ export const useChatStore = create<ChatState>()(
           model: settings.model,
           messages: wire,
           apiKey,
-          baseUrl: settings.baseUrl,
+          baseUrl: settings.baseUrls?.[settings.provider],
           signal: abort.signal,
         })) {
           if (abort.signal.aborted) break
@@ -330,13 +329,3 @@ export function selectActiveThread(s: ChatState): ChatThread | null {
   if (!s.activeThreadId) return null
   return s.threads.find((t) => t.id === s.activeThreadId) ?? null
 }
-
-/** Which providers currently have a wired implementation. */
-export const IMPLEMENTED_PROVIDERS: ChatProviderId[] = [
-  'openrouter',
-  'openai',
-  'anthropic',
-  'gemini',
-  'ollama',
-  'device',
-]

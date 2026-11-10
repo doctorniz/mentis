@@ -21,6 +21,7 @@ const chat: CaptureDestination = {
   icon: MessageSquare,
   hint: 'What did I decide about the kitchen?',
   immediate: true,
+  enabled: (config) => config?.chat?.enabled === true,
   parseNow: asIs,
   parse: async (input) => asIs(input),
   async write(values) {

@@ -1,4 +1,4 @@
-import { test, expect, navigateTo } from './fixtures'
+import { test, expect, navigateTo, enableChat } from './fixtures'
 
 /**
  * Responsive layout consistency — QA for the app-wide mobile policy:
@@ -47,6 +47,7 @@ test.describe('19 — Responsive layout consistency', () => {
   test('19.4 Chat: thread drawer opens from the section-icon trigger', async ({
     vaultPage: page,
   }) => {
+    await enableChat(page)
     await page.setViewportSize(PHONE)
     await navigateTo(page, 'chat')
 

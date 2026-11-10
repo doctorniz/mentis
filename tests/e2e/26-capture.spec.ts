@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { test, expect, navigateTo } from './fixtures'
+import { test, expect, navigateTo, enableChat } from './fixtures'
 
 const bar = (page: Page) => page.getByRole('textbox', { name: 'Capture' })
 
@@ -165,6 +165,7 @@ test.describe('26 — Capture', () => {
   test('26.10 /chat goes to vault chat; unconfigured, the message waits in the box', async ({
     vaultPage: page,
   }) => {
+    await enableChat(page)
     await navigateTo(page, 'board')
     await bar(page).fill('/chat What did I decide about the kitchen?')
     await bar(page).press('Enter')
@@ -174,6 +175,16 @@ test.describe('26 — Capture', () => {
       /^What did I decide about the kitchen\?\s*$/,
       { timeout: 10_000 },
     )
+  })
+
+  test('26.10.1 /chat is not offered until chat is switched on', async ({ vaultPage: page }) => {
+    await navigateTo(page, 'board')
+    await bar(page).fill('/chat')
+    await expect(page.getByRole('option', { name: /Chat/ })).toHaveCount(0)
+    await bar(page).fill('/ask What did I decide?')
+    await bar(page).press('Enter')
+    // Not a destination: it is saved as a thought, text and all.
+    await expect(page.getByRole('status')).toContainText('Thoughts')
   })
 
   test('26.11 /list adds an item, creating the list when the name is new', async ({

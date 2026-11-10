@@ -221,9 +221,9 @@ const FEATURES: {
     content: (
       <>
         <p>
-          Bring your own LLM — supports OpenRouter, OpenAI, Anthropic, Gemini, Ollama, and a fully
-          offline local model (Gemma). Chat per-document or across the entire vault with RAG-powered
-          context.
+          Off until you switch it on in Settings. Bring your own key (OpenRouter, OpenAI,
+          Anthropic, Gemini) or run Ollama or llama.cpp yourself. Chat per-document or across the
+          entire vault with RAG-powered context.
         </p>
         <p>API keys are stored locally and never leave your device.</p>
       </>

@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import type { LucideIcon } from 'lucide-react'
+import type { VaultConfig } from '@/types/vault'
 
 /**
  * View registry.
@@ -57,6 +58,8 @@ export interface ViewDefinition {
   /** For views outside the nav: the nav item to highlight while shown. */
   highlights?: ViewId
   aliases?: readonly ViewAlias[]
+  /** Absent means always on. Off, the view is in no nav, palette, shortcut or route (it resolves to home). */
+  enabled?: (config: VaultConfig | null) => boolean
 }
 
 export interface ResolvedView {
@@ -77,7 +80,16 @@ export interface ViewRegistry {
   byShortcut(key: string): ViewDefinition | undefined
 }
 
-export function createViewRegistry(definitions: readonly ViewDefinition[]): ViewRegistry {
+export interface ViewRegistryOptions {
+  /** The open vault's config, read at each call; `enabled` checks run against it. */
+  config?: () => VaultConfig | null
+}
+
+export function createViewRegistry(
+  definitions: readonly ViewDefinition[],
+  options: ViewRegistryOptions = {},
+): ViewRegistry {
+  const on = (d: ViewDefinition) => !d.enabled || d.enabled(options.config?.() ?? null)
   const byId = new Map<string, ViewDefinition>()
   const aliases = new Map<string, { def: ViewDefinition; alias: ViewAlias }>()
   const shortcuts = new Map<string, ViewDefinition>()
@@ -108,15 +120,22 @@ export function createViewRegistry(definitions: readonly ViewDefinition[]): View
   const highlightOf = (def: ViewDefinition) => (def.nav ? def.id : def.highlights)
 
   return {
-    all: () => definitions,
-    get: (id) => byId.get(id),
-    nav: () => navOrder,
-    byShortcut: (key) => shortcuts.get(key),
+    all: () => definitions.filter(on),
+    get: (id) => {
+      const def = byId.get(id)
+      return def && on(def) ? def : undefined
+    },
+    nav: () => navOrder.filter(on),
+    byShortcut: (key) => {
+      const def = shortcuts.get(key)
+      return def && on(def) ? def : undefined
+    },
     resolve(id) {
       const def = byId.get(id)
+      if (def && !on(def)) return undefined
       if (def) return { def, props: {}, highlight: highlightOf(def) }
       const hit = aliases.get(id)
-      if (!hit) return undefined
+      if (!hit || !on(hit.def)) return undefined
       return {
         def: hit.def,
         props: hit.alias.props ?? {},

@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import type { FileSystemAdapter } from '@/lib/fs/types'
+import type { VaultConfig } from '@/types/vault'
 
 /**
  * Command registry.
@@ -52,6 +53,8 @@ export interface CommandDefinition<S extends CommandScope = CommandScope> {
   shortcut?: string
   scope: S
   run: (ctx: CommandScopes[S]) => void | Promise<void>
+  /** Absent means always on. Off, the command is not listed. */
+  enabled?: (config: VaultConfig | null) => boolean
 }
 
 /** A command of any scope, with `run` still tied to its own scope's context. */
@@ -74,18 +77,27 @@ export function matchesCommand(command: AnyCommand, query: string): boolean {
   )
 }
 
-export function createCommandRegistry(commands: readonly AnyCommand[]): CommandRegistry {
+export interface CommandRegistryOptions {
+  /** The open vault's config, read at each call; `enabled` checks run against it. */
+  config?: () => VaultConfig | null
+}
+
+export function createCommandRegistry(
+  commands: readonly AnyCommand[],
+  options: CommandRegistryOptions = {},
+): CommandRegistry {
+  const on = (c: AnyCommand) => !c.enabled || c.enabled(options.config?.() ?? null)
   const seen = new Set<string>()
   for (const c of commands) {
     if (seen.has(c.id)) throw new Error(`Command "${c.id}" is registered twice`)
     seen.add(c.id)
   }
   return {
-    all: () => commands,
+    all: () => commands.filter(on),
     inScope: <S extends CommandScope>(scope: S, query = '') =>
       commands.filter(
         (c): c is Extract<AnyCommand, { scope: S }> =>
-          c.scope === scope && matchesCommand(c, query),
+          c.scope === scope && on(c) && matchesCommand(c, query),
       ) as unknown as CommandDefinition<S>[],
   }
 }

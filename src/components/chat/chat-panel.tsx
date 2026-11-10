@@ -3,11 +3,12 @@ import { ChevronDown, ChevronRight, Plus, Sparkles, Trash2, X } from 'lucide-rea
 
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { getChatKey, CHAT_KEY_CHANGED_EVENT } from '@/lib/chat/key-store'
-import { providerNeedsApiKey } from '@/lib/chat/providers/model-catalog'
+import { providerNeedsApiKey } from '@/lib/chat/providers/meta'
 import { useChatStore, selectActiveThread } from '@/stores/chat'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
+import { useVaultStore } from '@/stores/vault'
 import { DEFAULT_CHAT_SETTINGS, type ChatSettings } from '@/types/chat'
 import { HOME_VIEW } from '@/core/registries'
 import { cn } from '@/utils/cn'
@@ -39,8 +40,11 @@ export function ChatPanel({
   collapsed = false,
   onCollapsedChange,
 }: ChatPanelProps) {
-  const { vaultFs, vaultPath, config } = useVaultSession()
-  const settings = useMemo(() => mergeSettings(config.chat), [config.chat])
+  const { vaultFs, vaultPath, config: sessionConfig } = useVaultSession()
+  // The open vault's live config: the session's copy is from when the vault opened.
+  const vaultConfig = useVaultStore((s) => s.config)
+  const chatSettings = vaultConfig?.chat ?? sessionConfig.chat
+  const settings = useMemo(() => mergeSettings(chatSettings), [chatSettings])
 
   const openVaultPath = useCallback(
     async (path: string) => {
@@ -122,21 +126,17 @@ export function ChatPanel({
       setKeyChecked(true)
       return
     }
-    // Providers that don't need keys (device, ollama) get a dummy key
-    if (!providerNeedsApiKey(settings.provider)) {
-      setApiKey('__local__')
-      setKeyChecked(true)
-      return
-    }
+    // A local server needs no key; one is sent only if it was saved.
+    const optional = !providerNeedsApiKey(settings.provider)
     void getChatKey(settings.provider, vaultPath)
       .then((rec) => {
         if (cancelled) return
-        setApiKey(rec?.apiKey ?? null)
+        setApiKey(rec?.apiKey ?? (optional ? '' : null))
         setKeyChecked(true)
       })
       .catch(() => {
         if (cancelled) return
-        setApiKey(null)
+        setApiKey(optional ? '' : null)
         setKeyChecked(true)
       })
     return () => {
@@ -153,7 +153,7 @@ export function ChatPanel({
 
   const handleSend = useCallback(
     (text: string) => {
-      if (!apiKey || !settings.provider) return
+      if (apiKey === null || !settings.provider) return
       void sendMessage({
         vaultFs,
         settings,
@@ -177,8 +177,9 @@ export function ChatPanel({
     [deleteThread, vaultFs, chatAssetId],
   )
 
-  const providerMissing = !settings.provider
-  const keyMissing = keyChecked && !apiKey && !!settings.provider
+  // No provider, or one without a model yet: not set up.
+  const providerMissing = !settings.provider || !settings.model
+  const keyMissing = keyChecked && apiKey === null && !!settings.provider
   const composerDisabled = providerMissing || keyMissing || !activeThread
 
   if (collapsed) {
@@ -296,7 +297,7 @@ export function ChatPanel({
         isStreaming={isStreaming}
         placeholder={
           providerMissing
-            ? 'Configure a provider in Settings → AI'
+            ? 'Choose a provider and model in Settings → AI'
             : keyMissing
               ? 'Add an API key in Settings → AI'
               : undefined
@@ -322,7 +323,7 @@ function EmptyState({
         <>
           <p className="font-medium">Chat isn&apos;t set up yet</p>
           <p className="text-fg-muted mt-1 text-xs">
-            Add a provider and API key in Settings → AI to start asking questions about this
+            Choose a provider and model in Settings → AI to start asking questions about this
             document.
           </p>
         </>

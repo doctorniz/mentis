@@ -9,6 +9,8 @@ import { createSettingsRegistry, type SettingsSection } from '@/core/registries/
 import { createCommandRegistry, type AnyCommand } from '@/core/registries/commands'
 import { createCaptureRegistry, type CaptureDestination } from '@/core/registries/capture'
 import { useUiStore } from '@/stores/ui'
+import { useVaultStore } from '@/stores/vault'
+import type { VaultConfig } from '@/types/vault'
 
 export type { FileTypeDefinition, FileTypeRegistry } from '@/core/registries/file-types'
 export type { ViewDefinition, ViewRegistry, ResolvedView, ViewId } from '@/core/registries/views'
@@ -67,11 +69,22 @@ const viewRegistrations = import.meta.glob<{ default: ViewDefinition }>('/src/mo
 })
 
 /** Every full-screen view, discovered from `src/modules/<name>/view.ts`. */
-export const views = createViewRegistry(
-  Object.keys(viewRegistrations)
-    .sort()
-    .map((key) => viewRegistrations[key].default),
-)
+const openVaultConfig = () => useVaultStore.getState().config
+
+/**
+ * Call in a component that lists views, commands or capture destinations: what
+ * they answer depends on the open vault's config, so it re-renders when that
+ * changes (a feature switched on or off in Settings).
+ */
+export function useRegistryConfig(): VaultConfig | null {
+  return useVaultStore((s) => s.config)
+}
+
+const allViews = Object.keys(viewRegistrations)
+  .sort()
+  .map((key) => viewRegistrations[key].default)
+
+export const views = createViewRegistry(allViews, { config: openVaultConfig })
 
 /** A view id from outside the type system (a vault's config.json); home if it names no view. */
 export function viewIdOrHome(id: string | undefined): ViewId {
@@ -96,10 +109,10 @@ const commandRegistrations = import.meta.glob<{ default: readonly AnyCommand[] }
 )
 
 /** "Go to <view>" for every view not marked `palette: false`, with its Ctrl+digit — the palette reaches the views the sidebar does not list. */
-const viewCommands: AnyCommand[] = views
-  .all()
+const viewCommands: AnyCommand[] = allViews
   .filter((v) => v.palette !== false)
   .map((v) => ({
+    enabled: v.enabled,
     id: `view.${v.id}`,
     title: `Go to ${v.label}`,
     keywords: ['view', 'switch', v.id],
@@ -126,13 +139,16 @@ const newFileCommands: AnyCommand[] = fileTypes.all().flatMap((def): AnyCommand[
 )
 
 /** Every command: views, new files, then each module's, discovered from `src/modules/<name>/commands.ts`. */
-export const commands = createCommandRegistry([
-  ...viewCommands,
-  ...newFileCommands,
-  ...Object.keys(commandRegistrations)
-    .sort()
-    .flatMap((key) => commandRegistrations[key].default),
-])
+export const commands = createCommandRegistry(
+  [
+    ...viewCommands,
+    ...newFileCommands,
+    ...Object.keys(commandRegistrations)
+      .sort()
+      .flatMap((key) => commandRegistrations[key].default),
+  ],
+  { config: openVaultConfig },
+)
 
 const captureRegistrations = import.meta.glob<{ default: readonly CaptureDestination[] }>(
   '/src/modules/*/capture.ts',
@@ -144,4 +160,5 @@ export const captureDestinations = createCaptureRegistry(
   Object.keys(captureRegistrations)
     .sort()
     .flatMap((key) => captureRegistrations[key].default),
+  { config: openVaultConfig },
 )

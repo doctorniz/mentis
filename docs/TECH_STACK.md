@@ -27,7 +27,7 @@ bundle cost (`CLAUDE.md`). _Last reviewed 2026-10-13._
 | Media              | plyr (audio, video), mp3-mediarecorder (voice notes)                                                                                                                                     |
 | Capture            | **chrono-node** (dates; English locale only, loaded lazily)                                                                                                                              |
 | Search index       | **SQLite + FTS5**: sqlite-wasm on the web (in a worker), rusqlite in the apps; MiniSearch only for fuzzy title matching                                                                  |
-| AI                 | provider streaming clients (Anthropic, OpenAI, OpenRouter, Gemini, Ollama); **@mediapipe/tasks-genai** for Gemma on the device (WebGPU); **transformers.js** for Whisper transcription   |
+| AI                 | provider streaming clients (Anthropic, OpenAI, OpenRouter, Gemini, Ollama, llama.cpp), off until enabled in Settings; **transformers.js** for Whisper transcription                      |
 
 ## The apps (Tauri 2)
 

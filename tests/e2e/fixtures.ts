@@ -70,6 +70,24 @@ async function seedVault(page: Page) {
   await page.waitForSelector(SHELL_SELECTOR, { timeout: 30_000 })
 }
 
+/**
+ * Chat is off until it is switched on in Settings › AI. Turn it on and close
+ * the dialog; the nav, shortcut and capture destination appear at once.
+ */
+export async function enableChat(page: Page) {
+  await page.keyboard.press('Control+,')
+  const dialog = page.getByRole('dialog', { name: 'Settings' })
+  await dialog.getByRole('tab', { name: 'AI' }).click()
+  const toggle = dialog.getByRole('switch', { name: 'Chat' })
+  await expect(toggle).toBeVisible({ timeout: 10_000 })
+  if ((await toggle.getAttribute('aria-checked')) !== 'true') await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  // The switch is saved before the app follows it.
+  await expect(dialog.getByText('Saved')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+}
+
 /** Run a command palette entry by its title ("Go to Vault"). */
 export async function runCommand(page: Page, title: string) {
   await page.keyboard.press('Control+k')
@@ -82,8 +100,8 @@ export async function runCommand(page: Page, title: string) {
 
 /**
  * Navigate to a view the way the current nav actually works. The sidebar
- * lists Today (Ctrl+1), Chat (2), Calendar (3), Tasks (4), Thoughts (5) and
- * Bookmarks (6), then the file tree; Tasks and Calendar keep Lists and
+ * lists Today (Ctrl+1), Chat (2, once switched on: see `enableChat`), Calendar
+ * (3), Tasks (4), Thoughts (5) and Bookmarks (6), then the file tree; Tasks and Calendar keep Lists and
  * Reminders as tabs. The vault view (the editor) and Files are reached from
  * the palette, Graph from the tree's heading, Search from the sidebar.
  */

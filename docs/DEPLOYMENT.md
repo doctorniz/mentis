@@ -37,13 +37,14 @@ desktop and phone apps carry the same policy in `src-tauri/tauri.conf.json`,
 minus `frame-ancestors`, which only works as a header. `tests/csp.test.ts`
 keeps the two, and the e2e server's `tests/e2e/serve.json`, identical.
 
-- Script runs only from the app itself (plus `cdn.jsdelivr.net`, where the
-  on-device model and transcription load their WebAssembly runtimes): no
-  inline script, no `eval`. `'wasm-unsafe-eval'` is for SQLite, PDF and those
-  runtimes. The canvas loads `pixi.js/unsafe-eval`, which despite its name
+- Script runs only from the app itself (plus `cdn.jsdelivr.net`, where
+  transcription's transformers.js loads its ONNX runtime, pinned to the
+  installed version): no inline script, no `eval`. `tests/csp.test.ts` fails if
+  any other origin is added. Self-hosting that runtime would let the CDN go.
+  `'wasm-unsafe-eval'` is for SQLite, PDF and that runtime. The canvas loads `pixi.js/unsafe-eval`, which despite its name
   is Pixi's renderer without `eval`.
 - Network requests may go to any `http:` or `https:` address: AI providers
-  take a custom base URL and Ollama runs anywhere on the LAN.
+  take a custom base URL and Ollama or llama.cpp run anywhere on the LAN.
 - Images may come from any `https:` address (bookmark previews, remote images
   in notes). Inline styles are allowed; the editors set them.
 - The apps keep inline styles working by not letting Tauri hash them

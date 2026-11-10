@@ -32,9 +32,10 @@ Android.
   daily journal with tabs from a template and the day's due tasks.
 - **Search and graph** — full-text search across every file type, and a
   wiki-link graph, both from an on-disk index rebuilt from your files.
-- **AI chat** — ask about the open document or the whole vault, with cited
-  sources. Your own keys (Anthropic, OpenAI, OpenRouter, Gemini), Ollama on
-  your network, or Gemma on the device. Read-only: it never edits your files.
+- **AI chat** — off until you switch it on in Settings. Ask about the open
+  document or the whole vault, with cited sources. Your own keys (Anthropic,
+  OpenAI, OpenRouter, Gemini), or Ollama or llama.cpp on your machine or
+  network. Read-only: it never edits your files.
 - **Sync (optional)** — Dropbox, with change detection; a conflict keeps both
   versions.
 
@@ -93,7 +94,7 @@ reminders, pen). Next:
 - **iOS** — vaults work (iPhone and iPad); reminders, shares and the widget,
   Dropbox sign-in, and TestFlight releases are next.
 - **Per-folder settings** — `_config.md`, inherited down the tree.
-- **On-device AI** on LiteRT-LM; **OCR** for scanned PDFs.
+- **OCR** for scanned PDFs.
 - **Marrow Sync** — an optional end-to-end encrypted sync service.
 
 Deliberately out: a third-party plugin system, agentic AI that edits files,

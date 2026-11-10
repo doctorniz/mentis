@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { test, expect } from './fixtures'
+import { test, expect, enableChat } from './fixtures'
 
 /**
  * Mobile-native flows, run ONLY by the `mobile` Playwright project
@@ -25,6 +25,7 @@ async function mastheadNavigate(page: Page, label: string) {
 
 test.describe('20 — Mobile (Pixel 5)', () => {
   test('20.1 Masthead menu lists every section and navigates', async ({ vaultPage: page }) => {
+    await enableChat(page)
     // The masthead replaces the nav sidebar on mobile
     await expect(page.getByTestId('mobile-masthead')).toBeVisible()
 

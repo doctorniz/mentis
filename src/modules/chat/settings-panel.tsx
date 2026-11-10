@@ -1,495 +1,199 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Check, Loader2 } from 'lucide-react'
+import { useCallback, useEffect, useId, useState } from 'react'
+import { Check, Loader2, RefreshCw } from 'lucide-react'
 import type { SettingsPanelProps } from '@/core/registries/settings'
-import { INPUT_CLS, NumberInput, Row, SectionHeader } from '@/components/settings/fields'
+import { INPUT_CLS, NumberInput, Row, SectionHeader, Toggle } from '@/components/settings/fields'
 import { clearChatKey, getChatKey, setChatKey, notifyChatKeyChanged } from '@/lib/chat/key-store'
+import { migrateChatSettings } from '@/lib/chat/migrate-settings'
+import { PROVIDERS_META, providerMeta, providerNeedsApiKey } from '@/lib/chat/providers/meta'
 import { testConnection } from '@/lib/chat/providers/test-connection'
-import {
-  fetchModels,
-  getCuratedModels,
-  getDefaultModel,
-  providerNeedsApiKey,
-  providerNeedsBaseUrl,
-  type ModelEntry,
-} from '@/lib/chat/providers/model-catalog'
-import {
-  DEVICE_MODEL_PROGRESS_EVENT,
-  ensureDeviceModelDownloaded,
-  getDeviceModelStatus,
-  type DeviceModelStatus,
-} from '@/lib/chat/device-model-store'
-import { DEFAULT_CHAT_SETTINGS, type ChatProviderId, type ChatSettings } from '@/types/chat'
-import type { VaultConfig } from '@/types/vault'
+import { useChatModels } from '@/lib/chat/use-chat-models'
+import type { ChatProviderId, ChatSettings } from '@/types/chat'
 import { cn } from '@/utils/cn'
 
-interface ProviderOption {
-  id: ChatProviderId
-  label: string
-  hint: string
-  keyPlaceholder: string
-  baseUrlPlaceholder: string
-}
-
-const PROVIDER_OPTIONS: ProviderOption[] = [
-  {
-    id: 'openrouter',
-    label: 'OpenRouter',
-    hint: 'One key unlocks Anthropic, OpenAI, Gemini, and many open models.',
-    keyPlaceholder: 'sk-or-v1-…',
-    baseUrlPlaceholder: 'https://openrouter.ai/api/v1',
-  },
-  {
-    id: 'anthropic',
-    label: 'Anthropic',
-    hint: 'Requires a browser-enabled API key with direct browser access enabled.',
-    keyPlaceholder: 'sk-ant-…',
-    baseUrlPlaceholder: 'https://api.anthropic.com/v1',
-  },
-  {
-    id: 'openai',
-    label: 'OpenAI',
-    hint: 'Works with Azure OpenAI, LM Studio via a custom base URL.',
-    keyPlaceholder: 'sk-…',
-    baseUrlPlaceholder: 'https://api.openai.com/v1',
-  },
-  {
-    id: 'gemini',
-    label: 'Google Gemini',
-    hint: 'Get an API key at ai.google.dev.',
-    keyPlaceholder: 'AIza…',
-    baseUrlPlaceholder: 'https://generativelanguage.googleapis.com/v1beta',
-  },
-  {
-    id: 'ollama',
-    label: 'Ollama',
-    hint: 'Run `ollama serve` locally. No API key needed.',
-    keyPlaceholder: '(optional)',
-    baseUrlPlaceholder: 'http://localhost:11434',
-  },
-  {
-    id: 'device',
-    label: 'Local',
-    hint: 'Gemma 4 E2B runs in your browser via WebGPU. First download is required.',
-    keyPlaceholder: '',
-    baseUrlPlaceholder: '',
-  },
-]
-
-function chatDraft(config: VaultConfig): ChatSettings {
-  return { ...DEFAULT_CHAT_SETTINGS, ...(config.chat ?? {}) }
-}
-
-/** The AI section of the settings dialog: provider, model, key, connection test. */
-export default function AiSettingsPanel({ config, update, vaultId }: SettingsPanelProps) {
-  const chat = chatDraft(config)
-  const [apiKey, setApiKey] = useState<string>('')
-  const [keyStatus, setKeyStatus] = useState<'empty' | 'set' | 'loaded'>('empty')
-  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
-  const [testError, setTestError] = useState<string>('')
-  // `models` is only used for dynamic-discovery providers (ollama).
-  // Cloud providers use `getCuratedModels` synchronously instead.
-  const [models, setModels] = useState<ModelEntry[]>([])
-  const [modelsLoading, setModelsLoading] = useState(false)
-  const [deviceLoading, setDeviceLoading] = useState(false)
-  const [deviceLoadFailed, setDeviceLoadFailed] = useState(false)
-  const [deviceStatus, setDeviceStatus] = useState<DeviceModelStatus>('missing')
-  const [deviceProgress, setDeviceProgress] = useState(0)
-
+/** The AI section of the settings dialog: the switch, provider, address, key, model. */
+export default function AiSettingsPanel({ config, update, saveNow, vaultId }: SettingsPanelProps) {
+  const chat = migrateChatSettings(config.chat)
   const provider = chat.provider
+  const meta = provider ? providerMeta(provider) : null
   const needsKey = provider ? providerNeedsApiKey(provider) : false
-  const needsBaseUrl = provider ? providerNeedsBaseUrl(provider) : false
+  const baseUrl = provider ? (chat.baseUrls?.[provider] ?? '') : ''
+  const listId = useId()
 
-  // Curated list for this provider (all providers except Ollama have one).
-  const curatedModels = provider ? getCuratedModels(provider) : []
-  const hasCurated = curatedModels.length > 0
-  // Explicit state so selecting "Other (custom)…" reliably shows the text input.
-  // Initialised true when the saved model is already outside the curated list.
-  const [isCustomMode, setIsCustomMode] = useState<boolean>(() => {
-    if (!hasCurated || !chat.model) return false
-    return !curatedModels.some((m) => m.id === chat.model)
-  })
+  // The key as saved; null while it is being read.
+  const [savedKey, setSavedKey] = useState<string | null>(null)
+  const [typedKey, setTypedKey] = useState('')
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+  const [testError, setTestError] = useState('')
 
-  // Load key from IndexedDB whenever provider changes.
-  useEffect(() => {
-    let cancelled = false
-    if (!provider) {
-      setApiKey('')
-      setKeyStatus('empty')
-      return
-    }
-    if (!needsKey) {
-      setApiKey('')
-      setKeyStatus('loaded')
-      return
-    }
-    void getChatKey(provider, vaultId)
-      .then((rec) => {
-        if (cancelled) return
-        if (rec?.apiKey) {
-          setApiKey(rec.apiKey)
-          setKeyStatus('loaded')
-        } else {
-          setApiKey('')
-          setKeyStatus('empty')
-        }
-      })
-      .catch(() => {
-        if (cancelled) return
-        setApiKey('')
-        setKeyStatus('empty')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [provider, vaultId, needsKey])
-
-  // Reset UI state when provider changes.
   useEffect(() => {
     setTestStatus('idle')
     setTestError('')
-    setModels([])
-    setDeviceLoadFailed(false)
-    setDeviceProgress(0)
-    if (provider === 'device') {
-      void getDeviceModelStatus(chat.model)
-        .then(setDeviceStatus)
-        .catch(() => setDeviceStatus('missing'))
-    }
-    setIsCustomMode(false)
-  }, [provider, chat.model])
-
-  // Auto-fetch models for providers that don't need API keys (ollama)
-  useEffect(() => {
-    if (!provider) return
-    if (provider === 'device') return
-    if (needsKey) return
+    setTypedKey('')
+    setSavedKey(null)
+    if (!chat.enabled || !provider) return
     let cancelled = false
-    setModelsLoading(true)
-    void fetchModels(provider, '', chat.baseUrl)
-      .then((result) => {
+    void getChatKey(provider, vaultId)
+      .then((rec) => {
         if (cancelled) return
-        setModels(result)
+        setSavedKey(rec?.apiKey ?? '')
+        setTypedKey(rec?.apiKey ?? '')
       })
       .catch(() => {
-        if (cancelled) return
-        setModels([])
-      })
-      .finally(() => {
-        if (!cancelled) setModelsLoading(false)
+        if (!cancelled) setSavedKey('')
       })
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider, needsKey])
+  }, [chat.enabled, provider, vaultId])
 
-  useEffect(() => {
-    if (provider !== 'device') return
-    const onProgress = (evt: Event) => {
-      const detail = (evt as CustomEvent<{ progress?: number }>).detail
-      const raw = detail?.progress
-      if (typeof raw !== 'number' || Number.isNaN(raw) || raw < 0 || raw > 1) return
-      setDeviceProgress(raw)
-    }
-    window.addEventListener(DEVICE_MODEL_PROGRESS_EVENT, onProgress as EventListener)
-    return () =>
-      window.removeEventListener(DEVICE_MODEL_PROGRESS_EVENT, onProgress as EventListener)
-  }, [provider])
+  const models = useChatModels(provider, savedKey, baseUrl || undefined, chat.enabled)
 
-  const setChat = useCallback(
-    <K extends keyof ChatSettings>(key: K, value: ChatSettings[K]) => {
-      update({ chat: { ...chat, [key]: value } })
-    },
+  const patch = useCallback(
+    (next: Partial<ChatSettings>) => update({ chat: { ...chat, ...next } }),
     [chat, update],
   )
+
+  // A server with one model: nothing to choose.
+  useEffect(() => {
+    if (!chat.model && models.models.length === 1) patch({ model: models.models[0]!.id })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [models.models, chat.model])
+
+  const setBaseUrl = (value: string) => {
+    if (!provider) return
+    const baseUrls = { ...chat.baseUrls }
+    if (value.trim()) baseUrls[provider] = value
+    else delete baseUrls[provider]
+    patch({ baseUrls })
+  }
 
   const handleTest = useCallback(async () => {
     if (!provider) return
     setTestStatus('testing')
     setTestError('')
-    const result = await testConnection(provider, apiKey.trim(), chat.baseUrl)
-    if (result.ok) {
-      setTestStatus('success')
-      // Save the key for key-based providers.
-      if (needsKey && apiKey.trim()) {
-        await setChatKey(provider, vaultId, { apiKey: apiKey.trim() })
-        setKeyStatus('loaded')
-        notifyChatKeyChanged()
-      }
-      // Only fetch models dynamically for local providers (ollama etc.) that
-      // don't have a curated list. Cloud providers use getCuratedModels() directly.
-      if (!getCuratedModels(provider).length) {
-        setModelsLoading(true)
-        try {
-          const fetched = await fetchModels(provider, apiKey.trim(), chat.baseUrl)
-          setModels(fetched)
-        } catch {
-          // Non-fatal — user can still type a model manually
-        } finally {
-          setModelsLoading(false)
-        }
-      }
-    } else {
+    const key = typedKey.trim()
+    const result = await testConnection(provider, key, baseUrl || undefined)
+    if (!result.ok) {
       setTestStatus('error')
       setTestError(result.error ?? 'Connection failed')
+      return
     }
-  }, [provider, apiKey, chat.baseUrl, needsKey, vaultId])
+    setTestStatus('success')
+    if (key) {
+      await setChatKey(provider, vaultId, { apiKey: key })
+      notifyChatKeyChanged()
+    }
+    setSavedKey(key)
+  }, [provider, typedKey, baseUrl, vaultId])
 
   const handleClearKey = useCallback(async () => {
     if (!provider) return
     await clearChatKey(provider, vaultId)
     notifyChatKeyChanged()
-    setApiKey('')
-    setKeyStatus('empty')
+    setTypedKey('')
+    setSavedKey('')
     setTestStatus('idle')
-    // Only clear dynamic models (local providers). Curated list is always available.
-    if (!getCuratedModels(provider).length) setModels([])
   }, [provider, vaultId])
 
-  const handleDownloadDeviceModel = useCallback(async () => {
-    setDeviceLoading(true)
-    setDeviceLoadFailed(false)
-    try {
-      await ensureDeviceModelDownloaded(chat.model)
-      setDeviceLoadFailed(false)
-      setDeviceStatus('ready')
-      setDeviceProgress(1)
-    } catch (err) {
-      console.log('Device model download failed', err)
-      setDeviceLoadFailed(true)
-      setDeviceProgress(0)
-    } finally {
-      setDeviceLoading(false)
-    }
-  }, [chat.model])
+  const testDisabled = testStatus === 'testing' || (needsKey && !typedKey.trim())
 
   return (
     <div>
       <SectionHeader>AI chat</SectionHeader>
-      <p className="text-fg-secondary mb-4 text-xs leading-relaxed">
-        Bring your own key. API keys are stored locally in this browser&apos;s IndexedDB, never
-        synced to Dropbox, and never sent anywhere except the provider you select.
-      </p>
+      {chat.enabled && (
+        <p className="text-fg-secondary mb-3 text-xs leading-relaxed">
+          Keys stay in this browser and go only to the provider you choose.
+        </p>
+      )}
       <div className="divide-border divide-y">
-        <Row label="Provider">
-          <select
-            value={provider ?? ''}
-            onChange={(e) => {
-              const val = e.target.value
-              const newProvider = val === '' ? null : (val as ChatProviderId)
-              // Batch provider + model reset so neither call overwrites the other.
-              update({
-                chat: {
-                  ...chat,
-                  provider: newProvider,
-                  model: getDefaultModel(newProvider),
-                },
-              })
-            }}
-            className={INPUT_CLS}
-          >
-            <option value="">Disabled</option>
-            {PROVIDER_OPTIONS.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+        <Row label="Chat">
+          {/* Saved at once: the nav, shortcuts and capture follow this switch. */}
+          <Toggle
+            label="Chat"
+            checked={chat.enabled}
+            onChange={(enabled) => void saveNow({ ...config, chat: { ...chat, enabled } })}
+          />
         </Row>
 
-        {provider &&
-          (() => {
-            const opt = PROVIDER_OPTIONS.find((p) => p.id === provider)
-            return (
+        {chat.enabled && (
+          <>
+            <Row label="Provider">
+              <select
+                aria-label="Provider"
+                value={provider ?? ''}
+                onChange={(e) => {
+                  const next = e.target.value === '' ? null : (e.target.value as ChatProviderId)
+                  // The model belongs to the provider; none is chosen for the new one.
+                  patch({ provider: next, model: '' })
+                }}
+                className={INPUT_CLS}
+              >
+                <option value="">Choose…</option>
+                {PROVIDERS_META.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Row>
+
+            {provider && meta && (
               <>
-                {opt?.hint && (
+                {meta.hint && (
                   <div className="py-2">
-                    <p className="text-fg-muted text-xs leading-relaxed">{opt.hint}</p>
+                    <p className="text-fg-muted text-xs leading-relaxed">{meta.hint}</p>
                   </div>
                 )}
 
-                {/* Model selection — sits right below provider */}
-                {provider !== 'device' && (
-                  <Row label="Model">
-                    <div className="flex w-56 flex-col gap-1.5">
-                      {hasCurated ? (
-                        <>
-                          <select
-                            value={
-                              isCustomMode
-                                ? '__custom__'
-                                : ((chat.model || curatedModels[0]?.id) ?? '')
-                            }
-                            onChange={(e) => {
-                              if (e.target.value === '__custom__') {
-                                setIsCustomMode(true)
-                              } else {
-                                setIsCustomMode(false)
-                                setChat('model', e.target.value)
-                              }
-                            }}
-                            className={cn(INPUT_CLS, 'w-full')}
-                          >
-                            {curatedModels.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.label}
-                              </option>
-                            ))}
-                            <option value="__custom__">Other (custom)…</option>
-                          </select>
-                          {isCustomMode && (
-                            <input
-                              value={chat.model}
-                              onChange={(e) => setChat('model', e.target.value)}
-                              placeholder="model id"
-                              className={cn(INPUT_CLS, 'w-full')}
-                              spellCheck={false}
-                              autoFocus
-                            />
-                          )}
-                        </>
-                      ) : modelsLoading ? (
-                        <div className="text-fg-muted flex items-center gap-1.5 text-xs">
-                          <Loader2 className="size-3 animate-spin" />
-                          Loading models…
-                        </div>
-                      ) : models.length > 0 ? (
-                        <select
-                          value={chat.model}
-                          onChange={(e) => setChat('model', e.target.value)}
-                          className={cn(INPUT_CLS, 'w-full')}
-                        >
-                          {!models.some((m) => m.id === chat.model) && chat.model && (
-                            <option value={chat.model}>{chat.model}</option>
-                          )}
-                          {models.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          value={chat.model}
-                          onChange={(e) => setChat('model', e.target.value)}
-                          placeholder="model-id"
-                          className={cn(INPUT_CLS, 'w-full')}
-                          spellCheck={false}
-                        />
-                      )}
-                    </div>
-                  </Row>
-                )}
+                <Row label={meta.local ? 'Address' : 'Base URL (optional)'}>
+                  <input
+                    aria-label="Base URL"
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder={meta.defaultBaseUrl}
+                    className={INPUT_CLS}
+                    spellCheck={false}
+                  />
+                </Row>
 
-                {/* API key — only for providers that need one */}
-                {needsKey && (
-                  <Row label="API key">
-                    <div className="flex w-64 flex-col gap-1.5">
-                      <input
-                        type="password"
-                        value={apiKey}
-                        onChange={(e) => {
-                          setApiKey(e.target.value)
-                          setTestStatus('idle')
-                        }}
-                        placeholder={opt?.keyPlaceholder ?? 'sk-…'}
-                        className={cn(INPUT_CLS, 'w-full')}
-                        autoComplete="off"
-                        spellCheck={false}
-                      />
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-fg-muted text-[10px]">
-                          {keyStatus === 'loaded' ? 'Key saved' : 'No key saved for this provider'}
-                        </span>
-                        {keyStatus === 'loaded' && (
-                          <button
-                            type="button"
-                            onClick={() => void handleClearKey()}
-                            className="text-danger text-[11px] hover:underline"
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </Row>
-                )}
-
-                {/* Base URL — only for providers that use it */}
-                {needsBaseUrl && (
-                  <Row label="Base URL (optional)">
+                <Row label={needsKey ? 'API key' : 'API key (optional)'}>
+                  <div className="flex w-64 flex-col gap-1.5">
                     <input
-                      value={chat.baseUrl ?? ''}
-                      onChange={(e) => setChat('baseUrl', e.target.value || undefined)}
-                      placeholder={opt?.baseUrlPlaceholder ?? ''}
-                      className={INPUT_CLS}
+                      aria-label="API key"
+                      type="password"
+                      value={typedKey}
+                      onChange={(e) => {
+                        setTypedKey(e.target.value)
+                        setTestStatus('idle')
+                      }}
+                      placeholder={meta.keyPlaceholder}
+                      className={cn(INPUT_CLS, 'w-full')}
+                      autoComplete="off"
                       spellCheck={false}
                     />
-                  </Row>
-                )}
-
-                {provider === 'device' && (
-                  <>
-                    <Row label="Model">
-                      <select
-                        value={chat.model}
-                        onChange={(e) => setChat('model', e.target.value)}
-                        className={cn(INPUT_CLS, 'w-56')}
-                      >
-                        {curatedModels.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.label}
-                          </option>
-                        ))}
-                      </select>
-                    </Row>
-                    <Row label="Status">
-                      <div className="flex max-w-xs flex-col items-start gap-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-fg-muted text-[10px]">
+                        {savedKey ? 'Key saved' : 'No key saved'}
+                      </span>
+                      {savedKey && (
                         <button
                           type="button"
-                          onClick={() => void handleDownloadDeviceModel()}
-                          disabled={deviceLoading}
-                          className={cn(
-                            'inline-flex min-w-[9.5rem] shrink-0 justify-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                            deviceLoading && 'cursor-not-allowed opacity-50',
-                            deviceStatus === 'ready' && !deviceLoading
-                              ? 'bg-green-500/15 text-green-600 dark:text-green-400'
-                              : 'bg-accent text-accent-fg hover:bg-accent/90',
-                          )}
+                          onClick={() => void handleClearKey()}
+                          className="text-danger text-[11px] hover:underline"
                         >
-                          {deviceLoading ? (
-                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                              <Loader2 className="size-3 shrink-0 animate-spin" />
-                              {deviceProgress > 0 && deviceProgress < 1
-                                ? `Downloading… ${Math.round(deviceProgress * 100)}%`
-                                : 'Downloading…'}
-                            </span>
-                          ) : deviceStatus === 'ready' ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <Check className="size-3 shrink-0" aria-hidden />
-                              Ready
-                            </span>
-                          ) : (
-                            'Download'
-                          )}
+                          Clear
                         </button>
-                        {deviceLoadFailed && (
-                          <p className="text-danger w-full min-w-0 text-[10px] leading-snug break-words">
-                            Error loading model.
-                          </p>
-                        )}
-                      </div>
-                    </Row>
-                  </>
-                )}
+                      )}
+                    </div>
+                  </div>
+                </Row>
 
-                {/* Test connection button */}
                 <Row label="Connection">
                   <div className="flex flex-col gap-1.5">
                     <button
                       type="button"
                       onClick={() => void handleTest()}
-                      disabled={testStatus === 'testing' || (needsKey && !apiKey.trim())}
+                      disabled={testDisabled}
                       className={cn(
                         'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                         testStatus === 'success'
@@ -497,8 +201,7 @@ export default function AiSettingsPanel({ config, update, vaultId }: SettingsPan
                           : testStatus === 'error'
                             ? 'bg-red-500/15 text-red-600 dark:text-red-400'
                             : 'bg-accent/10 text-accent hover:bg-accent/20',
-                        (testStatus === 'testing' || (needsKey && !apiKey.trim())) &&
-                          'cursor-not-allowed opacity-50',
+                        testDisabled && 'cursor-not-allowed opacity-50',
                       )}
                     >
                       {testStatus === 'testing' && (
@@ -517,12 +220,58 @@ export default function AiSettingsPanel({ config, update, vaultId }: SettingsPan
                       {testStatus === 'idle' && 'Test'}
                     </button>
                     {testStatus === 'error' && testError && (
-                      <p className="text-danger text-[10px] leading-snug">{testError}</p>
+                      <p className="text-danger max-w-64 text-[10px] leading-snug break-words">
+                        {testError}
+                      </p>
                     )}
                   </div>
                 </Row>
 
-                {/* Context size */}
+                <Row label="Model">
+                  <div className="flex w-64 flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        aria-label="Model"
+                        list={listId}
+                        value={chat.model}
+                        onChange={(e) => patch({ model: e.target.value })}
+                        placeholder={models.loading ? 'Loading models…' : 'Search or type an id'}
+                        className={cn(INPUT_CLS, 'min-w-0 flex-1')}
+                        spellCheck={false}
+                        autoComplete="off"
+                      />
+                      <datalist id={listId}>
+                        {models.models.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.label === m.id ? undefined : m.label}
+                          </option>
+                        ))}
+                      </datalist>
+                      <button
+                        type="button"
+                        onClick={models.refresh}
+                        disabled={models.loading}
+                        aria-label="Refresh models"
+                        title="Refresh models"
+                        className="text-fg-muted hover:text-fg disabled:opacity-50"
+                      >
+                        <RefreshCw
+                          className={cn('size-3.5', models.loading && 'animate-spin')}
+                          aria-hidden
+                        />
+                      </button>
+                    </div>
+                    {models.error && (
+                      <p className="text-danger text-[10px] leading-snug break-words">
+                        {models.error}
+                      </p>
+                    )}
+                    {!models.error && !models.loading && models.models.length > 0 && (
+                      <p className="text-fg-muted text-[10px]">{models.models.length} models</p>
+                    )}
+                  </div>
+                </Row>
+
                 <Row
                   label="Context size"
                   hint="Max characters of the open document sent as context."
@@ -532,23 +281,23 @@ export default function AiSettingsPanel({ config, update, vaultId }: SettingsPan
                     min={2000}
                     max={400_000}
                     suffix="chars"
-                    onChange={(v) => setChat('maxContextChars', v)}
+                    onChange={(v) => patch({ maxContextChars: v })}
                   />
                 </Row>
 
-                {/* System prompt */}
                 <Row label="System prompt override">
                   <textarea
                     value={chat.systemPrompt ?? ''}
-                    onChange={(e) => setChat('systemPrompt', e.target.value || undefined)}
+                    onChange={(e) => patch({ systemPrompt: e.target.value || undefined })}
                     rows={3}
                     placeholder="Leave blank to use the default."
                     className={cn(INPUT_CLS, 'h-auto w-64 resize-y py-2')}
                   />
                 </Row>
               </>
-            )
-          })()}
+            )}
+          </>
+        )}
       </div>
     </div>
   )

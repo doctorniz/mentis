@@ -22,8 +22,9 @@ import {
   clearVaultChatSession,
 } from '@/lib/chat/vault-chat-session'
 import { getProvider, toWire } from '@/lib/chat/providers'
+import { providerNeedsApiKey } from '@/lib/chat/providers/meta'
 import { useVaultStore } from '@/stores/vault'
-import type { ChatMessage, ChatSettings, ChatThread, ChatProviderId } from '@/types/chat'
+import type { ChatMessage, ChatSettings, ChatThread } from '@/types/chat'
 
 /**
  * Vault-scoped chat store (tier 1).
@@ -236,8 +237,7 @@ export const useVaultChatStore = create<VaultChatState>()(
         })
         return
       }
-      const LOCAL_PROVIDERS = ['device', 'ollama']
-      if (!apiKey && !LOCAL_PROVIDERS.includes(settings.provider!)) {
+      if (!apiKey && providerNeedsApiKey(settings.provider)) {
         set((s) => {
           s.error = 'Add an API key in Settings → AI to start chatting.'
         })
@@ -321,7 +321,7 @@ export const useVaultChatStore = create<VaultChatState>()(
           model: settings.model,
           messages: wire,
           apiKey,
-          baseUrl: settings.baseUrl,
+          baseUrl: settings.baseUrls?.[settings.provider],
           signal: abort.signal,
         })) {
           if (abort.signal.aborted) break
@@ -410,13 +410,3 @@ export function selectActiveVaultThread(s: VaultChatState): ChatThread | null {
   if (!s.activeThreadId) return null
   return s.threads.find((t) => t.id === s.activeThreadId) ?? null
 }
-
-/** Provider ids that are wired end-to-end. Kept in sync with the per-doc store's constant. */
-export const VAULT_IMPLEMENTED_PROVIDERS: ChatProviderId[] = [
-  'openrouter',
-  'openai',
-  'anthropic',
-  'gemini',
-  'ollama',
-  'device',
-]

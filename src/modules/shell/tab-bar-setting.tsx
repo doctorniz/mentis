@@ -1,10 +1,12 @@
 import { Plus } from 'lucide-react'
 import { tabOptions } from '@/components/shell/tab-bar-tabs'
+import { useRegistryConfig } from '@/core/registries'
 import { MAX_TABS, useTabBarStore } from '@/stores/tab-bar'
 import { cn } from '@/utils/cn'
 
 /** The four tabs either side of Capture, in the order they were picked. */
 export default function TabBarSetting() {
+  useRegistryConfig()
   const tabs = useTabBarStore((s) => s.tabs)
   const setTabs = useTabBarStore((s) => s.setTabs)
   const options = tabOptions()

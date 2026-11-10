@@ -1,4 +1,4 @@
-import { test, expect, navigateTo } from './fixtures'
+import { test, expect, navigateTo, enableChat } from './fixtures'
 
 /**
  * Nav model under test — one sidebar: Today (Ctrl+1), Chat (2), Calendar (3,
@@ -7,7 +7,22 @@ import { test, expect, navigateTo } from './fixtures'
  * palette, Graph from the tree's heading, Search from the sidebar (Ctrl+F).
  */
 test.describe('2.1 — View Switching', () => {
-  test('2.1.1 Ctrl+2 — Chat view loads', async ({ vaultPage: page }) => {
+  test('2.1.0 Chat is off by default: not in the sidebar, and Ctrl+2 does nothing', async ({
+    vaultPage: page,
+  }) => {
+    const nav = page.getByRole('navigation', { name: 'Main views' })
+    await expect(nav.getByRole('button', { name: /^Calendar/ })).toBeVisible()
+    await expect(nav.getByRole('button', { name: /^Chat/ })).toHaveCount(0)
+    await page.keyboard.press('Control+2')
+    await page.waitForTimeout(500)
+    await expect(page.locator('textarea').first()).toBeHidden()
+    // The other numbers keep their views.
+    await page.keyboard.press('Control+3')
+    await expect(page.getByRole('button', { name: 'day', exact: true })).toBeVisible()
+  })
+
+  test('2.1.1 Ctrl+2 — Chat view loads once chat is on', async ({ vaultPage: page }) => {
+    await enableChat(page)
     await page.keyboard.press('Control+2')
     await page.waitForTimeout(1000)
 

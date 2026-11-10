@@ -74,8 +74,8 @@ views are `React.lazy` — opening a note never loads the PDF engine, the
 canvas or the spreadsheet grid.
 
 **Layout.** On a wide screen one sidebar holds everything: Search and New, a
-date card that opens today's journal (Ctrl+1), the views with `nav` — Chat,
-Calendar, Tasks, Thoughts, Bookmarks (Ctrl+2 to 6) — and below them the
+date card that opens today's journal (Ctrl+1), the views with `nav` — Chat (only
+while chat is on; Ctrl+2), Calendar, Tasks, Thoughts, Bookmarks (Ctrl+3 to 6) — and below them the
 vault's file tree (`sidebar-files.tsx`, loaded after the shell). Opening a
 file from the tree or search shows it in the vault view, the editor with its
 tabs, from whichever view is up. The vault view, Files and Graph have no
@@ -180,7 +180,7 @@ measurement; Android's "Fully drawn" log).
 ## 7. Capture, Calendar and Tasks
 
 **Capture.** Bare text goes to Thoughts at once, with Undo. `/` picks a
-destination (Journal, Calendar, Task, List, Bookmark, Note, Chat), each shown
+destination (Journal, Calendar, Task, List, Bookmark, Note, and Chat while chat is on), each shown
 for confirmation first; `@` is reserved for file references. Dates are read by
 chrono-node (loaded lazily, English only), never by AI. Capture is reachable
 from the capture bar, the command palette, the desktop's global hotkey and
@@ -245,10 +245,18 @@ to a dated trash folder on each side, and a run that would delete many files ask
 `/auth/dropbox` on the web and to a one-shot listener on `127.0.0.1` in the
 desktop and Android apps (RFC 8252). See [`CLOUD_SYNC.md`](./CLOUD_SYNC.md).
 
-**AI chat** is read-and-answer only (no writes). Providers: bring-your-own
-keys (Anthropic, OpenAI, OpenRouter, Gemini), Ollama on the LAN, or Gemma on
-the device (MediaPipe over WebGPU today; LiteRT-LM is the settled direction).
-Vault chat ranks passages from the `chunks` table; document chat reads the
+**AI chat** is read-and-answer only (no writes), and off until `chat.enabled`
+is set in Settings › AI. Off, it is absent rather than hidden: the views,
+commands and capture registries take an `enabled(config)` check, the document
+chat panel is not mounted, and nothing writes a `chatAssetId` into a note or
+`_mentis/_chats/index.json`. Providers are a fixed list (`providers/meta.ts`):
+bring-your-own keys (OpenRouter, Anthropic, OpenAI, Gemini), or a server the
+user runs, on this machine or the LAN (Ollama, llama.cpp; both speak the
+OpenAI API under `/v1`, and the address may be typed with or without it). Each
+provider has its own base URL, so a key is only ever sent to its own host.
+There is no on-device model. Models are not listed in the app: Settings asks the
+provider's models endpoint (`model-catalog.ts`) and the model field also takes
+a typed id. Vault chat ranks passages from the `chunks` table; document chat reads the
 open file through its extractor. Voice notes are transcribed by Whisper
 (transformers.js).
 
@@ -305,6 +313,6 @@ Windows, macOS, Linux and Android (`release.yml`, see `docs/DEPLOYMENT.md`).
   but not built.
 - The desktop cold-start and capture-overlay timings are reported, not yet
   enforced; the Android cold start was measured only on an emulator.
-- **iOS** has vaults only: no reminders, shares, widget, Dropbox sign-in or
-  on-device AI yet, and offloaded iCloud Drive files do not open.
+- **iOS** has vaults only: no reminders, shares, widget or Dropbox sign-in,
+  and offloaded iCloud Drive files do not open.
 - More, with IDs, in [`LAUNCH_DEFERRALS.md`](./LAUNCH_DEFERRALS.md).

@@ -1,6 +1,6 @@
 import { Suspense, useEffect } from 'react'
 import { useUiStore } from '@/stores/ui'
-import { views, HOME_VIEW } from '@/core/registries'
+import { views, HOME_VIEW, useRegistryConfig } from '@/core/registries'
 import { lazyViewFor, preloadViewsWhenIdle } from '@/core/registries/lazy-view'
 
 /**
@@ -10,6 +10,7 @@ import { lazyViewFor, preloadViewsWhenIdle } from '@/core/registries/lazy-view'
  */
 export function ViewRouter() {
   const activeView = useUiStore((s) => s.activeView)
+  useRegistryConfig()
 
   useEffect(() => preloadViewsWhenIdle(), [])
 

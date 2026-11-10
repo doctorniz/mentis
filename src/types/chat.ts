@@ -45,7 +45,13 @@ export interface ChatMessage {
 }
 
 /** Supported provider ids. */
-export type ChatProviderId = 'openrouter' | 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'device'
+export type ChatProviderId =
+  | 'openrouter'
+  | 'anthropic'
+  | 'openai'
+  | 'gemini'
+  | 'ollama'
+  | 'llamacpp'
 
 /** Provider + model frozen when a thread gets its first user message. */
 export interface ChatThreadBinding {
@@ -86,15 +92,17 @@ export interface ChatThread {
  * lives here.
  */
 export interface ChatSettings {
-  /** Active provider id. `null` disables chat entirely. */
+  /** Chat is off until the person turns it on in Settings. Off, none of it shows or runs. */
+  enabled: boolean
+  /** The provider to chat with, once chosen. */
   provider: ChatProviderId | null
-  /** Default model id (provider-specific, e.g. `anthropic/claude-sonnet-4`). */
+  /** Model id as the provider names it, e.g. `anthropic/claude-sonnet-4`. Empty until chosen. */
   model: string
   /**
-   * Optional override for the provider's base URL. Blank = provider
-   * default. Useful for self-hosted OpenAI-compatible gateways.
+   * Base URL per provider; blank or absent = the provider's default. Kept per
+   * provider so an address typed for one never receives another's key.
    */
-  baseUrl?: string
+  baseUrls?: Partial<Record<ChatProviderId, string>>
   /**
    * System prompt prepended to every chat. If blank, the context builder's
    * default (below) is used instead.
@@ -108,26 +116,14 @@ export interface ChatSettings {
   maxContextChars: number
 }
 
-export const DEVICE_CHAT_MODEL = 'gemma-4-e2b'
-
-/** All model ids that run on-device (no API key). */
-export const DEVICE_MODEL_IDS = [DEVICE_CHAT_MODEL] as const
-
-export type DeviceModelId = (typeof DEVICE_MODEL_IDS)[number]
-
-export function isDeviceModelId(id: string): id is DeviceModelId {
-  return (DEVICE_MODEL_IDS as readonly string[]).includes(id)
-}
-
 export const DEFAULT_CHAT_SETTINGS: ChatSettings = {
-  provider: 'device',
-  model: DEVICE_CHAT_MODEL,
+  enabled: false,
+  provider: null,
+  model: '',
   maxContextChars: 40_000,
 }
 
 /** Shape of the API-key record stored in IndexedDB. */
 export interface ChatKeyRecord {
   apiKey: string
-  /** Overrides `ChatSettings.baseUrl` at call time if set. */
-  baseUrl?: string
 }

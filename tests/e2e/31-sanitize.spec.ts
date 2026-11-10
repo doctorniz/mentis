@@ -1,4 +1,4 @@
-import { test, expect, navigateTo } from './fixtures'
+import { test, expect, navigateTo, enableChat } from './fixtures'
 import type { Page } from '@playwright/test'
 
 /**
@@ -102,6 +102,7 @@ test.describe('31 — Sanitised HTML', () => {
 
   test('31.2 a chat answer with hostile HTML renders inert', async ({ vaultPage: page }) => {
     await seedVaultChat(page, '00000000-0000-4000-8000-000000000031', 'Hostile answer', BODY)
+    await enableChat(page)
     await navigateTo(page, 'chat')
     await page.getByText('Hostile answer').first().click()
     const answer = page.locator('.chat-assistant-prose', { hasText: MARKER })
@@ -124,6 +125,7 @@ test.describe('31 — Sanitised HTML', () => {
       'See [the plan](Notes/plan.md) and `Notes/plan.md`.',
     ].join('\n\n')
     await seedVaultChat(page, '00000000-0000-4000-8000-000000000032', 'Formatted answer', answer)
+    await enableChat(page)
     await navigateTo(page, 'chat')
     await page.getByText('Formatted answer').first().click()
     const prose = page.locator('.chat-assistant-prose', { hasText: 'See' })
