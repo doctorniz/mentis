@@ -10,10 +10,24 @@
  * document can make it emit HTML.
  */
 
-import { marked } from 'marked'
+import { Marked, marked } from 'marked'
 import { sanitizeHtml } from '@/lib/sanitize-html'
 
 marked.setOptions({ gfm: true, breaks: true })
+
+/**
+ * Answers are parsed by their own instance: a markdown image becomes a link
+ * (its text, or its address), never a picture the browser would fetch by itself.
+ */
+const chatMarked = new Marked({
+  gfm: true,
+  breaks: true,
+  renderer: {
+    image({ href, text }) {
+      return `<a href="${escapeAttr(href)}">${escapeHtml(text || href)}</a>`
+    },
+  },
+})
 
 function isVaultPathLike(inner: string): boolean {
   const c = inner.trim()
@@ -168,8 +182,8 @@ export function renderChatMarkdown(markdown: string): string {
   if (!markdown) return ''
   try {
     const pre = preprocessChatMarkdown(markdown)
-    const html = String(marked.parse(pre, { async: false }))
-    return sanitizeHtml(rewriteVaultAnchors(html), { linksInNewTab: true })
+    const html = String(chatMarked.parse(pre, { async: false }))
+    return sanitizeHtml(rewriteVaultAnchors(html), { linksInNewTab: true, noRemoteLoads: true })
   } catch {
     // Fallback: plain-text with HTML-escaping and paragraph breaks, so a
     // malformed markdown chunk never blocks the whole response.
@@ -183,8 +197,8 @@ export function renderVaultChatMarkdown(markdown: string, vaultRagHitPaths?: str
   if (!markdown) return ''
   try {
     const pre = preprocessVaultChatMarkdown(markdown, vaultRagHitPaths)
-    const html = String(marked.parse(pre, { async: false }))
-    return sanitizeHtml(rewriteVaultAnchors(html), { linksInNewTab: true })
+    const html = String(chatMarked.parse(pre, { async: false }))
+    return sanitizeHtml(rewriteVaultAnchors(html), { linksInNewTab: true, noRemoteLoads: true })
   } catch {
     const escaped = markdown.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     return `<p>${escaped.replace(/\n/g, '<br/>')}</p>`
