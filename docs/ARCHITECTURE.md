@@ -267,6 +267,12 @@ The window is the provider's own figure where it gives one (OpenRouter, Gemini,
 Anthropic, llama.cpp's `/props`), else typed per model in Settings
 (`chat.contextWindows`), which wins; unknown, the meter shows tokens only. Ollama
 reports none, and its running window is its own default, not the model's maximum.
+When the next request would take more than 80% of a known window, the older
+messages are first condensed by the model in use (`compact.ts`): the newest four
+stay word for word, the rest become `thread.summary`, and requests carry that
+as an instruction in their place. Nothing is removed from the thread file; a
+rule in the transcript marks the cut. Where the window is unknown nothing is
+condensed. If the summary call fails the request goes as it was.
 Vault chat ranks passages from the `chunks` table; document chat reads the
 open file through its extractor. Voice notes are transcribed by Whisper
 (transformers.js).

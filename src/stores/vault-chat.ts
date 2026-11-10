@@ -21,6 +21,12 @@ import {
   writeVaultChatLastThreadId,
   clearVaultChatSession,
 } from '@/lib/chat/vault-chat-session'
+import {
+  compactThread,
+  messagesAfterSummary,
+  needsCompaction,
+  summaryWire,
+} from '@/lib/chat/compact'
 import { getProvider, toWire } from '@/lib/chat/providers'
 import { providerNeedsApiKey } from '@/lib/chat/providers/meta'
 import { useVaultStore } from '@/stores/vault'
@@ -48,6 +54,8 @@ interface SendArgs {
   vaultFs: FileSystemAdapter
   settings: ChatSettings
   apiKey: string
+  /** Tokens the model takes in, if known; the conversation is condensed near it. */
+  contextWindow?: number
   input: string
 }
 
@@ -63,6 +71,7 @@ interface VaultChatState {
   /** All vault-scoped threads, newest first. */
   threads: ChatThread[]
   activeThreadId: string | null
+  compacting: boolean
   isStreaming: boolean
   abort: AbortController | null
   error: string | null
@@ -93,6 +102,7 @@ export const useVaultChatStore = create<VaultChatState>()(
     initialized: false,
     threads: [],
     activeThreadId: null,
+    compacting: false,
     isStreaming: false,
     abort: null,
     error: null,
@@ -212,7 +222,7 @@ export const useVaultChatStore = create<VaultChatState>()(
       else clearVaultChatSession(path)
     },
 
-    sendMessage: async ({ vaultFs, settings, apiKey, input }) => {
+    sendMessage: async ({ vaultFs, settings, apiKey, contextWindow, input }) => {
       const text = input.trim()
       if (!text) return
 
@@ -240,13 +250,53 @@ export const useVaultChatStore = create<VaultChatState>()(
         return
       }
 
+      // Close to the window: condense the older messages first. Nothing is
+      // removed from the thread; requests carry the summary in their place.
+      const abort = new AbortController()
+      let summary = thread.summary
+      if (needsCompaction(thread.messages, summary, contextWindow, text)) {
+        set((s) => {
+          s.error = null
+          s.isStreaming = true
+          s.compacting = true
+          s.abort = abort
+        })
+        try {
+          const next = await compactThread({
+            provider,
+            model: settings.model,
+            apiKey,
+            baseUrl: settings.baseUrls?.[settings.provider],
+            messages: thread.messages,
+            summary,
+            signal: abort.signal,
+          })
+          if (next) {
+            summary = next
+            set((s) => {
+              const t = s.threads.find((x) => x.id === thread.id)
+              if (t) t.summary = next
+            })
+          }
+        } catch {
+          /* send as it is; the provider says if it is too long */
+        }
+        const cancelled = abort.signal.aborted
+        set((s) => {
+          s.compacting = false
+          if (cancelled) {
+            s.isStreaming = false
+            s.abort = null
+          }
+        })
+        if (cancelled) return
+      }
+
       const userMsg: ChatMessage = newMessage('user', text)
       const assistantMsg: ChatMessage = {
         ...newMessage('assistant', '', settings.model),
         streaming: true,
       }
-
-      const abort = new AbortController()
 
       set((s) => {
         s.error = null
@@ -299,8 +349,12 @@ export const useVaultChatStore = create<VaultChatState>()(
         return
       }
 
-      const prior = thread.messages.concat(userMsg)
-      const wire = [{ role: 'system' as const, content: systemMessage }, ...toWire(prior)]
+      const prior = messagesAfterSummary(thread.messages.concat(userMsg), summary)
+      const wire = [
+        { role: 'system' as const, content: systemMessage },
+        ...summaryWire(summary),
+        ...toWire(prior),
+      ]
 
       let sawDelta = false
       let streamError: string | null = null

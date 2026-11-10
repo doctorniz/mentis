@@ -74,6 +74,21 @@ export interface ChatThreadBinding {
   model: string
 }
 
+/**
+ * Earlier messages condensed to fit the model's window. The messages themselves
+ * stay in the thread; requests carry this in place of those up to `upToMessageId`.
+ */
+export interface ChatThreadSummary {
+  content: string
+  /** The last message the summary covers. */
+  upToMessageId: string
+  /** Tokens every request carries besides the conversation (instructions, context). */
+  overhead: number
+  createdAt: string
+  /** What writing the summary took. */
+  usage?: ChatUsage
+}
+
 /** A single conversation thread, persisted as one JSON file. */
 export interface ChatThread {
   schemaVersion: typeof CHAT_SCHEMA_VERSION
@@ -96,6 +111,8 @@ export interface ChatThread {
    * provider and model, or the composer stays disabled.
    */
   chatBinding?: ChatThreadBinding
+  /** Set once the conversation grew too long for the model's window. */
+  summary?: ChatThreadSummary
   /** When set, the thread appears under Favourites (sorted by this desc). */
   favouritedAt?: string
 }

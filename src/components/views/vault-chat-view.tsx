@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Copy,
   Download,
@@ -18,6 +18,7 @@ import {
 } from '@/components/chat/vault-chat-composer'
 import { MobileDrawer } from '@/components/ui/mobile-drawer'
 import { ContextMeter } from '@/components/chat/context-meter'
+import { SummaryMarker } from '@/components/chat/summary-marker'
 import { ModelPicker } from '@/components/chat/model-picker'
 import { useContextWindow } from '@/lib/chat/use-context-window'
 import { VaultChatMessage } from '@/components/chat/vault-chat-message'
@@ -252,6 +253,7 @@ export function VaultChatView() {
   const threads = useVaultChatStore((s) => s.threads)
   const activeThreadId = useVaultChatStore((s) => s.activeThreadId)
   const isStreaming = useVaultChatStore((s) => s.isStreaming)
+  const compacting = useVaultChatStore((s) => s.compacting)
   const error = useVaultChatStore((s) => s.error)
   const initialized = useVaultChatStore((s) => s.initialized)
   const init = useVaultChatStore((s) => s.init)
@@ -384,9 +386,9 @@ export function VaultChatView() {
   const handleSend = useCallback(
     (text: string) => {
       if (apiKey === null || !settings.provider) return
-      void sendMessage({ vaultFs, settings, apiKey, input: text })
+      void sendMessage({ vaultFs, settings, apiKey, contextWindow, input: text })
     },
-    [apiKey, settings, sendMessage, vaultFs],
+    [apiKey, settings, contextWindow, sendMessage, vaultFs],
   )
 
   // A first message from capture (`/chat`). Once the view knows whether chat
@@ -679,6 +681,7 @@ export function VaultChatView() {
                     {!providerMissing && !modelMissing && (
                       <ContextMeter
                         messages={activeThread?.messages ?? []}
+                        summary={activeThread?.summary}
                         window={contextWindow}
                       />
                     )}
@@ -692,8 +695,18 @@ export function VaultChatView() {
             <div ref={scrollRef} className="vault-chat-messages min-h-0 flex-1 overflow-y-auto">
               <div className="mx-auto max-w-3xl py-2">
                 {activeThread!.messages.map((m) => (
-                  <VaultChatMessageRow key={m.id} message={m} />
+                  <Fragment key={m.id}>
+                    <VaultChatMessageRow message={m} />
+                    {activeThread!.summary?.upToMessageId === m.id && (
+                      <SummaryMarker summary={activeThread!.summary} />
+                    )}
+                  </Fragment>
                 ))}
+                {compacting && (
+                  <div role="status" className="text-fg-muted px-3 py-2 font-sans text-xs">
+                    Summarising earlier messages…
+                  </div>
+                )}
               </div>
             </div>
 
@@ -716,7 +729,11 @@ export function VaultChatView() {
                 <div className="flex min-w-0 items-center gap-3">
                   <ModelPicker settings={settings} disabled={isStreaming} />
                   {!providerMissing && !modelMissing && (
-                    <ContextMeter messages={activeThread?.messages ?? []} window={contextWindow} />
+                    <ContextMeter
+                      messages={activeThread?.messages ?? []}
+                      summary={activeThread?.summary}
+                      window={contextWindow}
+                    />
                   )}
                 </div>
               }

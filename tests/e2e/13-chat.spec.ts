@@ -492,6 +492,70 @@ data: [DONE]
     })
   })
 
+  test.describe('14.5 Long conversations', () => {
+    test('14.5.1 Near the window, older messages are summarised and requests carry the summary', async ({
+      vaultPage: page,
+    }) => {
+      type Wire = { role: string; content: string }
+      const requests: Wire[][] = []
+      await page.route('http://localhost:8080/v1/chat/completions', (route) => {
+        const req = route.request()
+        if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
+        const messages = (req.postDataJSON() as { messages: Wire[] }).messages
+        requests.push(messages)
+        const summarising = messages[0]!.content.startsWith('You condense')
+        const delta = JSON.stringify({
+          choices: [{ delta: { content: summarising ? 'SUMMARY-OF-EARLIER' : 'an answer' } }],
+        })
+        const usage = JSON.stringify({
+          choices: [],
+          usage: { prompt_tokens: summarising ? 50 : 150, completion_tokens: 10 },
+        })
+        return route.fulfill({
+          status: 200,
+          headers: { ...CORS, 'content-type': 'text/event-stream' },
+          body: `data: ${delta}\n\ndata: ${usage}\n\ndata: [DONE]\n\n`,
+        })
+      })
+      await setUpLocalChat(page)
+
+      // A small window, typed: 160 tokens is the line.
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('button', { name: /^llama\.cpp/ }).click()
+      await dialog.getByLabel('Context window of my-model.gguf').fill('200')
+      await expect
+        .poll(() => readVaultFile(page, '_mentis/config.json'), { timeout: 10_000 })
+        .toContain('"llamacpp|my-model.gguf": 200')
+      await page.keyboard.press('Escape')
+
+      await navigateTo(page, 'chat')
+      const composer = page.locator('textarea').last()
+      const words = ['alpha', 'bravo', 'charlie', 'delta']
+      for (const [i, w] of words.entries()) {
+        await composer.fill(`question ${w}`)
+        await composer.press('Enter')
+        await expect
+          .poll(() => requests.filter((r) => !r[0]!.content.startsWith('You condense')).length)
+          .toBe(i + 1)
+        await expect(page.getByText('150 in · 10 out')).toHaveCount(i + 1, { timeout: 10_000 })
+      }
+
+      // Three answers in, the fourth question tipped it: one summary, then the question.
+      const summaries = requests.filter((r) => r[0]!.content.startsWith('You condense'))
+      expect(summaries).toHaveLength(1)
+      expect(summaries[0]![1]!.content).toContain('question alpha')
+
+      await expect(page.getByTestId('summary-marker')).toBeVisible()
+      const last = requests.at(-1)!
+      expect(
+        last.some((m) => m.role === 'system' && m.content.includes('SUMMARY-OF-EARLIER')),
+      ).toBe(true)
+      const asked = last.filter((m) => m.role === 'user').map((m) => m.content)
+      expect(asked).not.toContain('question alpha')
+      expect(asked.at(-1)).toBe('question delta')
+    })
+  })
+
   test.describe('14.6 Reactivity & Edge Cases', () => {
     test('14.6.3 On, with no provider chosen — says to choose one', async ({ vaultPage: page }) => {
       await enableChat(page)

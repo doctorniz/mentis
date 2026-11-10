@@ -10,6 +10,12 @@ import {
   newThread,
   writeThread,
 } from '@/lib/chat/chat-io'
+import {
+  compactThread,
+  messagesAfterSummary,
+  needsCompaction,
+  summaryWire,
+} from '@/lib/chat/compact'
 import { getProvider, toWire } from '@/lib/chat/providers'
 import { providerNeedsApiKey } from '@/lib/chat/providers/meta'
 import type { ChatMessage, ChatSettings, ChatThread } from '@/types/chat'
@@ -32,6 +38,8 @@ interface SendArgs {
   vaultFs: FileSystemAdapter
   settings: ChatSettings
   apiKey: string
+  /** Tokens the model takes in, if known; the conversation is condensed near it. */
+  contextWindow?: number
   documentPath: string
   input: string
 }
@@ -49,6 +57,8 @@ interface ChatState {
   threads: ChatThread[]
   /** Id of the currently visible thread within `threads`. */
   activeThreadId: string | null
+  /** True while older messages are being condensed, before the reply starts. */
+  compacting: boolean
   /** True while streaming an assistant reply. */
   isStreaming: boolean
   /** Set while an assistant reply is in flight; null otherwise. */
@@ -82,6 +92,7 @@ export const useChatStore = create<ChatState>()(
     activeDocAssetId: null,
     threads: [],
     activeThreadId: null,
+    compacting: false,
     isStreaming: false,
     abort: null,
     error: null,
@@ -166,7 +177,7 @@ export const useChatStore = create<ChatState>()(
       })
     },
 
-    sendMessage: async ({ vaultFs, settings, apiKey, documentPath, input }) => {
+    sendMessage: async ({ vaultFs, settings, apiKey, contextWindow, documentPath, input }) => {
       const text = input.trim()
       if (!text) return
 
@@ -195,13 +206,53 @@ export const useChatStore = create<ChatState>()(
         return
       }
 
+      // Close to the window: condense the older messages first. Nothing is
+      // removed from the thread; requests carry the summary in their place.
+      const abort = new AbortController()
+      let summary = thread.summary
+      if (needsCompaction(thread.messages, summary, contextWindow, text)) {
+        set((s) => {
+          s.error = null
+          s.isStreaming = true
+          s.compacting = true
+          s.abort = abort
+        })
+        try {
+          const next = await compactThread({
+            provider,
+            model: settings.model,
+            apiKey,
+            baseUrl: settings.baseUrls?.[settings.provider],
+            messages: thread.messages,
+            summary,
+            signal: abort.signal,
+          })
+          if (next) {
+            summary = next
+            set((s) => {
+              const t = s.threads.find((x) => x.id === thread.id)
+              if (t) t.summary = next
+            })
+          }
+        } catch {
+          /* send as it is; the provider says if it is too long */
+        }
+        const cancelled = abort.signal.aborted
+        set((s) => {
+          s.compacting = false
+          if (cancelled) {
+            s.isStreaming = false
+            s.abort = null
+          }
+        })
+        if (cancelled) return
+      }
+
       const userMsg: ChatMessage = newMessage('user', text)
       const assistantMsg: ChatMessage = {
         ...newMessage('assistant', '', settings.model),
         streaming: true,
       }
-
-      const abort = new AbortController()
 
       set((s) => {
         s.error = null
@@ -251,8 +302,12 @@ export const useChatStore = create<ChatState>()(
 
       // Compose wire messages: system + all prior, but skip the empty
       // assistant placeholder we just pushed.
-      const prior = thread.messages.concat(userMsg)
-      const wire = [{ role: 'system' as const, content: systemMessage }, ...toWire(prior)]
+      const prior = messagesAfterSummary(thread.messages.concat(userMsg), summary)
+      const wire = [
+        { role: 'system' as const, content: systemMessage },
+        ...summaryWire(summary),
+        ...toWire(prior),
+      ]
 
       let sawDelta = false
       let streamError: string | null = null

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Plus, Sparkles, Trash2, X } from 'lucide-react'
 
 import { useVaultSession } from '@/contexts/vault-fs-context'
@@ -15,6 +15,7 @@ import { cn } from '@/utils/cn'
 
 import { useContextWindow } from '@/lib/chat/use-context-window'
 import { ContextMeter } from './context-meter'
+import { SummaryMarker } from './summary-marker'
 import { ModelPicker } from './model-picker'
 import { ChatInput } from './chat-input'
 import { ChatMessage } from './chat-message'
@@ -85,6 +86,8 @@ export function ChatPanel({
   const [keyChecked, setKeyChecked] = useState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
+  const contextWindow = useContextWindow(settings, keyChecked ? apiKey : null)
+  const compacting = useChatStore((s) => s.compacting)
 
   // Load threads whenever the document changes.
   useEffect(() => {
@@ -144,11 +147,12 @@ export function ChatPanel({
         vaultFs,
         settings,
         apiKey,
+        contextWindow,
         documentPath,
         input: text,
       })
     },
-    [apiKey, settings, sendMessage, vaultFs, documentPath],
+    [apiKey, settings, contextWindow, sendMessage, vaultFs, documentPath],
   )
 
   const handleNewThread = useCallback(async () => {
@@ -164,7 +168,6 @@ export function ChatPanel({
   )
 
   // No provider, or one without a model yet: not set up.
-  const contextWindow = useContextWindow(settings, keyChecked ? apiKey : null)
   const providerMissing = !settings.provider || !settings.model
   const keyMissing = keyChecked && apiKey === null && !!settings.provider
   const composerDisabled = providerMissing || keyMissing || !activeThread
@@ -268,16 +271,30 @@ export function ChatPanel({
           <EmptyState providerMissing={providerMissing} keyMissing={keyMissing} />
         ) : (
           activeThread.messages.map((m) => (
-            <ChatMessage key={m.id} message={m} onVaultPathOpen={openVaultPath} />
+            <Fragment key={m.id}>
+              <ChatMessage message={m} onVaultPathOpen={openVaultPath} />
+              {activeThread.summary?.upToMessageId === m.id && (
+                <SummaryMarker summary={activeThread.summary} />
+              )}
+            </Fragment>
           ))
         )}
       </div>
 
+      {compacting && (
+        <div role="status" className="text-fg-muted px-3 py-1.5 text-xs">
+          Summarising earlier messages…
+        </div>
+      )}
       {error && <div className="text-danger border-border border-t px-3 py-2 text-xs">{error}</div>}
 
       {!providerMissing && (
         <div className="flex justify-end px-3 pt-1.5">
-          <ContextMeter messages={activeThread?.messages ?? []} window={contextWindow} />
+          <ContextMeter
+            messages={activeThread?.messages ?? []}
+            summary={activeThread?.summary}
+            window={contextWindow}
+          />
         </div>
       )}
 

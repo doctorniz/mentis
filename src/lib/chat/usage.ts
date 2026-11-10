@@ -1,4 +1,10 @@
-import type { ChatMessage, ChatPick, ChatSettings, ChatUsage } from '@/types/chat'
+import type {
+  ChatMessage,
+  ChatPick,
+  ChatSettings,
+  ChatThreadSummary,
+  ChatUsage,
+} from '@/types/chat'
 import { pickValue } from '@/lib/chat/picks'
 
 /** A rough count for text not yet counted by a provider: four characters a token. */
@@ -16,33 +22,40 @@ export interface ContextUse {
  * its request plus its reply is what the next request carries. Anything after
  * it (a cancelled turn, an unanswered question) is estimated.
  */
-export function contextUse(messages: ChatMessage[]): ContextUse {
+export function contextUse(messages: ChatMessage[], summary?: ChatThreadSummary): ContextUse {
+  // With a summary, only what came after it counts, and an answer counted before it
+  // carried the whole conversation, so it no longer says anything.
+  const cut = summary ? messages.findIndex((m) => m.id === summary.upToMessageId) + 1 : 0
+  const kept = messages.slice(cut)
   let last = -1
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i]!.usage) {
+  for (let i = kept.length - 1; i >= 0; i--) {
+    const m = kept[i]!
+    if (m.usage && (!summary || m.createdAt >= summary.createdAt)) {
       last = i
       break
     }
   }
-  const counted = last >= 0 ? messages[last]!.usage! : null
-  const rest = messages
+  const counted = last >= 0 ? kept[last]!.usage! : null
+  const rest = kept
     .slice(last + 1)
     .filter((m) => !m.error)
     .reduce((n, m) => n + estimateTokens(m.content), 0)
-  return {
-    used: (counted ? counted.input + counted.output : 0) + rest,
-    estimated: !counted || rest > 0,
-  }
+  const base = counted
+    ? counted.input + counted.output
+    : summary
+      ? summary.overhead + estimateTokens(summary.content)
+      : 0
+  return { used: base + rest, estimated: !counted || rest > 0 }
 }
 
 /** Everything the thread has spent, across models. */
-export function threadTotals(messages: ChatMessage[]): ChatUsage {
+export function threadTotals(messages: ChatMessage[], summary?: ChatThreadSummary): ChatUsage {
   return messages.reduce(
     (t, m) => ({
       input: t.input + (m.usage?.input ?? 0),
       output: t.output + (m.usage?.output ?? 0),
     }),
-    { input: 0, output: 0 },
+    { input: summary?.usage?.input ?? 0, output: summary?.usage?.output ?? 0 },
   )
 }
 

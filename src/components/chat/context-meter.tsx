@@ -1,18 +1,20 @@
 import { contextUse, formatTokens, threadTotals } from '@/lib/chat/usage'
-import type { ChatMessage } from '@/types/chat'
+import type { ChatMessage, ChatThreadSummary } from '@/types/chat'
 import { cn } from '@/utils/cn'
 
 interface ContextMeterProps {
   messages: ChatMessage[]
+  /** The thread's summary of earlier messages, if it has one. */
+  summary?: ChatThreadSummary
   /** Tokens the model takes in; undefined where not known. */
   window: number | undefined
   className?: string
 }
 
 /** How much of the model's context the conversation takes, and what it has spent. */
-export function ContextMeter({ messages, window, className }: ContextMeterProps) {
-  const { used, estimated } = contextUse(messages)
-  const totals = threadTotals(messages)
+export function ContextMeter({ messages, summary, window, className }: ContextMeterProps) {
+  const { used, estimated } = contextUse(messages, summary)
+  const totals = threadTotals(messages, summary)
   const share = window ? Math.min(1, used / window) : 0
   const label = `${estimated && used > 0 ? '~' : ''}${formatTokens(used)}${
     window ? ` / ${formatTokens(window)}` : ' tokens'
