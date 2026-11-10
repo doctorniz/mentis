@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import {
   test,
   expect,
@@ -34,8 +34,8 @@ async function setUpLocalChat(page: Page) {
   const dialog = page.getByRole('dialog', { name: 'Settings' })
   await dialog.getByRole('tab', { name: 'AI' }).click()
   await dialog.getByRole('switch', { name: 'Chat' }).click()
-  await dialog.getByRole('combobox', { name: 'Provider' }).selectOption({ label: 'llama.cpp' })
-  await expect(dialog.getByLabel('Model', { exact: true })).toHaveValue('my-model.gguf', {
+  await dialog.getByRole('button', { name: /^llama\.cpp/ }).click()
+  await expect(dialog.getByRole('button', { name: 'Remove my-model.gguf' })).toBeVisible({
     timeout: 10_000,
   })
   await expect
@@ -56,13 +56,16 @@ test.describe('13 — AI Chat', () => {
   }
 
   test.describe('14.1 Off by default, and Settings', () => {
+    const section = (dialog: Locator, label: string) =>
+      dialog.getByRole('button', { name: new RegExp(`^${label}`) })
+
     test('14.1.0 Chat is off: only its switch is in Settings › AI', async ({ vaultPage: page }) => {
       const dialog = await openAISettings(page)
       await expect(dialog.getByRole('switch', { name: 'Chat' })).toHaveAttribute(
         'aria-checked',
         'false',
       )
-      await expect(dialog.getByRole('combobox', { name: 'Provider' })).toHaveCount(0)
+      await expect(section(dialog, 'OpenAI')).toHaveCount(0)
     })
 
     test('14.1.1 On, the providers are a fixed list; no on-device model', async ({
@@ -70,12 +73,8 @@ test.describe('13 — AI Chat', () => {
     }) => {
       const dialog = await openAISettings(page)
       await dialog.getByRole('switch', { name: 'Chat' }).click()
-      const labels = await dialog
-        .getByRole('combobox', { name: 'Provider' })
-        .locator('option')
-        .allTextContents()
-      expect(labels).toEqual([
-        'Choose…',
+      const names = await dialog.locator('[data-testid^="provider-"] > button').allInnerTexts()
+      expect(names.map((n) => n.split('\n')[0])).toEqual([
         'OpenRouter',
         'Anthropic',
         'OpenAI',
@@ -90,16 +89,14 @@ test.describe('13 — AI Chat', () => {
     }) => {
       const dialog = await openAISettings(page)
       await dialog.getByRole('switch', { name: 'Chat' }).click()
-      const provider = dialog.getByRole('combobox', { name: 'Provider' })
-      const key = dialog.getByLabel('API key')
 
-      await provider.selectOption({ label: 'OpenAI' })
-      await expect(key).toBeVisible()
+      await section(dialog, 'OpenAI').click()
+      await expect(dialog.getByLabel('OpenAI API key')).toBeVisible()
       await expect(dialog.getByText('API key', { exact: true })).toBeVisible()
 
-      await provider.selectOption({ label: 'llama.cpp' })
+      await section(dialog, 'llama.cpp').click()
       await expect(dialog.getByText('API key (optional)')).toBeVisible()
-      await expect(dialog.getByLabel('Base URL')).toHaveAttribute(
+      await expect(dialog.getByLabel('llama.cpp address')).toHaveAttribute(
         'placeholder',
         'http://localhost:8080',
       )
@@ -113,27 +110,27 @@ test.describe('13 — AI Chat', () => {
       })
       const dialog = await openAISettings(page)
       await dialog.getByRole('switch', { name: 'Chat' }).click()
-      await dialog.getByRole('combobox', { name: 'Provider' }).selectOption({ label: 'Ollama' })
+      await section(dialog, 'Ollama').click()
 
-      await expect(dialog.getByText('2 models')).toBeVisible({ timeout: 10_000 })
+      await expect(dialog.getByText('2 available')).toBeVisible({ timeout: 10_000 })
       await expect(page.locator('datalist option')).toHaveCount(2)
       // Two to choose from: none is picked for the person.
-      await expect(dialog.getByLabel('Model', { exact: true })).toHaveValue('')
+      await expect(dialog.getByRole('button', { name: /^Remove / })).toHaveCount(0)
 
       // The server gains one; Refresh shows it.
       await serveJson(page, 'http://localhost:11434/v1/models', {
         data: [{ id: 'llama3.2:3b' }, { id: 'qwen3:8b' }, { id: 'gemma3:4b' }],
       })
       await dialog.getByRole('button', { name: 'Refresh models' }).click()
-      await expect(dialog.getByText('3 models')).toBeVisible({ timeout: 10_000 })
+      await expect(dialog.getByText('3 available')).toBeVisible({ timeout: 10_000 })
     })
 
     test('14.1.4 A server with one model is chosen for you', async ({ vaultPage: page }) => {
       await serveJson(page, 'http://localhost:8080/v1/models', { data: [{ id: 'my-model.gguf' }] })
       const dialog = await openAISettings(page)
       await dialog.getByRole('switch', { name: 'Chat' }).click()
-      await dialog.getByRole('combobox', { name: 'Provider' }).selectOption({ label: 'llama.cpp' })
-      await expect(dialog.getByLabel('Model', { exact: true })).toHaveValue('my-model.gguf', {
+      await section(dialog, 'llama.cpp').click()
+      await expect(dialog.getByRole('button', { name: 'Remove my-model.gguf' })).toBeVisible({
         timeout: 10_000,
       })
     })
@@ -150,12 +147,12 @@ test.describe('13 — AI Chat', () => {
       )
       const dialog = await openAISettings(page)
       await dialog.getByRole('switch', { name: 'Chat' }).click()
-      await dialog.getByRole('combobox', { name: 'Provider' }).selectOption({ label: 'OpenAI' })
+      await section(dialog, 'OpenAI').click()
 
       // No key yet: nothing to ask, nothing to offer.
       await expect(page.locator('datalist option')).toHaveCount(0)
 
-      await dialog.getByLabel('API key').fill('sk-test-123')
+      await dialog.getByLabel('OpenAI API key').fill('sk-test-123')
       await dialog.getByRole('button', { name: 'Test' }).click()
       await expect(dialog.getByText('Connected')).toBeVisible({ timeout: 10_000 })
       await expect(page.locator('datalist option')).toHaveCount(1)
@@ -166,18 +163,16 @@ test.describe('13 — AI Chat', () => {
     test('14.1.6 An address belongs to its provider', async ({ vaultPage: page }) => {
       const dialog = await openAISettings(page)
       await dialog.getByRole('switch', { name: 'Chat' }).click()
-      const provider = dialog.getByRole('combobox', { name: 'Provider' })
-      const base = dialog.getByLabel('Base URL')
 
-      await provider.selectOption({ label: 'Ollama' })
-      await base.fill('http://192.168.1.5:11434')
-      await provider.selectOption({ label: 'OpenAI' })
-      await expect(base).toHaveValue('')
-      await provider.selectOption({ label: 'Ollama' })
-      await expect(base).toHaveValue('http://192.168.1.5:11434')
+      await section(dialog, 'Ollama').click()
+      await dialog.getByLabel('Ollama address').fill('http://192.168.1.5:11434')
+      await section(dialog, 'OpenAI').click()
+      await expect(dialog.getByLabel('OpenAI address')).toHaveValue('')
+      await section(dialog, 'Ollama').click()
+      await expect(dialog.getByLabel('Ollama address')).toHaveValue('http://192.168.1.5:11434')
     })
 
-    test('14.1.7 A failed list says why, and the model can still be typed', async ({
+    test('14.1.7 A failed list says why, and a model can still be typed', async ({
       vaultPage: page,
     }) => {
       await page.route('http://localhost:11434/v1/models', (route) =>
@@ -185,14 +180,53 @@ test.describe('13 — AI Chat', () => {
       )
       const dialog = await openAISettings(page)
       await dialog.getByRole('switch', { name: 'Chat' }).click()
-      await dialog.getByRole('combobox', { name: 'Provider' }).selectOption({ label: 'Ollama' })
+      await section(dialog, 'Ollama').click()
       await expect(
         dialog.getByText(/Cannot reach Ollama at http:\/\/localhost:11434\/v1/),
       ).toBeVisible({
         timeout: 10_000,
       })
-      await dialog.getByLabel('Model', { exact: true }).fill('my-own-model')
-      await expect(dialog.getByLabel('Model', { exact: true })).toHaveValue('my-own-model')
+      await dialog.getByLabel('Add a Ollama model').fill('my-own-model')
+      await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+      await expect(dialog.getByRole('button', { name: 'Remove my-own-model' })).toBeVisible()
+    })
+
+    test('14.1.8 Models from two providers are kept, and one is in use', async ({
+      vaultPage: page,
+    }) => {
+      await serveJson(page, 'http://localhost:11434/v1/models', { data: [] })
+      await serveJson(page, 'http://localhost:8080/v1/models', { data: [] })
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('switch', { name: 'Chat' }).click()
+
+      await section(dialog, 'Ollama').click()
+      await dialog.getByLabel('Add a Ollama model').fill('qwen3:8b')
+      await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+      await section(dialog, 'llama.cpp').click()
+      await dialog.getByLabel('Add a llama.cpp model').fill('my-model.gguf')
+      await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+
+      // The first one added is in use until another is chosen.
+      await expect(dialog.getByRole('button', { name: 'Use my-model.gguf' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+      await dialog.getByRole('button', { name: 'Use my-model.gguf' }).click()
+      await expect(dialog.getByRole('button', { name: 'Use my-model.gguf' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      await expect
+        .poll(() => readVaultFile(page, '_mentis/config.json'), { timeout: 10_000 })
+        .toMatch(/"picks"[\s\S]*qwen3:8b[\s\S]*my-model\.gguf/)
+
+      // Removing the one in use leaves the other in use.
+      await dialog.getByRole('button', { name: 'Remove my-model.gguf' }).click()
+      await section(dialog, 'Ollama').click()
+      await expect(dialog.getByRole('button', { name: 'Use qwen3:8b' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
     })
   })
 
@@ -337,6 +371,54 @@ test.describe('13 — AI Chat', () => {
         .locator('[data-testid="thread-list"], [class*="thread"], [class*="sidebar"]')
         .first()
       await expect(sidebar).toBeVisible({ timeout: 10_000 })
+    })
+
+    test('14.3.6 The model can be switched between messages', async ({ vaultPage: page }) => {
+      const models: string[] = []
+      await page.route('http://localhost:8080/v1/chat/completions', (route) => {
+        const req = route.request()
+        if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
+        models.push((req.postDataJSON() as { model: string }).model)
+        const chunk = JSON.stringify({ choices: [{ delta: { content: 'ok' } }] })
+        return route.fulfill({
+          status: 200,
+          headers: { ...CORS, 'content-type': 'text/event-stream' },
+          body: `data: ${chunk}
+
+data: [DONE]
+
+`,
+        })
+      })
+      await setUpLocalChat(page)
+
+      // A second model, added in Settings.
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('button', { name: /^llama.cpp/ }).click()
+      await dialog.getByLabel('Add a llama.cpp model').fill('second.gguf')
+      await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+      await expect(dialog.getByRole('button', { name: 'Remove second.gguf' })).toBeVisible()
+      await page.keyboard.press('Escape')
+
+      await navigateTo(page, 'chat')
+      const picker = page.getByRole('combobox', { name: 'Model' })
+      await expect(picker).toHaveValue('llamacpp|my-model.gguf')
+      await expect(picker.locator('option')).toHaveCount(2)
+
+      const composer = page.locator('textarea').last()
+      await composer.fill('first question')
+      await composer.press('Enter')
+      await expect.poll(() => models).toEqual(['my-model.gguf'])
+
+      // Mid-conversation, and the composer stays open.
+      await picker.selectOption('llamacpp|second.gguf')
+      await expect(picker).toHaveValue('llamacpp|second.gguf')
+      await expect
+        .poll(() => readVaultFile(page, '_mentis/config.json'), { timeout: 10_000 })
+        .toMatch(/"model": "second.gguf"/)
+      await composer.fill('second question')
+      await composer.press('Enter')
+      await expect.poll(() => models).toEqual(['my-model.gguf', 'second.gguf'])
     })
   })
 

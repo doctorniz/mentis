@@ -255,8 +255,11 @@ user runs, on this machine or the LAN (Ollama, llama.cpp; both speak the
 OpenAI API under `/v1`, and the address may be typed with or without it). Each
 provider has its own base URL, so a key is only ever sent to its own host.
 There is no on-device model. Models are not listed in the app: Settings asks the
-provider's models endpoint (`model-catalog.ts`) and the model field also takes
-a typed id. Vault chat ranks passages from the `chunks` table; document chat reads the
+provider's models endpoint (`model-catalog.ts`) and a model can also be typed.
+The models a person picks, from any provider, are kept in `chat.picks`; the
+composer's picker switches between them and the choice is saved as the one in
+use (`chat.provider` and `chat.model`). A thread is not tied to a model: each
+answer records the one that wrote it. Vault chat ranks passages from the `chunks` table; document chat reads the
 open file through its extractor. Voice notes are transcribed by Whisper
 (transformers.js).
 

@@ -1,7 +1,14 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { ChevronDown, Plus, Send, Square } from 'lucide-react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
+import { Plus, Send, Square } from 'lucide-react'
 
-import type { ModelEntry } from '@/lib/chat/providers/model-catalog'
 import { cn } from '@/utils/cn'
 
 const MAX_HEIGHT = 200
@@ -18,12 +25,8 @@ export interface VaultChatComposerProps {
   onCancel: () => void
   /** Pick images (or other); parent saves to vault and updates the textarea. */
   onAttachFiles?: (files: FileList) => void | Promise<void>
-  modelSelect?: {
-    value: string
-    options: ModelEntry[]
-    onChange: (modelId: string) => void
-    disabled?: boolean
-  }
+  /** The model picker, shown beside the attach button. */
+  modelSlot?: ReactNode
   /** `footer` = docked bar with top border; `center` = used in empty-state stack (no bar border). */
   layout?: 'footer' | 'center'
 }
@@ -40,7 +43,7 @@ export const VaultChatComposer = forwardRef<VaultChatComposerHandle, VaultChatCo
       onSend,
       onCancel,
       onAttachFiles,
-      modelSelect,
+      modelSlot,
       layout = 'footer',
     },
     ref,
@@ -143,26 +146,8 @@ export const VaultChatComposer = forwardRef<VaultChatComposerHandle, VaultChatCo
               <Plus className="size-5 stroke-[1.75]" aria-hidden />
             </button>
 
-            {modelSelect && modelSelect.options.length > 0 ? (
-              <div className="relative min-w-0">
-                <select
-                  value={modelSelect.value}
-                  disabled={busy || modelSelect.disabled}
-                  onChange={(e) => modelSelect.onChange(e.target.value)}
-                  className={cn(
-                    'text-fg-secondary appearance-none rounded-lg py-1.5 pr-7 pl-2 font-sans text-[12pt] outline-none',
-                    'hover:bg-bg-hover border-border border bg-transparent disabled:opacity-40',
-                  )}
-                  aria-label="Model"
-                >
-                  {modelSelect.options.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="text-fg-muted pointer-events-none absolute top-1/2 right-1.5 size-4 -translate-y-1/2" />
-              </div>
+            {modelSlot ? (
+              <div className="min-w-0">{modelSlot}</div>
             ) : (
               <span className="min-w-4 flex-1" />
             )}

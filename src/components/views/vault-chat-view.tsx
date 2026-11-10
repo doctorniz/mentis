@@ -17,12 +17,12 @@ import {
   type VaultChatComposerHandle,
 } from '@/components/chat/vault-chat-composer'
 import { MobileDrawer } from '@/components/ui/mobile-drawer'
+import { ModelPicker } from '@/components/chat/model-picker'
 import { VaultChatMessage } from '@/components/chat/vault-chat-message'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { saveVaultChatUpload } from '@/lib/chat/chat-io'
 import { getChatKey, CHAT_KEY_CHANGED_EVENT } from '@/lib/chat/key-store'
 import { providerNeedsApiKey } from '@/lib/chat/providers/meta'
-import { useChatModels } from '@/lib/chat/use-chat-models'
 import {
   chatProviderLabel,
   sanitizeExportBasename,
@@ -36,13 +36,11 @@ import {
   writeVaultChatSidebarCollapsed,
   VAULT_CHAT_SIDEBAR,
 } from '@/lib/chat/vault-chat-session'
-import { saveVaultConfig } from '@/lib/vault'
 import { useVaultChatStore, selectActiveVaultThread } from '@/stores/vault-chat'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
 import { useUiStore } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
-import type { VaultConfig } from '@/types/vault'
 import { toast } from '@/stores/toast'
 import {
   DEFAULT_CHAT_SETTINGS,
@@ -56,16 +54,6 @@ import { cn } from '@/utils/cn'
 
 function mergeSettings(from: ChatSettings | undefined): ChatSettings {
   return { ...DEFAULT_CHAT_SETTINGS, ...(from ?? {}) }
-}
-
-function threadMatchesSettings(
-  thread: ChatThread | null | undefined,
-  settings: ChatSettings,
-): boolean {
-  if (!thread?.chatBinding || !settings.provider) return true
-  return (
-    thread.chatBinding.provider === settings.provider && thread.chatBinding.model === settings.model
-  )
 }
 
 function ChatThreadsSidebarBody({
@@ -253,7 +241,6 @@ function ChatThreadsSidebarBody({
 export function VaultChatView() {
   const { vaultFs, vaultPath, config: sessionConfig } = useVaultSession()
   const vaultConfig = useVaultStore((s) => s.config)
-  const updateVaultConfig = useVaultStore((s) => s.updateConfig)
 
   const settings = useMemo(
     () => mergeSettings(vaultConfig?.chat ?? sessionConfig.chat),
@@ -378,54 +365,18 @@ export function VaultChatView() {
     }
   }, [settings.provider, vaultPath, keyVersion])
 
-  const { models: modelList } = useChatModels(
-    settings.provider,
-    apiKey,
-    settings.provider ? settings.baseUrls?.[settings.provider] : undefined,
-  )
-
   const providerMissing = !settings.provider
   const keyMissing = keyChecked && apiKey === null && !!settings.provider
   const modelMissing = !!settings.provider && !settings.model
-  const bindingMismatch = !threadMatchesSettings(activeThread, settings)
 
   const composerDisabled =
-    providerMissing ||
-    keyMissing ||
-    !activeThread ||
-    !initialized ||
-    modelMissing ||
-    bindingMismatch
+    providerMissing || keyMissing || !activeThread || !initialized || modelMissing
 
-  const displayBinding = activeThread?.chatBinding
-  const headerProviderId = displayBinding?.provider ?? settings.provider
-  const headerModelId = displayBinding?.model ?? settings.model
+  const headerProviderId = settings.provider
+  const headerModelId = settings.model
   const headerHasPair = Boolean(headerProviderId && headerModelId)
   const headerProviderLabel = chatProviderLabel(headerProviderId)
   const headerModelLabel = headerModelId || '—'
-
-  const modelOptions = useMemo(() => {
-    if (!settings.provider) return []
-    // The list is the provider's own; the saved model is kept even if it has dropped off it.
-    if (settings.model && !modelList.some((m) => m.id === settings.model)) {
-      return [...modelList, { id: settings.model, label: settings.model }]
-    }
-    return modelList
-  }, [settings.provider, settings.model, modelList])
-
-  const patchChatSettings = useCallback(
-    async (patch: Partial<ChatSettings>) => {
-      const cfg = useVaultStore.getState().config
-      if (!cfg) return
-      const next: VaultConfig = {
-        ...cfg,
-        chat: { ...mergeSettings(cfg.chat), ...patch },
-      }
-      await saveVaultConfig(vaultFs, next)
-      updateVaultConfig({ chat: next.chat })
-    },
-    [vaultFs, updateVaultConfig],
-  )
 
   const handleSend = useCallback(
     (text: string) => {
@@ -543,12 +494,10 @@ export function VaultChatView() {
     if (providerMissing) return 'Choose a provider in Settings → AI'
     if (keyMissing) return 'Add an API key in Settings → AI'
     if (modelMissing) return 'Choose a model in Settings → AI'
-    if (bindingMismatch) return 'Match provider and model in Settings to continue this chat'
     return 'Ask your vault anything'
-  }, [providerMissing, keyMissing, modelMissing, bindingMismatch])
+  }, [providerMissing, keyMissing, modelMissing])
 
   const hasMessages = Boolean(activeThread && activeThread.messages.length > 0)
-  const showModelSelector = !hasMessages && Boolean(settings.provider && modelOptions.length > 0)
 
   return (
     <div className={cn('bg-bg flex h-full min-h-0 w-full')}>
@@ -721,17 +670,7 @@ export function VaultChatView() {
                 onSend={handleSend}
                 onCancel={cancel}
                 onAttachFiles={handleAttachFiles}
-                modelSelect={
-                  showModelSelector
-                    ? {
-                        value: settings.model,
-                        options: modelOptions,
-                        onChange: (id) => {
-                          void patchChatSettings({ model: id })
-                        },
-                      }
-                    : undefined
-                }
+                modelSlot={<ModelPicker settings={settings} disabled={isStreaming} />}
               />
             </div>
           </>
@@ -760,7 +699,7 @@ export function VaultChatView() {
               onSend={handleSend}
               onCancel={cancel}
               onAttachFiles={handleAttachFiles}
-              modelSelect={undefined}
+              modelSlot={<ModelPicker settings={settings} disabled={isStreaming} />}
             />
           </>
         )}

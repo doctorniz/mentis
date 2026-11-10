@@ -13,6 +13,7 @@ import { DEFAULT_CHAT_SETTINGS, type ChatSettings } from '@/types/chat'
 import { HOME_VIEW } from '@/core/registries'
 import { cn } from '@/utils/cn'
 
+import { ModelPicker } from './model-picker'
 import { ChatInput } from './chat-input'
 import { ChatMessage } from './chat-message'
 
@@ -90,23 +91,6 @@ export function ChatPanel({
     // chatAssetId is the stable id — documentPath is informational; reloading
     // on rename is fine because `openDocument` is idempotent.
   }, [vaultFs, chatAssetId, documentPath, openDocument, closeDocument])
-
-  // Auto-create a fresh thread when the provider or model changes so the
-  // user doesn't see stale messages / errors from a prior model.
-  const prevProviderRef = useRef<string | null | undefined>(undefined)
-  const prevModelRef = useRef<string | null | undefined>(undefined)
-  useEffect(() => {
-    const prev = prevProviderRef.current
-    const prevMod = prevModelRef.current
-    prevProviderRef.current = settings.provider
-    prevModelRef.current = settings.model
-    // Skip on the initial render (both refs were undefined).
-    if (prev === undefined && prevMod === undefined) return
-    if (prev === settings.provider && prevMod === settings.model) return
-    if (!isStreaming) {
-      void createThread({ chatAssetId, documentPath })
-    }
-  }, [settings.provider, settings.model, chatAssetId, documentPath, isStreaming, createThread])
 
   // Pull the API key for the configured provider; recheck when provider
   // changes or when the key-changed signal fires from settings.
@@ -220,11 +204,7 @@ export function ChatPanel({
           <span className="text-fg text-sm font-medium">Chat</span>
         </button>
         <div className="flex items-center gap-1">
-          {settings.model && (
-            <span className="text-fg-muted truncate text-xs" title={settings.model}>
-              {settings.model}
-            </span>
-          )}
+          <ModelPicker settings={settings} disabled={isStreaming} className="max-w-44" />
           <button
             type="button"
             onClick={handleNewThread}

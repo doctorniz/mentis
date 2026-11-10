@@ -1,4 +1,9 @@
-import { DEFAULT_CHAT_SETTINGS, type ChatProviderId, type ChatSettings } from '@/types/chat'
+import {
+  DEFAULT_CHAT_SETTINGS,
+  type ChatPick,
+  type ChatProviderId,
+  type ChatSettings,
+} from '@/types/chat'
 
 const KNOWN: readonly string[] = [
   'openrouter',
@@ -15,6 +20,7 @@ const KNOWN: readonly string[] = [
  * - no `enabled`: chat stays off until it is switched on;
  * - the on-device model is gone, and with it `device`, `webllm` and
  *   `huggingface`: no provider is chosen;
+ * - no `picks`: the chosen model is the only pick;
  * - one `baseUrl` becomes the URL of the provider that was chosen.
  */
 export function migrateChatSettings(saved: unknown): ChatSettings {
@@ -31,11 +37,25 @@ export function migrateChatSettings(saved: unknown): ChatSettings {
     baseUrls[provider] = s.baseUrl.trim()
   }
 
+  const model = provider && typeof s.model === 'string' ? s.model : ''
+  const picks: ChatPick[] = []
+  const add = (p: unknown, m: unknown) => {
+    if (typeof p !== 'string' || !KNOWN.includes(p) || typeof m !== 'string' || !m) return
+    if (!picks.some((x) => x.provider === p && x.model === m)) {
+      picks.push({ provider: p as ChatProviderId, model: m })
+    }
+  }
+  if (Array.isArray(s.picks)) {
+    for (const x of s.picks as Array<Record<string, unknown> | null>) add(x?.provider, x?.model)
+  }
+  add(provider, model)
+
   return {
     ...DEFAULT_CHAT_SETTINGS,
     enabled: s.enabled === true,
     provider,
-    model: provider && typeof s.model === 'string' ? s.model : '',
+    model,
+    picks,
     ...(Object.keys(baseUrls).length ? { baseUrls } : {}),
     ...(typeof s.systemPrompt === 'string' ? { systemPrompt: s.systemPrompt } : {}),
     maxContextChars:

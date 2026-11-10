@@ -226,17 +226,6 @@ export const useVaultChatStore = create<VaultChatState>()(
         })
         return
       }
-      if (
-        thread.chatBinding &&
-        (thread.chatBinding.provider !== settings.provider ||
-          thread.chatBinding.model !== settings.model)
-      ) {
-        set((s) => {
-          s.error =
-            'This chat was started with a different provider or model. Switch back in Settings → AI to continue.'
-        })
-        return
-      }
       if (!apiKey && providerNeedsApiKey(settings.provider)) {
         set((s) => {
           s.error = 'Add an API key in Settings → AI to start chatting.'

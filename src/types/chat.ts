@@ -53,7 +53,13 @@ export type ChatProviderId =
   | 'ollama'
   | 'llamacpp'
 
-/** Provider + model frozen when a thread gets its first user message. */
+/** A model chosen in Settings, to switch to from the composer. */
+export interface ChatPick {
+  provider: ChatProviderId
+  model: string
+}
+
+/** Provider + model of a thread's first message. Informational: the model can change per message. */
 export interface ChatThreadBinding {
   provider: ChatProviderId
   model: string
@@ -94,10 +100,12 @@ export interface ChatThread {
 export interface ChatSettings {
   /** Chat is off until the person turns it on in Settings. Off, none of it shows or runs. */
   enabled: boolean
-  /** The provider to chat with, once chosen. */
+  /** The provider chat uses now: the last model picked. Null until one is chosen. */
   provider: ChatProviderId | null
   /** Model id as the provider names it, e.g. `anthropic/claude-sonnet-4`. Empty until chosen. */
   model: string
+  /** The models to switch between in the composer, from any provider. */
+  picks: ChatPick[]
   /**
    * Base URL per provider; blank or absent = the provider's default. Kept per
    * provider so an address typed for one never receives another's key.
@@ -120,6 +128,7 @@ export const DEFAULT_CHAT_SETTINGS: ChatSettings = {
   enabled: false,
   provider: null,
   model: '',
+  picks: [],
   maxContextChars: 40_000,
 }
 
