@@ -1,4 +1,5 @@
 import { ChatAssistantHtml } from '@/components/chat/chat-assistant-html'
+import { UsageLine } from '@/components/chat/usage-line'
 import { renderVaultChatMarkdown } from '@/lib/chat/render-markdown'
 import type { ChatMessage as ChatMessageT } from '@/types/chat'
 import { cn } from '@/utils/cn'
@@ -55,6 +56,7 @@ export function VaultChatMessage({ message, onVaultPathOpen }: VaultChatMessageP
           }
           onVaultPathOpen={onVaultPathOpen}
         />
+        {!message.streaming && <UsageLine usage={message.usage} />}
       </div>
     )
   }

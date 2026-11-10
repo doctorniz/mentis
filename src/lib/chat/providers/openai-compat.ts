@@ -8,6 +8,8 @@
 
 import type { ChatCompletionRequest, ChatStreamChunk } from './types'
 
+type Usage = { prompt_tokens?: number; completion_tokens?: number }
+
 export interface OpenAICompatOptions {
   /** Shown in errors: "OpenAI 401: …". */
   label: string
@@ -50,7 +52,12 @@ export async function* streamOpenAICompat(
     res = await fetch(`${base}/chat/completions`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ model: req.model, messages: req.messages, stream: true }),
+      body: JSON.stringify({
+        model: req.model,
+        messages: req.messages,
+        stream: true,
+        stream_options: { include_usage: true },
+      }),
       signal: req.signal,
     })
   } catch (err) {
@@ -82,6 +89,7 @@ export async function* streamOpenAICompat(
   const reader = res.body.getReader()
   const decoder = new TextDecoder('utf-8')
   let buffer = ''
+  let usage: { input: number; output: number } | null = null
 
   try {
     while (true) {
@@ -101,11 +109,18 @@ export async function* streamOpenAICompat(
         const payload = line.slice(5).trim()
         if (!payload) continue
         if (payload === '[DONE]') {
+          if (usage) yield { type: 'usage', ...usage }
           yield { type: 'done' }
           return
         }
         try {
-          const json = JSON.parse(payload) as { choices?: { delta?: { content?: string } }[] }
+          const json = JSON.parse(payload) as {
+            choices?: { delta?: { content?: string } }[]
+            usage?: Usage | null
+          }
+          if (json.usage && typeof json.usage.prompt_tokens === 'number') {
+            usage = { input: json.usage.prompt_tokens, output: json.usage.completion_tokens ?? 0 }
+          }
           const delta = json.choices?.[0]?.delta?.content
           if (typeof delta === 'string' && delta.length > 0) {
             yield { type: 'delta', content: delta }
@@ -115,6 +130,7 @@ export async function* streamOpenAICompat(
         }
       }
     }
+    if (usage) yield { type: 'usage', ...usage }
     yield { type: 'done' }
   } catch (err) {
     if (req.signal?.aborted) {

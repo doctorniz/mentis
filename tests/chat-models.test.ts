@@ -111,8 +111,67 @@ describe('model lists come from the provider', () => {
   ] as const)('%s at %s asks %s', async (provider, base, url) => {
     const fn = respond({ data: [{ id: 'llama3' }] })
     expect(await fetchModels(provider, '', base)).toEqual([{ id: 'llama3', label: 'llama3' }])
-    expect(lastUrl(fn)).toBe(url)
+    expect(String(fn.mock.calls[0]![0])).toBe(url)
     expect(lastHeaders(fn).Authorization).toBeUndefined()
+  })
+
+  it('context windows come from the provider where it says', async () => {
+    respond({ data: [{ id: 'a/b', name: 'AB', context_length: 128000 }, { id: 'c/d' }] })
+    expect(await fetchModels('openrouter', '')).toEqual([
+      { id: 'a/b', label: 'AB', contextWindow: 128000 },
+      { id: 'c/d', label: 'c/d' },
+    ])
+    respond({ data: [{ id: 'claude-1', display_name: 'C1', max_input_tokens: 200000 }] })
+    expect(await fetchModels('anthropic', 'k')).toEqual([
+      { id: 'claude-1', label: 'C1', contextWindow: 200000 },
+    ])
+    respond({
+      models: [
+        {
+          name: 'models/g-1',
+          inputTokenLimit: 1048576,
+          supportedGenerationMethods: ['generateContent'],
+        },
+      ],
+    })
+    expect(await fetchModels('gemini', 'k')).toEqual([
+      { id: 'g-1', label: 'g-1', contextWindow: 1048576 },
+    ])
+    respond({ data: [{ id: 'gpt-x' }] })
+    expect(await fetchModels('openai', 'k')).toEqual([{ id: 'gpt-x', label: 'gpt-x' }])
+  })
+
+  it('llama.cpp: the window the server runs with, else the training length', async () => {
+    const fn = vi.fn().mockImplementation(async (url: string) => {
+      const props = String(url).endsWith('/props')
+      return {
+        ok: true,
+        status: 200,
+        json: async () =>
+          props
+            ? { default_generation_settings: { n_ctx: 8192 } }
+            : { data: [{ id: 'm.gguf', meta: { n_ctx_train: 131072 } }] },
+      }
+    })
+    vi.stubGlobal('fetch', fn)
+    expect(await fetchModels('llamacpp', '', 'http://box:9000/v1')).toEqual([
+      { id: 'm.gguf', label: 'm.gguf', contextWindow: 8192 },
+    ])
+    expect(fn.mock.calls.map((c) => String(c[0]))).toContain('http://box:9000/props')
+
+    // No /props: the training length stands in.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string) => {
+        if (String(url).endsWith('/props')) throw new TypeError('nope')
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: [{ id: 'm.gguf', meta: { n_ctx_train: 131072 } }] }),
+        }
+      }),
+    )
+    expect((await fetchModels('llamacpp', ''))[0]!.contextWindow).toBe(131072)
   })
 
   it('a local server gets the key only when one was saved', async () => {

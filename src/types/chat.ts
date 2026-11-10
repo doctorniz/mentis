@@ -42,6 +42,15 @@ export interface ChatMessage {
    * only (see `mergeVaultSourcesSection`).
    */
   vaultRagHitPaths?: string[]
+  /** Tokens the provider counted for this answer's request and reply. */
+  usage?: ChatUsage
+}
+
+/** Token counts a provider reports for one reply. */
+export interface ChatUsage {
+  /** Everything sent: instructions, context, the conversation so far. */
+  input: number
+  output: number
 }
 
 /** Supported provider ids. */
@@ -106,6 +115,11 @@ export interface ChatSettings {
   model: string
   /** The models to switch between in the composer, from any provider. */
   picks: ChatPick[]
+  /**
+   * Context window in tokens, typed per model (key `provider|model`). Wins over
+   * what the provider reports, and fills in where it reports none.
+   */
+  contextWindows?: Record<string, number>
   /**
    * Base URL per provider; blank or absent = the provider's default. Kept per
    * provider so an address typed for one never receives another's key.

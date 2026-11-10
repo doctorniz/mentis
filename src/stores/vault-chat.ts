@@ -323,6 +323,14 @@ export const useVaultChatStore = create<VaultChatState>()(
                 last.content += chunk.content
               }
             })
+          } else if (chunk.type === 'usage') {
+            set((s) => {
+              const t = s.threads.find((x) => x.id === thread.id)
+              const last = t?.messages[t.messages.length - 1]
+              if (last && last.role === 'assistant') {
+                last.usage = { input: chunk.input, output: chunk.output }
+              }
+            })
           } else if (chunk.type === 'error') {
             streamError = chunk.message
             break

@@ -259,7 +259,15 @@ provider's models endpoint (`model-catalog.ts`) and a model can also be typed.
 The models a person picks, from any provider, are kept in `chat.picks`; the
 composer's picker switches between them and the choice is saved as the one in
 use (`chat.provider` and `chat.model`). A thread is not tied to a model: each
-answer records the one that wrote it. Vault chat ranks passages from the `chunks` table; document chat reads the
+answer records the one that wrote it. Each provider reports the tokens a reply
+took (OpenAI-style servers are asked with `stream_options.include_usage`); it is
+kept on the answer as `usage`, shown under it, and the last one's request plus
+reply is what the context meter shows against the model's window (`usage.ts`).
+The window is the provider's own figure where it gives one (OpenRouter, Gemini,
+Anthropic, llama.cpp's `/props`), else typed per model in Settings
+(`chat.contextWindows`), which wins; unknown, the meter shows tokens only. Ollama
+reports none, and its running window is its own default, not the model's maximum.
+Vault chat ranks passages from the `chunks` table; document chat reads the
 open file through its extractor. Voice notes are transcribed by Whisper
 (transformers.js).
 

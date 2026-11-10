@@ -70,6 +70,19 @@ describe('OpenAI-style streaming, shared by four providers', () => {
     ).toBe('Bearer secret')
   })
 
+  it('asks for token counts and passes them on before done', async () => {
+    const usage = `data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 120, completion_tokens: 7 } })}`
+    const fn = sse([delta('Hi'), usage, 'data: [DONE]'])
+    const out = await run('openai', 'k')
+    expect(out).toEqual([
+      { type: 'delta', content: 'Hi' },
+      { type: 'usage', input: 120, output: 7 },
+      { type: 'done' },
+    ])
+    const body = JSON.parse((fn.mock.calls[0]![1] as { body: string }).body)
+    expect(body.stream_options).toEqual({ include_usage: true })
+  })
+
   it('reports an HTTP error with the provider named', async () => {
     vi.stubGlobal(
       'fetch',

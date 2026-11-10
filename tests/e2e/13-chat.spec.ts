@@ -422,6 +422,76 @@ data: [DONE]
     })
   })
 
+  test.describe('14.4 Context and usage', () => {
+    test('14.4.1 The meter shows the window, then what a reply took', async ({
+      vaultPage: page,
+    }) => {
+      await serveJson(page, 'http://localhost:8080/props', {
+        default_generation_settings: { n_ctx: 8192 },
+      })
+      await page.route('http://localhost:8080/v1/chat/completions', (route) => {
+        if (route.request().method() === 'OPTIONS') {
+          return route.fulfill({ status: 204, headers: CORS })
+        }
+        const delta = JSON.stringify({ choices: [{ delta: { content: 'ok' } }] })
+        const usage = JSON.stringify({
+          choices: [],
+          usage: { prompt_tokens: 120, completion_tokens: 7 },
+        })
+        return route.fulfill({
+          status: 200,
+          headers: { ...CORS, 'content-type': 'text/event-stream' },
+          body: `data: ${delta}\n\ndata: ${usage}\n\ndata: [DONE]\n\n`,
+        })
+      })
+      await setUpLocalChat(page)
+      await navigateTo(page, 'chat')
+
+      const meter = page.getByTestId('context-meter')
+      await expect(meter).toContainText('0 / 8.2k', { timeout: 10_000 })
+
+      const composer = page.locator('textarea').last()
+      await composer.fill('how big is this')
+      await composer.press('Enter')
+      await expect(page.getByText('120 in · 7 out')).toBeVisible({ timeout: 10_000 })
+      await expect(meter).toContainText('127 / 8.2k')
+      await expect(meter).toHaveAttribute('title', /Thread so far: 120 in, 7 out/)
+    })
+
+    test('14.4.2 A window typed in Settings replaces the one reported', async ({
+      vaultPage: page,
+    }) => {
+      await serveJson(page, 'http://localhost:8080/props', {
+        default_generation_settings: { n_ctx: 8192 },
+      })
+      await setUpLocalChat(page)
+
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('button', { name: /^llama\.cpp/ }).click()
+      await expect(dialog.getByLabel('Context window of my-model.gguf')).toHaveAttribute(
+        'placeholder',
+        '8.2k',
+      )
+      await dialog.getByLabel('Context window of my-model.gguf').fill('4096')
+      await expect
+        .poll(() => readVaultFile(page, '_mentis/config.json'), { timeout: 10_000 })
+        .toContain('"llamacpp|my-model.gguf": 4096')
+      await page.keyboard.press('Escape')
+
+      await navigateTo(page, 'chat')
+      await expect(page.getByTestId('context-meter')).toContainText('0 / 4.1k', {
+        timeout: 10_000,
+      })
+    })
+
+    test('14.4.3 A window nobody reports shows tokens only', async ({ vaultPage: page }) => {
+      await page.route('http://localhost:8080/props', (route) => route.abort('connectionrefused'))
+      await setUpLocalChat(page)
+      await navigateTo(page, 'chat')
+      await expect(page.getByTestId('context-meter')).toHaveText('0 tokens', { timeout: 10_000 })
+    })
+  })
+
   test.describe('14.6 Reactivity & Edge Cases', () => {
     test('14.6.3 On, with no provider chosen — says to choose one', async ({ vaultPage: page }) => {
       await enableChat(page)

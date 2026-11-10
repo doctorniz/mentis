@@ -20,6 +20,13 @@ import type { ChatCompletionRequest, ChatProvider, ChatStreamChunk } from './typ
 const DEFAULT_BASE_URL = 'https://api.anthropic.com/v1'
 const DEFAULT_MAX_TOKENS = 4096
 
+type AnthropicUsage = {
+  input_tokens?: number
+  output_tokens?: number
+  cache_creation_input_tokens?: number
+  cache_read_input_tokens?: number
+}
+
 async function* streamAnthropic(req: ChatCompletionRequest): AsyncGenerator<ChatStreamChunk> {
   const base = (req.baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/$/, '')
   const url = `${base}/messages`
@@ -73,6 +80,11 @@ async function* streamAnthropic(req: ChatCompletionRequest): AsyncGenerator<Chat
   const reader = res.body.getReader()
   const decoder = new TextDecoder('utf-8')
   let buffer = ''
+  // The request's tokens arrive with message_start, the reply's with message_delta.
+  let input = 0
+  let output = 0
+  let sawUsage = false
+  const usageChunk = (): ChatStreamChunk[] => (sawUsage ? [{ type: 'usage', input, output }] : [])
 
   try {
     while (true) {
@@ -99,6 +111,20 @@ async function* streamAnthropic(req: ChatCompletionRequest): AsyncGenerator<Chat
             type?: string
             delta?: { type?: string; text?: string }
             error?: { message?: string }
+            message?: { usage?: AnthropicUsage }
+            usage?: AnthropicUsage
+          }
+          if (json.type === 'message_start' && json.message?.usage) {
+            const u = json.message.usage
+            input =
+              (u.input_tokens ?? 0) +
+              (u.cache_creation_input_tokens ?? 0) +
+              (u.cache_read_input_tokens ?? 0)
+            output = u.output_tokens ?? 0
+            sawUsage = true
+          } else if (json.type === 'message_delta' && json.usage) {
+            if (typeof json.usage.output_tokens === 'number') output = json.usage.output_tokens
+            sawUsage = true
           }
           if (json.type === 'content_block_delta' && json.delta?.type === 'text_delta') {
             const delta = json.delta.text
@@ -106,6 +132,7 @@ async function* streamAnthropic(req: ChatCompletionRequest): AsyncGenerator<Chat
               yield { type: 'delta', content: delta }
             }
           } else if (json.type === 'message_stop') {
+            yield* usageChunk()
             yield { type: 'done' }
             return
           } else if (json.type === 'error' && json.error?.message) {
@@ -117,6 +144,7 @@ async function* streamAnthropic(req: ChatCompletionRequest): AsyncGenerator<Chat
         }
       }
     }
+    yield* usageChunk()
     yield { type: 'done' }
   } catch (err) {
     if (req.signal?.aborted) {

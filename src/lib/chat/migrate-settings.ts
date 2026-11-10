@@ -50,12 +50,20 @@ export function migrateChatSettings(saved: unknown): ChatSettings {
   }
   add(provider, model)
 
+  const windows: Record<string, number> = {}
+  if (s.contextWindows && typeof s.contextWindows === 'object') {
+    for (const [k, v] of Object.entries(s.contextWindows as Record<string, unknown>)) {
+      if (typeof v === 'number' && Number.isFinite(v) && v > 0) windows[k] = Math.round(v)
+    }
+  }
+
   return {
     ...DEFAULT_CHAT_SETTINGS,
     enabled: s.enabled === true,
     provider,
     model,
     picks,
+    ...(Object.keys(windows).length ? { contextWindows: windows } : {}),
     ...(Object.keys(baseUrls).length ? { baseUrls } : {}),
     ...(typeof s.systemPrompt === 'string' ? { systemPrompt: s.systemPrompt } : {}),
     maxContextChars:

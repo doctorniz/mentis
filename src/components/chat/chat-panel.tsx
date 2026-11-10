@@ -13,6 +13,8 @@ import { DEFAULT_CHAT_SETTINGS, type ChatSettings } from '@/types/chat'
 import { HOME_VIEW } from '@/core/registries'
 import { cn } from '@/utils/cn'
 
+import { useContextWindow } from '@/lib/chat/use-context-window'
+import { ContextMeter } from './context-meter'
 import { ModelPicker } from './model-picker'
 import { ChatInput } from './chat-input'
 import { ChatMessage } from './chat-message'
@@ -162,6 +164,7 @@ export function ChatPanel({
   )
 
   // No provider, or one without a model yet: not set up.
+  const contextWindow = useContextWindow(settings, keyChecked ? apiKey : null)
   const providerMissing = !settings.provider || !settings.model
   const keyMissing = keyChecked && apiKey === null && !!settings.provider
   const composerDisabled = providerMissing || keyMissing || !activeThread
@@ -271,6 +274,12 @@ export function ChatPanel({
       </div>
 
       {error && <div className="text-danger border-border border-t px-3 py-2 text-xs">{error}</div>}
+
+      {!providerMissing && (
+        <div className="flex justify-end px-3 pt-1.5">
+          <ContextMeter messages={activeThread?.messages ?? []} window={contextWindow} />
+        </div>
+      )}
 
       <ChatInput
         disabled={composerDisabled}

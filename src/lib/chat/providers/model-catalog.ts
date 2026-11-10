@@ -12,7 +12,11 @@ import { providerMeta } from './meta'
 export interface ModelEntry {
   id: string
   label: string
+  /** Tokens the model takes in, where the provider says. */
+  contextWindow?: number
 }
+
+const tokens = (n: unknown) => (typeof n === 'number' && n > 0 ? Math.round(n) : undefined)
 
 const TIMEOUT_MS = 15_000
 
@@ -36,13 +40,39 @@ async function getJson<T>(label: string, url: string, headers: Record<string, st
   return (await res.json()) as T
 }
 
-type OpenAIList = { data?: { id: string; name?: string }[] }
+type OpenAIList = {
+  data?: { id: string; name?: string; context_length?: number; meta?: { n_ctx_train?: number } }[]
+}
 
 function fromOpenAIList(json: OpenAIList, filter?: (id: string) => boolean): ModelEntry[] {
   return (json.data ?? [])
     .filter((m) => typeof m.id === 'string' && (!filter || filter(m.id)))
-    .map((m) => ({ id: m.id, label: m.name?.trim() || m.id }))
+    .map((m) => {
+      const contextWindow = tokens(m.context_length)
+      return {
+        id: m.id,
+        label: m.name?.trim() || m.id,
+        ...(contextWindow ? { contextWindow } : {}),
+      }
+    })
     .sort(byLabel)
+}
+
+/**
+ * What a llama.cpp server runs with (`-c`), from `/props`: the window it will
+ * really use, not the model's training length. Null where it does not say.
+ */
+async function llamaServerWindow(base: string, headers?: Record<string, string>) {
+  try {
+    const json = await getJson<{ default_generation_settings?: { n_ctx?: number } }>(
+      'llama.cpp',
+      `${base.replace(/\/v1$/, '')}/props`,
+      headers,
+    )
+    return tokens(json.default_generation_settings?.n_ctx) ?? null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -70,29 +100,44 @@ export async function fetchModels(
     }
     case 'anthropic': {
       const base = plainBase(baseUrl, meta.defaultBaseUrl)
-      const json = await getJson<{ data?: { id: string; display_name?: string }[] }>(
-        'Anthropic',
-        `${base}/models?limit=1000`,
-        {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-      )
+      const json = await getJson<{
+        data?: { id: string; display_name?: string; max_input_tokens?: number }[]
+      }>('Anthropic', `${base}/models?limit=1000`, {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      })
       return (json.data ?? [])
-        .map((m) => ({ id: m.id, label: m.display_name?.trim() || m.id }))
+        .map((m) => {
+          const contextWindow = tokens(m.max_input_tokens)
+          return {
+            id: m.id,
+            label: m.display_name?.trim() || m.id,
+            ...(contextWindow ? { contextWindow } : {}),
+          }
+        })
         .sort(byLabel)
     }
     case 'gemini': {
       const base = plainBase(baseUrl, meta.defaultBaseUrl)
       const json = await getJson<{
-        models?: { name: string; displayName?: string; supportedGenerationMethods?: string[] }[]
+        models?: {
+          name: string
+          displayName?: string
+          inputTokenLimit?: number
+          supportedGenerationMethods?: string[]
+        }[]
       }>('Gemini', `${base}/models?pageSize=1000&key=${encodeURIComponent(apiKey)}`)
       return (json.models ?? [])
         .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
         .map((m) => {
           const id = m.name.replace(/^models\//, '')
-          return { id, label: m.displayName?.trim() || id }
+          const contextWindow = tokens(m.inputTokenLimit)
+          return {
+            id,
+            label: m.displayName?.trim() || id,
+            ...(contextWindow ? { contextWindow } : {}),
+          }
         })
         .sort(byLabel)
     }
@@ -101,7 +146,17 @@ export async function fetchModels(
       const base = v1Base(baseUrl, meta.defaultBaseUrl)
       try {
         const json = await getJson<OpenAIList>(meta.label, `${base}/models`, bearer)
-        return fromOpenAIList(json)
+        const models = fromOpenAIList(json)
+        if (provider === 'llamacpp') {
+          // One server runs one window; the model's training length is the fallback.
+          const running = await llamaServerWindow(base, bearer)
+          return models.map((m) => {
+            const contextWindow =
+              running ?? tokens(json.data?.find((d) => d.id === m.id)?.meta?.n_ctx_train)
+            return contextWindow ? { ...m, contextWindow } : m
+          })
+        }
+        return models
       } catch (err) {
         if (
           err instanceof TypeError ||

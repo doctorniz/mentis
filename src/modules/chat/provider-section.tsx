@@ -2,7 +2,8 @@ import { useCallback, useEffect, useId, useState } from 'react'
 import { Check, ChevronDown, ChevronRight, Loader2, RefreshCw, Star, X } from 'lucide-react'
 import { INPUT_CLS } from '@/components/settings/fields'
 import { clearChatKey, getChatKey, setChatKey, notifyChatKeyChanged } from '@/lib/chat/key-store'
-import { samePick, withoutPick, withPick } from '@/lib/chat/picks'
+import { pickValue, samePick, withoutPick, withPick } from '@/lib/chat/picks'
+import { formatTokens } from '@/lib/chat/usage'
 import { providerMeta, providerNeedsApiKey } from '@/lib/chat/providers/meta'
 import { testConnection } from '@/lib/chat/providers/test-connection'
 import { useChatModels } from '@/lib/chat/use-chat-models'
@@ -51,9 +52,9 @@ export function ProviderSection({ provider, chat, vaultId, open, onToggle, onCha
 
   const models = useChatModels(provider, savedKey, baseUrl || undefined, open)
 
-  // A server with exactly one model: nothing to choose, so it is picked.
+  // A local server with exactly one model: nothing to choose, so it is picked.
   useEffect(() => {
-    if (open && mine.length === 0 && models.models.length === 1) {
+    if (open && meta.local && mine.length === 0 && models.models.length === 1) {
       onChange(withPick(chat, { provider, model: models.models[0]!.id }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -292,6 +293,26 @@ export function ProviderSection({ provider, chat, vaultId, open, onToggle, onCha
                       <span className="max-w-48 truncate" title={p.model}>
                         {p.model}
                       </span>
+                      <input
+                        aria-label={`Context window of ${p.model}`}
+                        title="Context window, in tokens"
+                        inputMode="numeric"
+                        value={chat.contextWindows?.[pickValue(p)] ?? ''}
+                        placeholder={(() => {
+                          const reported = models.models.find(
+                            (m) => m.id === p.model,
+                          )?.contextWindow
+                          return reported ? formatTokens(reported) : 'tokens'
+                        })()}
+                        onChange={(e) => {
+                          const n = Number(e.target.value.replace(/\D/g, ''))
+                          const contextWindows = { ...chat.contextWindows }
+                          if (n > 0) contextWindows[pickValue(p)] = n
+                          else delete contextWindows[pickValue(p)]
+                          onChange({ ...chat, contextWindows })
+                        }}
+                        className="bg-bg-muted text-fg w-16 rounded px-1 py-0.5 text-center text-[11px]"
+                      />
                       <button
                         type="button"
                         aria-label={`Use ${p.model}`}

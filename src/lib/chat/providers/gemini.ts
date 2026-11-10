@@ -70,6 +70,7 @@ async function* streamGemini(req: ChatCompletionRequest): AsyncGenerator<ChatStr
   const reader = res.body.getReader()
   const decoder = new TextDecoder('utf-8')
   let buffer = ''
+  let usage: { input: number; output: number } | null = null
 
   try {
     while (true) {
@@ -95,6 +96,14 @@ async function* streamGemini(req: ChatCompletionRequest): AsyncGenerator<ChatStr
               finishReason?: string
             }[]
             error?: { message?: string }
+            usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number }
+          }
+          // Each chunk carries running totals; the last one is the answer's.
+          if (typeof json.usageMetadata?.promptTokenCount === 'number') {
+            usage = {
+              input: json.usageMetadata.promptTokenCount,
+              output: json.usageMetadata.candidatesTokenCount ?? 0,
+            }
           }
           if (json.error?.message) {
             yield { type: 'error', message: json.error.message }
@@ -113,6 +122,7 @@ async function* streamGemini(req: ChatCompletionRequest): AsyncGenerator<ChatStr
         }
       }
     }
+    if (usage) yield { type: 'usage', ...usage }
     yield { type: 'done' }
   } catch (err) {
     if (req.signal?.aborted) {

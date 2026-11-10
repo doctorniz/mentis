@@ -17,7 +17,9 @@ import {
   type VaultChatComposerHandle,
 } from '@/components/chat/vault-chat-composer'
 import { MobileDrawer } from '@/components/ui/mobile-drawer'
+import { ContextMeter } from '@/components/chat/context-meter'
 import { ModelPicker } from '@/components/chat/model-picker'
+import { useContextWindow } from '@/lib/chat/use-context-window'
 import { VaultChatMessage } from '@/components/chat/vault-chat-message'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { saveVaultChatUpload } from '@/lib/chat/chat-io'
@@ -365,6 +367,7 @@ export function VaultChatView() {
     }
   }, [settings.provider, vaultPath, keyVersion])
 
+  const contextWindow = useContextWindow(settings, keyChecked ? apiKey : null)
   const providerMissing = !settings.provider
   const keyMissing = keyChecked && apiKey === null && !!settings.provider
   const modelMissing = !!settings.provider && !settings.model
@@ -670,7 +673,17 @@ export function VaultChatView() {
                 onSend={handleSend}
                 onCancel={cancel}
                 onAttachFiles={handleAttachFiles}
-                modelSlot={<ModelPicker settings={settings} disabled={isStreaming} />}
+                modelSlot={
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ModelPicker settings={settings} disabled={isStreaming} />
+                    {!providerMissing && !modelMissing && (
+                      <ContextMeter
+                        messages={activeThread?.messages ?? []}
+                        window={contextWindow}
+                      />
+                    )}
+                  </div>
+                }
               />
             </div>
           </>
@@ -699,7 +712,14 @@ export function VaultChatView() {
               onSend={handleSend}
               onCancel={cancel}
               onAttachFiles={handleAttachFiles}
-              modelSlot={<ModelPicker settings={settings} disabled={isStreaming} />}
+              modelSlot={
+                <div className="flex min-w-0 items-center gap-3">
+                  <ModelPicker settings={settings} disabled={isStreaming} />
+                  {!providerMissing && !modelMissing && (
+                    <ContextMeter messages={activeThread?.messages ?? []} window={contextWindow} />
+                  )}
+                </div>
+              }
             />
           </>
         )}

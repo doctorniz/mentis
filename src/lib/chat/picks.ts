@@ -23,6 +23,11 @@ export function withPick(s: ChatSettings, pick: ChatPick): ChatSettings {
 /** The settings with `pick` removed; if it was in use, the first pick left is. */
 export function withoutPick(s: ChatSettings, pick: ChatPick): ChatSettings {
   const picks = s.picks.filter((p) => !samePick(p, pick))
+  if (s.contextWindows) {
+    const contextWindows = { ...s.contextWindows }
+    delete contextWindows[pickValue(pick)]
+    s = { ...s, contextWindows }
+  }
   if (s.provider !== pick.provider || s.model !== pick.model) return { ...s, picks }
   const next = picks[0]
   return { ...s, picks, provider: next?.provider ?? null, model: next?.model ?? '' }

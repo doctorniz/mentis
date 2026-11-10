@@ -1,6 +1,7 @@
 import { Bot, User } from 'lucide-react'
 
 import { ChatAssistantHtml } from '@/components/chat/chat-assistant-html'
+import { UsageLine } from '@/components/chat/usage-line'
 import { renderChatMarkdown } from '@/lib/chat/render-markdown'
 import type { ChatMessage as ChatMessageT } from '@/types/chat'
 import { cn } from '@/utils/cn'
@@ -59,6 +60,7 @@ export function ChatMessage({ message, onVaultPathOpen }: ChatMessageProps) {
             onVaultPathOpen={onVaultPathOpen}
           />
         )}
+        {!message.streaming && <UsageLine usage={message.usage} />}
       </div>
     </div>
   )

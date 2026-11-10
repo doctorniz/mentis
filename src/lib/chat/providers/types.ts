@@ -10,7 +10,7 @@
  * `stream` and join the deltas; there's no separate blocking call.
  */
 
-import type { ChatMessage, ChatProviderId } from '@/types/chat'
+import type { ChatMessage, ChatProviderId, ChatUsage } from '@/types/chat'
 
 /** Minimal role+content shape sent on the wire; strips app-only fields. */
 export interface WireMessage {
@@ -31,9 +31,10 @@ export interface ChatCompletionRequest {
   signal?: AbortSignal
 }
 
-/** One streamed chunk: either a content delta or a terminal marker. */
+/** One streamed chunk: a content delta, the token counts, or a terminal marker. */
 export type ChatStreamChunk =
   | { type: 'delta'; content: string }
+  | ({ type: 'usage' } & ChatUsage)
   | { type: 'done' }
   | { type: 'error'; message: string }
 
