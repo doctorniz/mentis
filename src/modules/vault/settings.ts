@@ -38,6 +38,13 @@ const sections: readonly SettingsSection[] = [
         set: (_, listsFolder) => ({ listsFolder }),
       },
       {
+        id: 'chatFolder',
+        kind: 'folder',
+        label: 'Chat folder',
+        get: (c) => c.chatFolder,
+        set: (_, chatFolder) => ({ chatFolder }),
+      },
+      {
         id: 'templateFolder',
         kind: 'folder',
         label: 'Template folder',

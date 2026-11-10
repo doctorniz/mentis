@@ -75,7 +75,7 @@ Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
 - **Date parsing:** chrono-node. Deterministic, never AI. Do not attempt to
   parse locations.
 - **File extensions:** `.md`, `.canvas`, `.map.md`, `.kan.md`, `.slides.md`
-  (Marp dialect), `.list.md`. Compound suffixes must be matched before the last segment.
+  (Marp dialect), `.list.md`, `.chat.md` (a saved chat, in `Chat/`, a setting). Compound suffixes must be matched before the last segment.
 - **Office:** view only. Convert docx to markdown (mammoth → turndown) and
   pptx to `.slides.md`. No xlsx editing in v1.
 - **Licence:** BSL 1.1. No third-party plugin system — "modular" means

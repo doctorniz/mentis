@@ -29,6 +29,7 @@ import { providerNeedsApiKey } from '@/lib/chat/providers/meta'
 import {
   chatProviderLabel,
   sanitizeExportBasename,
+  savedChatPath,
   threadToMarkdown,
   vaultChatGreeting,
 } from '@/lib/chat/vault-chat-ui'
@@ -470,15 +471,15 @@ export function VaultChatView() {
   const saveTranscriptToVault = useCallback(async () => {
     if (!activeThread) return
     const md = threadToMarkdown(activeThread, headerProviderLabel, headerModelLabel)
-    const name = `${sanitizeExportBasename(activeThread.title)}.md`
-    const path = name.startsWith('/') ? name.slice(1) : name
     try {
+      const path = await savedChatPath(vaultFs, vaultConfig, activeThread.title)
       await vaultFs.writeTextFile(path, md)
-      toast.success('Saved to vault')
+      window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+      toast.success(`Saved to ${path}`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Save failed')
     }
-  }, [activeThread, headerProviderLabel, headerModelLabel, vaultFs])
+  }, [activeThread, headerProviderLabel, headerModelLabel, vaultFs, vaultConfig])
 
   const handleAttachFiles = useCallback(
     async (files: FileList) => {
@@ -638,7 +639,7 @@ export function VaultChatView() {
                     type="button"
                     onClick={() => void saveTranscriptToVault()}
                     className="text-fg-secondary hover:bg-bg-hover rounded-md px-2 py-1 text-xs"
-                    title="Save as note in vault"
+                    title="Save to vault"
                   >
                     Save
                   </button>

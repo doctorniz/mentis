@@ -69,7 +69,7 @@ glob over `src/modules/*/`, so adding a module never edits a central list.
 | **Settings**             | sections of fields (`get`/`set` on the vault config) or a lazy panel                              | the settings dialog                          |
 
 File types are matched by suffix, longest first, so compound extensions work:
-`.md`, `.canvas`, `.map.md`, `.kan.md`, `.slides.md`, `.list.md`. Editors and
+`.md`, `.canvas`, `.map.md`, `.kan.md`, `.slides.md`, `.list.md`, `.chat.md`. Editors and
 views are `React.lazy` — opening a note never loads the PDF engine, the
 canvas or the spreadsheet grid.
 
@@ -285,6 +285,12 @@ condensed. If the summary call fails the request goes as it was.
 Vault chat ranks passages from the `chunks` table; document chat reads the
 open file through its extractor. Voice notes are transcribed by Whisper
 (transformers.js).
+
+Vault chat's Save writes the conversation to the chat folder (`chatFolder`, default
+`Chat/`, made if missing) as `Title.chat.md`, under the app's one collision rule
+(`Title 2.chat.md`), so it never replaces a file. The header is quoted YAML (`type: chat`,
+`title`, `provider`, `model`). A `.chat.md` is its own file type (`modules/chat/register.ts`):
+searchable, linkable, and opened read-only in `file-viewer.tsx`, rendered the way an answer is.
 
 ---
 

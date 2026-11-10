@@ -420,6 +420,58 @@ data: [DONE]
       await composer.press('Enter')
       await expect.poll(() => models).toEqual(['my-model.gguf', 'second.gguf'])
     })
+    test('14.3.7 Saving a chat keeps every note: it goes to Chat/ as .chat.md, never over a file', async ({
+      vaultPage: page,
+    }) => {
+      await page.route('http://localhost:8080/v1/chat/completions', (route) => {
+        if (route.request().method() === 'OPTIONS')
+          return route.fulfill({ status: 204, headers: CORS })
+        const chunk = JSON.stringify({ choices: [{ delta: { content: 'Hello **there**' } }] })
+        return route.fulfill({
+          status: 200,
+          headers: { ...CORS, 'content-type': 'text/event-stream' },
+          body: `data: ${chunk}
+
+data: [DONE]
+
+`,
+        })
+      })
+      await setUpLocalChat(page)
+      const before = await readVaultFile(page, 'Welcome.md')
+      expect(before).not.toBe('')
+
+      await navigateTo(page, 'chat')
+      const composer = page.locator('textarea').last()
+      await composer.fill('Welcome')
+      await composer.press('Enter')
+      await expect(page.locator('.chat-assistant-prose', { hasText: 'Hello' })).toBeVisible({
+        timeout: 10_000,
+      })
+
+      const save = page.getByRole('button', { name: 'Save', exact: true })
+      await save.click()
+      await expect
+        .poll(() => readVaultFile(page, 'Chat/Welcome.chat.md'), { timeout: 10_000 })
+        .toContain('Hello **there**')
+      await save.click()
+      await expect
+        .poll(() => readVaultFile(page, 'Chat/Welcome 2.chat.md'), { timeout: 10_000 })
+        .toContain('Hello **there**')
+
+      const saved = await readVaultFile(page, 'Chat/Welcome.chat.md')
+      expect(saved).toMatch(/^---\ntype: chat\ntitle: "Welcome"\n/)
+      expect(await readVaultFile(page, 'Welcome.md')).toBe(before)
+
+      // It opens as a chat, not as a note named "Welcome.chat".
+      await navigateTo(page, 'vault')
+      const tree = page.getByRole('tree', { name: 'Vault file tree' })
+      await tree.getByText('Chat', { exact: true }).click()
+      await tree.getByRole('button', { name: 'Welcome 2', exact: true }).click()
+      const prose = page.locator('.chat-assistant-prose', { hasText: 'Hello' })
+      await expect(prose.locator('strong')).toHaveText('there', { timeout: 10_000 })
+      await expect(page.locator('.ProseMirror')).toHaveCount(0)
+    })
   })
 
   test.describe('14.4 Context and usage', () => {
@@ -632,13 +684,8 @@ data: [DONE]
     test('14.7.2 A key saved in plain text by an older build is moved, and the old copy goes', async ({
       vaultPage: page,
     }) => {
-      await page.keyboard.press('Control+,')
-      const first = page.getByRole('dialog', { name: 'Settings' })
-      await first.getByRole('tab', { name: 'AI' }).click()
-      await first.getByRole('switch', { name: 'Chat' }).click()
-      await page.keyboard.press('Escape')
-
-      // As the old build left it: per vault, plain, in its own database.
+      // As the old build left it: per vault, plain, in its own database. Seeded
+      // before Settings is opened, which can start the move, and then reloaded.
       await page.evaluate(async () => {
         localStorage.removeItem('mentis:llm-keys-migrated')
         const db = await new Promise<IDBDatabase>((res, rej) => {
@@ -658,6 +705,8 @@ data: [DONE]
       await page.waitForSelector('[data-testid="main-sidebar"]:visible, nav:visible', {
         timeout: 30_000,
       })
+
+      await enableChat(page)
 
       const dialog = await openOpenAI(page)
       await expect(dialog.getByLabel('OpenAI API key')).toHaveValue('sk-old-111', {
