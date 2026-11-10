@@ -12,6 +12,9 @@ pub mod overlay;
 pub mod reminders;
 #[doc(hidden)]
 pub mod saf;
+#[cfg(desktop)]
+#[doc(hidden)]
+pub mod secrets;
 #[doc(hidden)]
 pub mod startup;
 #[doc(hidden)]
@@ -68,6 +71,12 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             startup::inbox_take,
             #[cfg(mobile)]
             startup::inbox_read_file,
+            #[cfg(desktop)]
+            secrets::secret_get,
+            #[cfg(desktop)]
+            secrets::secret_set,
+            #[cfg(desktop)]
+            secrets::secret_delete,
             #[cfg(desktop)]
             overlay::desktop_settings_get,
             #[cfg(desktop)]

@@ -8,7 +8,7 @@ import { cn } from '@/utils/cn'
 import { ProviderSection } from './provider-section'
 
 /** The AI section of the settings dialog: the switch, the providers with their keys and models. */
-export default function AiSettingsPanel({ config, update, saveNow, vaultId }: SettingsPanelProps) {
+export default function AiSettingsPanel({ config, update, saveNow }: SettingsPanelProps) {
   const chat = migrateChatSettings(config.chat)
   const [open, setOpen] = useState<ChatProviderId | null>(null)
 
@@ -42,7 +42,6 @@ export default function AiSettingsPanel({ config, update, saveNow, vaultId }: Se
                 key={p.id}
                 provider={p.id}
                 chat={chat}
-                vaultId={vaultId}
                 open={open === p.id}
                 onToggle={() => setOpen(open === p.id ? null : p.id)}
                 onChange={(next) => update({ chat: next })}

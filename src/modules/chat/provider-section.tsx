@@ -13,14 +13,13 @@ import { cn } from '@/utils/cn'
 interface Props {
   provider: ChatProviderId
   chat: ChatSettings
-  vaultId: string
   open: boolean
   onToggle: () => void
   onChange: (next: ChatSettings) => void
 }
 
 /** One provider in Settings › AI: its key, address and the models chosen from it. */
-export function ProviderSection({ provider, chat, vaultId, open, onToggle, onChange }: Props) {
+export function ProviderSection({ provider, chat, open, onToggle, onChange }: Props) {
   const meta = providerMeta(provider)
   const needsKey = providerNeedsApiKey(provider)
   const baseUrl = chat.baseUrls?.[provider] ?? ''
@@ -36,7 +35,7 @@ export function ProviderSection({ provider, chat, vaultId, open, onToggle, onCha
 
   useEffect(() => {
     let cancelled = false
-    void getChatKey(provider, vaultId)
+    void getChatKey(provider)
       .then((rec) => {
         if (cancelled) return
         setSavedKey(rec?.apiKey ?? '')
@@ -48,7 +47,7 @@ export function ProviderSection({ provider, chat, vaultId, open, onToggle, onCha
     return () => {
       cancelled = true
     }
-  }, [provider, vaultId])
+  }, [provider])
 
   const models = useChatModels(provider, savedKey, baseUrl || undefined, open)
 
@@ -79,19 +78,19 @@ export function ProviderSection({ provider, chat, vaultId, open, onToggle, onCha
     }
     setTestStatus('success')
     if (key) {
-      await setChatKey(provider, vaultId, { apiKey: key })
+      await setChatKey(provider, { apiKey: key })
       notifyChatKeyChanged()
     }
     setSavedKey(key)
-  }, [provider, typedKey, baseUrl, vaultId])
+  }, [provider, typedKey, baseUrl])
 
   const handleClearKey = useCallback(async () => {
-    await clearChatKey(provider, vaultId)
+    await clearChatKey(provider)
     notifyChatKeyChanged()
     setTypedKey('')
     setSavedKey('')
     setTestStatus('idle')
-  }, [provider, vaultId])
+  }, [provider])
 
   const addModel = (id: string) => {
     const model = id.trim()

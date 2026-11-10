@@ -44,7 +44,7 @@ export function ChatPanel({
   collapsed = false,
   onCollapsedChange,
 }: ChatPanelProps) {
-  const { vaultFs, vaultPath, config: sessionConfig } = useVaultSession()
+  const { vaultFs, config: sessionConfig } = useVaultSession()
   // The open vault's live config: the session's copy is from when the vault opened.
   const vaultConfig = useVaultStore((s) => s.config)
   const chatSettings = vaultConfig?.chat ?? sessionConfig.chat
@@ -117,7 +117,7 @@ export function ChatPanel({
     }
     // A local server needs no key; one is sent only if it was saved.
     const optional = !providerNeedsApiKey(settings.provider)
-    void getChatKey(settings.provider, vaultPath)
+    void getChatKey(settings.provider)
       .then((rec) => {
         if (cancelled) return
         setApiKey(rec?.apiKey ?? (optional ? '' : null))
@@ -131,7 +131,7 @@ export function ChatPanel({
     return () => {
       cancelled = true
     }
-  }, [settings.provider, vaultPath, keyVersion])
+  }, [settings.provider, keyVersion])
 
   // Autoscroll to bottom on new messages / streaming deltas.
   useEffect(() => {

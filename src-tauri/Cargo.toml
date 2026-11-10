@@ -33,6 +33,9 @@ tauri-plugin-notification = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
+# API keys in the OS credential store (src/secrets.rs). Desktop only: the crate
+# has no iOS or Android store, and those keep keys another way.
+keyring = "4"
 
 # Calling the Kotlin side directly from Rust's threads (src/saf.rs). Both are
 # already part of the Android build through Tauri.

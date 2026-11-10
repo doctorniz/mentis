@@ -556,6 +556,121 @@ data: [DONE]
     })
   })
 
+  test.describe('14.7 Where keys are kept', () => {
+    const openOpenAI = async (page: Page) => {
+      const dialog = await openAISettings(page)
+      await dialog.getByRole('button', { name: /^OpenAI/ }).click()
+      return dialog
+    }
+
+    test('14.7.1 A saved key is encrypted at rest, survives a reload, and can be cleared', async ({
+      vaultPage: page,
+    }) => {
+      await serveJson(page, 'https://api.openai.com/v1/models', { data: [{ id: 'gpt-next' }] })
+      await page.keyboard.press('Control+,')
+      let dialog = page.getByRole('dialog', { name: 'Settings' })
+      await dialog.getByRole('tab', { name: 'AI' }).click()
+      await dialog.getByRole('switch', { name: 'Chat' }).click()
+      await dialog.getByRole('button', { name: /^OpenAI/ }).click()
+      await dialog.getByLabel('OpenAI API key').fill('sk-test-777')
+      await dialog.getByRole('button', { name: 'Test' }).click()
+      await expect(dialog.getByText('Key saved', { exact: true })).toBeVisible({ timeout: 10_000 })
+
+      // On disk in the browser: a ciphertext and a key the page cannot export.
+      const stored = await page.evaluate(async () => {
+        const db = await new Promise<IDBDatabase>((res, rej) => {
+          const r = indexedDB.open('mentis-secrets', 1)
+          r.onsuccess = () => res(r.result)
+          r.onerror = () => rej(r.error)
+        })
+        const get = (k: string) =>
+          new Promise<{ iv: Uint8Array; data: ArrayBuffer } | CryptoKey | undefined>((res) => {
+            const q = db.transaction('secrets').objectStore('secrets').get(k)
+            q.onsuccess = () => res(q.result)
+          })
+        const rec = (await get('llm:openai')) as { iv: Uint8Array; data: ArrayBuffer }
+        const master = (await get('master')) as CryptoKey
+        const raw = new TextDecoder('latin1').decode(rec.data)
+        const legacy = (await indexedDB.databases()).map((d) => d.name)
+        return {
+          hasPlain: raw.includes('sk-test-777'),
+          ivLength: rec.iv.length,
+          extractable: master.extractable,
+          legacy,
+        }
+      })
+      expect(stored.hasPlain).toBe(false)
+      expect(stored.ivLength).toBe(12)
+      expect(stored.extractable).toBe(false)
+      expect(stored.legacy).not.toContain('mentis-llm-keys')
+
+      // It is not in the vault either.
+      expect(await readVaultFile(page, '_mentis/config.json')).not.toContain('sk-test-777')
+
+      await page.keyboard.press('Escape')
+      await page.reload()
+      await page.waitForSelector('[data-testid="main-sidebar"]:visible, nav:visible', {
+        timeout: 30_000,
+      })
+      dialog = await openAISettings(page)
+      await dialog.getByRole('button', { name: /^OpenAI/ }).click()
+      await expect(dialog.getByLabel('OpenAI API key')).toHaveValue('sk-test-777', {
+        timeout: 10_000,
+      })
+
+      await dialog.getByRole('button', { name: 'Clear' }).click()
+      await expect(dialog.getByText('No key saved')).toBeVisible()
+      await page.keyboard.press('Escape')
+      await page.reload()
+      await page.waitForSelector('[data-testid="main-sidebar"]:visible, nav:visible', {
+        timeout: 30_000,
+      })
+      dialog = await openOpenAI(page)
+      await expect(dialog.getByLabel('OpenAI API key')).toHaveValue('')
+    })
+
+    test('14.7.2 A key saved in plain text by an older build is moved, and the old copy goes', async ({
+      vaultPage: page,
+    }) => {
+      await page.keyboard.press('Control+,')
+      const first = page.getByRole('dialog', { name: 'Settings' })
+      await first.getByRole('tab', { name: 'AI' }).click()
+      await first.getByRole('switch', { name: 'Chat' }).click()
+      await page.keyboard.press('Escape')
+
+      // As the old build left it: per vault, plain, in its own database.
+      await page.evaluate(async () => {
+        localStorage.removeItem('mentis:llm-keys-migrated')
+        const db = await new Promise<IDBDatabase>((res, rej) => {
+          const r = indexedDB.open('mentis-llm-keys', 1)
+          r.onupgradeneeded = () => r.result.createObjectStore('keys')
+          r.onsuccess = () => res(r.result)
+          r.onerror = () => rej(r.error)
+        })
+        await new Promise<void>((res) => {
+          const tx = db.transaction('keys', 'readwrite')
+          tx.objectStore('keys').put({ apiKey: 'sk-old-111' }, 'llm:openai:/some/vault')
+          tx.oncomplete = () => res()
+        })
+        db.close()
+      })
+      await page.reload()
+      await page.waitForSelector('[data-testid="main-sidebar"]:visible, nav:visible', {
+        timeout: 30_000,
+      })
+
+      const dialog = await openOpenAI(page)
+      await expect(dialog.getByLabel('OpenAI API key')).toHaveValue('sk-old-111', {
+        timeout: 10_000,
+      })
+      const names = await page.evaluate(async () =>
+        (await indexedDB.databases()).map((d) => d.name),
+      )
+      expect(names).not.toContain('mentis-llm-keys')
+      expect(names).toContain('mentis-secrets')
+    })
+  })
+
   test.describe('14.6 Reactivity & Edge Cases', () => {
     test('14.6.3 On, with no provider chosen — says to choose one', async ({ vaultPage: page }) => {
       await enableChat(page)

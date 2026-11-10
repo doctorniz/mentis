@@ -353,7 +353,7 @@ export function VaultChatView() {
     }
     // A local server needs no key; one is sent only if it was saved.
     const optional = !providerNeedsApiKey(settings.provider)
-    void getChatKey(settings.provider, vaultPath)
+    void getChatKey(settings.provider)
       .then((rec) => {
         if (cancelled) return
         setApiKey(rec?.apiKey ?? (optional ? '' : null))
@@ -367,7 +367,7 @@ export function VaultChatView() {
     return () => {
       cancelled = true
     }
-  }, [settings.provider, vaultPath, keyVersion])
+  }, [settings.provider, keyVersion])
 
   const contextWindow = useContextWindow(settings, keyChecked ? apiKey : null)
   const providerMissing = !settings.provider

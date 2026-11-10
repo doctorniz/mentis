@@ -125,7 +125,7 @@ are single paragraphs comes back tight.
 
 What is _not_ in files is derived or per-device: the index (§5), per-device
 preferences in `localStorage` (theme, panel widths, "Draw with"), OAuth tokens
-and API keys in IndexedDB or the OS, the desktop's `app-settings.json`.
+in IndexedDB, chat API keys (see §8), the desktop's `app-settings.json`.
 
 ---
 
@@ -254,7 +254,16 @@ bring-your-own keys (OpenRouter, Anthropic, OpenAI, Gemini), or a server the
 user runs, on this machine or the LAN (Ollama, llama.cpp; both speak the
 OpenAI API under `/v1`, and the address may be typed with or without it). Each
 provider has its own base URL, so a key is only ever sent to its own host.
-There is no on-device model. Models are not listed in the app: Settings asks the
+There is no on-device model. API keys are one per provider per device, never in
+the vault or `config.json` (`key-store.ts`). The desktop app keeps them in the
+operating system's credential store through the `keyring` crate (`secrets.rs`;
+the Secret Service on Linux). Everywhere else (the website, and for now the phone
+apps) a key is AES-GCM encrypted and the encryption key is a non-extractable
+`CryptoKey` in IndexedDB: that stops it being read out of storage, but script
+running on the page could still ask the browser to decrypt, so it is the weaker
+of the two. Where the desktop store fails the key is kept that second way. Keys
+from older builds (plain text, per vault) are moved on first use. Models are not
+listed in the app: Settings asks the
 provider's models endpoint (`model-catalog.ts`) and a model can also be typed.
 The models a person picks, from any provider, are kept in `chat.picks`; the
 composer's picker switches between them and the choice is saved as the one in
