@@ -383,7 +383,7 @@ export function AboutOverlay({ onBack }: { onBack: () => void }) {
           <p className="text-fg-muted mb-8 text-center text-xs">
             Licensed under BSL 1.1 — see{' '}
             <a
-              href="https://github.com/nicholasgriffintn/ink-marrow/blob/main/LICENSE"
+              href="https://github.com/doctorniz/mentis/blob/main/LICENSE"
               target="_blank"
               rel="noopener noreferrer"
               className="text-accent hover:underline"

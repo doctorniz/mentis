@@ -21,6 +21,12 @@ App Transport Security allows plain `http://` to local addresses only
 (`NSAllowsLocalNetworking`), for Ollama on the LAN; the first request asks
 for local network access (`NSLocalNetworkUsageDescription`).
 
+## Microphone and camera
+
+Voice notes and _Take photo_ need `NSMicrophoneUsageDescription` and
+`NSCameraUsageDescription` (`src-tauri/Info.ios.plist`); iOS closes an app
+that asks for either without them.
+
 ## Vaults
 
 A vault is either:

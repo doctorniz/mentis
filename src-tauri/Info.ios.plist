@@ -16,5 +16,11 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Mentis connects to Ollama on your network.</string>
+	<!-- Voice notes record in the web view, and "Take photo" opens the camera:
+	     iOS closes the app at either without these. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mentis records voice notes.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Mentis takes photos for your notes.</string>
 </dict>
 </plist>
