@@ -68,6 +68,8 @@ interface InitArgs {
 interface VaultChatState {
   /** True once the store has loaded threads for the current vault session. */
   initialized: boolean
+  /** The vault the loaded threads belong to. */
+  loadedVaultPath: string | null
   /** All vault-scoped threads, newest first. */
   threads: ChatThread[]
   activeThreadId: string | null
@@ -100,6 +102,7 @@ function titleFromFirstUserMessage(text: string): string {
 export const useVaultChatStore = create<VaultChatState>()(
   immer((set, get) => ({
     initialized: false,
+    loadedVaultPath: null,
     threads: [],
     activeThreadId: null,
     compacting: false,
@@ -114,10 +117,16 @@ export const useVaultChatStore = create<VaultChatState>()(
       }),
 
     init: async ({ vaultFs, vaultPath }) => {
+      // Leaving the chat view and coming back is the same vault: keep the
+      // loaded threads, and any answer still being written, as they are.
+      const current = get()
+      if (current.initialized && current.loadedVaultPath === vaultPath) return
+
       // Cancel anything still streaming from a previous vault session.
-      get().abort?.abort()
+      current.abort?.abort()
 
       set((s) => {
+        s.loadedVaultPath = vaultPath
         s.threads = []
         s.activeThreadId = null
         s.isStreaming = false
@@ -171,6 +180,7 @@ export const useVaultChatStore = create<VaultChatState>()(
     reset: () => {
       get().abort?.abort()
       set((s) => {
+        s.loadedVaultPath = null
         s.threads = []
         s.activeThreadId = null
         s.isStreaming = false
