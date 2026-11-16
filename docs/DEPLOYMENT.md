@@ -98,9 +98,12 @@ In GitHub, Settings › Secrets and variables › Actions:
 | `APPLE_CERTIFICATE`          | the Developer ID Application certificate, exported as `.p12`, `base64 -i cert.p12` |
 | `APPLE_CERTIFICATE_PASSWORD` | the password given when exporting it                                               |
 | `APPLE_SIGNING_IDENTITY`     | `Developer ID Application: <name> (<team id>)`                                     |
-| `APPLE_ID`                   | the Apple ID email of the developer account                                        |
-| `APPLE_PASSWORD`             | an app-specific password for it (account.apple.com)                                |
-| `APPLE_TEAM_ID`              | the team ID (developer.apple.com, Membership)                                      |
+| `APPLE_API_ISSUER`           | the Issuer ID (App Store Connect › Users and Access › Integrations)                |
+| `APPLE_API_KEY`              | the Key ID of an App Store Connect API key with the Developer role                 |
+| `APPLE_API_KEY_CONTENT`      | the text of that key's `.p8` file, which Apple lets you download once              |
+
+Notarization signs in with the API key, not the Apple ID: an Apple ID's
+password can be locked by Apple, and a locked one fails the build with a 401.
 
 iOS is not in the release: an iPhone installs only from TestFlight or the
 App Store ([`IOS.md`](./IOS.md)).
