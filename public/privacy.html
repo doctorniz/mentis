@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mentis privacy policy</title>
+    <meta name="description" content="What Mentis does and does not do with your data." />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #1c1e21;
+        --muted: #5c6168;
+        --accent: #4c6ef5;
+        --rule: #e3e5e8;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #15171a;
+          --fg: #e8eaed;
+          --muted: #9aa0a8;
+          --accent: #8da2ff;
+          --rule: #2b2f34;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      main {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 2.5rem 1rem 4rem;
+      }
+      h1 {
+        font-size: 1.75rem;
+        margin: 0 0 0.25rem;
+      }
+      h2 {
+        font-size: 1.2rem;
+        margin: 2.25rem 0 0.5rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--rule);
+      }
+      p,
+      li {
+        margin: 0.5rem 0;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Mentis privacy policy</h1>
+      <p class="muted">Last updated 17 November 2026</p>
+
+      <p>
+        Mentis keeps your notes, PDFs, drawings, tasks and everything else you write as ordinary
+        files in a folder you choose. We run no server that holds your data.
+      </p>
+
+      <h2>What stays on your device</h2>
+      <p>
+        Your files, the search index built from them, your settings and your API keys never leave
+        your device unless you switch on one of the features below. We do not receive them and
+        cannot read them.
+      </p>
+
+      <h2>What leaves your device, and only when you use it</h2>
+      <ul>
+        <li>
+          <strong>Cloud sync (Dropbox).</strong> If you connect Dropbox, Mentis sends your vault's
+          files to and from your own Dropbox, using the access you grant. Dropbox's privacy policy
+          applies to what it holds. We never see your files or your Dropbox sign-in.
+        </li>
+        <li>
+          <strong>AI chat.</strong> Chat is off until you turn it on in Settings › AI. When you ask
+          a question, Mentis sends it, together with excerpts from your notes that it found
+          relevant, to the provider you chose (OpenRouter, Anthropic, OpenAI or Google Gemini),
+          using your own API key, or to an Ollama or llama.cpp server you run. That provider's
+          terms and privacy policy apply to what it receives. Mentis does not send chat anywhere
+          else.
+        </li>
+        <li>
+          <strong>Bookmark previews.</strong> When you save a bookmark, Mentis asks the Microlink
+          service (api.microlink.io) for the page's title and image, which sends it the address you
+          saved, and loads the site's icon from Google's favicon service
+          (www.google.com/s2/favicons), which receives the site's domain name.
+        </li>
+        <li>
+          <strong>Voice notes.</strong> Recording and transcription happen on your device. The
+          first time you transcribe, Mentis downloads a speech model from Hugging Face
+          (huggingface.co), which sees that download request and your network address but none of
+          your audio.
+        </li>
+        <li>
+          <strong>Links and images in your notes.</strong> A web link or remote image in a note is
+          fetched from the site it points to when you open it, as in any web browser.
+        </li>
+      </ul>
+
+      <h2>Permissions</h2>
+      <ul>
+        <li>
+          <strong>Microphone</strong> for voice notes, and <strong>camera</strong> for photos you
+          take into a note. Neither is used until you press the control for it.
+        </li>
+        <li>
+          <strong>Files and folders</strong> you pick, so Mentis can read and write your vault
+          there.
+        </li>
+        <li>
+          <strong>Local network</strong>, only if you point chat at an Ollama or llama.cpp server on
+          your own network.
+        </li>
+      </ul>
+
+      <h2>This website</h2>
+      <p>
+        mentis.ink is hosted by Vercel, which keeps ordinary server logs (such as IP address and
+        pages requested) to run the service. The web version of the app stores your files in your
+        browser, or in a folder you pick, on your device. It does not upload them.
+      </p>
+
+      <h2>Children</h2>
+      <p>
+        Mentis collects no personal information from anyone, including children.
+      </p>
+
+      <h2>Medical use</h2>
+      <p>Mentis is not designed for clinical or patient data. Please do not store it there.</p>
+
+      <h2>Changes</h2>
+      <p>
+        If this policy changes, the date above changes with it, and the new version replaces this
+        one here.
+      </p>
+
+      <h2>Contact</h2>
+      <p>Questions about privacy: <a href="mailto:admin@mentis.ink">admin@mentis.ink</a></p>
+    </main>
+  </body>
+</html>
