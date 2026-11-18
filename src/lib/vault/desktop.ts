@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { TauriFsAdapter } from '@/lib/fs/tauri'
-import { createVault, isVault, loadVaultConfig } from '@/lib/vault'
+import { createVault, isVault, loadVaultConfig, saveVaultConfig } from '@/lib/vault'
 import { setStoredActiveVaultPath } from '@/lib/vault/session-storage'
 import type { VaultSession } from '@/lib/vault/session'
 
@@ -21,7 +21,25 @@ export interface RecentVault {
   available: boolean
 }
 
-function folderName(path: string): string {
+/**
+ * The folder's name. On Android a vault is a Storage Access Framework tree,
+ * `content://…/tree/primary%3ANotes%2FWork`, or `<tree>|<name>` for a folder
+ * made inside one (SafPlugin.kt): the name is the last part of the decoded id.
+ */
+export function folderName(path: string): string {
+  if (path.startsWith('content://')) {
+    const made = path.lastIndexOf('|')
+    if (made >= 0) return path.slice(made + 1).split('/').filter(Boolean).pop() || 'Vault'
+    const last = path.split('/').filter(Boolean).pop() ?? ''
+    let id = last
+    try {
+      id = decodeURIComponent(last)
+    } catch {
+      // keep it as it is
+    }
+    const inVolume = id.slice(id.indexOf(':') + 1)
+    return inVolume.split('/').filter(Boolean).pop() || 'Vault'
+  }
   return path.split(/[\\/]/).filter(Boolean).pop() ?? path
 }
 
@@ -29,7 +47,12 @@ function folderName(path: string): string {
 async function openAt(root: string, name: string): Promise<VaultSession> {
   const fs = new TauriFsAdapter(root)
   await fs.init()
-  const config = (await isVault(fs)) ? await loadVaultConfig(fs) : await createVault(fs, name)
+  let config = (await isVault(fs)) ? await loadVaultConfig(fs) : await createVault(fs, name)
+  // 0.1.3 and earlier named an Android vault after its encoded address.
+  if (/%3A/i.test(config.name) && root.startsWith('content://')) {
+    config = { ...config, name: folderName(root) }
+    await saveVaultConfig(fs, config).catch(() => {})
+  }
   const vaultPath = `${DESKTOP_ID_PREFIX}${root}`
   setStoredActiveVaultPath(vaultPath)
   return { rootFs: fs, vaultFs: fs, vaultPath, config }

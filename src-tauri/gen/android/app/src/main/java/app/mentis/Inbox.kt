@@ -23,6 +23,8 @@ import java.util.UUID
  *   them lasts; the app reads and removes them (`inbox_read_file`).
  * - `{type: "launch", target}`: an app shortcut, the widget or the Quick
  *   Settings tile: "capture", "task" or "journal".
+ * - `{type: "oauth-callback", url}`: Dropbox sign-in coming back from
+ *   mentis.ink/auth/dropbox as `mentis://auth/dropbox?code=…&state=…`.
  */
 object Inbox {
   const val ACTION_OPEN_REMINDER = "app.mentis.OPEN_REMINDER"
@@ -60,6 +62,12 @@ object Inbox {
         }
       }
       Intent.ACTION_SEND_MULTIPLE -> shareFiles(context, streams(intent))
+      Intent.ACTION_VIEW -> {
+        val uri = intent.data ?: return
+        if (uri.scheme == "mentis" && uri.host == "auth") {
+          entries.add(JSONObject().put("type", "oauth-callback").put("url", uri.toString()))
+        }
+      }
     }
   }
 

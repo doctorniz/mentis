@@ -12,6 +12,10 @@ import {
   Folder,
   FolderPlus,
   GitFork,
+  Lightbulb,
+  ListTodo,
+  Loader2,
+  type LucideIcon,
   PanelLeftClose,
   Pencil,
   Plus,
@@ -30,6 +34,9 @@ import { createUntitledNote } from '@/lib/notes/new-note'
 import { showEditor } from '@/lib/notes/show-editor'
 import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
 import { calendarDir } from '@/lib/calendar/folder'
+import { DEFAULT_TASK_INBOX } from '@/lib/tasks/index'
+import { THOUGHTS_DIR, type VaultConfig } from '@/types/vault'
+import type { ViewId } from '@/core/registries/views'
 import { useUiStore } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
 import { awaitPendingMarkdownSave } from '@/lib/notes/pending-saves'
@@ -43,6 +50,25 @@ import { RenameNoteDialog } from '@/components/notes/rename-note-dialog'
 import { cn } from '@/utils/cn'
 
 const DND_TYPE = 'application/x-ink-tree-path'
+
+/** Folders shown in the tree as a way to a page, not as a folder of files. */
+const FOLDER_VIEWS = {
+  calendar: { view: 'calendar', icon: CalendarDays },
+  board: { view: 'board', icon: Lightbulb },
+  tasks: { view: 'tasks', icon: ListTodo },
+} as const satisfies Record<string, { view: ViewId; icon: LucideIcon }>
+
+const trimSlashes = (s: string) => s.replace(/^\/+|\/+$/g, '')
+
+/** The page a folder opens, if it is the Calendar, Thoughts or tasks inbox folder. */
+function viewForFolder(path: string, config: VaultConfig | null): keyof typeof FOLDER_VIEWS | null {
+  if (calendarDir(config) === path) return 'calendar'
+  if ((trimSlashes(config?.thoughtsFolder ?? '') || THOUGHTS_DIR) === path) return 'board'
+  const inbox = trimSlashes(config?.taskInbox?.trim() || DEFAULT_TASK_INBOX)
+  const tasksDir = inbox.includes('/') ? inbox.slice(0, inbox.lastIndexOf('/')) : ''
+  if (tasksDir && tasksDir === path) return 'tasks'
+  return null
+}
 
 function fileTitleFromPath(path: string): string {
   return titleFromVaultPath(path)
@@ -86,18 +112,39 @@ export function NotesFileTree({
   const openTab = useEditorStore((s) => s.openTab)
   const addRecentFile = useEditorStore((s) => s.addRecentFile)
 
+  // Whether the root has been shown. Until it has, every listing may answer
+  // from the index first: a refresh that replaces the first listing (the app
+  // coming back to the front) must not leave the tree blank while a slow
+  // folder is read.
   const rootShown = useRef(false)
   const refresh = useCallback(
-    (isCancelled?: () => boolean) => {
-      const fromIndex = !rootShown.current
-      rootShown.current = true
-      return listFolder(vaultFs, '', setRootEntries, isCancelled, fromIndex)
+    (isCancelled: () => boolean = () => false) => {
+      const show = (entries: FileEntry[]) => {
+        rootShown.current = true
+        setRootEntries(entries)
+      }
+      const list = () => listFolder(vaultFs, '', show, isCancelled, !rootShown.current)
+      // A folder that cannot be read yet (a phone still restoring access) is tried once more.
+      return list().catch(
+        () =>
+          new Promise<void>((resolve) =>
+            window.setTimeout(() => {
+              if (isCancelled()) return resolve()
+              list()
+                .catch(() => {
+                  if (!isCancelled() && !rootShown.current) setRootEntries([])
+                })
+                .finally(resolve)
+            }, 800),
+          ),
+      )
     },
     [vaultFs],
   )
 
   useEffect(() => {
     rootShown.current = false
+    setRootEntries(null)
   }, [vaultFs])
 
   useEffect(() => {
@@ -459,7 +506,11 @@ export function NotesFileTree({
               ))}
             </div>
           )}
-          {rootEntries?.length === 0 && starredPaths.length === 0 ? (
+          {rootEntries === null ? (
+            <div className="flex justify-center px-3 py-4" role="status" aria-label="Loading files">
+              <Loader2 className="text-fg-muted size-4 animate-spin" aria-hidden />
+            </div>
+          ) : rootEntries.length === 0 && starredPaths.length === 0 ? (
             <p className="text-fg-muted px-3 py-4 text-center text-xs">No files yet.</p>
           ) : (
             <div role="tree" aria-label="Vault file tree">
@@ -568,7 +619,12 @@ function TreeNode({
   const inlineInputRef = useRef<HTMLInputElement>(null)
   const childrenShown = useRef(false)
   const isEditing = inlineEditPath === entry.path
-  const isCalendar = useVaultStore((s) => entry.isDirectory && calendarDir(s.config) === entry.path)
+  // The Calendar, Thoughts and Tasks folders open their pages; their files are not listed.
+  const folderViewId = useVaultStore((s) =>
+    entry.isDirectory ? viewForFolder(entry.path, s.config) : null,
+  )
+  const folderView = folderViewId ? FOLDER_VIEWS[folderViewId] : null
+  const isCalendar = folderView !== null
 
   useEffect(() => {
     if (!entry.isDirectory || !expanded || isCalendar) return
@@ -580,18 +636,18 @@ function TreeNode({
     }
   }, [entry.isDirectory, entry.path, expanded, vaultFs, refreshToken, isCalendar])
 
-  // The Calendar folder opens the calendar; its event files are not listed.
-  if (isCalendar) {
+  if (folderView) {
+    const FolderIcon = folderView.icon
     return (
       <div role="treeitem" aria-level={depth + 1} aria-selected={false}>
         <button
           type="button"
-          onClick={() => useUiStore.getState().setActiveView('calendar')}
+          onClick={() => useUiStore.getState().setActiveView(folderView.view)}
           className="text-fg hover:bg-bg-hover mx-1 flex w-[calc(100%-0.5rem)] items-center gap-1 rounded-md py-1 pr-1 text-left text-[13px] transition-colors"
           style={{ paddingLeft: 2 + depth * 14 }}
         >
           <span className="size-4 shrink-0" aria-hidden />
-          <CalendarDays className="text-fg-muted size-4 shrink-0" aria-hidden />
+          <FolderIcon className="text-fg-muted size-4 shrink-0" aria-hidden />
           <span className="min-w-0 truncate font-medium">{entry.name}</span>
         </button>
       </div>

@@ -40,6 +40,8 @@ export interface CaptureBarProps {
   onEscapeEmpty?: () => void
   /** A destination's confirmation dialog opened or closed. */
   onConfirmingChange?: (open: boolean) => void
+  /** Start with this destination picked (removable), e.g. Tasks when opened from Tasks. */
+  initialDestination?: string
 }
 
 const UNDO_MS = 10_000
@@ -71,12 +73,16 @@ export function CaptureBar({
   onSaved,
   onEscapeEmpty,
   onConfirmingChange,
+  initialDestination,
 }: CaptureBarProps) {
   const { vaultFs } = useVaultSession()
   const inputRef = useRef<HTMLInputElement>(null)
   const [text, setText] = useState('')
   /** A destination picked with `/`, shown as a chip. */
-  const [picked, setPicked] = useState<CaptureDestination | null>(null)
+  const [picked, setPicked] = useState<CaptureDestination | null>(() => {
+    const d = initialDestination ? captureDestinations.get(initialDestination) : undefined
+    return d && !d.pick && d.id !== boundDestination ? d : null
+  })
   const [pickerIndex, setPickerIndex] = useState(0)
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState<WriteResult | null>(null)
@@ -154,6 +160,19 @@ export function CaptureBar({
 
   function choose(d: CaptureDestination | undefined) {
     if (!d) return
+    if (d.pick) {
+      setText('')
+      setPicked(null)
+      d.pick({ ...ctx, now: new Date() })
+        .then((result) => {
+          if (result) finishSaved(result, d)
+        })
+        .catch((err: unknown) => {
+          console.error(`${d.label} failed:`, err)
+          toast.error(`Could not add ${d.label.toLowerCase()}`)
+        })
+      return
+    }
     setPicked(d === bound ? null : d)
     setText('')
     inputRef.current?.focus()
@@ -171,6 +190,10 @@ export function CaptureBar({
     // `/word ` with a known sigil picks it, and the rest becomes the payload.
     const sigil = !picked && /^(\/\S+)\s(.*)$/s.exec(next)
     const named = sigil ? captureDestinations.bySigil(sigil[1]!) : undefined
+    if (sigil && named?.pick) {
+      choose(named)
+      return
+    }
     if (sigil && named) {
       setPicked(named === bound ? null : named)
       setText(sigil[2]!)

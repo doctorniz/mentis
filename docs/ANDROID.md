@@ -67,6 +67,19 @@ Alarms are exact: `USE_EXACT_ALARM` (Android 13+, allowed for reminder and
 calendar apps) and `SCHEDULE_EXACT_ALARM` up to Android 12. Without them
 Android may deliver a reminder up to an hour late.
 
+## Microphone and camera
+
+Voice notes need `RECORD_AUDIO` (and `MODIFY_AUDIO_SETTINGS`) in the
+manifest: the web view asks Android for the microphone when recording starts,
+and without the declaration Android refuses at once. _Take photo_ goes
+through the camera app, so it needs no permission.
+
+## Dropbox sign-in
+
+The activity takes `mentis://auth/dropbox` links (a `VIEW` intent filter);
+`Inbox.kt` keeps one as an `oauth-callback` entry and `launch-inbox.ts` hands
+it to the waiting sign-in. See [`CLOUD_SYNC.md`](./CLOUD_SYNC.md).
+
 ## Shares and quick capture
 
 Android hands the app things to show through the activity's intents; `Inbox.kt`

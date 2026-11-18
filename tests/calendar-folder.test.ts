@@ -8,6 +8,7 @@ import {
   hasEventFilename,
   isEventPath,
   parseCalendarEvent,
+  serializeCalendarEvent,
 } from '@/lib/calendar'
 
 vi.mock('@/lib/search/build-vault-index', () => ({ reindexFilePath: vi.fn(async () => {}) }))
@@ -98,6 +99,17 @@ describe('parseCalendarEvent', () => {
       '2026-11-04T09:30',
       '2026-11-01T00:00:00.000Z',
     ])
+  })
+
+  it('keeps the title out of the notes', () => {
+    const raw = serializeCalendarEvent(
+      { uid: 'u', start: '2026-11-03', end: '2026-11-03', allDay: true } as never,
+      'Trip',
+      'Pack **boots**',
+    )
+    const ev = parseCalendarEvent('Calendar/a.md', raw)
+    expect(ev.title).toBe('Trip')
+    expect(ev.body).toBe('Pack **boots**')
   })
 })
 

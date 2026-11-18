@@ -39,7 +39,7 @@ Mac). See `docs/ARCHITECTURE.md`, `docs/ANDROID.md` and `docs/IOS.md`.
 - **Tasks are checkbox lines in notes:** a line like
   `- [ ] text >date HH:mm !2 #tag every monday`. Ticking writes
   `done:YYYY-MM-DD`, a snooze writes `snooze:…`, and indented checkboxes are
-  subtasks. New tasks go to `Inbox.md` (a setting). The index's `tasks`
+  subtasks. New tasks go to `Tasks/Inbox.md` (a setting). The index's `tasks`
   table is derived. (Replaced `_mentis/_tasks` on 2026-10-29. No migration.)
 - **Lists:** a `.list.md` file, opened in the list editor; its checkboxes
   are not tasks. A file's type comes from its name, never its contents.

@@ -96,6 +96,12 @@ export interface CaptureDestination {
   enrich?(values: Record<string, unknown>): Promise<Record<string, unknown>>
   /** Write the values. Resolves to null when there is nothing to save (no title). */
   write(values: Record<string, unknown>, ctx: CaptureContext): Promise<WriteResult | null>
+  /**
+   * Picking it acts at once instead of taking text: a file picker, the
+   * camera, a new drawing. Called straight from the user's click or key, so
+   * it may open a picker; resolves when done (null if cancelled).
+   */
+  pick?(ctx: CaptureContext): Promise<WriteResult | null>
   /** Load whatever `parse` needs, ahead of the first use. */
   preload?(): void
   /** Absent means always on. Off, the destination is not offered and its sigil is not recognised. */

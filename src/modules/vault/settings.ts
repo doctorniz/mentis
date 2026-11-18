@@ -26,7 +26,7 @@ const sections: readonly SettingsSection[] = [
         id: 'taskInbox',
         kind: 'text',
         label: 'New tasks go to',
-        placeholder: 'Inbox.md',
+        placeholder: 'Tasks/Inbox.md',
         get: (c) => c.taskInbox,
         set: (_, taskInbox) => ({ taskInbox }),
       },

@@ -13,7 +13,7 @@ async function addTimedTask(page: Page, title: string, at: Date) {
   await expect(page.getByText(`Remind ${hm(at)}`)).toBeVisible({ timeout: 10_000 })
   await bar.press('Enter')
   await expect
-    .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+    .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
     .toContain(`- [ ] ${title} >${ymd(at)} ${hm(at)}`)
 }
 
@@ -73,7 +73,7 @@ test.describe('29 — Reminders: data', () => {
     await expect(dialog.getByLabel('Due date')).toHaveValue(ymd(tomorrow))
     await expect(dialog.getByLabel('Remind at')).toHaveValue('09:00')
     await expect
-      .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+      .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
       .toContain(`- [ ] Call mum >${ymd(tomorrow)} 09:00`)
   })
 })
@@ -95,7 +95,7 @@ test.describe('29 — Reminders: delivery', () => {
     await page.getByRole('menuitem', { name: '10 minutes' }).click()
     await expect(card).toBeHidden()
     await expect
-      .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+      .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
       .toMatch(/- \[ \] Water plants .* snooze:\d{4}-\d\d-\d\dT\d\d:\d\d/)
   })
 
@@ -151,7 +151,7 @@ test.describe('29 — Reminders: delivery', () => {
     await summary.getByRole('button', { name: 'Done all' }).click()
     await expect(summary).toBeHidden()
     await expect
-      .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+      .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
       .toMatch(/- \[x\] Take pills .* done:/)
 
     // Offered once: the next launch has nothing missed.
@@ -194,7 +194,7 @@ test.describe('29 — Reminders: tab', () => {
     await expect(missed).toBeHidden()
     await expect(page.getByLabel('1 missed')).toBeHidden({ timeout: 10_000 })
     await expect
-      .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+      .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
       .toMatch(/- \[x\] Renew passport .* done:/)
   })
 

@@ -113,7 +113,8 @@ in the folder is a thought), `Journal/` (`YYYY-MM-DD.md`), `Attachments/`
 per event, `YYYY-MM-DD Title.md`; every note directly in the folder is an
 event). Being outside `_mentis/`, they appear in search and graph, and all
 but `Calendar/` in the tree: there the Calendar folder opens the Calendar
-view and lists no files.
+view and lists no files, as the Thoughts folder opens Thoughts and the tasks
+inbox's folder (`Tasks/` in a new vault) opens Tasks.
 
 **Markdown notes** load into the editor through marked and save through
 turndown (`src/lib/editor/markdown-bridge.ts`). Opening and saving a note
@@ -181,7 +182,11 @@ measurement; Android's "Fully drawn" log).
 
 **Capture.** Bare text goes to Thoughts at once, with Undo. `/` picks a
 destination (Journal, Calendar, Task, List, Bookmark, Note, and Chat while chat is on), each shown
-for confirmation first; `@` is reserved for file references. Dates are read by
+for confirmation first; `@` is reserved for file references. `/file`,
+`/photo` and `/canvas` act at once instead of taking text (a destination's
+`pick`): a file picker, the camera, a new drawing. On a phone, Capture opened
+from Tasks, Calendar, Journal or Bookmarks starts with that destination
+picked. Dates are read by
 chrono-node (loaded lazily, English only), never by AI. Capture is reachable
 from the capture bar, the command palette, the desktop's global hotkey and
 overlay window, and on the phone from shares, app shortcuts, a widget and a
@@ -197,7 +202,7 @@ ticking a weekly task adds the next one above it. A reminder's Snooze writes
 into the index's `tasks` table, which the Tasks view, the calendar and
 reminders read; edits rewrite the one line in its note (found again by its
 text if lines above it moved) and reindex that note. New tasks are added to
-`Inbox.md` (Settings › Vault). Kanban, slides, mindmap and list files are not
+`Tasks/Inbox.md` in a new vault (Settings › Vault). Kanban, slides, mindmap and list files are not
 read for tasks.
 
 **Lists** are `.list.md` files (the tree shows them without the suffix, with
@@ -242,8 +247,9 @@ Done and Snooze are written into the item's file (`reminderAck`,
 kept as a conflict copy, a manifest and hash cache so only changed files are hashed,
 excludes (`_mentis/snapshots`, `_mentis/trash`, `sync.excludePaths`). Deletes go
 to a dated trash folder on each side, and a run that would delete many files asks first. Sign-in returns to
-`/auth/dropbox` on the web and to a one-shot listener on `127.0.0.1` in the
-desktop and Android apps (RFC 8252). See [`CLOUD_SYNC.md`](./CLOUD_SYNC.md).
+`/auth/dropbox` on the web, to a one-shot listener on `127.0.0.1` in the
+desktop app (RFC 8252), and on Android to mentis.ink's `/auth/dropbox`, which
+hands it to the app as a `mentis://auth/dropbox` link. See [`CLOUD_SYNC.md`](./CLOUD_SYNC.md).
 
 **AI chat** is read-and-answer only (no writes), and off until `chat.enabled`
 is set in Settings › AI. Off, it is absent rather than hidden: the views,
@@ -306,7 +312,7 @@ searchable, linkable, and opened read-only in `file-viewer.tsx`, rendered the wa
 | `watch.rs`                      | the desktop file watcher                                                         |
 | `reminders.rs`                  | reminder delivery (desktop thread; Android hands off to Kotlin)                  |
 | `overlay.rs`, `app_settings.rs` | desktop: tray, capture hotkey and overlay window, launch at login, close to tray |
-| `oauth.rs`                      | the loopback sign-in listener                                                    |
+| `oauth.rs`                      | the loopback sign-in listener; on Android, opening the browser for sign-in       |
 | `startup.rs`                    | shell-ready signal, cold-start measurement, Android activity hooks               |
 
 Android's Kotlin lives in `src-tauri/gen/android/app/src/main/java/app/mentis/`

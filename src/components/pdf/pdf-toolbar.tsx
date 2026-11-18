@@ -17,7 +17,10 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
+import { useState } from 'react'
 import { usePdfStore } from '@/stores/pdf'
+import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
+import { useMediaQuery } from '@/lib/browser/use-media-query'
 import { PdfTool, HighlightColor } from '@/types/pdf'
 import type { Signature } from '@/types/pdf'
 import { cn } from '@/utils/cn'
@@ -132,11 +135,70 @@ export function PdfToolbar({
   const setCurrentPage = usePdfStore((s) => s.setCurrentPage)
   const doc = usePdfStore((s) => s.document)
   const pageCount = doc?.pageCount ?? 0
+  // A phone: one scrolling row, and the colours behind a single swatch.
+  const compact = useMediaQuery(MOBILE_NAV_MEDIA_QUERY)
+  const [colorsOpen, setColorsOpen] = useState(false)
+
+  const colorTool =
+    activeTool === PdfTool.Highlight || activeTool === PdfTool.Draw || activeTool === PdfTool.Text
+  const swatches =
+    activeTool === PdfTool.Highlight
+      ? COLORS
+      : activeTool === PdfTool.Draw
+        ? DRAW_SWATCHES
+        : TEXT_SWATCHES
+  const currentColor =
+    activeTool === PdfTool.Highlight
+      ? highlightColor
+      : activeTool === PdfTool.Draw
+        ? drawColor
+        : textColor
+  const kind =
+    activeTool === PdfTool.Highlight ? 'highlight' : activeTool === PdfTool.Draw ? 'pen' : 'text'
+
+  const swatchButtons = swatches.map((c) => (
+    <button
+      key={c}
+      type="button"
+      title={colorName(c)}
+      aria-label={`${colorName(c)} ${kind} colour`}
+      onClick={() => {
+        if (activeTool === PdfTool.Highlight) setHighlightColor(c)
+        else if (activeTool === PdfTool.Draw) setDrawColor(c)
+        else setTextColor(c)
+        if (compact) setColorsOpen(false)
+      }}
+      className={cn(
+        'shrink-0 rounded-full border-2 transition-transform',
+        compact ? 'size-7' : 'size-5',
+        currentColor === c ? 'border-accent scale-110' : 'border-transparent',
+      )}
+      style={{ backgroundColor: c }}
+    />
+  ))
+
+  const widthControl = activeTool === PdfTool.Draw && (
+    <label className="text-fg-secondary ml-1 flex shrink-0 items-center gap-1 text-xs">
+      Width
+      <input
+        type="range"
+        min={1}
+        max={12}
+        value={strokeWidth}
+        onChange={(e) => setStrokeWidth(Number(e.target.value))}
+        className="accent-accent w-20"
+      />
+      <span className="w-4 text-center">{strokeWidth}</span>
+    </label>
+  )
 
   return (
     <>
       <div
-        className="border-border bg-bg-secondary flex flex-wrap items-center gap-1 border-b px-2 py-1.5"
+        className={cn(
+          'border-border bg-bg-secondary flex items-center gap-1 border-b px-2 py-1.5',
+          compact ? 'touch-pan-x flex-nowrap overflow-x-auto [&>*]:shrink-0' : 'flex-wrap',
+        )}
         role="toolbar"
         aria-label="PDF tools"
       >
@@ -185,74 +247,36 @@ export function PdfToolbar({
 
         <span className="bg-border mx-1 h-5 w-px" aria-hidden />
 
-        {(activeTool === PdfTool.Highlight ||
-          activeTool === PdfTool.Draw ||
-          activeTool === PdfTool.Text) && (
-          <div
-            className="flex items-center gap-1"
-            role="group"
-            aria-label={
-              activeTool === PdfTool.Highlight
-                ? 'Highlighter colours'
-                : activeTool === PdfTool.Draw
-                  ? 'Pen colours'
-                  : 'Text box colours'
-            }
-          >
-            {(activeTool === PdfTool.Highlight
-              ? COLORS
-              : activeTool === PdfTool.Draw
-                ? DRAW_SWATCHES
-                : TEXT_SWATCHES
-            ).map((c) => {
-              const activeSwatch =
-                activeTool === PdfTool.Highlight
-                  ? highlightColor === c
-                  : activeTool === PdfTool.Draw
-                    ? drawColor === c
-                    : textColor === c
-              const kind =
-                activeTool === PdfTool.Highlight
-                  ? 'highlight'
-                  : activeTool === PdfTool.Draw
-                    ? 'pen'
-                    : 'text'
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  title={colorName(c)}
-                  aria-label={`${colorName(c)} ${kind} colour`}
-                  onClick={() => {
-                    if (activeTool === PdfTool.Highlight) setHighlightColor(c)
-                    else if (activeTool === PdfTool.Draw) setDrawColor(c)
-                    else setTextColor(c)
-                  }}
-                  className={cn(
-                    'size-5 rounded-full border-2 transition-transform',
-                    activeSwatch ? 'border-accent scale-110' : 'border-transparent',
-                  )}
-                  style={{ backgroundColor: c }}
-                />
-              )
-            })}
-          </div>
-        )}
-
-        {activeTool === PdfTool.Draw && (
-          <label className="text-fg-secondary ml-1 flex items-center gap-1 text-xs">
-            Width
-            <input
-              type="range"
-              min={1}
-              max={12}
-              value={strokeWidth}
-              onChange={(e) => setStrokeWidth(Number(e.target.value))}
-              className="accent-accent w-20"
+        {colorTool &&
+          (compact ? (
+            <button
+              type="button"
+              aria-label={`${colorName(currentColor)} ${kind} colour; change`}
+              aria-expanded={colorsOpen}
+              onClick={() => setColorsOpen((o) => !o)}
+              className={cn(
+                'mx-1 size-6 shrink-0 rounded-full border-2',
+                colorsOpen ? 'border-accent' : 'border-border',
+              )}
+              style={{ backgroundColor: currentColor }}
             />
-            <span className="w-4 text-center">{strokeWidth}</span>
-          </label>
-        )}
+          ) : (
+            <div
+              className="flex items-center gap-1"
+              role="group"
+              aria-label={
+                activeTool === PdfTool.Highlight
+                  ? 'Highlighter colours'
+                  : activeTool === PdfTool.Draw
+                    ? 'Pen colours'
+                    : 'Text box colours'
+              }
+            >
+              {swatchButtons}
+            </div>
+          ))}
+
+        {!compact && widthControl}
 
         {activeTool === PdfTool.Sign && (
           <div className="flex items-center gap-1.5">
@@ -336,7 +360,17 @@ export function PdfToolbar({
           <Search className="size-4" />
         </ToolBtn>
       </div>
-      {activeTool === PdfTool.Text && (
+      {compact && colorTool && colorsOpen && (
+        <div
+          className="border-border bg-bg-secondary flex flex-wrap items-center gap-2 border-b px-3 py-2"
+          role="group"
+          aria-label={`${kind === 'highlight' ? 'Highlighter' : kind === 'pen' ? 'Pen' : 'Text box'} colours`}
+        >
+          {swatchButtons}
+          {widthControl}
+        </div>
+      )}
+      {activeTool === PdfTool.Text && !compact && (
         <div
           className="border-border bg-bg-secondary text-fg-muted border-b px-3 py-1.5 text-xs leading-relaxed"
           role="status"

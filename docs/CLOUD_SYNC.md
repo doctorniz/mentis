@@ -19,7 +19,8 @@ device (IndexedDB), never in the vault. Code: `src/lib/sync/`.
    | ------------------- | ---------------------------------------------------------- |
    | Web, local dev      | `http://localhost:3000/auth/dropbox` (match your dev port) |
    | Web, deployed       | `https://your-domain.example/auth/dropbox`                 |
-   | Desktop and Android | `http://127.0.0.1:53682/auth/dropbox`                      |
+   | Desktop             | `http://127.0.0.1:53682/auth/dropbox`                      |
+   | Android             | `https://mentis.ink/auth/dropbox`                          |
 
 4. Put the app key in `.env.local` (read at **build** time, so restart
    `pnpm dev` or rebuild):
@@ -40,9 +41,16 @@ device (IndexedDB), never in the vault. Code: `src/lib/sync/`.
   (`auth/dropbox.html`, `src/auth/dropbox-callback.tsx`), which exchanges the
   code (PKCE) and returns to the app. Static hosting must serve that path — see
   [`DEPLOYMENT.md`](./DEPLOYMENT.md).
-- **Desktop and Android:** the system browser does the consent step and
-  redirects to a one-shot listener on `127.0.0.1:53682` in the app (RFC 8252,
+- **Desktop:** the system browser does the consent step and redirects to a
+  one-shot listener on `127.0.0.1:53682` in the app (RFC 8252,
   `src-tauri/src/oauth.rs`). Nothing loads in the app window.
+- **Android:** Android pauses an app in the background, so a listener in it
+  may never answer. Dropbox redirects to `https://mentis.ink/auth/dropbox`
+  instead; a `state` starting `app-` tells that page the sign-in is the
+  app's, and it hands the code back as `mentis://auth/dropbox?code=…&state=…`
+  (by itself, and with an **Open Mentis** button in case the browser asks
+  first). The activity receives the link (`Inbox.kt`), and the app exchanges
+  the code with the PKCE verifier it kept (`src/lib/sync/oauth-desktop.ts`).
 
 ## What syncs
 

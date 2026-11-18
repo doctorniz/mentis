@@ -10,6 +10,7 @@ import { useVaultSession } from '@/contexts/vault-fs-context'
 import { isDesktopApp } from '@/lib/fs/platform'
 import type { FileSystemAdapter } from '@/lib/fs/types'
 import { useEditorStore } from '@/stores/editor'
+import { takeWelcomePending, WELCOME_NOTE } from '@/lib/vault'
 import { usePdfStore } from '@/stores/pdf'
 import { useCanvasStore } from '@/stores/canvas'
 import { views } from '@/core/registries'
@@ -131,6 +132,11 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
   )
 
   const [remindersReady, setRemindersReady] = useState(false)
+
+  // A vault just created with a Welcome note opens on it.
+  useEffect(() => {
+    if (takeWelcomePending()) useEditorStore.getState().setPendingVaultOpenPath(WELCOME_NOTE)
+  }, [])
 
   // Touch screens: swipe-down to close, and the Android back button.
   useEffect(() => {

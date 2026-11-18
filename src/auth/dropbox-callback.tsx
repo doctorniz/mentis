@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { clearDropboxOAuthSession, readDropboxOAuthSession } from '@/lib/sync/oauth-session'
+import {
+  APP_STATE_PREFIX,
+  clearDropboxOAuthSession,
+  readDropboxOAuthSession,
+} from '@/lib/sync/oauth-session'
 
 /**
  * Dropbox OAuth redirect target, served at /auth/dropbox.
@@ -11,9 +15,18 @@ import { clearDropboxOAuthSession, readDropboxOAuthSession } from '@/lib/sync/oa
  */
 export function DropboxCallback() {
   const [message, setMessage] = useState('Completing Dropbox sign-in…')
+  const [appLink, setAppLink] = useState<string | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    // Started by the phone app: hand the answer back to it (Inbox.kt).
+    if (params.get('state')?.startsWith(APP_STATE_PREFIX)) {
+      const link = `mentis://auth/dropbox?${params.toString()}`
+      setAppLink(link)
+      setMessage('Return to Mentis to finish connecting Dropbox.')
+      window.location.href = link
+      return
+    }
     const code = params.get('code')
     const err = params.get('error')
     const errDesc = params.get('error_description')
@@ -70,7 +83,14 @@ export function DropboxCallback() {
   return (
     <div className="bg-bg text-fg flex min-h-screen flex-col items-center justify-center gap-4 p-6">
       <p className="text-center text-sm">{message}</p>
-      {!message.startsWith('Completing') && (
+      {appLink ? (
+        <a
+          href={appLink}
+          className="bg-accent text-accent-fg rounded-md px-4 py-2 text-sm font-medium"
+        >
+          Open Mentis
+        </a>
+      ) : !message.startsWith('Completing') && (
         // A full page load is correct here: it lands on a freshly mounted AppRoot.
         <a href="/" className="text-accent text-sm font-medium underline underline-offset-2">
           Back to Mentis

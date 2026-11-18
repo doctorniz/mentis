@@ -48,6 +48,7 @@ import { countWords } from '@/lib/notes/word-count'
 import { pendingMarkdownSaves } from '@/lib/notes/pending-saves'
 import { useSyncPush } from '@/contexts/sync-context'
 import { provideCommandContext } from '@/core/registries/commands'
+import { selectOnFocus } from '@/lib/browser/select-on-focus'
 
 /** Flatten a FileEntry tree into vault-relative paths (files only, no dirs) */
 function flattenFilePaths(entry: FileEntry | null, depth = 0): string[] {
@@ -1001,7 +1002,12 @@ export const MarkdownNoteEditor = forwardRef<
                 const cleaned = e.target.value.replace(/[/\\:*?"<>|]/g, '')
                 setInlineTitle(cleaned)
               }}
-              onBlur={() => void commitTitleRename()}
+              onFocus={selectOnFocus.onFocus}
+              onMouseUp={selectOnFocus.onMouseUp}
+              onBlur={(e) => {
+                selectOnFocus.onBlur(e)
+                void commitTitleRename()
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()

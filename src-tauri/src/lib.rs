@@ -63,6 +63,7 @@ pub fn with_vault_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
             watch::vault_watch_start,
             watch::vault_watch_stop,
             oauth::oauth_authorize,
+            oauth::oauth_open,
             startup::startup_ready,
             startup::startup_vault,
             #[cfg(mobile)]

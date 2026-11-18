@@ -35,7 +35,11 @@ export function parseCalendarEvent(path: string, raw: string): CalendarEvent {
   const { data, content } = matter(raw)
   const fm = data as Partial<CalendarEventFrontmatter>
   const h1 = H1_RE.exec(content)
-  const bodyWithoutH1 = content.replace(/^#\s+.+\n?/, '').trim()
+  // The heading is the title: the notes are what is left without it. (Saved
+  // events have a blank line before the heading, so it is not at the start.)
+  const bodyWithoutH1 = (
+    h1 ? content.slice(0, h1.index) + content.slice(h1.index + h1[0].length) : content
+  ).trim()
 
   const location = typeof fm.location === 'string' && fm.location ? fm.location : undefined
   const url = typeof fm.url === 'string' && fm.url ? fm.url : undefined

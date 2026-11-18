@@ -56,7 +56,7 @@ export interface VaultConfig {
    * Defaults to 'Calendar'. Every note directly in it is an event.
    */
   calendarFolder: string
-  /** Vault-relative note new tasks are added to when none is named. Defaults to 'Inbox.md'. */
+  /** Vault-relative note new tasks are added to when none is named. Defaults to 'Tasks/Inbox.md'. */
   taskInbox: string
   /** Vault-relative folder new lists are made in. Defaults to 'Lists'. */
   listsFolder: string
@@ -137,7 +137,7 @@ export const DEFAULT_VAULT_CONFIG: VaultConfig = {
   dailyNotesFolder: DAILY_NOTES_DIR,
   thoughtsFolder: THOUGHTS_DIR,
   calendarFolder: CALENDAR_DIR,
-  taskInbox: 'Inbox.md',
+  taskInbox: 'Tasks/Inbox.md',
   listsFolder: LISTS_DIR,
   chatFolder: CHAT_DIR,
   journalTimestamps: true,

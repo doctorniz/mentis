@@ -1,9 +1,19 @@
+import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { CaptureBar } from '@/modules/capture/capture-bar'
 import { useUiStore } from '@/stores/ui'
 
+/** What Capture starts with on each page: what that page shows. */
+const DESTINATION_FOR_VIEW: Record<string, string> = {
+  tasks: 'task',
+  calendar: 'calendar',
+  journal: 'journal',
+  bookmarks: 'bookmark',
+}
+
 /** The tab bar's Capture: the capture bar in a sheet over whatever is showing. */
 export default function CaptureSheet({ onClose }: { onClose: () => void }) {
+  const [initial] = useState(() => DESTINATION_FOR_VIEW[useUiStore.getState().activeView])
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -16,6 +26,7 @@ export default function CaptureSheet({ onClose }: { onClose: () => void }) {
           <CaptureBar
             placement="bottom"
             focusSignal={1}
+            initialDestination={initial}
             onSaved={(result, { stay }) => {
               if (stay) return
               onClose()

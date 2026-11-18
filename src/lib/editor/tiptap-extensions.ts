@@ -23,6 +23,7 @@ import { PdfEmbedNode } from '@/lib/editor/pdf-embed-node'
 import { PdfEmbedExtension } from '@/lib/editor/pdf-embed-extension'
 import { FindReplace } from '@/lib/editor/find-replace'
 import { TaskDone } from '@/lib/editor/task-done-extension'
+import { FreshLineMarks } from '@/lib/editor/fresh-line-marks'
 import { createInkWikiLinkSuggestion } from '@/lib/editor/wiki-link-suggestion'
 
 const lowlight = createLowlight(common)
@@ -69,6 +70,7 @@ export function getNoteEditorExtensions(
     TaskList,
     TaskItem.configure({ nested: true }),
     TaskDone,
+    FreshLineMarks,
     Table.configure({ resizable: false, HTMLAttributes: { class: 'ink-table' } }),
     TableRow,
     TableCell.extend({ addAttributes: alignedCell }),

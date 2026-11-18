@@ -75,12 +75,12 @@ test.describe('7 — Tasks', () => {
   // ─── 7.2 Checkbox lines ────────────────────────────────────────────────────
 
   test.describe('7.2 Tasks are lines in notes', () => {
-    test('7.2.1 A new task is a checkbox line in Inbox.md', async ({ vaultPage: page }) => {
+    test('7.2.1 A new task is a checkbox line in Tasks/Inbox.md', async ({ vaultPage: page }) => {
       await addTask(page, 'Pay rent !2 #home >tomorrow', 'Pay rent')
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
       await expect
-        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
         .toContain(`- [ ] Pay rent #home >${ymd(tomorrow)} !2`)
     })
 
@@ -128,7 +128,7 @@ test.describe('7 — Tasks', () => {
       await expect(item).toBeVisible({ timeout: 10_000 })
       await item.locator('input[type="checkbox"]').check()
       await expect
-        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
         .toContain(`- [x] Water the ferns done:${ymd(new Date())}`)
       // The date is in the file; the editor hides it.
       await expect(item.locator('.task-done-date')).toBeHidden()
@@ -149,7 +149,7 @@ test.describe('7 — Tasks', () => {
         /line-through/,
       )
       await expect
-        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
         .toContain(`- [x] Task to complete done:${ymd(new Date())}`)
     })
 
@@ -165,7 +165,7 @@ test.describe('7 — Tasks', () => {
         /line-through/,
       )
       await expect
-        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
         .toContain('- [ ] Task to uncomplete')
     })
 
@@ -176,7 +176,7 @@ test.describe('7 — Tasks', () => {
       await r.getByRole('button', { name: 'Delete task' }).click()
       await expect(r).toBeHidden({ timeout: 5_000 })
       await expect
-        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
         .not.toContain('Task to delete')
     })
 
@@ -195,7 +195,7 @@ test.describe('7 — Tasks', () => {
       await dialog.getByRole('button', { name: 'Save' }).click()
 
       await expect
-        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
         .toContain('- [ ] Plan trip >2030-05-01 08:30 !4\n  - [ ] Book hotel')
     })
   })
@@ -205,7 +205,7 @@ test.describe('7 — Tasks', () => {
   test.describe('7.4 Recurring Tasks', () => {
     test('7.4.1 Ticking a weekly task adds the next one', async ({ vaultPage: page }) => {
       await addTask(page, 'Standup every monday', 'Standup')
-      const first = await readVaultFile(page, 'Inbox.md')
+      const first = await readVaultFile(page, 'Tasks/Inbox.md')
       const due = /- \[ \] Standup >(\d{4}-\d\d-\d\d) every monday/.exec(first)?.[1]
       expect(due).toBeTruthy()
 
@@ -214,7 +214,7 @@ test.describe('7 — Tasks', () => {
       next.setDate(next.getDate() + 1)
       while (next.getDay() !== 1) next.setDate(next.getDate() + 1)
       await expect
-        .poll(() => readVaultFile(page, 'Inbox.md'), { timeout: 10_000 })
+        .poll(() => readVaultFile(page, 'Tasks/Inbox.md'), { timeout: 10_000 })
         .toContain(
           `- [ ] Standup >${ymd(next)} every monday\n- [x] Standup >${due} every monday done:${ymd(new Date())}`,
         )

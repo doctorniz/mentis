@@ -1,4 +1,5 @@
 import type { ReminderRow } from '@/core/index/protocol'
+import { OAUTH_CALLBACK_EVENT } from '@/lib/sync/oauth-session'
 
 /**
  * What Android asked the phone app to show — kept by the activity until the
@@ -14,6 +15,7 @@ export type Entry =
   | { type: 'share-text'; text: string; subject?: string }
   | { type: 'share-files'; files: { path: string; name: string; mime: string }[] }
   | { type: 'launch'; target: 'capture' | 'task' | 'journal' }
+  | { type: 'oauth-callback'; url: string }
 
 async function take(): Promise<Entry[]> {
   const { invoke } = await import('@tauri-apps/api/core')
@@ -34,6 +36,9 @@ async function handle(entry: Entry, other: (entry: Entry) => Promise<void>): Pro
       })
       break
     }
+    case 'oauth-callback':
+      window.dispatchEvent(new CustomEvent(OAUTH_CALLBACK_EVENT, { detail: entry.url }))
+      break
     default:
       await other(entry)
   }

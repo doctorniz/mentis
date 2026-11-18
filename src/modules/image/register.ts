@@ -6,6 +6,8 @@ const definition: FileTypeDefinition = {
   label: 'Image',
   suffixes: ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'],
   editor: () => import('./editor'),
+  // A photo just taken, or an image added on its own, opens.
+  openAfterImport: true,
   appearance: {
     icon: ImageIcon,
     treeClass: 'text-emerald-400/70',

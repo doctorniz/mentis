@@ -116,10 +116,18 @@ function EditContent({ item, onDone }: { item: BoardItem; onDone: () => void }) 
     },
   })
 
+  // The editor is made after the first render (immediatelyRender: false), so
+  // focus it once it exists: a new thought is ready to type into.
+  const focused = useRef(false)
   useEffect(() => {
-    if (editor) setTimeout(() => editor.commands.focus('end'), 0)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (!editor || focused.current) return
+    const id = window.setTimeout(() => {
+      if (editor.isDestroyed) return
+      focused.current = true
+      editor.commands.focus('end', { scrollIntoView: true })
+    }, 0)
+    return () => window.clearTimeout(id)
+  }, [editor])
 
   const save = useCallback(() => {
     if (!editor || editor.isDestroyed) return

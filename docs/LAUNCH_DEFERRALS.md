@@ -57,6 +57,21 @@ _Last reviewed 2026-10-13._
 
 ### To do
 
+- [ ] **Android test pass fixes (0.1.4)** — on the phone:
+  - Voice note: asked for the microphone once, then it records.
+  - Settings › Sync › Connect Dropbox: Allow in the browser comes back to Mentis (or **Open Mentis** does) and sync starts.
+  - Open a folder named with a space: the masthead and Welcome.md show its name, not `primary%3A…`.
+  - Leave the app and come back: the Notes list shows a spinner, then the files, without tapping Notes again.
+  - Bold a line, Enter, type: the new line is plain.
+  - New thought: the cursor is in it, keyboard up.
+  - Take photo: the photo opens.
+  - An event with notes: the notes do not repeat the title.
+  - Capture from Tasks / Calendar / Journal / Bookmarks starts on that destination; `/file`, `/photo` and `/canvas` open the picker, the camera and a new drawing.
+  - Tap a note's title: all of it is selected.
+  - A new vault opens on Welcome.md; new tasks go to `Tasks/Inbox.md`.
+  - In the tree, Thoughts and Tasks open their pages, as Calendar does.
+  - PDF on the phone: one row of tools; one colour swatch opens the colours.
+
 - [ ] **iOS vaults (iPhone and iPad)** — New vault: it appears in Files under On My iPhone › Mentis and edits there show in the app on return; Open a folder: an iCloud Drive folder and a folder on the device both open, and reopen after force-quitting and relaunching; a recent vault survives an app update; iPad layout and Apple Pencil on the canvas.
 - [ ] **iOS gaps hidden** — on an iPhone and an iPad build: Settings has no Sync tab, Calendar has no Reminders tab, and a task's details have no Remind at time; Calendar and due dates still work. On Android and the desktop app all three are still there.
 

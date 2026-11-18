@@ -2,32 +2,10 @@ import { useCallback, useMemo, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useUiStore } from '@/stores/ui'
-import { useVaultStore } from '@/stores/vault'
-import { useEditorStore } from '@/stores/editor'
-import { useFileTreeStore } from '@/stores/file-tree'
 import { useBoardStore } from '@/stores/board'
-import { DEFAULT_VAULT_CONFIG } from '@/types/vault'
-import { fileTypes, titleForPath, HOME_VIEW } from '@/core/registries'
+import { fileTypes } from '@/core/registries'
 import type { FileTypeDefinition } from '@/core/registries/file-types'
-import { reindexFilePath, isIndexableTextPath } from '@/lib/search/build-vault-index'
-import { allocateUniqueFilePath } from '@/lib/notes/new-note'
-import { toast } from '@/stores/toast'
-
-function useDefaultFolder() {
-  return useVaultStore(
-    (s) => s.config?.defaultNewFileFolder ?? DEFAULT_VAULT_CONFIG.defaultNewFileFolder,
-  )
-}
-
-/** Should a lone imported file open in a tab? Its module decides. */
-function opensAfterImport(path: string): FileTypeDefinition | null {
-  const def = fileTypes.resolve(path)
-  const rule = def?.openAfterImport
-  if (!def || !rule) return null
-  if (rule === true) return def
-  const suffix = fileTypes.matchedSuffix(path)
-  return suffix && rule.includes(suffix) ? def : null
-}
+import { createFileOfType, importFilesIntoVault } from '@/lib/notes/new-files'
 
 export interface NewMenuItem {
   label: string
@@ -49,50 +27,20 @@ export interface NewMenuItem {
  */
 export function useNewFileActions(onDone: () => void) {
   const { vaultFs } = useVaultSession()
-  const defaultFolder = useDefaultFolder()
   const [busy, setBusy] = useState(false)
-
-  const defaultDir = useCallback(
-    (): string => (!defaultFolder || defaultFolder === '/' ? '' : defaultFolder),
-    [defaultFolder],
-  )
 
   const createFile = useCallback(
     async (def: FileTypeDefinition) => {
-      const spec = def.createNew
-      if (!spec || busy) return
+      if (!def.createNew || busy) return
       setBusy(true)
       try {
-        const stem = `${spec.stem} ${new Date().toISOString().slice(0, 10)}`
-        const dir = defaultDir()
-        const rawPath = dir ? `${dir}/${stem}${spec.suffix}` : `${stem}${spec.suffix}`
-        const path = await allocateUniqueFilePath(vaultFs, rawPath, spec.suffix)
-        const title = titleForPath(path)
-        const makeContent = (await spec.content()).default
-        const content = await makeContent({ title })
-        if (typeof content === 'string') await vaultFs.writeTextFile(path, content)
-        else await vaultFs.writeFile(path, content)
-
-        const reveal = spec.revealInTree !== false
-        useUiStore.getState().setActiveView(HOME_VIEW)
-        useUiStore.getState().setVaultMode('tree')
-        if (reveal) useFileTreeStore.getState().setSelectedPath(path)
-        useEditorStore.getState().openTab({
-          id: crypto.randomUUID(),
-          path,
-          type: def.id,
-          title,
-          isDirty: false,
-          isNew: true,
-        })
-        if (reveal) useEditorStore.getState().addRecentFile(path)
-        window.dispatchEvent(new CustomEvent('ink:vault-changed'))
+        await createFileOfType(vaultFs, def)
         onDone()
       } finally {
         setBusy(false)
       }
     },
-    [vaultFs, busy, onDone, defaultDir],
+    [vaultFs, busy, onDone],
   )
 
   const fileTypeMenuItems = useMemo<NewMenuItem[]>(
@@ -115,53 +63,15 @@ export function useNewFileActions(onDone: () => void) {
 
   const importFiles = useCallback(
     async (files: FileList | File[]) => {
-      const fileArr = Array.from(files)
-      if (!fileArr.length) return
+      if (!Array.from(files).length) return
       setBusy(true)
       try {
-        const dir = defaultDir()
-        let count = 0
-        let lastPath = ''
-        for (const file of fileArr) {
-          const buf = new Uint8Array(await file.arrayBuffer())
-          // A file of the same name is already there: keep both, never overwrite.
-          const dest = await allocateUniqueFilePath(
-            vaultFs,
-            dir ? `${dir}/${file.name}` : file.name,
-          )
-          await vaultFs.writeFile(dest, buf)
-          if (isIndexableTextPath(dest)) await reindexFilePath(vaultFs, dest)
-          lastPath = dest
-          count++
-        }
-        window.dispatchEvent(new CustomEvent('ink:vault-changed'))
-        useUiStore.getState().setActiveView(HOME_VIEW)
-
-        if (count === 1) {
-          const def = opensAfterImport(lastPath)
-          if (def) {
-            useUiStore.getState().setVaultMode('tree')
-            useFileTreeStore.getState().setSelectedPath(lastPath)
-            useEditorStore.getState().openTab({
-              id: crypto.randomUUID(),
-              path: lastPath,
-              type: def.id,
-              title: titleForPath(lastPath),
-              isDirty: false,
-            })
-          }
-        }
-
-        toast.success(`Imported ${count} file${count !== 1 ? 's' : ''}`)
-        onDone()
-      } catch (e) {
-        console.error('Import failed', e)
-        toast.error('Failed to import files')
+        if (await importFilesIntoVault(vaultFs, files)) onDone()
       } finally {
         setBusy(false)
       }
     },
-    [vaultFs, onDone, defaultDir],
+    [vaultFs, onDone],
   )
 
   const createThought = useCallback(async () => {

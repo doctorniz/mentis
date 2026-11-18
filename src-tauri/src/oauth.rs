@@ -172,9 +172,33 @@ fn bind() -> Result<TcpListener, String> {
 
 /// Whether `url` is the provider's authorize page asking for our redirect.
 fn is_expected_authorize_url(url: &str) -> bool {
+    redirects_to(url, REDIRECT_URI)
+}
+
+fn redirects_to(url: &str, redirect: &str) -> bool {
     url.strip_prefix(AUTHORIZE_PREFIX)
         .and_then(|query| query_param(query, "redirect_uri"))
-        .is_some_and(|r| r == REDIRECT_URI)
+        .is_some_and(|r| r == redirect)
+}
+
+/// The redirect a phone uses. Android pauses an app in the background, so a
+/// loopback listener may never answer; the website's callback page hands the
+/// code back through a `mentis://auth/dropbox` link instead (Inbox.kt).
+const APP_REDIRECT_URI: &str = "https://mentis.ink/auth/dropbox";
+
+/// Opens the provider's consent page in the browser and returns at once; the
+/// code comes back as an `oauth-callback` inbox entry.
+#[tauri::command]
+pub async fn oauth_open<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    auth_url: String,
+) -> Result<(), String> {
+    if !redirects_to(&auth_url, APP_REDIRECT_URI) {
+        return Err("refusing to open an unexpected sign-in address".into());
+    }
+    app.opener()
+        .open_url(&auth_url, None::<&str>)
+        .map_err(|e| format!("cannot open the browser: {e}"))
 }
 
 /// The attempt in progress, so starting another one replaces it.
@@ -280,6 +304,11 @@ mod tests {
         assert!(!is_expected_authorize_url(&format!(
             "{AUTHORIZE_PREFIX}redirect_uri=http%3A%2F%2Fexample.com%2F"
         )));
+        assert!(redirects_to(
+            &format!("{AUTHORIZE_PREFIX}redirect_uri=https%3A%2F%2Fmentis.ink%2Fauth%2Fdropbox"),
+            APP_REDIRECT_URI
+        ));
+        assert!(!redirects_to(&ok, APP_REDIRECT_URI));
     }
 
     #[test]

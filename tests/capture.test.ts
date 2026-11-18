@@ -46,6 +46,18 @@ describe('registered destinations', () => {
     expect(captureDestinations.bySigil('/task')?.id).toBe('task')
     expect(captureDestinations.bySigil('/todo')?.id).toBe('task')
   })
+
+  it('has /file, /photo and /canvas, which act at once instead of taking text', () => {
+    for (const [sigil, id] of [
+      ['/file', 'file'],
+      ['/photo', 'photo'],
+      ['/canvas', 'canvas'],
+    ] as const) {
+      const d = captureDestinations.bySigil(sigil)
+      expect(d?.id).toBe(id)
+      expect(typeof d?.pick).toBe('function')
+    }
+  })
 })
 
 describe('CaptureText', () => {

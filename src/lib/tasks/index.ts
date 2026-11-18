@@ -2,7 +2,7 @@ import type { TaskItem } from '@/types/tasks'
 import { parseLocalDate, startOfLocalDay } from '@/lib/tasks/recurrence'
 
 /** The note new tasks are added to when no note is named. */
-export const DEFAULT_TASK_INBOX = 'Inbox.md'
+export const DEFAULT_TASK_INBOX = 'Tasks/Inbox.md'
 
 /** Days from today to `due` (negative when past), counted in local calendar days. */
 function daysUntil(due: string, now: Date): number | null {

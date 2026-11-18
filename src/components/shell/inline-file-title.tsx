@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
+import { selectOnFocus } from '@/lib/browser/select-on-focus'
 
 export function InlineFileTitle({
   path,
@@ -53,8 +54,12 @@ export function InlineFileTitle({
       onChange={(e: ChangeEvent<HTMLInputElement>) =>
         setValue(e.target.value.replace(/[/\\:*?"<>|]/g, ''))
       }
-      onBlur={commit}
-      onFocus={(e) => e.currentTarget.select()}
+      onBlur={(e) => {
+        selectOnFocus.onBlur(e)
+        commit()
+      }}
+      onFocus={selectOnFocus.onFocus}
+      onMouseUp={selectOnFocus.onMouseUp}
       onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
           e.preventDefault()
