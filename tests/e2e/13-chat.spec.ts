@@ -461,7 +461,10 @@ data: [DONE]
 
       const saved = await readVaultFile(page, 'Chat/Welcome.chat.md')
       expect(saved).toMatch(/^---\ntype: chat\ntitle: "Welcome"\n/)
-      expect(await readVaultFile(page, 'Welcome.md')).toBe(before)
+      // The note's text is untouched. (It is open from the start, so its
+      // chat id and `modified` stamp may be written while the test runs.)
+      const unstamped = (s: string) => s.replace(/^(modified|chatAssetId): .*\n/gm, '')
+      expect(unstamped(await readVaultFile(page, 'Welcome.md'))).toBe(unstamped(before))
 
       // It opens as a chat, not as a note named "Welcome.chat".
       await navigateTo(page, 'vault')

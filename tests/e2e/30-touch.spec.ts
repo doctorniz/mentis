@@ -108,12 +108,19 @@ test.describe('30 — Touch', () => {
     await expect(tab(page, 'Chat')).toHaveAttribute('aria-current', 'page')
   })
 
-  test('30.1.1 Capture saves a thought from any tab', async ({ vaultPage: page }) => {
+  test('30.1.1 Capture starts on the tab’s destination, and saves a thought', async ({
+    vaultPage: page,
+  }) => {
     await tab(page, 'Calendar').tap()
     await tab(page, 'Capture').tap()
     const sheet = page.getByRole('dialog', { name: 'Capture' })
     const input = sheet.getByRole('textbox', { name: 'Capture' })
     await expect(input).toBeFocused()
+    // From Calendar it starts on Calendar; removing that chip sends to Thoughts.
+    const chip = sheet.getByRole('button', { name: 'Capturing to Calendar; remove' })
+    await expect(chip).toBeVisible()
+    await chip.tap()
+    await expect(chip).toBeHidden()
     await input.fill('Ring the plumber')
     await input.press('Enter')
     await expect(sheet).toBeHidden()
