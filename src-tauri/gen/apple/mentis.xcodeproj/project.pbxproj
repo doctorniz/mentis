@@ -18,6 +18,7 @@
 		798E55B92754CC4BAA21D429 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8E60CAF350B0EA3774E213AC /* UIKit.framework */; };
 		82FD632043C7B307BC690E4A /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 391311F4D1BD56222F8EA587 /* Metal.framework */; };
 		D0A7528F1E3B4EA14CF29DBE /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E00CC7E82DBE92772564CCB /* CoreGraphics.framework */; };
+		7A1C3E5F9B2D4086A1C3E5F7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8B2D4F6A0C3E5179B2D4F6A8 /* PrivacyInfo.xcprivacy */; };
 		EBD99411DFE9C8B5A5430E3B /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 19C626C345C1887587209E8D /* assets */; };
 /* End PBXBuildFile section */
 
@@ -43,6 +44,7 @@
 		A0E4B8663C6BF429999F7562 /* saf.rs */ = {isa = PBXFileReference; path = saf.rs; sourceTree = "<group>"; };
 		A93920468C3861A539E29387 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		B3C0F7BBA5A0D7C4D5F1C3E8 /* vaults.rs */ = {isa = PBXFileReference; path = vaults.rs; sourceTree = "<group>"; };
+		8B2D4F6A0C3E5179B2D4F6A8 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		B8C21EEEBB27CCF147974396 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		C2E154C1F3B25138A71DEB2C /* mentis_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = mentis_iOS.entitlements; sourceTree = "<group>"; };
 		CB6BC2DE1EE7B057DD078F15 /* watch.rs */ = {isa = PBXFileReference; path = watch.rs; sourceTree = "<group>"; };
@@ -88,6 +90,7 @@
 			children = (
 				E7FE731B78702314842FD170 /* Info.plist */,
 				C2E154C1F3B25138A71DEB2C /* mentis_iOS.entitlements */,
+				8B2D4F6A0C3E5179B2D4F6A8 /* PrivacyInfo.xcprivacy */,
 			);
 			path = mentis_iOS;
 			sourceTree = "<group>";
@@ -246,6 +249,7 @@
 			files = (
 				1E39865DE4622A5E50EC1031 /* Assets.xcassets in Resources */,
 				0378DFC5E7EEAA02002F44F5 /* LaunchScreen.storyboard in Resources */,
+				7A1C3E5F9B2D4086A1C3E5F7 /* PrivacyInfo.xcprivacy in Resources */,
 				EBD99411DFE9C8B5A5430E3B /* assets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
