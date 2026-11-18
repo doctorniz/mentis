@@ -1,0 +1,7 @@
+# Made by `tauri ios build`; only the project itself is kept.
+build/
+Externals/
+assets/
+Pods/
+xcuserdata/
+*.xcuserstate

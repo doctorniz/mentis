@@ -23,6 +23,15 @@ App Transport Security allows plain `http://` to local addresses only
 (`NSAllowsLocalNetworking`), for Ollama on the LAN; the first request asks
 for local network access (`NSLocalNetworkUsageDescription`).
 
+## Privacy manifest
+
+Apple requires every app to declare the system APIs it uses and what it
+collects. `src-tauri/gen/apple/mentis_iOS/PrivacyInfo.xcprivacy` declares file
+times, `UserDefaults` (the folder bookmarks), boot time (timers) and disk
+space, and no tracking or collected data. It must match what the app does and
+what <https://mentis.ink/privacy> says; if Apple's upload email names another
+API, add it there.
+
 ## Microphone and camera
 
 Voice notes and _Take photo_ need `NSMicrophoneUsageDescription` and
@@ -88,6 +97,7 @@ debug build.
 ## CI
 
 The `ios` job (`.github/workflows/ci.yml`) builds for the simulator, launches
-the app, checks it is still running after 20 s, and keeps a screenshot of the
-first screen (`ios-first-screen` artifact). Until `src-tauri/gen/apple` is
-committed it generates the project and keeps it as an artifact too.
+the app, checks the privacy manifest is in it and that it is still running
+after 20 s, and keeps a screenshot of the first screen (`ios-first-screen`
+artifact). The project is committed; if `src-tauri/gen/apple` were missing the
+job would generate it and keep it as an artifact.

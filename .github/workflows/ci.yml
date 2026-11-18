@@ -244,6 +244,7 @@ jobs:
           APP=$(find src-tauri/gen/apple ~/Library/Developer/Xcode/DerivedData -type d -name '*.app' -path '*iphonesimulator*' 2> /dev/null | head -1)
           test -n "$APP" || { echo "no simulator app built"; exit 1; }
           echo "app: $APP"
+          test -f "$APP/PrivacyInfo.xcprivacy" || { echo "the privacy manifest is not in the app"; exit 1; }
           DEVICE=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for r in sorted(d, reverse=True) if 'iOS' in r for x in d[r] if x['name'].startswith('iPhone')))")
           xcrun simctl boot "$DEVICE"
           xcrun simctl bootstatus "$DEVICE" -b
