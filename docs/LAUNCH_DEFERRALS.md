@@ -58,6 +58,7 @@ _Last reviewed 2026-10-13._
 ### To do
 
 - [ ] **iOS vaults (iPhone and iPad)** — New vault: it appears in Files under On My iPhone › Mentis and edits there show in the app on return; Open a folder: an iCloud Drive folder and a folder on the device both open, and reopen after force-quitting and relaunching; a recent vault survives an app update; iPad layout and Apple Pencil on the canvas.
+- [ ] **iOS gaps hidden** — on an iPhone and an iPad build: Settings has no Sync tab, Calendar has no Reminders tab, and a task's details have no Remind at time; Calendar and due dates still work. On Android and the desktop app all three are still there.
 
 - [ ] **Stars** — star files, reload: still starred; on a second device after sync: starred; rename and move a starred file: still starred; a vault with stars from an older build: carried over once.
 - [ ] **Conflict copy** — edit one note on two devices between syncs: one keeps the newer text, `Note (conflict …).md` holds the other on both devices; the toast names it.

@@ -248,10 +248,10 @@ jobs:
           xcrun simctl boot "$DEVICE"
           xcrun simctl bootstatus "$DEVICE" -b
           xcrun simctl install "$DEVICE" "$APP"
-          xcrun simctl launch "$DEVICE" app.mentis
+          xcrun simctl launch "$DEVICE" ink.mentis.app
           sleep 20
           xcrun simctl io "$DEVICE" screenshot ios-first-screen.png
-          xcrun simctl spawn "$DEVICE" launchctl list | grep -q 'app.mentis' || { echo "the app is not running"; exit 1; }
+          xcrun simctl spawn "$DEVICE" launchctl list | grep -q 'ink.mentis.app' || { echo "the app is not running"; exit 1; }
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()

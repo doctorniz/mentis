@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { CalendarView } from '@/components/views/calendar-view'
+import { isIosApp } from '@/lib/fs/platform'
 import { RemindersPanel, useReminderRows } from '@/components/reminders/reminders-panel'
 import { groupReminders } from '@/lib/reminders/group'
 import { ViewTabs, useRememberedTab } from '@/components/views/view-tabs'
@@ -39,6 +40,9 @@ export function CalendarPage() {
       badge: { count: missedCount, label: `${missedCount} missed` },
     },
   ] as const
+
+  // Reminders are not scheduled on iOS yet: the calendar alone.
+  if (isIosApp()) return <CalendarView />
 
   return (
     <div className="flex h-full min-h-0 flex-col">

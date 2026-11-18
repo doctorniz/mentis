@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { FileText, Loader2, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useVaultSession } from '@/contexts/vault-fs-context'
+import { isIosApp } from '@/lib/fs/platform'
 import { useTasksStore } from '@/stores/tasks'
 import { useEditorStore } from '@/stores/editor'
 import { useUiStore } from '@/stores/ui'
@@ -188,16 +189,21 @@ export function TaskDetailDialog({
                   className={FIELD}
                 />
               </label>
-              <label className="min-w-0">
-                <span className="text-fg-secondary mb-1 block text-xs font-medium">Remind at</span>
-                <input
-                  type="time"
-                  value={time}
-                  disabled={!due}
-                  onChange={(e) => setTime(e.target.value)}
-                  className={cn(FIELD, 'disabled:opacity-40')}
-                />
-              </label>
+              {/* Nothing is scheduled on iOS yet, so a time there would never ring. */}
+              {!isIosApp() && (
+                <label className="min-w-0">
+                  <span className="text-fg-secondary mb-1 block text-xs font-medium">
+                    Remind at
+                  </span>
+                  <input
+                    type="time"
+                    value={time}
+                    disabled={!due}
+                    onChange={(e) => setTime(e.target.value)}
+                    className={cn(FIELD, 'disabled:opacity-40')}
+                  />
+                </label>
+              )}
               <label className="min-w-0">
                 <span className="text-fg-secondary mb-1 block text-xs font-medium">Repeat</span>
                 <select

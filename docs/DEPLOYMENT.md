@@ -108,6 +108,29 @@ password can be locked by Apple, and a locked one fails the build with a 401.
 iOS is not in the release: an iPhone installs only from TestFlight or the
 App Store ([`IOS.md`](./IOS.md)).
 
+## TestFlight
+
+`.github/workflows/testflight.yml` builds the iPhone and iPad app, signs it for
+the App Store and uploads it to TestFlight. Run it from Actions › TestFlight ›
+Run workflow, or push a tag such as `ios-v0.1.3`. It is separate from the
+release workflow, so an iOS problem never holds back the other platforms.
+
+Once, in Apple's tools: register the bundle id `ink.mentis.app` (Identifiers),
+and create the app in App Store Connect with it. Then these secrets, besides
+`APPLE_API_ISSUER` and `APPLE_TEAM_ID` from above:
+
+| Secret                      | Value                                                                 |
+| --------------------------- | --------------------------------------------------------------------- |
+| `APPLE_IOS_API_KEY`         | the Key ID of an App Store Connect API key with the App Manager role  |
+| `APPLE_IOS_API_KEY_CONTENT` | the text of that key's `.p8` file, which Apple lets you download once |
+
+Xcode makes the distribution certificate and profile itself with that key
+(cloud signing); if a run fails over a permission, make the key an Admin key.
+The build number is the workflow run's number. A build shows in TestFlight
+after Apple has processed it, 10 to 30 minutes; internal testers (App Store
+Connect › Users and Access) can install it at once, and external testers once
+Beta App Review has passed its first build.
+
 ## Audits
 
 CI's `audit` job checks dependencies for known vulnerabilities.
