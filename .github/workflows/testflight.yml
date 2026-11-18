@@ -16,11 +16,20 @@ permissions:
 # No caches: a signed build uses only what its run fetched.
 jobs:
   testflight:
-    runs-on: macos-15
+    # App Store Connect takes only builds made with the iOS 26 SDK or later
+    # (Xcode 26); macos-15 defaults to Xcode 16.
+    runs-on: macos-26
     env:
       APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Xcode 26 or later
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_2[6-9]*.app 2> /dev/null | grep -v -i beta | sort -V | tail -1)
+          test -n "$XCODE" || { echo "::error::No Xcode 26 or later on this runner."; ls -d /Applications/Xcode*; exit 1; }
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
 
       # The version is package.json's packageManager.
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4

@@ -134,6 +134,9 @@ profile lasts a year and the certificate as long; renew both and replace the
 secrets before then. Make the `.p12` with `-keypbe PBE-SHA1-3DES -certpbe
 PBE-SHA1-3DES -macalg sha1`, or macOS refuses it.
 
+It runs on the `macos-26` runner with Xcode 26 or later: App Store Connect
+refuses builds made with an older iOS SDK.
+
 The build number is the workflow run's number. A build shows in TestFlight
 after Apple has processed it, 10 to 30 minutes; internal testers (App Store
 Connect › Users and Access) can install it at once, and external testers once
