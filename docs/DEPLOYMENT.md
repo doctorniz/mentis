@@ -119,13 +119,21 @@ Once, in Apple's tools: register the bundle id `ink.mentis.app` (Identifiers),
 and create the app in App Store Connect with it. Then these secrets, besides
 `APPLE_API_ISSUER` and `APPLE_TEAM_ID` from above:
 
-| Secret                      | Value                                                                 |
-| --------------------------- | --------------------------------------------------------------------- |
-| `APPLE_IOS_API_KEY`         | the Key ID of an App Store Connect API key with the App Manager role  |
-| `APPLE_IOS_API_KEY_CONTENT` | the text of that key's `.p8` file, which Apple lets you download once |
+| Secret                      | Value                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| `APPLE_IOS_API_KEY`         | the Key ID of an App Store Connect API key with the App Manager role                 |
+| `APPLE_IOS_API_KEY_CONTENT` | the text of that key's `.p8` file, which Apple lets you download once                |
+| `IOS_CERTIFICATE`           | an Apple Distribution certificate as a `.p12`, base64                                |
+| `IOS_CERTIFICATE_PASSWORD`  | the password given when exporting it                                                 |
+| `IOS_MOBILE_PROVISION`      | an App Store provisioning profile for `ink.mentis.app` with that certificate, base64 |
 
-Xcode makes the distribution certificate and profile itself with that key
-(cloud signing); if a run fails over a permission, make the key an Admin key.
+The certificate and profile sign the app (Tauri installs them in the build);
+the key only uploads it. Cloud signing, where Xcode makes them itself, is not
+used: Apple allows it only to Admin API keys, and those fail at times too. The
+profile lasts a year and the certificate as long; renew both and replace the
+secrets before then. Make the `.p12` with `-keypbe PBE-SHA1-3DES -certpbe
+PBE-SHA1-3DES -macalg sha1`, or macOS refuses it.
+
 The build number is the workflow run's number. A build shows in TestFlight
 after Apple has processed it, 10 to 30 minutes; internal testers (App Store
 Connect › Users and Access) can install it at once, and external testers once

@@ -19,8 +19,6 @@ jobs:
     runs-on: macos-15
     env:
       APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
-      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-      APPLE_API_KEY: ${{ secrets.APPLE_IOS_API_KEY }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -35,9 +33,15 @@ jobs:
 
       - name: Secrets are set
         env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_IOS_API_KEY: ${{ secrets.APPLE_IOS_API_KEY }}
           APPLE_IOS_API_KEY_CONTENT: ${{ secrets.APPLE_IOS_API_KEY_CONTENT }}
+          IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_MOBILE_PROVISION: ${{ secrets.IOS_MOBILE_PROVISION }}
         run: |
-          for v in APPLE_DEVELOPMENT_TEAM APPLE_API_ISSUER APPLE_API_KEY APPLE_IOS_API_KEY_CONTENT; do
+          for v in APPLE_DEVELOPMENT_TEAM APPLE_API_ISSUER APPLE_IOS_API_KEY APPLE_IOS_API_KEY_CONTENT \
+                   IOS_CERTIFICATE IOS_CERTIFICATE_PASSWORD IOS_MOBILE_PROVISION; do
             if [ -z "${!v}" ]; then
               echo "::error::The secret behind $v is not set (docs/DEPLOYMENT.md, TestFlight)."
               exit 1
@@ -49,34 +53,39 @@ jobs:
           rustup target add aarch64-apple-ios
           brew list xcodegen > /dev/null 2>&1 || brew install xcodegen
 
-      # The App Store Connect key signs the build (Xcode makes the certificate
-      # and profile) and uploads it; altool looks for it in ~/.private_keys.
-      - name: App Store Connect key
-        env:
-          APPLE_IOS_API_KEY_CONTENT: ${{ secrets.APPLE_IOS_API_KEY_CONTENT }}
-        run: |
-          mkdir -p ~/.private_keys
-          printf '%s\n' "$APPLE_IOS_API_KEY_CONTENT" > ~/.private_keys/AuthKey_${APPLE_API_KEY}.p8
-          echo "APPLE_API_KEY_PATH=$HOME/.private_keys/AuthKey_${APPLE_API_KEY}.p8" >> "$GITHUB_ENV"
-
       - name: Xcode project
         run: test -d src-tauri/gen/apple || pnpm exec tauri ios init --ci
 
-      # Each upload needs a build number above the last: the run number.
+      # Signed with the Apple Distribution certificate and the App Store
+      # profile for ink.mentis.app, which Tauri installs from these variables.
+      # Cloud signing is not used: Apple allows it only to Admin API keys, and
+      # even those fail at times. Each upload needs a build number above the
+      # last: the run number.
       - name: Build and sign
         env:
           NEXT_PUBLIC_DROPBOX_CLIENT_ID: ${{ vars.NEXT_PUBLIC_DROPBOX_CLIENT_ID }}
+          IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_MOBILE_PROVISION: ${{ secrets.IOS_MOBILE_PROVISION }}
         run: |
           pnpm exec tauri ios build --ci --export-method app-store-connect \
             --config "{\"bundle\":{\"iOS\":{\"bundleVersion\":\"${GITHUB_RUN_NUMBER}\"}}}"
 
+      # The App Store Connect key uploads the build; altool looks for it in
+      # ~/.private_keys.
       - name: Upload to TestFlight
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_IOS_API_KEY: ${{ secrets.APPLE_IOS_API_KEY }}
+          APPLE_IOS_API_KEY_CONTENT: ${{ secrets.APPLE_IOS_API_KEY_CONTENT }}
         run: |
           IPA=$(find src-tauri/gen/apple -name '*.ipa' | head -1)
           test -n "$IPA" || { echo "::error::No .ipa was built."; exit 1; }
+          mkdir -p ~/.private_keys
+          printf '%s\n' "$APPLE_IOS_API_KEY_CONTENT" > ~/.private_keys/AuthKey_${APPLE_IOS_API_KEY}.p8
           echo "uploading $IPA"
           xcrun altool --upload-app --type ios --file "$IPA" \
-            --apiKey "$APPLE_API_KEY" --apiIssuer "$APPLE_API_ISSUER"
+            --apiKey "$APPLE_IOS_API_KEY" --apiIssuer "$APPLE_API_ISSUER"
 
       - name: Remove the key
         if: always()
