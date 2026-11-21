@@ -975,7 +975,7 @@ function TreeNode({
                 if (fileDef?.renameOnDoubleClick) onStartInlineEdit(entry.path)
               }}
               className={cn(
-                'flex min-w-0 flex-1 items-center gap-2 py-0 text-left',
+                'flex min-w-0 flex-1 items-center gap-1.5 py-0 text-left',
                 selected && 'font-medium',
               )}
             >
