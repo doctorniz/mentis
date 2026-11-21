@@ -1,6 +1,6 @@
 {
   "name": "mentis",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Mentis — local-first markdown notes, PDF editor, and unlimited canvas (Marrow Group)",
   "license": "SEE LICENSE IN LICENSE",
