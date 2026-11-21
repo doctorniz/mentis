@@ -122,7 +122,7 @@ notebooks; `_`-prefixed ones are system), and app data under `_mentis/`:
 attachments and events are ordinary visible folders, each set in Settings:
 `Thoughts/` (one note per thought, named by time and first words; every note
 in the folder is a thought), `Journal/` (`YYYY-MM-DD.md`), `Attachments/`
-(pasted images, recordings, Thoughts' images too) and `Calendar/` (one note
+(pasted images, Thoughts' images too; a voice thought's recording sits in `Thoughts/` beside its note and goes with it) and `Calendar/` (one note
 per event, `YYYY-MM-DD Title.md`; every note directly in the folder is an
 event). Being outside `_mentis/`, they appear in search and graph, and all
 but `Calendar/` in the tree: there the Calendar folder opens the Calendar
