@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { test, expect, enableChat } from './fixtures'
+import { test, expect, enableChat, writeVaultFile } from './fixtures'
 
 /**
  * Mobile-native flows, run ONLY by the `mobile` Playwright project
@@ -96,6 +96,20 @@ test.describe('20 — Mobile (Pixel 5)', () => {
     await expect(page.locator('.tiptap').first()).toBeVisible({ timeout: 15_000 })
     // The editor still counts as Notes.
     await expect(notes).toHaveAttribute('aria-current', 'page')
+  })
+
+  test('20.3b A new vault opens on the tree; the file tapped opens, not Welcome', async ({
+    vaultPage: page,
+  }) => {
+    const tree = page.getByRole('tree', { name: 'Vault file tree' })
+    await expect(tree).toBeVisible({ timeout: 15_000 })
+    await writeVaultFile(page, 'Shopping.md', '# Shopping\n\nMilk and eggs.\n')
+    await tree.getByRole('button', { name: 'Shopping', exact: true }).tap()
+    await expect(page.locator('.tiptap').first()).toContainText('Milk and eggs', {
+      timeout: 15_000,
+    })
+    await page.waitForTimeout(1000)
+    await expect(page.locator('.tiptap').first()).toContainText('Milk and eggs')
   })
 
   test('20.5 Bookmark categories drawer works with touch', async ({ vaultPage: page }) => {

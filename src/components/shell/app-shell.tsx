@@ -13,7 +13,7 @@ import { useEditorStore } from '@/stores/editor'
 import { takeWelcomePending, WELCOME_NOTE } from '@/lib/vault'
 import { usePdfStore } from '@/stores/pdf'
 import { useCanvasStore } from '@/stores/canvas'
-import { views } from '@/core/registries'
+import { HOME_VIEW, views } from '@/core/registries'
 import { currentCommandContexts, type CommandScopes } from '@/core/registries/commands'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { useMediaQuery } from '@/lib/browser/use-media-query'
@@ -133,9 +133,14 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
 
   const [remindersReady, setRemindersReady] = useState(false)
 
-  // A vault just created with a Welcome note opens on it.
+  // A vault just created with a Welcome note opens on it, when it opens on the editor. On a
+  // phone it opens on the tree, where Welcome is listed: queued, it would open over the first
+  // file tapped or made.
   useEffect(() => {
-    if (takeWelcomePending()) useEditorStore.getState().setPendingVaultOpenPath(WELCOME_NOTE)
+    if (!takeWelcomePending()) return
+    if (useUiStore.getState().activeView === HOME_VIEW) {
+      useEditorStore.getState().setPendingVaultOpenPath(WELCOME_NOTE)
+    }
   }, [])
 
   // Touch screens: swipe-down to close, and the Android back button.
