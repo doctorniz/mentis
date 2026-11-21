@@ -9,7 +9,7 @@
  */
 
 export const checklist = {
-  updated: '2026-07-14',
+  updated: '2026-11-22',
   sections: [
     /* ---------------------------- DESKTOP ---------------------------- */
     {
@@ -72,6 +72,7 @@ export const checklist = {
           steps: [
             "Create a vault; capture a thought, a voice note and an image thought; open today's journal",
             'Thoughts/, Journal/ and Attachments/ are in the tree; thought files are named by time and first words',
+            "The voice note's recording is in Thoughts/ beside its note; the image is in Attachments/",
             'Search finds the thought text',
           ],
         },
@@ -95,10 +96,32 @@ export const checklist = {
           id: 'one-sidebar-layout',
           title: 'The sidebar holds the views and the tree',
           steps: [
-            'Search, New, the Today card, Chat, Calendar, Tasks, Thoughts, Bookmarks, then the file tree',
+            'Search, New, the Today card, then the file tree, whose first rows are Calendar, Tasks, Thoughts and Bookmarks (Chat too once on)',
             'With Calendar showing, open a PDF, a canvas and a .kan.md from the tree — each opens in its own editor',
             'Ctrl+F opens search in the sidebar without leaving the view; Esc goes back to the tree',
             'Ctrl+1–6: Today, Chat, Calendar, Tasks, Thoughts, Bookmarks',
+          ],
+        },
+        {
+          id: 'one-sidebar-tree',
+          title: 'One list: pages and folders in the tree',
+          steps: [
+            'A new vault: Calendar, Tasks, Thoughts, Bookmarks head the tree; none is on disk until used',
+            'Each opens its page and is highlighted while open',
+            'New folder opens a text box in the tree: Enter creates, Esc or an empty name cancels',
+            'Rename a folder in place; a taken name shows a toast and keeps the box open; an open note in it keeps its tab',
+            'Root files line up with the folders',
+          ],
+        },
+        {
+          id: 'one-sidebar-search-new',
+          title: 'Search bar, New › Event / Task, calendar clicks',
+          steps: [
+            'Type in the sidebar search: results replace the tree; X or Esc brings it back; Ctrl+F focuses it',
+            'New › Task: Tasks with the add box focused. New › Event: a new event at 8:00–9:00 today',
+            'Week view: a click inside an hour starts the event in that hour (lower half :30); toolbar New event and a month cell start at 8:00',
+            'Move the start past the end: the end becomes an hour after the start',
+            'Open an existing event: no text box is focused',
           ],
         },
         {
@@ -257,7 +280,7 @@ export const checklist = {
             'Quick-add: "!1 Fix bug #work >tomorrow" parses priority/tag/due; "every tuesday" shows the weekly chip',
             'A new task is a "- [ ]" line in Inbox.md; a checkbox typed in any note shows in Tasks',
             'By date: Overdue / Today / Next 7 days / Later / No date; By note groups under each note',
-            'Detail dialog: edit due, time, priority, repeat, subtasks; Open in note',
+            'Detail dialog: edit due, time, priority, repeat, subtasks (Add button, or a typed one kept by Save); Open in note',
             'Tick in the note or in Tasks: the line gets done:<today>; a weekly task adds the next one above',
           ],
         },
@@ -275,7 +298,7 @@ export const checklist = {
           title: 'Board',
           steps: [
             'Add/edit/delete thoughts; color picker via right-click; image card; voice note records and plays',
-            'Transcribe a voice note (first run downloads Whisper)',
+            'Transcribe a voice note (first run downloads Whisper); no word repeats; a second one works too',
             'Move to Vault: text→md, voice→mp3, image-only→image; opens in Vault after',
           ],
         },
@@ -326,6 +349,79 @@ export const checklist = {
     },
     /* ----------------------------- MOBILE ---------------------------- */
     {
+      id: 'android-pass-2',
+      title: 'Android test pass 2 (0.1.5)',
+      device: 'mobile',
+      items: [
+        {
+          id: 'm2-voice',
+          title: 'Voice notes record at once, saved in Thoughts',
+          steps: [
+            "The capture bar's mic, and New › Recording, open Thoughts already recording",
+            'The microphone is asked for once, on the first recording',
+            'The recording is in Thoughts/ beside its note; deleting the thought deletes it',
+          ],
+        },
+        {
+          id: 'm2-transcribe',
+          title: 'Transcription',
+          steps: [
+            'Say "test message testing transcription": that is the text, no word repeated',
+            'A second voice note transcribes too',
+          ],
+        },
+        {
+          id: 'm2-subtasks',
+          title: 'Subtasks',
+          steps: [
+            "In a task's details type a subtask and tap Add: it is saved under the task",
+            'Type one and tap Save without Add: it is saved too',
+            "A task due today shows its subtasks under it in Today's Due list",
+          ],
+        },
+        {
+          id: 'm2-sync-folder',
+          title: 'Sync folder name',
+          steps: [
+            'Settings › Sync shows /Apps/Mentis/<folder name>, not primary%3A…',
+            'Sync writes to that folder in Dropbox (delete the old encoded one by hand)',
+          ],
+        },
+        {
+          id: 'm2-open-to',
+          title: 'Open to',
+          steps: [
+            'Relaunch: the app opens on the Notes tree',
+            'Settings › Vault › Open to: Today, New note, Last file opened, Calendar, Tasks, Chat — each is where a relaunch lands',
+            'The desktop sharing the vault keeps its own choice',
+            'A new vault: tap a file in the tree, that file opens (not Welcome.md)',
+          ],
+        },
+        {
+          id: 'm2-calendar',
+          title: 'Events',
+          steps: [
+            'Open an existing event: the keyboard stays down',
+            'Move the start past the end: the end becomes an hour after; 23:30 gives 00:30 the next day',
+          ],
+        },
+        {
+          id: 'm2-pdf',
+          title: 'PDF on a phone',
+          steps: [
+            'A PDF opens fitted to the screen width',
+            'A finger pans up, down and sideways; two fingers resize',
+            'Draw and Highlight still draw with a finger',
+          ],
+        },
+        {
+          id: 'm2-tree',
+          title: 'Tree alignment',
+          steps: ['Root files line up with the folders and with Calendar, Tasks and Thoughts'],
+        },
+      ],
+    },
+    {
       id: 'mobile-canvas',
       title: 'Canvas touch',
       device: 'mobile',
@@ -370,7 +466,7 @@ export const checklist = {
             'Tab bar: Today, Calendar, Capture, Notes, Chat; Settings › Phone swaps the four around Capture',
             'Capture opens the capture bar in a sheet over any view; a save closes it',
             'Notes shows the file tree full screen; a file opens in the editor',
-            'Task lists / bookmark categories / chat threads open as drawers with the section\'s own icon',
+            "Task lists / bookmark categories / chat threads open as drawers with the section's own icon",
             'Escape / scrim tap closes; focus stays trapped while open',
           ],
         },
@@ -417,15 +513,55 @@ export const checklist = {
 
   /* -------------------------- FUTURE WORKS -------------------------- */
   futureWorks: [
-    { id: 'f-hsl', title: 'Canvas HSL blend modes (BUG-16)', note: 'hue/saturation/color/luminosity currently fall back to normal; needs a Pixi filter pass.' },
-    { id: 'f-embed-rag', title: 'Embeddings RAG (AI1)', note: 'Transformers.js + local vector store; better paraphrase recall at ~100MB model cost.' },
-    { id: 'f-ocr', title: 'Canvas OCR for search/RAG (AI2)', note: 'Drawings are only indexed by title today.' },
-    { id: 'f-tools', title: 'Chat tool-calling / writes (AI4)', note: 'Both chat surfaces are read-only; agents deferred until vault chat UX settles.' },
-    { id: 'f-mobile-export', title: 'Mobile export (X1)', note: 'RN/Capacitor wrapper; keep web architecture compatible.' },
-    { id: 'f-image-tools', title: 'Image editing tools (T2)', note: 'Photoshop-like image tooling; roadmap only.' },
-    { id: 'f-conflict-ui', title: 'Sync conflict details UI', note: 'Conflict toast exists; a history/details surface does not.' },
-    { id: 'f-snapshot-reaper', title: 'Snapshot reaper', note: '_mentis/snapshots/ grows unbounded; needs age/size policy (deliberately NOT part of drawing cleanup).' },
-    { id: 'f-canvas-expand', title: 'Canvas left/up expansion', note: 'Auto-expand only grows right/down; left/up needs pixel offsetting.' },
-    { id: 'f-e2e-flakes', title: 'E2E flake hardening', note: 'Baseline single-retry flakes under CI parallel load (e.g. 05-canvas 5.2.8); a dedicated pass could remove retries.' },
+    {
+      id: 'f-hsl',
+      title: 'Canvas HSL blend modes (BUG-16)',
+      note: 'hue/saturation/color/luminosity currently fall back to normal; needs a Pixi filter pass.',
+    },
+    {
+      id: 'f-embed-rag',
+      title: 'Embeddings RAG (AI1)',
+      note: 'Transformers.js + local vector store; better paraphrase recall at ~100MB model cost.',
+    },
+    {
+      id: 'f-ocr',
+      title: 'Canvas OCR for search/RAG (AI2)',
+      note: 'Drawings are only indexed by title today.',
+    },
+    {
+      id: 'f-tools',
+      title: 'Chat tool-calling / writes (AI4)',
+      note: 'Both chat surfaces are read-only; agents deferred until vault chat UX settles.',
+    },
+    {
+      id: 'f-mobile-export',
+      title: 'Mobile export (X1)',
+      note: 'RN/Capacitor wrapper; keep web architecture compatible.',
+    },
+    {
+      id: 'f-image-tools',
+      title: 'Image editing tools (T2)',
+      note: 'Photoshop-like image tooling; roadmap only.',
+    },
+    {
+      id: 'f-conflict-ui',
+      title: 'Sync conflict details UI',
+      note: 'Conflict toast exists; a history/details surface does not.',
+    },
+    {
+      id: 'f-snapshot-reaper',
+      title: 'Snapshot reaper',
+      note: '_mentis/snapshots/ grows unbounded; needs age/size policy (deliberately NOT part of drawing cleanup).',
+    },
+    {
+      id: 'f-canvas-expand',
+      title: 'Canvas left/up expansion',
+      note: 'Auto-expand only grows right/down; left/up needs pixel offsetting.',
+    },
+    {
+      id: 'f-e2e-flakes',
+      title: 'E2E flake hardening',
+      note: 'Baseline single-retry flakes under CI parallel load (e.g. 05-canvas 5.2.8); a dedicated pass could remove retries.',
+    },
   ],
 }

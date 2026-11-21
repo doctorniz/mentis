@@ -98,6 +98,20 @@ menu and the bottom tab bar — Capture between four tabs chosen in Settings ›
 Phone — and the tree is its own full-screen view (`tree`, the Notes tab,
 `palette: false`). Both load only on a narrow screen.
 
+**Opening a vault.** What a vault opens to is a choice for the device, not the
+vault (`lib/vault/start-view.ts`, kept in `localStorage` as `mentis.startView`;
+Settings › Vault › Open to): Notes (the default: the tree on a phone, the editor
+beside the sidebar elsewhere), Today, New note, Last file opened (the last file
+shown is remembered per vault), Calendar, Tasks or Chat (Notes while chat is off).
+A new vault opens on its Welcome note only when it opens on the editor; on a
+phone's tree the note is just listed.
+
+**Requests to a view.** Asking for a view in a particular state — search, a
+focused capture bar, a new event, a voice recording — sets a flag in the UI
+store that the view takes when it mounts (`requestRecord` / `takeRecordRequest`,
+and so on), not an event: views load lazily, and an event sent before one is
+ready is lost.
+
 ---
 
 ## 4. Files
@@ -303,7 +317,10 @@ rule in the transcript marks the cut. Where the window is unknown nothing is
 condensed. If the summary call fails the request goes as it was.
 Vault chat ranks passages from the `chunks` table; document chat reads the
 open file through its extractor. Voice notes are transcribed by Whisper
-(transformers.js).
+(transformers.js, `lib/audio/transcribe.ts`): WebGPU where the browser offers it,
+WASM on phones (their GPUs run its half-precision maths badly). Decoding is guarded
+against repetition, and a word or phrase repeated four or more times in a row is
+kept once (`collapseRepeats`).
 
 Vault chat's Save writes the conversation to the chat folder (`chatFolder`, default
 `Chat/`, made if missing) as `Title.chat.md`, under the app's one collision rule

@@ -33,7 +33,10 @@ device (IndexedDB), never in the vault. Code: `src/lib/sync/`.
 
 5. In Mentis: **Settings › Sync** → remote folder (default
    `/Apps/Mentis/<vault name>`) → **Connect Dropbox**. Each vault has its own
-   sync section in `_mentis/config.json` and its own token.
+   sync section in `_mentis/config.json` and its own token. The remote folder is
+   read with each part URL-decoded (`lib/sync/remote-path.ts`): Android builds
+   before 0.1.4 named a vault after its encoded address and saved
+   `/Apps/Mentis/primary%3ANotes`, which now reads `/Apps/Mentis/primary:Notes`.
 
 ### How sign-in returns
 

@@ -74,7 +74,8 @@ manifest: the web view asks Android for the microphone when recording starts,
 and without the declaration Android refuses at once. The manifest also
 declares the microphone feature as not required: otherwise `RECORD_AUDIO`
 implies it, and Play hides the app from devices without one. _Take photo_ goes
-through the camera app, so it needs no permission.
+through the camera app, so it needs no permission. Transcription runs Whisper on
+WASM here, not WebGPU: on phone GPUs it looped on one word and then failed.
 
 ## Dropbox sign-in
 

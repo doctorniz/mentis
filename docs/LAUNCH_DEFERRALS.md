@@ -57,23 +57,33 @@ _Last reviewed 2026-10-13._
 
 ### To do
 
-- [ ] **Android test pass fixes (0.1.4)** — on the phone:
-  - Voice note: asked for the microphone once, then it records.
-  - Settings › Sync › Connect Dropbox: Allow in the browser comes back to Mentis (or **Open Mentis** does) and sync starts.
-  - Open a folder named with a space: the masthead and Welcome.md show its name, not `primary%3A…`.
-  - Leave the app and come back: the Notes list shows a spinner, then the files, without tapping Notes again.
-  - Bold a line, Enter, type: the new line is plain.
-  - New thought: the cursor is in it, keyboard up.
-  - Take photo: the photo opens.
-  - An event with notes: the notes do not repeat the title.
-  - Capture from Tasks / Calendar / Journal / Bookmarks starts on that destination; `/file`, `/photo` and `/canvas` open the picker, the camera and a new drawing.
-  - Tap a note's title: all of it is selected.
-  - A new vault opens on Welcome.md; new tasks go to `Tasks/Inbox.md`.
-  - In the tree, Thoughts and Tasks open their pages, as Calendar does.
-  - PDF on the phone: one row of tools; one colour swatch opens the colours.
+- [ ] **Android test pass fixes (0.1.4)** — run on the phone 2026-11-21. What failed was fixed for 0.1.5 and is checked again under _Android test pass 2_; an unticked item with no note was not reported.
+  - [ ] Voice note: asked for the microphone once, then it records. _Failed: the capture bar's mic only opened Thoughts, and recording needed another press._
+  - [x] Settings › Sync › Connect Dropbox: Allow in the browser comes back to Mentis (or **Open Mentis** does) and sync starts. _Sync worked, but the Dropbox folder was named `primary%3ATest%20Vaults`._
+  - [ ] Open a folder named with a space: the masthead and Welcome.md show its name, not `primary%3A…`.
+  - [ ] Leave the app and come back: the Notes list shows a spinner, then the files, without tapping Notes again. _Partly: the spinner showed, then "No file open" instead of the tree._
+  - [x] Bold a line, Enter, type: the new line is plain.
+  - [x] New thought: the cursor is in it, keyboard up.
+  - [x] Take photo: the photo opens.
+  - [ ] An event with notes: the notes do not repeat the title.
+  - [ ] Capture from Tasks / Calendar / Journal / Bookmarks starts on that destination; `/file`, `/photo` and `/canvas` open the picker, the camera and a new drawing.
+  - [x] Tap a note's title: all of it is selected.
+  - [ ] A new vault opens on Welcome.md; new tasks go to `Tasks/Inbox.md`. _Superseded: a vault now opens to the device's Open to choice (pass 2)._
+  - [x] In the tree, Thoughts and Tasks open their pages, as Calendar does.
+  - [x] PDF on the phone: one row of tools; one colour swatch opens the colours.
+  - _Also found:_ transcription looped on one word and failed on a second voice note; subtasks were not saved; root files did not line up with the folders; opening an event raised the keyboard; a new start time could leave the end before it; a PDF could not be scrolled sideways or resized.
 
 - [ ] **Desktop tree (one list)** — in a new vault the sidebar has the Today card and the tree, and no second list of pages: the tree starts with Calendar, Tasks, Thoughts, Bookmarks (Chat once switched on), each opening its page and highlighted while open; none is on disk until used (Thoughts after the first thought). New folder (the heading's button, or a folder's hover button) opens a text box in the tree: Enter creates, Esc or an empty name cancels. Rename (pencil, right-click, or the context menu) edits the name in place; a taken name shows a toast and keeps the box open. Rename a folder that has an open note: the tab follows.
-- [ ] **Android test pass 2 (0.1.5)** — on a phone: the capture bar's mic, and New › Recording, open Thoughts already recording (permission asked once, on the first); the recording is saved in `Thoughts/`, not `Attachments/`, and deleting the thought deletes it. Transcribing "test message testing transcription" gives that, and a second voice note transcribes too (WASM on phones; an earlier build looped on one word). Root files in the tree line up with the folders. Settings › Sync shows the sync folder decoded (`Test Vaults`, not `primary%3A…`); the old encoded folder in Dropbox is left for you to delete. Settings › Vault › Open to: each choice (Notes, Today, New note, Last file opened, Calendar, Tasks, Chat) is where a relaunch lands; it is per device. Opening an event does not raise the keyboard; moving an event's start past its end moves the end to an hour after. A PDF opens fitted to the screen, a finger pans it sideways and up, two fingers resize it. (E2E: `38-android-pass.spec.ts`; unit: `transcribe-repeats.test.ts`, `remote-path.test.ts`.)
+- [ ] **Android test pass 2 (0.1.5)** — on the phone, for what failed in the 0.1.4 pass:
+  - Voice: the capture bar's mic, and New › Recording, open Thoughts already recording; the microphone is asked for once, on the first. The recording is saved in `Thoughts/` beside its note (not `Attachments/`), and deleting the thought deletes it.
+  - Transcribe "test message testing transcription": that is the text, with no word repeated; a second voice note transcribes too. Phones run Whisper on WASM, not the GPU.
+  - Subtasks: in a task's details, type a subtask and tap Add, or type one and tap Save: it is saved indented under the task. A task due today shows its subtasks under it in Today's Due list.
+  - The tree: root files line up with the folders and with Calendar, Tasks and Thoughts.
+  - Settings › Sync shows the sync folder decoded (`/Apps/Mentis/Test Vaults`, not `primary%3A…`), and sync uses that folder. The old encoded folder stays in Dropbox until deleted by hand.
+  - Settings › Vault › Open to (Notes, Today, New note, Last file opened, Calendar, Tasks, Chat): relaunch, and each lands where it says; Notes, the tree, is the default. It is per device: a desktop sharing the vault keeps its own. A new vault on a phone opens on the tree, and tapping a file there opens that file, not Welcome.md.
+  - Calendar: opening an existing event does not raise the keyboard (a new event still focuses its title). Moving the start to or past the end moves the end to an hour after the start (23:30 gives 00:30 the next day); an end still after the start is left alone.
+  - PDF: opens fitted to the screen's width. A finger pans it up, down and sideways; two fingers resize it. Draw and Highlight still take a finger for themselves.
+  - (E2E: `37-subtasks.spec.ts`, `38-android-pass.spec.ts`; unit: `transcribe-repeats.test.ts`, `remote-path.test.ts`. Not automated: the microphone permission, a real transcription on a phone, the Dropbox folder.)
 - [ ] **Desktop search, New and calendar clicks** — the sidebar's Search is one bar: click and type, results replace the tree below it; the X or Esc brings the tree back; Ctrl+F focuses it (and opens a collapsed sidebar). New › Task shows Tasks with the add box focused; New › Event shows the calendar's new event at 8:00–9:00 today. In the week view a click anywhere inside an hour, on its line or beside an event, starts the event in that hour (the lower half gives :30); the toolbar's New event and a month cell start at 8:00.
 - [ ] **iOS vaults (iPhone and iPad)** — New vault: it appears in Files under On My iPhone › Mentis and edits there show in the app on return; Open a folder: an iCloud Drive folder and a folder on the device both open, and reopen after force-quitting and relaunching; a recent vault survives an app update; iPad layout and Apple Pencil on the canvas.
 - [ ] **iOS gaps hidden** — on an iPhone and an iPad build: Settings has no Sync tab, Calendar has no Reminders tab, and a task's details have no Remind at time; Calendar and due dates still work. On Android and the desktop app all three are still there.
@@ -84,11 +94,11 @@ _Last reviewed 2026-10-13._
 - [ ] **Drawing conflict copy** — draw on the same canvas on two devices between syncs: one keeps the newer drawing, `Drawing (conflict …).canvas` opens with the other's strokes on both devices, one toast, and no `(conflict …).png` under `_mentis/_drawings`. (Unit-tested: `tests/sync-canvas-conflict.test.ts`.)
 - [ ] **PDF Version history** — two `plan.pdf` in different folders show separate histories; snapshots from an older build still show.
 
-- [ ] **Visible Thoughts, Journal and Attachments** — a new vault on desktop and Android: capture a thought, a voice note and an image thought, open today's journal: `Thoughts/` (files named by time and first words), `Journal/` and `Attachments/` show in the tree and the thought text is found by search. Settings › Editor › Thoughts, Move to `Ideas`: the board shows the same thoughts, `Thoughts/` is gone; Move to a folder with notes in it: refused. With Dropbox sync on, the moved files arrive on a second device. (Unit-tested: `tests/thoughts-folder.test.ts`.)
+- [ ] **Visible Thoughts, Journal and Attachments** — a new vault on desktop and Android: capture a thought, a voice note and an image thought, open today's journal: `Thoughts/` (files named by time and first words, and the voice note's recording beside its note), `Journal/` and `Attachments/` (the image) show in the tree and the thought text is found by search. Settings › Editor › Thoughts, Move to `Ideas`: the board shows the same thoughts, `Thoughts/` is gone; Move to a folder with notes in it: refused. With Dropbox sync on, the moved files arrive on a second device. (Unit-tested: `tests/thoughts-folder.test.ts`.)
 
-- [ ] **One sidebar** — the desktop app and the website at full width: the sidebar shows Search, New, the Today card, Calendar, Tasks, Thoughts, Bookmarks and the file tree (Chat joins it once switched on in Settings › AI). Open a PDF, a canvas and a .kan.md from the tree while Calendar is showing: each opens in its own editor. Ctrl+F opens search in the sidebar without leaving the view; Esc goes back to the tree. Ctrl+1 and Ctrl+3–6 reach Today, Calendar, Tasks, Thoughts and Bookmarks; Ctrl+2 does nothing until chat is on. Narrow the window until a canvas collapses the sidebar, then widen it again. A reminder's Open lands on Tasks or Calendar. (E2E: `02-navigation.spec.ts`.)
+- [ ] **One sidebar** — the desktop app and the website at full width: the sidebar shows Search, New, the Today card and the file tree, whose first rows are Calendar, Tasks, Thoughts and Bookmarks (Chat joins them once switched on in Settings › AI). Open a PDF, a canvas and a .kan.md from the tree while Calendar is showing: each opens in its own editor. Ctrl+F opens search in the sidebar without leaving the view; Esc goes back to the tree. Ctrl+1 and Ctrl+3–6 reach Today, Calendar, Tasks, Thoughts and Bookmarks; Ctrl+2 does nothing until chat is on. Narrow the window until a canvas collapses the sidebar, then widen it again. A reminder's Open lands on Tasks or Calendar. (E2E: `02-navigation.spec.ts`.)
 
-- [ ] **Due tasks on the journal** — desktop, website, Android: with tasks due today, yesterday and tomorrow in some notes, open Today: Due lists today's and yesterday's (not tomorrow's); the day before lists only its own. Tick one there: it is done in its note and leaves the list; a task in that day's own journal shows ticked on the page too. Collapse Due; with nothing due it is gone. (E2E: `28-journal.spec.ts` 28.5.)
+- [ ] **Due tasks on the journal** — desktop, website, Android: with tasks due today, yesterday and tomorrow in some notes, open Today: Due lists today's and yesterday's (not tomorrow's); the day before lists only its own. Tick one there: it is done in its note and leaves the list; a task in that day's own journal shows ticked on the page too. A due task with subtasks shows them under it, with its done count. Collapse Due; with nothing due it is gone. (E2E: `28-journal.spec.ts` 28.5.)
 
 - [ ] **Events in Calendar/** — desktop, website, Android: create an event: it is `Calendar/<day> <title>.md`, and the tree shows Calendar with a calendar icon and no files; clicking it opens the Calendar. Change the event's title: the file is renamed and a `[[link]]` to it follows. Search for words in an event's notes and open the result: the Calendar shows that day with the event open, not a note. Edit an event file in another editor with an unquoted `start: 2026-11-03`: the calendar still shows it. Move the folder in Settings › Calendar: every event stays. (E2E: `32-visible-folders.spec.ts` 32.4–32.5.)
 
@@ -128,11 +138,11 @@ _Last reviewed 2026-10-13._
 - [ ] **Canvas — regressions eyeball** — eyedropper samples the clicked pixel; multi-stroke undo/redo leaves no shifted/duplicated content (both were shipped bugs fixed 2026-07-12); drawing-data Clean up on a real long-lived vault, then reopen canvases.
 - [ ] **Search — DOCX + code hands-on** — punctuation-heavy code terms (tokenizer splits on non-word chars), a >14k-char `.docx` (truncates), per-type icons in the vault search panel.
 - [ ] **Markdown editor — image resize/alt** — drag-resize with px readout; Alt chip; Source shows `![alt|400](path)`; width persists and prints. (Pipe-width round-trip unit-tested; drag UI needs hands.)
-- [ ] **Board** — thought CRUD, color picker, inline edit, image + voice cards, transcription; **Move to Vault** exports voice→audio file, image-only→image file, text→markdown.
-- [ ] **Audio / Whisper** — first transcribe downloads whisper-tiny (no 401), progress events fire, transcript persists.
+- [ ] **Board** — thought CRUD, color picker, inline edit, image + voice cards (the recording in `Thoughts/`), transcription; **Move to Vault** exports voice→audio file, image-only→image file, text→markdown.
+- [ ] **Audio / Whisper** — first transcribe downloads whisper-tiny (no 401), progress events fire, transcript persists. Desktop uses WebGPU where offered, phones WASM; a word or phrase repeated four or more times in a row is kept once.
 - [ ] **Bookmarks** — add via URL (OG fetch or graceful degrade), categories, edit/delete.
-- [ ] **Calendar** — week title month+year, aligned grid, event CRUD, task-due chips, day/week/month.
-- [ ] **Tasks** — quick-add parsing (`!1`, `#tag`, `>tomorrow`, `every tuesday`), detail dialog, subtasks, By date / By note, ticking a weekly task adds the next.
+- [ ] **Calendar** — week title month+year, aligned grid, event CRUD, task-due chips, day/week/month; the end time follows a start moved past it.
+- [ ] **Tasks** — quick-add parsing (`!1`, `#tag`, `>tomorrow`, `every tuesday`), detail dialog, subtasks (Add button, or kept by Save), By date / By note, ticking a weekly task adds the next.
 - [ ] **Kanban** — create from New menu, drag cards/columns, colors, reopen, external readability.
 - [ ] **Mindmap** — keyboard editing (Tab/Enter/F2/Delete), drag-connect with cycle rejection, undo, persistence, mobile FAB/pinch.
 - [ ] **Chat — off by default** — a new vault and an existing one: Settings › AI shows only the Chat switch; the sidebar, tab options, palette, Ctrl+2 and `/chat` have no Chat; opening notes and PDFs changes no file (no `chatAssetId`, no `_mentis/_chats/index.json`). Switch on: all of it appears at once; switch off: it goes again. Upgrading from a build with the on-device model: the vault shows chat off, no provider chosen, and the ~2 GB `mentis-models` folder is gone from the app's storage after about 10 s. (E2E: `13-chat.spec.ts`.)
@@ -148,7 +158,7 @@ _Last reviewed 2026-10-13._
 - [ ] **Vault & files** — Preview/Files tabs, sync icon when Dropbox configured, Unicode filenames over sync, browse header path, file-browser context menu + batch ops, image edit from tree, vault rename round-trip (C18), New menu (note/file/drawing/PDF import with page style).
 - [ ] **Canvas — general sweep** — brushes/sizes/colors, layer operations (add/rename/lock/opacity/blend/merge/flatten/clear + undo), inline rename, rapid tab switching, export PNG/PDF, keyboard map (M/B/E/H/G/I, `[`/`]`, Ctrl+Z/Y/S, Esc, Del, Ctrl+A/C/X/V, arrows).
 - [ ] **Canvas (mobile / narrow)** — visible drawing area, repaint after view switches, pinch-zoom/two-finger pan, gesture aborts strokes and selections.
-- [ ] **PDF suite** — side column (P2), text boxes, pen vs highlight colors (P14), autosave (P12/P13/P15), persistence + thumbnails, comments (P6/P7), signatures (P8), add page (P9), forms (P10), text search (P11).
+- [ ] **PDF suite** — on a phone: fitted width, finger pan, two-finger resize; side column (P2), text boxes, pen vs highlight colors (P14), autosave (P12/P13/P15), persistence + thumbnails, comments (P6/P7), signatures (P8), add page (P9), forms (P10), text search (P11).
 - [ ] **Backlinks section** — wide vs narrow layout in the unified right column; collapse persistence; resize edge cases.
 - [ ] **Notes vault tree** — collapse/expand, mobile drawer, DnD refresh (C21), context menu (C21b).
 - [ ] **Sync — Settings & OAuth** — Sync tab connect/disconnect, `/auth/dropbox` return, push-after-save without a separate enable toggle, remote edits pull on poll.
