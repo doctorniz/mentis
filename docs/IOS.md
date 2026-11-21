@@ -32,6 +32,10 @@ space, and no tracking or collected data. It must match what the app does and
 what <https://mentis.ink/privacy> says; if Apple's upload email names another
 API, add it there.
 
+## App icon
+
+The icon is the brain from `public/icon.svg`, in `src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset` (also kept in `src-tauri/icons/ios`). iOS wants it square, full-bleed and with no alpha channel (the 1024 px marketing icon is rejected otherwise): render the SVG without its `rx` rounding at 1024 px, run `pnpm tauri icon <that png> -o <temp dir>`, strip the alpha from `ios/*.png`, and copy them over both folders. The Xcode project is committed, so `tauri ios init` does not run again and will not replace them. Until 0.1.4's build 4 the project held Tauri's default logo.
+
 ## Microphone and camera
 
 Voice notes and _Take photo_ need `NSMicrophoneUsageDescription` and
