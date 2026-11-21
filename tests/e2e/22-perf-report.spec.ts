@@ -74,18 +74,21 @@ test('22 — Timing budgets (report only)', async ({ vaultPage: page }, testInfo
   const firstNoteMs = await timeOpenNote(page, 'perf-a', 'First body')
   const secondNoteMs = await timeOpenNote(page, 'perf-b', 'Second body')
 
-  await page.locator('button[aria-label="Search vault"]').first().click()
+  await page.locator('input[aria-label="Search vault"]').first().click()
   const searchMs = await page.evaluate(async () => {
     const input = document.querySelector<HTMLInputElement>('input[aria-label="Search vault"]')
-    const results = input?.parentElement?.nextElementSibling
-    if (!input || !results) throw new Error('Search panel not found')
+    if (!input) throw new Error('Search bar not found')
     const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
     const t0 = performance.now()
     setValue.call(input, 'zephyrine')
     input.dispatchEvent(new Event('input', { bubbles: true }))
+    // The results replace the tree under the bar: a result row is a button with items-start.
     await new Promise<void>((resolve) => {
       const check = () =>
-        results.querySelector('button') ? resolve() : requestAnimationFrame(check)
+        !document.querySelector('[role="tree"]') &&
+        document.querySelector('aside button.items-start')
+          ? resolve()
+          : requestAnimationFrame(check)
       check()
     })
     return performance.now() - t0

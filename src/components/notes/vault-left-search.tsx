@@ -38,11 +38,22 @@ interface VaultLeftSearchProps {
   onClose: () => void
   /** Optional CSS override for the root container (mirrors NotesFileTree's rootClassName) */
   rootClassName?: string
+  /**
+   * The text of a search bar elsewhere (the sidebar's). Given, this shows only the results;
+   * left out, it has a bar of its own.
+   */
+  query?: string
 }
 
-export function VaultLeftSearch({ onClose, rootClassName }: VaultLeftSearchProps) {
+export function VaultLeftSearch({
+  onClose,
+  rootClassName,
+  query: externalQuery,
+}: VaultLeftSearchProps) {
   const { vaultFs } = useVaultSession()
-  const [query, setQuery] = useState('')
+  const [ownQuery, setQuery] = useState('')
+  const hasOwnBar = externalQuery === undefined
+  const query = externalQuery ?? ownQuery
   const [debounced, setDebounced] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   // Bumped when the index changes, so results catch up with indexing that
@@ -52,9 +63,10 @@ export function VaultLeftSearch({ onClose, rootClassName }: VaultLeftSearchProps
 
   // Auto-focus when the panel opens
   useEffect(() => {
+    if (!hasOwnBar) return
     const t = setTimeout(() => inputRef.current?.focus(), 50)
     return () => clearTimeout(t)
-  }, [])
+  }, [hasOwnBar])
 
   // 200 ms debounce
   useEffect(() => {
@@ -117,36 +129,38 @@ export function VaultLeftSearch({ onClose, rootClassName }: VaultLeftSearchProps
       )}
     >
       {/* Search input header — mirrors tree header height */}
-      <div className="border-border flex items-center gap-1.5 border-b px-3 py-2">
-        <Search className="text-fg-muted size-3.5 shrink-0" aria-hidden />
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search vault…"
-          className="text-fg placeholder:text-fg-muted min-w-0 flex-1 bg-transparent text-xs focus:outline-none"
-          aria-label="Search vault"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
+      {hasOwnBar && (
+        <div className="border-border flex items-center gap-1.5 border-b px-3 py-2">
+          <Search className="text-fg-muted size-3.5 shrink-0" aria-hidden />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search vault…"
+            className="text-fg placeholder:text-fg-muted min-w-0 flex-1 bg-transparent text-xs focus:outline-none"
+            aria-label="Search vault"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                if (query) setQuery('')
+                else onClose()
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => {
               if (query) setQuery('')
               else onClose()
-            }
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => {
-            if (query) setQuery('')
-            else onClose()
-          }}
-          className="text-fg-muted hover:text-fg shrink-0 rounded p-0.5 transition-colors"
-          aria-label={query ? 'Clear search' : 'Close search'}
-          title={query ? 'Clear' : 'Back to file tree'}
-        >
-          <X className="size-3.5" />
-        </button>
-      </div>
+            }}
+            className="text-fg-muted hover:text-fg shrink-0 rounded p-0.5 transition-colors"
+            aria-label={query ? 'Clear search' : 'Close search'}
+            title={query ? 'Clear' : 'Back to file tree'}
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Results list */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-1">

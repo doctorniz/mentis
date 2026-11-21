@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import * as Dialog from '@radix-ui/react-dialog'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import { toast } from '@/stores/toast'
 import {
@@ -20,11 +19,12 @@ import {
   Pencil,
   Plus,
   Search,
+  Sparkles,
   Star,
   Trash2,
 } from 'lucide-react'
 import type { FileSystemAdapter } from '@/lib/fs'
-import { fileTypes } from '@/core/registries'
+import { fileTypes, views, useRegistryConfig } from '@/core/registries'
 import { convertLabel, convertVaultFile } from '@/core/convert/convert-file'
 import { detectEditorTabType, titleFromVaultPath } from '@/lib/notes/editor-tab-from-path'
 import type { FileEntry } from '@/types/files'
@@ -34,6 +34,7 @@ import { createUntitledNote } from '@/lib/notes/new-note'
 import { showEditor } from '@/lib/notes/show-editor'
 import { collectFilePaths, renameFolder } from '@/lib/notes/folder-ops'
 import { calendarDir } from '@/lib/calendar/folder'
+import { chatDir } from '@/lib/chat/vault-chat-ui'
 import { DEFAULT_TASK_INBOX } from '@/lib/tasks/index'
 import { THOUGHTS_DIR, type VaultConfig } from '@/types/vault'
 import type { ViewId } from '@/core/registries/views'
@@ -56,19 +57,45 @@ const FOLDER_VIEWS = {
   calendar: { view: 'calendar', icon: CalendarDays },
   board: { view: 'board', icon: Lightbulb },
   tasks: { view: 'tasks', icon: ListTodo },
+  // The saved chats' folder is the Chat page's row: its name opens the page, its arrow the chats.
+  chat: { view: 'vault-chat', icon: Sparkles },
 } as const satisfies Record<string, { view: ViewId; icon: LucideIcon }>
 
 const trimSlashes = (s: string) => s.replace(/^\/+|\/+$/g, '')
 
-/** The page a folder opens, if it is the Calendar, Thoughts or tasks inbox folder. */
-function viewForFolder(path: string, config: VaultConfig | null): keyof typeof FOLDER_VIEWS | null {
-  if (calendarDir(config) === path) return 'calendar'
-  if ((trimSlashes(config?.thoughtsFolder ?? '') || THOUGHTS_DIR) === path) return 'board'
+type FolderViewKey = keyof typeof FOLDER_VIEWS
+
+/**
+ * The folders that open a page, in the order the tree pins them. Chat is among them only
+ * where the pages are pinned and chat is on.
+ */
+function folderViewPaths(
+  config: VaultConfig | null,
+  withChat: boolean,
+): { key: FolderViewKey; path: string }[] {
   const inbox = trimSlashes(config?.taskInbox?.trim() || DEFAULT_TASK_INBOX)
   const tasksDir = inbox.includes('/') ? inbox.slice(0, inbox.lastIndexOf('/')) : ''
-  if (tasksDir && tasksDir === path) return 'tasks'
-  return null
+  return [
+    ...(withChat && views.get('vault-chat')
+      ? [{ key: 'chat' as const, path: chatDir(config) }]
+      : []),
+    { key: 'calendar', path: calendarDir(config) },
+    { key: 'tasks', path: tasksDir },
+    { key: 'board', path: trimSlashes(config?.thoughtsFolder ?? '') || THOUGHTS_DIR },
+  ]
 }
+
+/** The page a folder opens, if it is the Calendar, Thoughts, tasks inbox or (pinned) chat folder. */
+function viewForFolder(
+  path: string,
+  config: VaultConfig | null,
+  withChat: boolean,
+): FolderViewKey | null {
+  return folderViewPaths(config, withChat).find((f) => f.path && f.path === path)?.key ?? null
+}
+
+/** A folder being named in the tree: a new one inside `parent`, or an existing one renamed. */
+type FolderEdit = { kind: 'new'; parent: string } | { kind: 'rename'; path: string }
 
 function fileTitleFromPath(path: string): string {
   return titleFromVaultPath(path)
@@ -84,6 +111,7 @@ export function NotesFileTree({
   onGraphOpen,
   rootClassName,
   heading = 'Vault',
+  pinnedViews = false,
 }: {
   vaultFs: FileSystemAdapter
   /** Increment from parent to reload the tree (e.g. after creating a note elsewhere). */
@@ -96,6 +124,8 @@ export function NotesFileTree({
   rootClassName?: string
   /** The label over the tree. */
   heading?: string
+  /** Pin Chat, Calendar, Tasks, Thoughts and Bookmarks at the top, whether or not their folders exist yet. */
+  pinnedViews?: boolean
 }) {
   // Null until the first listing arrives: an empty vault is not the same as a vault not yet read.
   const [rootEntries, setRootEntries] = useState<FileEntry[] | null>(null)
@@ -105,8 +135,8 @@ export function NotesFileTree({
   const dragEnterCount = useRef(0)
   const [deletePath, setDeletePath] = useState<string | null>(null)
   const [deleteIsFolder, setDeleteIsFolder] = useState(false)
-  const [renameFolderPath, setRenameFolderPath] = useState<string | null>(null)
-  const [newFolderParent, setNewFolderParent] = useState<string | null>(null)
+  const [folderEdit, setFolderEdit] = useState<FolderEdit | null>(null)
+  const config = useRegistryConfig()
   const selectedPath = useFileTreeStore((s) => s.selectedPath)
   const setSelectedPath = useFileTreeStore((s) => s.setSelectedPath)
   const openTab = useEditorStore((s) => s.openTab)
@@ -327,6 +357,110 @@ export function NotesFileTree({
     }
   }
 
+  function startNewFolder(parent: string) {
+    if (parent) useFileTreeStore.getState().setExpanded(parent, true)
+    setFolderEdit({ kind: 'new', parent })
+  }
+
+  /** Make or rename the folder being named. Resolves to a message when it cannot, else null. */
+  async function submitFolderEdit(edit: FolderEdit, name: string): Promise<string | null> {
+    if (edit.kind === 'new') {
+      const fullPath = edit.parent ? `${edit.parent}/${name}` : name
+      if (await vaultFs.exists(fullPath)) return 'A folder with that name already exists.'
+      try {
+        await vaultFs.mkdir(fullPath)
+        onNoteCreated?.()
+        void refresh()
+        return null
+      } catch (err) {
+        return err instanceof Error ? err.message : 'Failed to create folder.'
+      }
+    }
+
+    const currentPath = edit.path
+    const parent = currentPath.includes('/')
+      ? currentPath.slice(0, currentPath.lastIndexOf('/'))
+      : ''
+    const newPath = parent ? `${parent}/${name}` : name
+    if (vaultPathsPointToSameFile(newPath, currentPath)) return null
+    if (await vaultFs.exists(newPath)) return 'A folder with that name already exists.'
+    try {
+      const oldFiles = await collectFilePaths(vaultFs, currentPath)
+      await renameFolder(vaultFs, currentPath, newPath)
+
+      const { tabs, retargetTabPath } = useEditorStore.getState()
+      for (const tab of tabs) {
+        if (tab.path.startsWith(currentPath + '/')) {
+          const updated = newPath + tab.path.slice(currentPath.length)
+          retargetTabPath(
+            tab.id,
+            updated,
+            updated.replace(/\.md$/i, '').split('/').pop() ?? updated,
+          )
+        }
+      }
+      for (const f of oldFiles) removeSearchDocument(f)
+
+      const sel = useFileTreeStore.getState().selectedPath
+      if (sel?.startsWith(currentPath + '/') || sel === currentPath) {
+        setSelectedPath(sel === currentPath ? newPath : newPath + sel.slice(currentPath.length))
+      }
+      onNoteCreated?.()
+      void refresh()
+      return null
+    } catch (err) {
+      return err instanceof Error ? err.message : 'Rename failed.'
+    }
+  }
+
+  // Calendar, Tasks and Thoughts are listed first whether or not their folders exist yet; the
+  // folder appears on disk when something is first saved in it. Nested ones stay where they are.
+  const shownRoot = useMemo(() => {
+    if (rootEntries === null) return null
+    if (!pinnedViews) return { pinned: [], rest: rootEntries }
+    const pinned = folderViewPaths(config, true).filter((f) => f.path && !f.path.includes('/'))
+    const pinnedPaths = new Set(pinned.map((f) => f.path))
+    return {
+      pinned: pinned.map(
+        (f): FileEntry =>
+          rootEntries.find((e) => e.isDirectory && e.path === f.path) ?? {
+            name: f.path,
+            path: f.path,
+            type: 'other',
+            isDirectory: true,
+          },
+      ),
+      rest: rootEntries.filter((e) => !(e.isDirectory && pinnedPaths.has(e.path))),
+    }
+  }, [rootEntries, pinnedViews, config])
+
+  const renderNode = (entry: FileEntry) => (
+    <TreeNode
+      key={entry.path}
+      entry={entry}
+      depth={0}
+      pinnedViews={pinnedViews}
+      vaultFs={vaultFs}
+      refreshToken={refreshToken}
+      selectedPath={selectedPath}
+      inlineEditPath={inlineEditPath}
+      folderEdit={folderEdit}
+      onOpenFile={handleOpenFile}
+      onStartInlineEdit={setInlineEditPath}
+      onCommitInlineEdit={handleInlineRename}
+      onCancelInlineEdit={() => setInlineEditPath(null)}
+      onRenameNote={setRenamePath}
+      onDeleteItem={requestDelete}
+      onRenameFolder={(path) => setFolderEdit({ kind: 'rename', path })}
+      onNewSubfolder={startNewFolder}
+      onSubmitFolderEdit={submitFolderEdit}
+      onCloseFolderEdit={() => setFolderEdit(null)}
+      onMoveFile={handleMoveFile}
+      onExternalImport={handleExternalImport}
+      onConvertFile={handleConvertFile}
+    />
+  )
+
   return (
     <>
       <RenameNoteDialog
@@ -365,26 +499,6 @@ export function NotesFileTree({
           </div>
         </div>
       )}
-      <RenameFolderDialog
-        open={renameFolderPath !== null}
-        onOpenChange={(o) => !o && setRenameFolderPath(null)}
-        vaultFs={vaultFs}
-        currentPath={renameFolderPath ?? ''}
-        onRenamed={() => {
-          onNoteCreated?.()
-          void refresh()
-        }}
-      />
-      <NewFolderDialog
-        open={newFolderParent !== null}
-        onOpenChange={(o) => !o && setNewFolderParent(null)}
-        vaultFs={vaultFs}
-        parentPath={newFolderParent ?? ''}
-        onCreated={() => {
-          onNoteCreated?.()
-          void refresh()
-        }}
-      />
       <div
         className={cn(
           'border-border bg-bg relative flex h-full w-[min(100%,240px)] shrink-0 flex-col border-r',
@@ -468,7 +582,7 @@ export function NotesFileTree({
               variant="ghost"
               size="sm"
               className="text-fg-muted hover:text-fg size-7 shrink-0 p-0"
-              onClick={() => setNewFolderParent('')}
+              onClick={() => startNewFolder('')}
               aria-label="New folder"
               title="New folder"
             >
@@ -510,32 +624,23 @@ export function NotesFileTree({
             <div className="flex justify-center px-3 py-4" role="status" aria-label="Loading files">
               <Loader2 className="text-fg-muted size-4 animate-spin" aria-hidden />
             </div>
-          ) : rootEntries.length === 0 && starredPaths.length === 0 ? (
+          ) : shownRoot &&
+            shownRoot.pinned.length + shownRoot.rest.length === 0 &&
+            starredPaths.length === 0 &&
+            folderEdit?.kind !== 'new' ? (
             <p className="text-fg-muted px-3 py-4 text-center text-xs">No files yet.</p>
           ) : (
             <div role="tree" aria-label="Vault file tree">
-              {rootEntries?.map((entry) => (
-                <TreeNode
-                  key={entry.path}
-                  entry={entry}
+              {folderEdit?.kind === 'new' && folderEdit.parent === '' && (
+                <FolderNameInput
                   depth={0}
-                  vaultFs={vaultFs}
-                  refreshToken={refreshToken}
-                  selectedPath={selectedPath}
-                  inlineEditPath={inlineEditPath}
-                  onOpenFile={handleOpenFile}
-                  onStartInlineEdit={setInlineEditPath}
-                  onCommitInlineEdit={handleInlineRename}
-                  onCancelInlineEdit={() => setInlineEditPath(null)}
-                  onRenameNote={setRenamePath}
-                  onDeleteItem={requestDelete}
-                  onRenameFolder={setRenameFolderPath}
-                  onNewSubfolder={setNewFolderParent}
-                  onMoveFile={handleMoveFile}
-                  onExternalImport={handleExternalImport}
-                  onConvertFile={handleConvertFile}
+                  onSubmit={(name) => submitFolderEdit(folderEdit, name)}
+                  onClose={() => setFolderEdit(null)}
                 />
-              ))}
+              )}
+              {shownRoot?.pinned.map(renderNode)}
+              {pinnedViews && <ViewRow id="bookmarks" />}
+              {shownRoot?.rest.map(renderNode)}
             </div>
           )}
         </div>
@@ -571,13 +676,125 @@ function SidebarPathRow({
   )
 }
 
+const VIEW_ROW =
+  'mx-1 flex w-[calc(100%-0.5rem)] items-center gap-1 rounded-md py-1 pr-1 text-left text-[13px] transition-colors'
+
+/** A page with no folder of its own (Chat, Bookmarks), listed in the tree beside the folders that have one. */
+function ViewRow({ id }: { id: ViewId }) {
+  useRegistryConfig()
+  const def = views.get(id)
+  const active = useUiStore((s) => views.resolve(s.activeView)?.highlight === id)
+  if (!def) return null
+  const Icon = def.icon
+  return (
+    <div role="treeitem" aria-level={1} aria-selected={active}>
+      <button
+        type="button"
+        onClick={() => useUiStore.getState().setActiveView(id)}
+        className={cn(VIEW_ROW, active ? 'bg-accent/10 text-accent' : 'text-fg hover:bg-bg-hover')}
+        style={{ paddingLeft: 2 }}
+      >
+        <span className="size-4 shrink-0" aria-hidden />
+        <Icon className={cn('size-4 shrink-0', !active && 'text-fg-muted')} aria-hidden />
+        <span className="min-w-0 truncate font-medium">{def.label}</span>
+      </button>
+    </div>
+  )
+}
+
+/** The text box a folder is named in, in the row the folder will occupy. */
+function FolderNameInput({
+  depth,
+  initial = '',
+  expandable = true,
+  onSubmit,
+  onClose,
+}: {
+  depth: number
+  initial?: string
+  /** Leave room for the expand arrow, so the name lines up with its siblings. */
+  expandable?: boolean
+  /** Resolves to a message when the name cannot be used, else null. */
+  onSubmit: (name: string) => Promise<string | null>
+  onClose: () => void
+}) {
+  const ref = useRef<HTMLInputElement>(null)
+  // Enter commits, and the box then loses focus: only the first of the two counts.
+  const settled = useRef(false)
+
+  async function commit(fromBlur: boolean) {
+    if (settled.current) return
+    const name = ref.current?.value.trim() ?? ''
+    if (!name || name === initial) {
+      settled.current = true
+      onClose()
+      return
+    }
+    if (/[/\\]/.test(name)) {
+      toast.error('A name cannot contain slashes.')
+      if (fromBlur) {
+        settled.current = true
+        onClose()
+      }
+      return
+    }
+    settled.current = true
+    const error = await onSubmit(name)
+    if (!error) {
+      onClose()
+      return
+    }
+    toast.error(error)
+    if (fromBlur) {
+      onClose()
+    } else {
+      settled.current = false
+      ref.current?.focus()
+    }
+  }
+
+  return (
+    <div
+      className="mx-1 flex w-[calc(100%-0.5rem)] items-center gap-1 py-1 pr-1"
+      style={{ paddingLeft: 2 + depth * 14 }}
+    >
+      {expandable && <span className="size-4 shrink-0" aria-hidden />}
+      <Folder className="text-fg-muted size-4 shrink-0" aria-hidden />
+      <input
+        ref={ref}
+        type="text"
+        defaultValue={initial}
+        placeholder="Folder name"
+        aria-label={initial ? 'New folder name' : 'Folder name'}
+        autoFocus
+        onFocus={(e) => e.currentTarget.setSelectionRange(0, e.currentTarget.value.length)}
+        onBlur={() => void commit(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            void commit(false)
+          } else if (e.key === 'Escape') {
+            e.preventDefault()
+            settled.current = true
+            onClose()
+          }
+          e.stopPropagation()
+        }}
+        className="text-fg bg-bg border-accent min-w-0 flex-1 rounded border px-1 py-0 text-[13px] font-medium outline-none"
+      />
+    </div>
+  )
+}
+
 function TreeNode({
   entry,
   depth,
+  pinnedViews = false,
   vaultFs,
   refreshToken,
   selectedPath,
   inlineEditPath,
+  folderEdit,
   onOpenFile,
   onStartInlineEdit,
   onCommitInlineEdit,
@@ -586,17 +803,22 @@ function TreeNode({
   onDeleteItem,
   onRenameFolder,
   onNewSubfolder,
+  onSubmitFolderEdit,
+  onCloseFolderEdit,
   onMoveFile,
   onExternalImport,
   onConvertFile,
 }: {
   entry: FileEntry
   depth: number
+  /** A root row of a tree that pins the pages: the chat folder is then the Chat page's row. */
+  pinnedViews?: boolean
   vaultFs: FileSystemAdapter
   /** Bumped when vault files change (same as parent `NotesFileTree`); reloads expanded folder children. */
   refreshToken: number
   selectedPath: string | null
   inlineEditPath: string | null
+  folderEdit: FolderEdit | null
   onOpenFile: (path: string) => void
   onStartInlineEdit: (path: string) => void
   onCommitInlineEdit: (oldPath: string, newName: string) => void
@@ -605,6 +827,8 @@ function TreeNode({
   onDeleteItem: (path: string, isFolder: boolean) => void
   onRenameFolder: (path: string) => void
   onNewSubfolder: (parentPath: string) => void
+  onSubmitFolderEdit: (edit: FolderEdit, name: string) => Promise<string | null>
+  onCloseFolderEdit: () => void
   onMoveFile: (srcPath: string, destFolder: string) => void
   onExternalImport: (files: FileList, targetFolder: string) => void
   onConvertFile: (path: string) => void
@@ -619,35 +843,57 @@ function TreeNode({
   const inlineInputRef = useRef<HTMLInputElement>(null)
   const childrenShown = useRef(false)
   const isEditing = inlineEditPath === entry.path
+  const renamingFolder = folderEdit?.kind === 'rename' && folderEdit.path === entry.path
+  const newHere = folderEdit?.kind === 'new' && folderEdit.parent === entry.path
   // The Calendar, Thoughts and Tasks folders open their pages; their files are not listed.
   const folderViewId = useVaultStore((s) =>
-    entry.isDirectory ? viewForFolder(entry.path, s.config) : null,
+    entry.isDirectory ? viewForFolder(entry.path, s.config, pinnedViews && depth === 0) : null,
   )
   const folderView = folderViewId ? FOLDER_VIEWS[folderViewId] : null
-  const isCalendar = folderView !== null
+  // Chat is the one that still lists its files (the saved chats).
+  const chatRow = folderViewId === 'chat'
+  const isCalendar = folderView !== null && !chatRow
+  const folderViewActive = useUiStore((s) =>
+    folderView ? views.resolve(s.activeView)?.highlight === folderView.view : false,
+  )
 
   useEffect(() => {
     if (!entry.isDirectory || !expanded || isCalendar) return
     let cancelled = false
-    void listFolder(vaultFs, entry.path, setChildren, () => cancelled, !childrenShown.current)
+    // A pinned folder may not exist yet (no chat saved): it lists as empty.
+    void listFolder(
+      vaultFs,
+      entry.path,
+      setChildren,
+      () => cancelled,
+      !childrenShown.current,
+    ).catch(() => {
+      if (!cancelled) setChildren([])
+    })
     childrenShown.current = true
     return () => {
       cancelled = true
     }
   }, [entry.isDirectory, entry.path, expanded, vaultFs, refreshToken, isCalendar])
 
-  if (folderView) {
+  if (folderView && !chatRow) {
     const FolderIcon = folderView.icon
     return (
-      <div role="treeitem" aria-level={depth + 1} aria-selected={false}>
+      <div role="treeitem" aria-level={depth + 1} aria-selected={folderViewActive}>
         <button
           type="button"
           onClick={() => useUiStore.getState().setActiveView(folderView.view)}
-          className="text-fg hover:bg-bg-hover mx-1 flex w-[calc(100%-0.5rem)] items-center gap-1 rounded-md py-1 pr-1 text-left text-[13px] transition-colors"
+          className={cn(
+            VIEW_ROW,
+            folderViewActive ? 'bg-accent/10 text-accent' : 'text-fg hover:bg-bg-hover',
+          )}
           style={{ paddingLeft: 2 + depth * 14 }}
         >
           <span className="size-4 shrink-0" aria-hidden />
-          <FolderIcon className="text-fg-muted size-4 shrink-0" aria-hidden />
+          <FolderIcon
+            className={cn('size-4 shrink-0', !folderViewActive && 'text-fg-muted')}
+            aria-hidden
+          />
           <span className="min-w-0 truncate font-medium">{entry.name}</span>
         </button>
       </div>
@@ -833,56 +1079,91 @@ function TreeNode({
         onMoveFile(src, entry.path)
       }}
     >
-      <button
-        type="button"
-        onClick={() => toggleExpanded(entry.path)}
-        aria-label={`${expanded ? 'Collapse' : 'Expand'} ${entry.name}`}
-        className="text-fg flex min-w-0 flex-1 items-center gap-1 text-left"
-      >
-        {expanded ? (
-          <ChevronDown className="text-fg-muted size-4 shrink-0" aria-hidden />
-        ) : (
-          <ChevronRight className="text-fg-muted size-4 shrink-0" aria-hidden />
-        )}
-        <Folder className="text-fg-muted size-4 shrink-0" aria-hidden />
-        <span className="min-w-0 truncate font-medium">{entry.name}</span>
-      </button>
-      <button
-        type="button"
-        className="text-fg-muted hover:text-fg shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
-        aria-label={`New subfolder in ${entry.name}`}
-        title="New subfolder"
-        onClick={(e) => {
-          e.stopPropagation()
-          onNewSubfolder(entry.path)
-        }}
-      >
-        <FolderPlus className="size-3.5" />
-      </button>
-      <button
-        type="button"
-        className="text-fg-muted hover:text-fg shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
-        aria-label={`Rename ${entry.name}`}
-        title="Rename folder"
-        onClick={(e) => {
-          e.stopPropagation()
-          onRenameFolder(entry.path)
-        }}
-      >
-        <Pencil className="size-3.5" />
-      </button>
-      <button
-        type="button"
-        className="text-fg-muted shrink-0 rounded p-1 opacity-100 transition-opacity hover:text-red-500 md:opacity-0 md:group-hover:opacity-100"
-        aria-label={`Delete ${entry.name}`}
-        title="Delete folder"
-        onClick={(e) => {
-          e.stopPropagation()
-          onDeleteItem(entry.path, true)
-        }}
-      >
-        <Trash2 className="size-3.5" />
-      </button>
+      {chatRow && folderView ? (
+        <>
+          <button
+            type="button"
+            onClick={() => toggleExpanded(entry.path)}
+            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${entry.name}`}
+            className="text-fg-muted shrink-0 rounded"
+          >
+            {expanded ? (
+              <ChevronDown className="size-4" aria-hidden />
+            ) : (
+              <ChevronRight className="size-4" aria-hidden />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => useUiStore.getState().setActiveView(folderView.view)}
+            className={cn(
+              'flex min-w-0 flex-1 items-center gap-1 text-left',
+              folderViewActive ? 'text-accent' : 'text-fg',
+            )}
+          >
+            <folderView.icon
+              className={cn('size-4 shrink-0', !folderViewActive && 'text-fg-muted')}
+              aria-hidden
+            />
+            <span className="min-w-0 truncate font-medium">{entry.name}</span>
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => toggleExpanded(entry.path)}
+          aria-label={`${expanded ? 'Collapse' : 'Expand'} ${entry.name}`}
+          className="text-fg flex min-w-0 flex-1 items-center gap-1 text-left"
+        >
+          {expanded ? (
+            <ChevronDown className="text-fg-muted size-4 shrink-0" aria-hidden />
+          ) : (
+            <ChevronRight className="text-fg-muted size-4 shrink-0" aria-hidden />
+          )}
+          <Folder className="text-fg-muted size-4 shrink-0" aria-hidden />
+          <span className="min-w-0 truncate font-medium">{entry.name}</span>
+        </button>
+      )}
+      {!chatRow && (
+        <>
+          <button
+            type="button"
+            className="text-fg-muted hover:text-fg shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+            aria-label={`New subfolder in ${entry.name}`}
+            title="New subfolder"
+            onClick={(e) => {
+              e.stopPropagation()
+              onNewSubfolder(entry.path)
+            }}
+          >
+            <FolderPlus className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            className="text-fg-muted hover:text-fg shrink-0 rounded p-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+            aria-label={`Rename ${entry.name}`}
+            title="Rename folder"
+            onClick={(e) => {
+              e.stopPropagation()
+              onRenameFolder(entry.path)
+            }}
+          >
+            <Pencil className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            className="text-fg-muted shrink-0 rounded p-1 opacity-100 transition-opacity hover:text-red-500 md:opacity-0 md:group-hover:opacity-100"
+            aria-label={`Delete ${entry.name}`}
+            title="Delete folder"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteItem(entry.path, true)
+            }}
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </>
+      )}
     </div>
   )
 
@@ -893,18 +1174,36 @@ function TreeNode({
       aria-level={depth + 1}
       aria-selected={selectedPath === entry.path}
     >
-      <TreeContextMenu
-        isFile={false}
-        entryName={entry.name}
-        onRename={() => onRenameFolder(entry.path)}
-        onNewSubfolder={() => onNewSubfolder(entry.path)}
-        onDelete={() => onDeleteItem(entry.path, true)}
-      >
-        {folderRow}
-      </TreeContextMenu>
-      {expanded && children && children.length > 0 && (
+      {renamingFolder ? (
+        <FolderNameInput
+          depth={depth}
+          initial={entry.name}
+          onSubmit={(name) => onSubmitFolderEdit(folderEdit, name)}
+          onClose={onCloseFolderEdit}
+        />
+      ) : chatRow ? (
+        folderRow
+      ) : (
+        <TreeContextMenu
+          isFile={false}
+          entryName={entry.name}
+          onRename={() => onRenameFolder(entry.path)}
+          onNewSubfolder={() => onNewSubfolder(entry.path)}
+          onDelete={() => onDeleteItem(entry.path, true)}
+        >
+          {folderRow}
+        </TreeContextMenu>
+      )}
+      {expanded && (newHere || (children && children.length > 0)) && (
         <div role="group">
-          {children.map((child) => (
+          {newHere && (
+            <FolderNameInput
+              depth={depth + 1}
+              onSubmit={(name) => onSubmitFolderEdit(folderEdit, name)}
+              onClose={onCloseFolderEdit}
+            />
+          )}
+          {children?.map((child) => (
             <TreeNode
               key={child.path}
               entry={child}
@@ -913,6 +1212,7 @@ function TreeNode({
               refreshToken={refreshToken}
               selectedPath={selectedPath}
               inlineEditPath={inlineEditPath}
+              folderEdit={folderEdit}
               onOpenFile={onOpenFile}
               onStartInlineEdit={onStartInlineEdit}
               onCommitInlineEdit={onCommitInlineEdit}
@@ -921,6 +1221,8 @@ function TreeNode({
               onDeleteItem={onDeleteItem}
               onRenameFolder={onRenameFolder}
               onNewSubfolder={onNewSubfolder}
+              onSubmitFolderEdit={onSubmitFolderEdit}
+              onCloseFolderEdit={onCloseFolderEdit}
               onMoveFile={onMoveFile}
               onExternalImport={onExternalImport}
               onConvertFile={onConvertFile}
@@ -928,7 +1230,7 @@ function TreeNode({
           ))}
         </div>
       )}
-      {expanded && children && children.length === 0 && (
+      {expanded && !newHere && children && children.length === 0 && (
         <p className="text-fg-muted py-1 text-xs" style={{ paddingLeft: 28 + depth * 14 }}>
           Empty folder
         </p>
@@ -969,7 +1271,11 @@ function TreeContextMenu({
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
-        <ContextMenu.Content className="border-border-strong bg-bg z-50 min-w-[180px] rounded-lg border p-1 shadow-lg">
+        <ContextMenu.Content
+          // Closing the menu must not hand focus back to the row: Rename opens a text box there.
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className="border-border-strong bg-bg z-50 min-w-[180px] rounded-lg border p-1 shadow-lg"
+        >
           {isFile && onOpen && (
             <ContextMenu.Item className={CTX_ROW} onSelect={onOpen}>
               <ExternalLink className="size-4" />
@@ -1009,224 +1315,5 @@ function TreeContextMenu({
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>
-  )
-}
-
-function parentDir(path: string): string {
-  const i = path.lastIndexOf('/')
-  return i === -1 ? '' : path.slice(0, i)
-}
-
-function RenameFolderDialog({
-  open,
-  onOpenChange,
-  vaultFs,
-  currentPath,
-  onRenamed,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  vaultFs: FileSystemAdapter
-  currentPath: string
-  onRenamed?: () => void
-}) {
-  const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    if (!open) return
-    setName(currentPath.split('/').pop() ?? '')
-    setError(null)
-  }, [open, currentPath])
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    const trimmed = name.trim()
-    if (!trimmed) {
-      setError('Enter a name.')
-      return
-    }
-    if (/[/\\]/.test(trimmed)) {
-      setError('Name cannot contain slashes.')
-      return
-    }
-    const parent = parentDir(currentPath)
-    const newPath = parent ? `${parent}/${trimmed}` : trimmed
-    if (vaultPathsPointToSameFile(newPath, currentPath)) {
-      onOpenChange(false)
-      return
-    }
-    if ((await vaultFs.exists(newPath)) && !vaultPathsPointToSameFile(newPath, currentPath)) {
-      setError('A folder with that name already exists.')
-      return
-    }
-
-    setBusy(true)
-    try {
-      const oldFiles = await collectFilePaths(vaultFs, currentPath)
-      await renameFolder(vaultFs, currentPath, newPath)
-
-      const { tabs, retargetTabPath } = useEditorStore.getState()
-      for (const tab of tabs) {
-        if (tab.path.startsWith(currentPath + '/')) {
-          const updated = newPath + tab.path.slice(currentPath.length)
-          retargetTabPath(
-            tab.id,
-            updated,
-            updated.replace(/\.md$/i, '').split('/').pop() ?? updated,
-          )
-        }
-      }
-      for (const f of oldFiles) removeSearchDocument(f)
-
-      const sel = useFileTreeStore.getState().selectedPath
-      if (sel?.startsWith(currentPath + '/') || sel === currentPath) {
-        useFileTreeStore
-          .getState()
-          .setSelectedPath(sel === currentPath ? newPath : newPath + sel.slice(currentPath.length))
-      }
-
-      onRenamed?.()
-      onOpenChange(false)
-      toast.success('Folder renamed')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Rename failed.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[199] bg-black/40" />
-        <Dialog.Content className="border-border-strong bg-bg fixed top-1/2 left-1/2 z-[200] w-[min(100%,360px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border p-4 shadow-lg">
-          <Dialog.Title className="text-fg text-sm font-semibold">Rename folder</Dialog.Title>
-          <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 space-y-3">
-            <input
-              type="text"
-              value={name}
-              onChange={(ev) => setName(ev.target.value)}
-              aria-label="New folder name"
-              className="border-border-strong focus:border-accent focus:ring-accent/20 bg-bg text-fg w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
-              autoFocus
-              disabled={busy}
-            />
-            {error && (
-              <p className="text-danger text-xs" role="alert">
-                {error}
-              </p>
-            )}
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={busy}>
-                {busy ? 'Renaming…' : 'Rename'}
-              </Button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-  )
-}
-
-function NewFolderDialog({
-  open,
-  onOpenChange,
-  vaultFs,
-  parentPath,
-  onCreated,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  vaultFs: FileSystemAdapter
-  parentPath: string
-  onCreated?: () => void
-}) {
-  const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    setName('')
-    setError(null)
-    requestAnimationFrame(() => inputRef.current?.focus())
-  }, [open])
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    const trimmed = name.trim()
-    if (!trimmed) {
-      setError('Enter a folder name.')
-      return
-    }
-    if (/[/\\]/.test(trimmed)) {
-      setError('Name cannot contain slashes.')
-      return
-    }
-    const fullPath = parentPath ? `${parentPath}/${trimmed}` : trimmed
-    if (await vaultFs.exists(fullPath)) {
-      setError('A folder with that name already exists.')
-      return
-    }
-
-    setBusy(true)
-    try {
-      await vaultFs.mkdir(fullPath)
-      useFileTreeStore.getState().setExpanded(parentPath, true)
-      onCreated?.()
-      onOpenChange(false)
-      toast.success('Folder created')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create folder.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[199] bg-black/40" />
-        <Dialog.Content className="border-border-strong bg-bg fixed top-1/2 left-1/2 z-[200] w-[min(100%,360px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border p-4 shadow-lg">
-          <Dialog.Title className="text-fg text-sm font-semibold">New folder</Dialog.Title>
-          <Dialog.Description className="text-fg-secondary mt-1 text-xs">
-            Create a subfolder inside <code className="text-fg">{parentPath || 'vault root'}</code>.
-          </Dialog.Description>
-          <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 space-y-3">
-            <input
-              ref={inputRef}
-              type="text"
-              value={name}
-              onChange={(ev) => setName(ev.target.value)}
-              placeholder="Folder name"
-              aria-label="Folder name"
-              className="border-border-strong focus:border-accent focus:ring-accent/20 bg-bg text-fg w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
-              disabled={busy}
-            />
-            {error && (
-              <p className="text-danger text-xs" role="alert">
-                {error}
-              </p>
-            )}
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={busy}>
-                {busy ? 'Creating…' : 'Create'}
-              </Button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
   )
 }

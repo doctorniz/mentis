@@ -4,6 +4,7 @@ import { useVaultSession } from '@/contexts/vault-fs-context'
 import { useCalendarStore } from '@/stores/calendar'
 import { useTasksStore } from '@/stores/tasks'
 import { useVaultStore } from '@/stores/vault'
+import { useUiStore } from '@/stores/ui'
 import { useJournalStore } from '@/stores/journal'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { CalendarGrid } from '@/components/calendar/calendar-grid'
@@ -186,6 +187,16 @@ export function CalendarView() {
 
   // Touch: swipe left for the next day, week or month; right for the one before.
   const swipe = useSwipe({ onLeft: goNext, onRight: goPrev })
+
+  // The sidebar's New › Event: this view opens, then starts an event today.
+  const newEventRequested = useUiStore((s) => s.newEventRequested)
+  useEffect(() => {
+    if (!newEventRequested || !useUiStore.getState().takeNewEventRequest()) return
+    setRefDate(new Date())
+    setEditEvent(null)
+    setClickedDate(toDateStr(new Date()))
+    setDialogOpen(true)
+  }, [newEventRequested])
 
   // A reminder's Open: show the event once it is loaded.
   useEffect(() => {

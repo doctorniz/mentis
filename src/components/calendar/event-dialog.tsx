@@ -18,9 +18,13 @@ interface EventDialogProps {
   defaultDate?: string
 }
 
+/** Where a new event starts when no time was chosen. */
+const DEFAULT_START = '08:00'
+const DEFAULT_END = '09:00'
+
 function timeFromDateTimeStr(s: string): string {
-  if (!s || !s.includes('T')) return '09:00'
-  return s.slice(11, 16) || '09:00'
+  if (!s || !s.includes('T')) return DEFAULT_START
+  return s.slice(11, 16) || DEFAULT_START
 }
 
 function combineDateAndTime(date: string, time: string): string {
@@ -41,9 +45,9 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
   const [url, setUrl] = useState('')
   const [startDate, setStartDate] = useState(defaultDate ?? today)
   const [endDate, setEndDate] = useState(defaultDate ?? today)
-  const [startTime, setStartTime] = useState('09:00')
-  const [endTime, setEndTime] = useState('10:00')
-  const [allDay, setAllDay] = useState(true)
+  const [startTime, setStartTime] = useState(DEFAULT_START)
+  const [endTime, setEndTime] = useState(DEFAULT_END)
+  const [allDay, setAllDay] = useState(false)
   const [color, setColor] = useState<CalendarEventColor>('violet')
   const [saving, setSaving] = useState(false)
 
@@ -82,9 +86,10 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
         setStartTime(startT)
         setEndTime(endT)
       } else {
-        setAllDay(true)
-        setStartTime('09:00')
-        setEndTime('10:00')
+        // A new event with no time chosen: an hour from 8am.
+        setAllDay(false)
+        setStartTime(DEFAULT_START)
+        setEndTime(DEFAULT_END)
       }
     }
   }, [open, event, defaultDate, today])

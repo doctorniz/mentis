@@ -1,18 +1,19 @@
 import { test, expect, navigateTo, enableChat } from './fixtures'
 
 /**
- * Nav model under test — one sidebar: Today (Ctrl+1), Chat (2), Calendar (3,
- * with Reminders as a tab), Tasks (4, with Lists as a tab), Thoughts (5),
- * Bookmarks (6), then the file tree. The vault view and Files come from the
- * palette, Graph from the tree's heading, Search from the sidebar (Ctrl+F).
+ * Nav model under test — one sidebar: the Today card (Ctrl+1), then the file
+ * tree, whose first rows are Chat (Ctrl+2), Calendar (3, with Reminders as a
+ * tab), Tasks (4, with Lists as a tab), Thoughts (5) and Bookmarks (6). The
+ * vault view and Files come from the palette, Graph from the tree's heading,
+ * Search from the sidebar (Ctrl+F).
  */
 test.describe('2.1 — View Switching', () => {
   test('2.1.0 Chat is off by default: not in the sidebar, and Ctrl+2 does nothing', async ({
     vaultPage: page,
   }) => {
-    const nav = page.getByRole('navigation', { name: 'Main views' })
-    await expect(nav.getByRole('button', { name: /^Calendar/ })).toBeVisible()
-    await expect(nav.getByRole('button', { name: /^Chat/ })).toHaveCount(0)
+    const tree = page.getByRole('tree', { name: 'Vault file tree' })
+    await expect(tree.getByRole('button', { name: /^Calendar/ })).toBeVisible()
+    await expect(tree.getByRole('button', { name: /^Chat/ })).toHaveCount(0)
     await page.keyboard.press('Control+2')
     await page.waitForTimeout(500)
     await expect(page.locator('textarea').first()).toBeHidden()
@@ -120,11 +121,12 @@ test.describe('2.1 — View Switching', () => {
   })
 
   test('2.1.12 Sidebar nav icons highlight active state', async ({ vaultPage: page }) => {
-    // Ctrl+5 goes to Thoughts — its nav button gets accent styling
+    // Ctrl+5 goes to Thoughts — its row in the tree gets accent styling
     await page.keyboard.press('Control+5')
     await page.waitForTimeout(800)
 
-    const boardBtn = page.locator('nav[aria-label="Main views"] button', { hasText: 'Thoughts' })
+    const tree = page.getByRole('tree', { name: 'Vault file tree' })
+    const boardBtn = tree.getByRole('button', { name: 'Thoughts' })
     await expect(boardBtn).toBeVisible({ timeout: 5000 })
     expect((await boardBtn.getAttribute('class')) ?? '').toContain('accent')
 
@@ -132,9 +134,7 @@ test.describe('2.1 — View Switching', () => {
     await page.keyboard.press('Control+6')
     await page.waitForTimeout(800)
 
-    const bookmarksBtn = page.locator('nav[aria-label="Main views"] button', {
-      hasText: 'Bookmarks',
-    })
+    const bookmarksBtn = tree.getByRole('button', { name: 'Bookmarks' })
     expect((await bookmarksBtn.getAttribute('class')) ?? '').toContain('accent')
     expect((await boardBtn.getAttribute('class')) ?? '').not.toContain('accent')
   })

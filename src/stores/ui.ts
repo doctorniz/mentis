@@ -20,10 +20,19 @@ interface UiState {
    * panel takes it, so a request made while switching to it is not lost.
    */
   vaultSearchRequested: boolean
+  /** What the sidebar's search bar holds; results replace the tree while it is not empty. */
+  vaultSearchQuery: string
   /** Capture was asked for from outside (a shortcut, the widget): focus the shown capture bar. */
   captureFocusRequested: boolean
+  /** A new event was asked for from outside (the sidebar's New menu): the calendar opens its dialog. */
+  newEventRequested: boolean
 
   setActiveView: (view: ViewId) => void
+  setVaultSearchQuery: (query: string) => void
+  /** Show the calendar with a new event started. */
+  requestNewEvent: () => void
+  /** The calendar on screen: take a pending new-event request. */
+  takeNewEventRequest: () => boolean
   /** Open search: in the sidebar, or on a phone in Notes. */
   requestVaultSearch: () => void
   /** The search panel on screen: take a pending search request. */
@@ -82,7 +91,28 @@ export const useUiStore = create<UiState>()(
     theme: readStoredTheme(),
     activeModal: null,
     vaultSearchRequested: false,
+    vaultSearchQuery: '',
     captureFocusRequested: false,
+    newEventRequested: false,
+
+    setVaultSearchQuery: (query) =>
+      set((state) => {
+        state.vaultSearchQuery = query
+      }),
+
+    requestNewEvent: () =>
+      set((state) => {
+        state.newEventRequested = true
+        state.activeView = 'calendar'
+      }),
+
+    takeNewEventRequest: () => {
+      if (!get().newEventRequested) return false
+      set((state) => {
+        state.newEventRequested = false
+      })
+      return true
+    },
 
     requestCaptureFocus: (view) =>
       set((state) => {
@@ -103,6 +133,7 @@ export const useUiStore = create<UiState>()(
         state.vaultSearchRequested = true
         // On a phone search opens over the vault view; wide, it is in the sidebar beside any view.
         if (window.matchMedia(MOBILE_NAV_MEDIA_QUERY).matches) state.activeView = 'tree'
+        else state.isSidebarOpen = true
       }),
 
     takeVaultSearchRequest: () => {

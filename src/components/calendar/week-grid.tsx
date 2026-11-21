@@ -131,10 +131,10 @@ interface WeekGridProps {
   onDailyNoteClick?: (dateStr: string) => void
 }
 
-/** Snap minutes to nearest 30-min mark, clamped to 00:00–23:00 */
+/** The half hour a click landed in (rounded down), clamped to 00:00–23:00 */
 function snapToHalfHour(offsetY: number): string {
   const totalMin = (offsetY / HOUR_HEIGHT) * 60
-  const snapped = Math.round(totalMin / 30) * 30
+  const snapped = Math.floor(totalMin / 30) * 30
   const clamped = Math.max(0, Math.min(23 * 60, snapped))
   const h = Math.floor(clamped / 60)
   const m = clamped % 60
@@ -342,7 +342,10 @@ export function WeekGrid({
                   <div
                     key={i}
                     onClick={(e) => {
-                      const time = snapToHalfHour(e.nativeEvent.offsetY)
+                      // From the column's top, whichever child (an hour line, a gap) took the click.
+                      const time = snapToHalfHour(
+                        e.clientY - e.currentTarget.getBoundingClientRect().top,
+                      )
                       onTimeSlotClick(`${dateStr}T${time}`)
                     }}
                     role="button"

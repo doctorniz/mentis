@@ -10,6 +10,9 @@
     <!-- Voice notes: the web view asks for the microphone when recording starts. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Without this, RECORD_AUDIO implies a required microphone and Play hides the app
+         from devices that lack one. Voice notes are optional. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />

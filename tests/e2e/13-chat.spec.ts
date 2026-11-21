@@ -469,7 +469,8 @@ data: [DONE]
       // It opens as a chat, not as a note named "Welcome.chat".
       await navigateTo(page, 'vault')
       const tree = page.getByRole('tree', { name: 'Vault file tree' })
-      await tree.getByText('Chat', { exact: true }).click()
+      // The Chat row opens the page; its arrow lists the saved chats.
+      await tree.getByRole('button', { name: 'Expand Chat', exact: true }).click()
       await tree.getByRole('button', { name: 'Welcome 2', exact: true }).click()
       const prose = page.locator('.chat-assistant-prose', { hasText: 'Hello' })
       await expect(prose.locator('strong')).toHaveText('there', { timeout: 10_000 })

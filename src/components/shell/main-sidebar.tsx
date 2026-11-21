@@ -1,6 +1,8 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import {
+  CalendarDays,
   Camera,
+  CheckSquare,
   FileStack,
   Loader2,
   LogOut,
@@ -16,6 +18,7 @@ import {
   StickyNote,
   Sun,
   Upload,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSync } from '@/contexts/sync-context'
@@ -24,7 +27,6 @@ import { useVaultStore } from '@/stores/vault'
 import { useJournalStore } from '@/stores/journal'
 import { useNewFileActions, type NewMenuItem } from '@/lib/notes/use-new-file-actions'
 import { cn } from '@/utils/cn'
-import { views, useRegistryConfig } from '@/core/registries'
 import { MOBILE_NAV_MEDIA_QUERY } from '@/lib/browser/breakpoints'
 import { useMediaQuery } from '@/lib/browser/use-media-query'
 
@@ -73,6 +75,64 @@ function TodayCard({ active }: { active: boolean }) {
   )
 }
 
+/**
+ * The sidebar's search bar: typing here replaces the tree below with results, clearing it
+ * (the X, or Esc) brings the tree back. Ctrl+F and the palette's Search focus it.
+ */
+function SidebarSearch() {
+  const query = useUiStore((s) => s.vaultSearchQuery)
+  const setQuery = useUiStore((s) => s.setVaultSearchQuery)
+  const requested = useUiStore((s) => s.vaultSearchRequested)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // The sidebar is also in the page on a phone, hidden: only a bar that shows takes the request.
+  useEffect(() => {
+    if (!requested || !inputRef.current?.offsetParent) return
+    if (useUiStore.getState().takeVaultSearchRequest()) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [requested])
+
+  return (
+    <div className="border-border bg-bg focus-within:border-accent flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors">
+      <Search className="text-fg-tertiary size-4 shrink-0" aria-hidden />
+      <input
+        ref={inputRef}
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            setQuery('')
+            e.currentTarget.blur()
+          }
+        }}
+        placeholder="Search"
+        aria-label="Search vault"
+        title="Search (Ctrl+F)"
+        className="text-fg placeholder:text-fg-tertiary min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+      />
+      {query ? (
+        <button
+          type="button"
+          onClick={() => {
+            setQuery('')
+            inputRef.current?.focus()
+          }}
+          className="text-fg-muted hover:text-fg shrink-0 rounded p-0.5"
+          aria-label="Clear search"
+          title="Clear"
+        >
+          <X className="size-3.5" aria-hidden />
+        </button>
+      ) : (
+        <kbd className="text-fg-tertiary hidden font-mono text-[10px] sm:inline">⌃F</kbd>
+      )}
+    </div>
+  )
+}
+
 export function MainSidebar({
   onCloseVault,
   onOpenSettings,
@@ -81,9 +141,6 @@ export function MainSidebar({
   onOpenSettings: () => void
 }) {
   const activeView = useUiStore((s) => s.activeView)
-  useRegistryConfig()
-  const activeHighlight = views.resolve(activeView)?.highlight
-  const setActiveView = useUiStore((s) => s.setActiveView)
   const isOpen = useUiStore((s) => s.isSidebarOpen)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const sidebarWidth = useUiStore((s) => s.sidebarWidth)
@@ -125,6 +182,26 @@ export function MainSidebar({
       accent: 'text-yellow-500',
       order: 20,
       action: () => void createThought(),
+    },
+    {
+      label: 'Task',
+      icon: CheckSquare,
+      accent: 'text-emerald-500',
+      order: 25,
+      action: () => {
+        useUiStore.getState().requestCaptureFocus('tasks')
+        closeNew()
+      },
+    },
+    {
+      label: 'Event',
+      icon: CalendarDays,
+      accent: 'text-violet-500',
+      order: 26,
+      action: () => {
+        useUiStore.getState().requestNewEvent()
+        closeNew()
+      },
     },
     {
       label: 'Recording',
@@ -223,17 +300,7 @@ export function MainSidebar({
 
       <div className="flex shrink-0 flex-col gap-0.5 p-2 pb-0">
         <div className="flex gap-1.5">
-          <button
-            type="button"
-            onClick={() => useUiStore.getState().requestVaultSearch()}
-            aria-label="Search vault"
-            title="Search (Ctrl+F)"
-            className="border-border bg-bg text-fg-tertiary hover:text-fg-secondary flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-sm transition-colors"
-          >
-            <Search className="size-4 shrink-0" aria-hidden />
-            <span className="flex-1 truncate">Search</span>
-            <kbd className="hidden font-mono text-[10px] sm:inline">⌃F</kbd>
-          </button>
+          {showFiles && <SidebarSearch />}
           <button
             type="button"
             onClick={() => setNewOpen((o) => !o)}
@@ -271,32 +338,6 @@ export function MainSidebar({
 
       <nav className="flex shrink-0 flex-col gap-0.5 p-2" aria-label="Main views">
         <TodayCard active={activeView === 'journal'} />
-        {views.nav().map(({ id, label, icon: Icon, shortcut }) => {
-          const active = activeHighlight === id
-
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveView(id)}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors',
-                active
-                  ? 'bg-accent/10 text-accent'
-                  : 'text-fg-secondary hover:bg-sidebar-hover hover:text-fg',
-              )}
-            >
-              <Icon className="size-5 shrink-0 opacity-90" aria-hidden />
-              <span className="flex-1 truncate">{label}</span>
-              {shortcut && (
-                <kbd className="text-fg-muted hidden font-mono text-[10px] sm:inline">
-                  ⌃{shortcut}
-                </kbd>
-              )}
-            </button>
-          )
-        })}
-
         {/* Hidden file inputs */}
         <input
           ref={fileInputRef}
@@ -324,7 +365,7 @@ export function MainSidebar({
       <div className="border-border flex min-h-0 flex-1 flex-col border-t">
         {showFiles && (
           <Suspense fallback={null}>
-            <SidebarFiles />
+            <SidebarFiles searchBar />
           </Suspense>
         )}
       </div>

@@ -139,9 +139,9 @@ export async function navigateTo(page: Page, view: ViewName) {
       await page.locator('[aria-label="Open graph"]').first().click()
       break
     case 'search':
-      // Click the sidebar's Search rather than pressing Ctrl+F — with focus
+      // Click the sidebar's search bar rather than pressing Ctrl+F — with focus
       // inside the note editor, Ctrl+F opens the in-note find bar instead.
-      await page.locator('button[aria-label="Search vault"]').first().click()
+      await page.locator('input[aria-label="Search vault"]').first().click()
       break
   }
   await page.waitForTimeout(500)

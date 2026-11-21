@@ -45,7 +45,9 @@ test.describe('34 — File tree', () => {
     await expect(tree.getByRole('treeitem', { name: /Alpha/ })).toBeVisible()
   })
 
-  test('34.2 An empty vault says so once it has been read', async ({ vaultPage: page }) => {
+  test('34.2 An empty vault shows the pinned pages, not "No files yet."', async ({
+    vaultPage: page,
+  }) => {
     // A new vault holds only the welcome note; remove it (the app's own folder stays).
     await page.evaluate(async () => {
       const root = await navigator.storage.getDirectory()
@@ -61,6 +63,8 @@ test.describe('34 — File tree', () => {
       }
     })
     await page.reload()
-    await expect(page.getByText('No files yet.')).toBeVisible({ timeout: 15_000 })
+    const tree = page.getByRole('tree', { name: 'Vault file tree' })
+    await expect(tree.getByRole('treeitem', { name: 'Calendar' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('No files yet.')).toBeHidden()
   })
 })

@@ -73,10 +73,23 @@ File types are matched by suffix, longest first, so compound extensions work:
 views are `React.lazy` — opening a note never loads the PDF engine, the
 canvas or the spreadsheet grid.
 
-**Layout.** On a wide screen one sidebar holds everything: Search and New, a
-date card that opens today's journal (Ctrl+1), the views with `nav` — Chat (only
-while chat is on; Ctrl+2), Calendar, Tasks, Thoughts, Bookmarks (Ctrl+3 to 6) — and below them the
-vault's file tree (`sidebar-files.tsx`, loaded after the shell). Opening a
+**Layout.** On a wide screen one sidebar holds everything: a search bar (a real
+input: typing replaces the tree below with results, clearing it brings the tree
+back; Ctrl+F focuses it; its text is `vaultSearchQuery` in the UI store) and
+New (note, thought, task, event, the other file types, recording, photo, file —
+Task shows the Tasks page with its add box focused, Event the calendar's new
+event dialog), a date card that opens today's journal (Ctrl+1), and below it the vault's file
+tree (`sidebar-files.tsx`, loaded after the shell). The tree's first rows are
+the pages, in one list with the folders: Chat (only while chat is on; Ctrl+2),
+Calendar, Tasks, Thoughts (Ctrl+3 to 5) and Bookmarks (Ctrl+6). Calendar, Tasks
+and Thoughts stand for their folders, which are listed whether or not they
+exist yet and are created when something is first saved in them. Chat is the
+saved-chats folder's own row while chat is on: its name opens the page, its
+arrow lists the saved chats. Bookmarks has no visible folder, so it is a plain
+row. The `nav` flag on a
+view no longer puts it in a list: it names the view the tree row highlights.
+Folders are named in the tree itself — a text box in the new or renamed
+folder's own row (`FolderNameInput`), no dialog. Opening a
 file from the tree or search shows it in the vault view, the editor with its
 tabs, from whichever view is up. The vault view, Files and Graph have no
 sidebar entry: the tree opens files, the palette reaches every view, and Graph
