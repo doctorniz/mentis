@@ -21,8 +21,15 @@ let loadPromise: Promise<void> | null = null
 /** Public ONNX checkpoint; `onnx-community/distil-whisper-small.en` returns 401 without HF auth in-browser. */
 const MODEL_ID = 'Xenova/whisper-tiny.en'
 
-/** Prefer WebGPU; fall back to WASM for browsers without it. */
+/**
+ * Prefer WebGPU; fall back to WASM for browsers without it. Not on a phone: its GPU runs the
+ * model's half-precision maths badly (a transcript that loops on one word, then nothing on the
+ * next clip), and WASM is slower but right.
+ */
 async function resolveDevice(): Promise<'webgpu' | 'wasm'> {
+  if (typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    return 'wasm'
+  }
   try {
     if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
       const adapter = await (
@@ -117,6 +124,14 @@ interface WhisperChunk {
 }
 
 /**
+ * A word or short phrase said over and over is the decoder looping, not speech: keep it once.
+ * Runs of four or more repeats of one to four words collapse to a single copy.
+ */
+export function collapseRepeats(text: string): string {
+  return text.replace(/\b((?:\S+\s+){0,3}\S+?)(?:\s+\1\b){3,}/gi, '$1')
+}
+
+/**
  * Join Whisper chunks into paragraphed text.
  * A gap ≥ PARAGRAPH_GAP_S between the end of one chunk and the start of
  * the next is treated as a paragraph break; shorter gaps are joined with
@@ -158,6 +173,9 @@ export async function transcribeAudio(audioBytes: Uint8Array): Promise<Transcrib
     chunk_length_s: 30,
     stride_length_s: 5,
     return_timestamps: true,
+    // Greedy decoding can fall into a loop on silence or noise after the speech.
+    no_repeat_ngram_size: 4,
+    repetition_penalty: 1.2,
   })
 
   // With return_timestamps: true the pipeline returns { text, chunks[] }.
@@ -165,11 +183,11 @@ export async function transcribeAudio(audioBytes: Uint8Array): Promise<Transcrib
   const raw = result as { text?: string; chunks?: WhisperChunk[] }
 
   if (raw.chunks && raw.chunks.length > 0) {
-    return { text: chunksToText(raw.chunks) }
+    return { text: collapseRepeats(chunksToText(raw.chunks)) }
   }
 
   const text = typeof result === 'string' ? result : (raw.text ?? '')
-  return { text: text.trim() }
+  return { text: collapseRepeats(text.trim()) }
 }
 
 /**
