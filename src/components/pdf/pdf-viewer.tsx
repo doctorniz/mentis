@@ -82,6 +82,7 @@ export function PdfViewer({ path }: { path: string }) {
   const [activeSignature, setActiveSignature] = useState<Signature | null>(null)
   const [rawPdfBytes, setRawPdfBytes] = useState<Uint8Array | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const pagesRef = useRef<HTMLDivElement>(null)
   const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const hasUnsavedRef = useRef(hasUnsavedChanges)
   hasUnsavedRef.current = hasUnsavedChanges
@@ -141,6 +142,13 @@ export function PdfViewer({ path }: { path: string }) {
         for (const a of allAnns) {
           usePdfStore.getState().addAnnotation(a, { fromLoader: true })
         }
+
+        // A page wider than the viewer (a phone) opens fitted to it, not cut off.
+        const viewerW = scrollRef.current?.clientWidth ?? 0
+        const widest = Math.max(...pageInfos.map((i) => i.width))
+        if (viewerW > 0 && widest > 0 && widest + 24 > viewerW) {
+          usePdfStore.getState().setZoom(Math.floor(((viewerW - 24) / widest) * 100) / 100)
+        }
       } catch (e) {
         console.error('PDF load failed', e)
         toast.error('Failed to load PDF')
@@ -148,6 +156,51 @@ export function PdfViewer({ path }: { path: string }) {
     },
     [path, vaultFs, setDocument],
   )
+
+  // The scroller exists once there are pages to show.
+  const hasPages = pages.length > 0
+
+  // Two fingers resize the pages: they follow the fingers as a scale, then zoom is set once.
+  useEffect(() => {
+    const el = scrollRef.current
+    const content = pagesRef.current
+    if (!el || !content) return
+    let pinch: { dist: number; zoom: number; factor: number } | null = null
+    const dist = (t: TouchList) =>
+      Math.hypot(t[0]!.clientX - t[1]!.clientX, t[0]!.clientY - t[1]!.clientY)
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return
+      pinch = { dist: dist(e.touches), zoom: usePdfStore.getState().zoom, factor: 1 }
+      content.style.transformOrigin = '0 0'
+    }
+    const onMove = (e: TouchEvent) => {
+      if (!pinch || e.touches.length !== 2) return
+      e.preventDefault()
+      e.stopPropagation()
+      pinch.factor = Math.min(
+        5 / pinch.zoom,
+        Math.max(0.25 / pinch.zoom, dist(e.touches) / pinch.dist),
+      )
+      content.style.transform = `scale(${pinch.factor})`
+    }
+    const onEnd = (e: TouchEvent) => {
+      if (!pinch || e.touches.length >= 2) return
+      content.style.transform = ''
+      usePdfStore.getState().setZoom(pinch.zoom * pinch.factor)
+      pinch = null
+    }
+    const opts = { capture: true, passive: false }
+    el.addEventListener('touchstart', onStart, opts)
+    el.addEventListener('touchmove', onMove, opts)
+    el.addEventListener('touchend', onEnd, opts)
+    el.addEventListener('touchcancel', onEnd, opts)
+    return () => {
+      el.removeEventListener('touchstart', onStart, opts)
+      el.removeEventListener('touchmove', onMove, opts)
+      el.removeEventListener('touchend', onEnd, opts)
+      el.removeEventListener('touchcancel', onEnd, opts)
+    }
+  }, [hasPages])
 
   useEffect(() => {
     const signal = { cancelled: false }
@@ -625,8 +678,11 @@ export function PdfViewer({ path }: { path: string }) {
           onMerge={handleMerge}
           onExtractPages={handleExtractPages}
         />
-        <div ref={scrollRef} className="bg-bg-tertiary min-h-0 min-w-0 flex-1 overflow-auto">
-          <div className="flex flex-col items-center gap-4 py-4">
+        <div
+          ref={scrollRef}
+          className="bg-bg-tertiary min-h-0 min-w-0 flex-1 touch-pan-x touch-pan-y overflow-auto"
+        >
+          <div ref={pagesRef} className="flex w-max min-w-full flex-col items-center gap-4 py-4">
             {pages.map((p, i) => {
               const vp = p.getViewport({ scale: zoom })
               const pageH = Math.floor(vp.height)

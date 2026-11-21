@@ -90,12 +90,17 @@ export function PdfPageCanvas({
   useEffect(() => {
     const el = fabricRef.current
     if (!el || !ready) return
+    // Fabric cancels touches on its layer, so a finger could not pan the page. It pans unless the
+    // tool needs the drag itself (pinching is the viewer's). Decided here: the layer is rebuilt often.
+    const dragTool = activeTool === PdfTool.Draw || activeTool === PdfTool.Highlight
     const fc = new FabricCanvas(el, {
       width: w,
       height: h,
       selection: false,
+      allowTouchScrolling: !dragTool,
     })
     fcRef.current = fc
+    fc.upperCanvasEl.style.touchAction = dragTool ? 'none' : 'pan-x pan-y'
 
     for (const ann of existingAnnotations) {
       if (ann.type === PdfAnnotationType.Highlight) {
@@ -272,7 +277,6 @@ export function PdfPageCanvas({
     } else {
       fc.isDrawingMode = false
     }
-
     fc.forEachObject((obj) => {
       if ((obj as unknown as Record<string, unknown>).__searchHl) return
       obj.selectable = activeTool === PdfTool.Select
