@@ -936,7 +936,7 @@ function TreeNode({
           'group mx-1 flex w-[calc(100%-0.5rem)] items-center gap-0.5 rounded-md py-1 pr-1 text-[13px] transition-colors',
           selected ? 'bg-accent/10 text-accent' : 'text-fg hover:bg-bg-hover',
         )}
-        style={{ paddingLeft: 6 + depth * 14 }}
+        style={{ paddingLeft: 22 + depth * 14 }} /* icons line up with the folders' */
       >
         {isEditing ? (
           <div className="flex min-w-0 flex-1 items-center gap-2">
