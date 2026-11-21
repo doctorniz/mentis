@@ -26,9 +26,15 @@ interface UiState {
   captureFocusRequested: boolean
   /** A new event was asked for from outside (the sidebar's New menu): the calendar opens its dialog. */
   newEventRequested: boolean
+  /** A voice thought was asked for from outside (New, the capture bar): Thoughts starts recording. */
+  recordRequested: boolean
 
   setActiveView: (view: ViewId) => void
   setVaultSearchQuery: (query: string) => void
+  /** Show Thoughts, recording. */
+  requestRecord: () => void
+  /** Thoughts on screen: take a pending record request. */
+  takeRecordRequest: () => boolean
   /** Show the calendar with a new event started. */
   requestNewEvent: () => void
   /** The calendar on screen: take a pending new-event request. */
@@ -93,6 +99,7 @@ export const useUiStore = create<UiState>()(
     vaultSearchRequested: false,
     vaultSearchQuery: '',
     captureFocusRequested: false,
+    recordRequested: false,
     newEventRequested: false,
 
     setVaultSearchQuery: (query) =>
@@ -110,6 +117,20 @@ export const useUiStore = create<UiState>()(
       if (!get().newEventRequested) return false
       set((state) => {
         state.newEventRequested = false
+      })
+      return true
+    },
+
+    requestRecord: () =>
+      set((state) => {
+        state.recordRequested = true
+        state.activeView = 'board'
+      }),
+
+    takeRecordRequest: () => {
+      if (!get().recordRequested) return false
+      set((state) => {
+        state.recordRequested = false
       })
       return true
     },

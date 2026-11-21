@@ -142,8 +142,7 @@ export function MobileNavMasthead({
       accent: 'text-red-500',
       order: 60,
       action: () => {
-        useUiStore.getState().setActiveView('board')
-        setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
+        useUiStore.getState().requestRecord()
         closeMenu()
       },
     },

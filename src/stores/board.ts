@@ -144,7 +144,7 @@ export const useBoardStore = create<BoardState>()(
         fs,
         `recording.${ext}`,
         audioBytes,
-        attachmentsDir(currentConfig()),
+        thoughtsDir(currentConfig()),
       )
 
       const path = await newThoughtPath(fs, 'Voice note')
@@ -222,10 +222,15 @@ export const useBoardStore = create<BoardState>()(
     },
 
     removeItem: async (fs, path) => {
+      // A voice note's recording lives beside it in Thoughts: it goes with the note.
+      const audio = get().items.find((i) => i.path === path)?.audioPath
       try {
         await fs.remove(path)
       } catch {
         /* already gone */
+      }
+      if (audio && audio.startsWith(`${thoughtsDir(currentConfig())}/`)) {
+        await fs.remove(audio).catch(() => {})
       }
       set((s) => {
         s.items = s.items.filter((i) => i.path !== path)

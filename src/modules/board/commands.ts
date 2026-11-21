@@ -23,11 +23,7 @@ const commands: AnyCommand[] = [
     keywords: ['board', 'audio', 'microphone', 'recording'],
     icon: Mic,
     scope: 'global',
-    run: () => {
-      useUiStore.getState().setActiveView('board')
-      // The board listens for this once it is shown.
-      setTimeout(() => window.dispatchEvent(new CustomEvent('ink:board-start-recording')), 100)
-    },
+    run: () => useUiStore.getState().requestRecord(),
   },
 ]
 

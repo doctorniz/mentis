@@ -36,11 +36,7 @@ export default function CaptureSheet({ onClose }: { onClose: () => void }) {
             onEscapeEmpty={onClose}
             onRecord={() => {
               onClose()
-              useUiStore.getState().setActiveView('board')
-              setTimeout(
-                () => window.dispatchEvent(new CustomEvent('ink:board-start-recording')),
-                100,
-              )
+              useUiStore.getState().requestRecord()
             }}
           />
         </Dialog.Content>

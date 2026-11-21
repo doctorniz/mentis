@@ -6,6 +6,7 @@ import { AudioRecorderBar } from '@/components/audio/audio-recorder-bar'
 import { saveAsset } from '@/lib/notes/assets'
 import { attachmentsDir } from '@/lib/vault/attachments-dir'
 import { useBoardStore } from '@/stores/board'
+import { useUiStore } from '@/stores/ui'
 import { useVaultStore } from '@/stores/vault'
 import type { ThoughtColor } from '@/types/board'
 import { THOUGHT_COLORS } from '@/types/board'
@@ -85,14 +86,12 @@ export function BoardView() {
     void loadBoard(vaultFs)
   }, [vaultFs, loadBoard, thoughtsFolder])
 
-  // Listen for global "start recording on board" event (fired from New button)
+  // A voice thought asked for from elsewhere (New, the capture bar): the view may have
+  // only just loaded, so the request waits for it in the store.
+  const recordRequested = useUiStore((s) => s.recordRequested)
   useEffect(() => {
-    function handler() {
-      setIsRecording(true)
-    }
-    window.addEventListener('ink:board-start-recording', handler)
-    return () => window.removeEventListener('ink:board-start-recording', handler)
-  }, [])
+    if (recordRequested && useUiStore.getState().takeRecordRequest()) setIsRecording(true)
+  }, [recordRequested])
 
   const handleAdd = useCallback(
     (color?: ThoughtColor) => {
