@@ -31,6 +31,24 @@ function combineDateAndTime(date: string, time: string): string {
   return `${date}T${time}`
 }
 
+/** `HH:mm` one hour on, and whether that crosses midnight. */
+function anHourAfter(time: string): { time: string; nextDay: boolean } {
+  const [h, m] = time.split(':').map(Number)
+  const total = h * 60 + m + 60
+  const hh = Math.floor(total / 60) % 24
+  return {
+    time: `${String(hh).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`,
+    nextDay: total >= 24 * 60,
+  }
+}
+
+/** The day after `date` (YYYY-MM-DD). */
+function nextDate(date: string): string {
+  const d = new Date(`${date}T12:00:00`)
+  d.setDate(d.getDate() + 1)
+  return toDateStr(d)
+}
+
 export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDialogProps) {
   const { vaultFs } = useVaultSession()
   const addEvent = useCalendarStore((s) => s.addEvent)
@@ -148,11 +166,25 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
 
   const isEdit = Boolean(event)
 
+  /** After the start moves: an end that is not after it becomes an hour after it. */
+  function keepEndAfterStart(date: string, time: string) {
+    if (allDay || !time) return
+    const end = endDate < date ? date : endDate
+    if (end > date || endTime > time) return
+    const next = anHourAfter(time)
+    setEndTime(next.time)
+    setEndDate(next.nextDay ? nextDate(date) : date)
+  }
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
         <Dialog.Content
+          // Opening an event to read it must not raise the keyboard over it.
+          onOpenAutoFocus={(e) => {
+            if (isEdit) e.preventDefault()
+          }}
           className="bg-bg border-border fixed top-1/2 left-1/2 z-50 flex max-h-[min(90dvh,44rem)] w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border shadow-xl"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -181,7 +213,7 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Event title"
-              autoFocus
+              autoFocus={!isEdit}
               className="text-fg placeholder:text-fg-muted/40 w-full bg-transparent text-lg font-semibold outline-none"
             />
 
@@ -241,6 +273,7 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
                   onChange={(e) => {
                     setStartDate(e.target.value)
                     if (endDate < e.target.value) setEndDate(e.target.value)
+                    keepEndAfterStart(e.target.value, startTime)
                   }}
                   className="border-border bg-bg-secondary text-fg focus:ring-accent/40 w-full min-w-0 rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1"
                 />
@@ -264,7 +297,10 @@ export function EventDialog({ open, onOpenChange, event, defaultDate }: EventDia
                     <input
                       type="time"
                       value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
+                      onChange={(e) => {
+                        setStartTime(e.target.value)
+                        keepEndAfterStart(startDate, e.target.value)
+                      }}
                       className="border-border bg-bg-secondary text-fg focus:ring-accent/40 w-full min-w-0 rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-1"
                     />
                   </div>
