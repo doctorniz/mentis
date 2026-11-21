@@ -8,7 +8,8 @@ import { useVaultStore } from '@/stores/vault'
 import { useUiStore } from '@/stores/ui'
 import { useEditorStore } from '@/stores/editor'
 import { useFileTreeStore } from '@/stores/file-tree'
-import { HOME_VIEW, viewIdOrHome } from '@/core/registries'
+import { HOME_VIEW } from '@/core/registries'
+import { applyStartView, rememberLastFile } from '@/lib/vault/start-view'
 import { forgetLastVault } from '@/lib/vault/session'
 import { trackPathChanges } from '@/lib/fs/track'
 import { clearSearchIndex } from '@/lib/search/index'
@@ -71,7 +72,7 @@ export function AppRoot() {
       fileCount: 0,
       lastOpened: new Date().toISOString(),
     })
-    useUiStore.getState().setActiveView(viewIdOrHome(config.defaultView))
+    void applyStartView(next.vaultFs, vaultPath)
 
     if (navigator.storage?.persist) {
       navigator.storage.persist().catch(() => {})
@@ -89,6 +90,16 @@ export function AppRoot() {
       closed = true
       stop?.()
     }
+  }, [session])
+
+  // "Last file opened" is whichever file the user was last on.
+  useEffect(() => {
+    if (!session) return
+    return useEditorStore.subscribe((s, prev) => {
+      if (s.activeTabId === prev.activeTabId) return
+      const tab = s.tabs.find((t) => t.id === s.activeTabId)
+      if (tab && tab.type !== 'event') rememberLastFile(session.vaultPath, tab.path)
+    })
   }, [session])
 
   // Remove the on-device chat model an earlier version downloaded (once, ever).

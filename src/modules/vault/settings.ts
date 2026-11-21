@@ -53,6 +53,12 @@ const sections: readonly SettingsSection[] = [
       },
     ],
   },
+  {
+    id: 'vault.start',
+    tab: 'Vault',
+    order: 11,
+    panel: () => import('./start-panel'),
+  },
 ]
 
 export default sections
