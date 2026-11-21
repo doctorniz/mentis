@@ -5,6 +5,7 @@ import type { VaultConfig, VaultSyncConfig } from '@/types/vault'
 import { getToken, clearToken } from '@/lib/sync/token-store'
 import { stashDropboxOAuthSession } from '@/lib/sync/oauth-session'
 import { isTauri } from '@/lib/fs/platform'
+import { readableRemotePath } from '@/lib/sync/remote-path'
 import { SYNC_SIGNED_IN_EVENT } from '@/lib/sync/oauth-session'
 
 const DEFAULT_SYNC: VaultSyncConfig = {
@@ -110,7 +111,8 @@ export function VaultDropboxSyncPanel({
         return
       }
       const remoteRoot =
-        sync.remotePath?.trim() || `/Apps/Mentis/${vaultConfig.name.replace(/\/+$/, '')}`
+        readableRemotePath(sync.remotePath).trim() ||
+        `/Apps/Mentis/${vaultConfig.name.replace(/\/+$/, '')}`
       const nextSync: VaultSyncConfig = {
         provider: 'dropbox',
         remotePath: remoteRoot,
@@ -162,7 +164,7 @@ export function VaultDropboxSyncPanel({
         <div className="flex items-start justify-between gap-4 py-3">
           <p className="text-fg text-sm font-medium">Remote folder</p>
           <input
-            value={sync.remotePath}
+            value={readableRemotePath(sync.remotePath)}
             onChange={(e) => patchSync({ remotePath: e.target.value })}
             className={INPUT_CLS}
             placeholder={`/Apps/Mentis/${vaultConfig.name}`}

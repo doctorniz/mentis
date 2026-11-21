@@ -15,6 +15,7 @@ import type { FileSystemAdapter } from '@/lib/fs/types'
 import type { VaultSyncConfig } from '@/types/vault'
 import { toast } from '@/stores/toast'
 import { SYNC_SIGNED_IN_EVENT } from '@/lib/sync/oauth-session'
+import { readableRemotePath } from '@/lib/sync/remote-path'
 
 const ConfirmDialog = lazy(() =>
   import('@/components/ui/confirm-dialog').then((m) => ({ default: m.ConfirmDialog })),
@@ -92,7 +93,9 @@ export function SyncProvider({
         const provider = new DropboxProvider({
           clientId,
           vaultId,
-          remoteRoot: syncConfig.remotePath || `/Apps/Mentis/${vaultLabel.replace(/\/+$/, '')}`,
+          remoteRoot:
+            readableRemotePath(syncConfig.remotePath) ||
+            `/Apps/Mentis/${vaultLabel.replace(/\/+$/, '')}`,
         })
 
         const authenticated = await provider.isAuthenticated()
