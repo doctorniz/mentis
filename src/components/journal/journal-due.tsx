@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { compareTasks } from '@/lib/tasks'
+import { nestTasks } from '@/lib/tasks/line'
 import { formatLocalDate } from '@/lib/tasks/recurrence'
 import { useTasksStore } from '@/stores/tasks'
 import { TaskRow } from '@/components/tasks/task-row'
@@ -24,13 +25,28 @@ export function JournalDue({ date }: { date: string }) {
   }, [loaded, loadTasks])
 
   const today = formatLocalDate(new Date())
-  const due = useMemo(
-    () =>
-      items
-        .filter((t) => !t.done && t.due && (t.due === date || (date === today && t.due < date)))
-        .sort(compareTasks),
-    [items, date, today],
-  )
+  const due = useMemo(() => {
+    const isDue = (t: TaskItem) =>
+      !t.done && t.due && (t.due === date || (date === today && t.due < date))
+    // Each task with its open subtasks under it; a due subtask shows under its parent
+    // when the parent is due too, and on its own otherwise.
+    const nested = new Map<string, TaskItem>()
+    const walk = (t: TaskItem): TaskItem => {
+      const node = { ...t, children: t.children.filter((c) => !c.done).map(walk) }
+      nested.set(t.id, node)
+      return node
+    }
+    nestTasks(items).forEach(walk)
+    const byId = new Map(items.map((t) => [t.id, t]))
+    return items
+      .filter((t) => {
+        if (!isDue(t)) return false
+        const parent = t.parentLine != null ? byId.get(`${t.path}:${t.parentLine}`) : undefined
+        return !(parent && isDue(parent))
+      })
+      .map((t) => nested.get(t.id) ?? t)
+      .sort(compareTasks)
+  }, [items, date, today])
 
   if (due.length === 0) return null
 

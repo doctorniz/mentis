@@ -77,6 +77,9 @@ export function TaskDetailDialog({
   const handleSave = useCallback(async () => {
     if (!current) return
     setSaving(true)
+    // A subtask typed but not yet added is saved with the task, not lost.
+    const pending = subtaskTitle.trim()
+    if (pending) await run(() => addSubtask(vaultFs, current, pending))
     await run(() =>
       updateTask(vaultFs, current, {
         title: title.trim(),
@@ -92,7 +95,20 @@ export function TaskDetailDialog({
     )
     setSaving(false)
     onOpenChange(false)
-  }, [current, title, priority, due, time, weekday, vaultFs, updateTask, onOpenChange, run])
+  }, [
+    current,
+    title,
+    priority,
+    due,
+    time,
+    weekday,
+    subtaskTitle,
+    vaultFs,
+    updateTask,
+    addSubtask,
+    onOpenChange,
+    run,
+  ])
 
   const handleDelete = useCallback(async () => {
     if (!current) return
@@ -273,22 +289,32 @@ export function TaskDetailDialog({
                   </div>
                 ))}
               </div>
-              <div className="mt-1.5 flex items-center gap-2">
+              {/* A form, not a key handler: a phone's keyboard does not always send `Enter`. */}
+              <form
+                className="mt-1.5 flex items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void handleAddSubtask()
+                }}
+              >
                 <Plus className="text-fg-muted size-3.5 shrink-0" />
                 <input
                   type="text"
                   value={subtaskTitle}
                   onChange={(e) => setSubtaskTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      void handleAddSubtask()
-                    }
-                  }}
+                  enterKeyHint="done"
                   placeholder="Add subtask"
                   className="text-fg placeholder:text-fg-muted/40 min-w-0 flex-1 bg-transparent text-sm outline-none"
                 />
-              </div>
+                {subtaskTitle.trim() && (
+                  <button
+                    type="submit"
+                    className="text-accent shrink-0 touch-manipulation rounded px-2 py-1 text-xs font-medium"
+                  >
+                    Add
+                  </button>
+                )}
+              </form>
             </div>
           </div>
 
