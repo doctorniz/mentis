@@ -80,7 +80,9 @@ one fails, re-run the failed jobs and it publishes then.
 1. Set the same version in `package.json`, `src-tauri/tauri.conf.json` and
    `src-tauri/Cargo.toml`, and merge it.
 2. `git tag v0.2.0 && git push origin v0.2.0`.
-3. Upload the `.aab` in the Play Console.
+3. `play.yml` has already sent the `.aab` to Play's closed-testing track as a
+   draft: roll it out in the Play Console (`ANDROID.md`, Play). Without the
+   `PLAY_SERVICE_ACCOUNT_JSON` secret, upload the `.aab` there by hand.
 
 **Once:** the Android secrets ([`ANDROID.md`](./ANDROID.md), Releasing) and
 the `NEXT_PUBLIC_DROPBOX_CLIENT_ID` variable; a release without it stops

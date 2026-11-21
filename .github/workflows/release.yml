@@ -190,6 +190,18 @@ jobs:
           cp "$out/apk/universal/release/app-universal-release.apk" "mentis-$GITHUB_REF_NAME.apk"
           gh release upload "$GITHUB_REF_NAME" "mentis-$GITHUB_REF_NAME.aab" "mentis-$GITHUB_REF_NAME.apk" --clobber
 
+  # The bundle goes to Play's closed-testing track as a draft (play.yml); it
+  # does nothing without the PLAY_SERVICE_ACCOUNT_JSON secret, and the release
+  # does not wait for it.
+  play:
+    needs: android
+    uses: ./.github/workflows/play.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
+    permissions:
+      contents: write
+
   publish:
     needs: [desktop, android]
     runs-on: ubuntu-latest

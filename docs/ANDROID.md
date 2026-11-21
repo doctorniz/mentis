@@ -230,6 +230,28 @@ keyAlias=upload
 keyPassword=…
 ```
 
+### Play: sending the bundle from CI
+
+`.github/workflows/play.yml` uploads each release's `.aab` to Google Play, as a
+draft (nothing reaches testers until it is rolled out in the Play Console). It
+runs after the Android build in `release.yml`, and by hand from Actions › Play ›
+Run workflow with a tag (`v0.1.5`) for a release already built. A failed upload
+never stops the release being published.
+
+1. In Google Cloud, make a project, enable the **Google Play Android Developer
+   API**, and make a service account with no roles; create a JSON key for it.
+2. In the Play Console, Users and permissions › Invite new users: the service
+   account's email, with **Release apps to testing tracks** for Mentis. It can
+   take some hours to take effect.
+3. Store the key (do not paste it anywhere), then delete the file:
+   `gh secret set PLAY_SERVICE_ACCOUNT_JSON < key.json`.
+4. Closed testing's first track is `alpha`. If yours has another name, set it in
+   the `PLAY_TRACK` repository variable.
+
+The app and its first release are made by hand (above); the API only adds
+releases to an app that exists. A draft upload does not appear for testers
+until you roll it out. Without the secret the workflow says so and stops.
+
 ### Each release
 
 1. Set the same version in `package.json`, `src-tauri/tauri.conf.json` and
@@ -239,7 +261,9 @@ keyPassword=…
    an APK for all four CPU types (64- and 32-bit ARM, x86_64, x86), signs
    them, and attaches them to the GitHub release with the desktop apps
    (`docs/DEPLOYMENT.md`, Releasing).
-4. Upload `mentis-v0.2.0.aab` in the Play Console.
+4. `play.yml` sends the bundle to Play's closed-testing track as a **draft**
+   (below). In the Play Console, open that release, check it and send it for
+   review. Without the Play secret, upload `mentis-v0.2.0.aab` there by hand.
 
 The Play version code comes from the version: `major × 1,000,000 + minor ×
 1,000 + patch` (0.2.0 → 2000), so every new version uploads above the last.

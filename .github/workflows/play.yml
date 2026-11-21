@@ -1,0 +1,61 @@
+name: Play
+
+# Sends a release's Android bundle to Google Play's closed-testing track, as a
+# draft: you review it and roll it out in the Play Console. The release workflow
+# runs it after the Android build; run it by hand (Actions › Play › Run
+# workflow) with a tag such as v0.1.5 to send a release that is already built.
+# It needs the PLAY_SERVICE_ACCOUNT_JSON secret and does nothing without it.
+# A failed upload never fails the release. Setup: docs/ANDROID.md, "Play".
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag whose .aab to send (v0.1.5)
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+permissions:
+  # Reads the release's files, which are a draft until every build is attached.
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    # Play is a convenience, not a gate: the release is published either way.
+    continue-on-error: true
+    env:
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Is Play set up?
+        id: play
+        run: |
+          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::notice::The PLAY_SERVICE_ACCOUNT_JSON secret is not set, so nothing is sent to Play (docs/ANDROID.md, Play)."
+          else
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: The release's bundle
+        if: steps.play.outputs.on == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.aab' --dir play
+
+      # Closed testing's first track is `alpha`; a track you named yourself is
+      # set in the PLAY_TRACK repository variable.
+      - name: Send it to Play
+        if: steps.play.outputs.on == 'true'
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: app.mentis
+          releaseFiles: play/*.aab
+          track: ${{ vars.PLAY_TRACK || 'alpha' }}
+          releaseName: ${{ inputs.tag }}
+          status: draft
