@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { AppShell } from '@/components/shell/app-shell'
 import { ErrorBoundary } from '@/components/shell/error-boundary'
 import { VaultLanding } from '@/components/landing/vault-landing'
@@ -166,6 +167,7 @@ export function AppRoot() {
           </VaultFsProvider>
         </ErrorBoundary>
       )}
+      <Analytics />
     </>
   )
 }
