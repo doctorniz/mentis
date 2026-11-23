@@ -54,6 +54,20 @@ export function takeWelcomePending(): boolean {
   return pending
 }
 
+/** The seed without what differs per vault: its creation time, name and day. */
+function seedShape(text: string): string {
+  return text
+    .replace(/^created: .*$/m, '')
+    .replace(/This is your \*\*.*\*\* vault/, '')
+    .replace(/>\d{4}-\d{2}-\d{2}/, '')
+    .replace(/\r\n/g, '\n')
+}
+
+/** Whether `text` is the Welcome note exactly as a new vault wrote it. */
+export function isUntouchedWelcome(text: string): boolean {
+  return seedShape(text) === seedShape(welcomeNote(''))
+}
+
 function localDay(): string {
   const d = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')

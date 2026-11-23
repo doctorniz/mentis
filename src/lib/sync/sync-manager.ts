@@ -22,6 +22,7 @@ import {
 } from './canvas-conflict'
 import { uniqueVaultPath } from '@/lib/fs/unique-path'
 import { fileTypes } from '@/core/registries'
+import { isUntouchedWelcome, WELCOME_NOTE } from '@/lib/vault'
 import { putFileHashes, validFileHashes } from '@/lib/search/index'
 
 /** File hashes remembered in the vault index, so unchanged files are not re-read. */
@@ -520,6 +521,14 @@ export class SyncManager {
         remoteHash: remote.hash,
         lastSyncedAt: new Date().toISOString(),
       })
+      return
+    }
+    // A new vault's own Welcome note is never worth a conflict copy.
+    if (
+      path === WELCOME_NOTE &&
+      isUntouchedWelcome(new TextDecoder().decode(await this.fs.readFile(path)))
+    ) {
+      await this.pullFile(path, remote)
       return
     }
     await this.keepLosingSide(path, 'local')
