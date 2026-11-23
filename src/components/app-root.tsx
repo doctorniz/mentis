@@ -13,6 +13,7 @@ import { HOME_VIEW } from '@/core/registries'
 import { applyStartView, rememberLastFile } from '@/lib/vault/start-view'
 import { forgetLastVault } from '@/lib/vault/session'
 import { trackPathChanges } from '@/lib/fs/track'
+import { isTauri } from '@/lib/fs/platform'
 import { clearSearchIndex } from '@/lib/search/index'
 import { clearVaultChatSession } from '@/lib/chat/vault-chat-session'
 import { useVaultChatStore } from '@/stores/vault-chat'
@@ -167,7 +168,8 @@ export function AppRoot() {
           </VaultFsProvider>
         </ErrorBoundary>
       )}
-      <Analytics />
+      {/* Page visits are counted on the website only, never in the apps. */}
+      {!isTauri() && <Analytics />}
     </>
   )
 }
