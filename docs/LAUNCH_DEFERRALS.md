@@ -55,6 +55,8 @@ _Last reviewed 2026-10-13._
 
 **Hands-on passes:** run `pnpm qa` — a dev-only checklist server (Desktop / Mobile / Future tabs, pass/fail/skip + notes, findings export) curated from this queue. It binds to the LAN so a phone can drive the Mobile tab; progress is shared and survives restarts (`.qa-checklist-state.json`, git-ignored). Keep `scripts/qa-checklist-data.mjs` in sync when this queue gains hands-on items.
 
+**Per-release smoke test:** [mentis.ink/testing](https://mentis.ink/testing) (`public/testing.html` + `public/testing.js`, not part of the app) — a short checklist per platform (website, Windows, macOS, Linux, Android, iPhone, iPad), pass/fail/skip + notes kept in that browser, a PDF report through the print dialog, and an emailed summary to admin@mentis.ink. Add an item there when a release needs a new hands-on check.
+
 ### To do
 
 - [ ] **Android test pass fixes (0.1.4)** — run on the phone 2026-11-21. What failed was fixed for 0.1.5 and is checked again under _Android test pass 2_; an unticked item with no note was not reported.

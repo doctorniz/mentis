@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <title>Mentis release testing</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --panel: #f6f7f9;
+        --fg: #1c1e21;
+        --muted: #5c6168;
+        --accent: #4c6ef5;
+        --rule: #e3e5e8;
+        --pass: #2b8a3e;
+        --fail: #c92a2a;
+        --skip: #868e96;
+        --pass-bg: #ebfbee;
+        --fail-bg: #fff5f5;
+        --skip-bg: #f1f3f5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #15171a;
+          --panel: #1d2024;
+          --fg: #e8eaed;
+          --muted: #9aa0a8;
+          --accent: #8da2ff;
+          --rule: #2b2f34;
+          --pass: #69db7c;
+          --fail: #ff8787;
+          --skip: #adb5bd;
+          --pass-bg: #1a2b1e;
+          --fail-bg: #2e1b1b;
+          --skip-bg: #23262a;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.5 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+      }
+      main {
+        max-width: 46rem;
+        margin: 0 auto;
+        padding: 2rem max(16px, env(safe-area-inset-right)) 5rem
+          max(16px, env(safe-area-inset-left));
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0 0 0.25rem;
+      }
+      h2 {
+        font-size: 1.05rem;
+        margin: 2rem 0 0.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--rule);
+      }
+      .muted {
+        color: var(--muted);
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+      .fields {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+        gap: 0.75rem;
+        margin: 1.25rem 0;
+      }
+      .fields label {
+        display: grid;
+        gap: 0.2rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .fields input {
+        padding: 0.45rem 0.6rem;
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        background: var(--bg);
+        min-width: 0;
+      }
+      .platforms {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+      .platforms button {
+        padding: 0.4rem 0.8rem;
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        background: var(--bg);
+        cursor: pointer;
+      }
+      .platforms button[aria-pressed='true'] {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .platforms .count {
+        opacity: 0.75;
+        font-size: 0.8em;
+        margin-left: 0.3rem;
+      }
+      .bar {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--bg);
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--rule);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1rem;
+      }
+      .progress {
+        flex: 1 1 12rem;
+        display: flex;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        background: var(--rule);
+      }
+      .progress span {
+        display: block;
+      }
+      .tally {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+      .actions button {
+        padding: 0.5rem 0.9rem;
+        border-radius: 8px;
+        border: 1px solid var(--rule);
+        background: var(--panel);
+        cursor: pointer;
+      }
+      .actions .primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      ul.items {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 0.5rem;
+      }
+      .item {
+        border: 1px solid var(--rule);
+        border-radius: 10px;
+        padding: 0.7rem 0.8rem;
+        display: grid;
+        gap: 0.4rem;
+      }
+      .item[data-s='pass'] {
+        background: var(--pass-bg);
+      }
+      .item[data-s='fail'] {
+        background: var(--fail-bg);
+      }
+      .item[data-s='skip'] {
+        background: var(--skip-bg);
+      }
+      .item .head {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
+      .item .title {
+        font-weight: 600;
+      }
+      .item .how {
+        font-size: 0.875rem;
+        color: var(--muted);
+        margin: 0;
+      }
+      .status {
+        display: flex;
+        flex-shrink: 0;
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .status button {
+        border: 0;
+        background: var(--bg);
+        padding: 0.3rem 0.55rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        min-width: 2.4rem;
+      }
+      .status button + button {
+        border-left: 1px solid var(--rule);
+      }
+      .status [data-v='pass'][aria-pressed='true'] {
+        background: var(--pass);
+        color: #fff;
+      }
+      .status [data-v='fail'][aria-pressed='true'] {
+        background: var(--fail);
+        color: #fff;
+      }
+      .status [data-v='skip'][aria-pressed='true'] {
+        background: var(--skip);
+        color: #fff;
+      }
+      .item textarea {
+        width: 100%;
+        min-height: 2.2rem;
+        resize: vertical;
+        padding: 0.35rem 0.5rem;
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        background: var(--bg);
+        font-size: 0.875rem;
+      }
+      .item:not([data-s='fail']) textarea:placeholder-shown:not(:focus) {
+        min-height: 0;
+        height: 2.2rem;
+      }
+      footer {
+        margin-top: 3rem;
+        font-size: 0.8rem;
+      }
+      #report {
+        display: none;
+      }
+
+      @media (max-width: 30rem) {
+        .item .head {
+          flex-direction: column;
+        }
+      }
+
+      @media print {
+        :root {
+          --bg: #fff;
+          --fg: #000;
+          --muted: #444;
+          --rule: #ccc;
+        }
+        main {
+          display: none;
+        }
+        #report {
+          display: block;
+          font:
+            11pt/1.4 system-ui,
+            -apple-system,
+            'Segoe UI',
+            sans-serif;
+          color: #000;
+        }
+        #report h1 {
+          font-size: 16pt;
+          margin: 0 0 4pt;
+        }
+        #report h2 {
+          font-size: 12pt;
+          margin: 14pt 0 4pt;
+          padding: 0;
+          border: 0;
+          break-after: avoid;
+        }
+        #report table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        #report th,
+        #report td {
+          text-align: left;
+          vertical-align: top;
+          padding: 3pt 5pt;
+          border-bottom: 1px solid #ccc;
+        }
+        #report tr {
+          break-inside: avoid;
+        }
+        #report .st {
+          width: 4.5em;
+          font-weight: 600;
+        }
+        #report .pass {
+          color: #2b8a3e;
+        }
+        #report .fail {
+          color: #c92a2a;
+        }
+        #report .skip,
+        #report .none {
+          color: #777;
+        }
+        #report .note {
+          font-style: italic;
+        }
+        #report dl {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 2pt 10pt;
+          margin: 8pt 0;
+        }
+        #report dt {
+          color: #555;
+        }
+        #report dd {
+          margin: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Release testing</h1>
+      <p class="muted">
+        What to check by hand on each platform before a release. Results are kept in this browser
+        only.
+      </p>
+
+      <div class="fields">
+        <label>Version <input id="version" placeholder="0.1.6" autocomplete="off" /></label>
+        <label
+          >Device <input id="device" placeholder="Pixel 8, Android 16" autocomplete="off"
+        /></label>
+        <label>Tester <input id="tester" autocomplete="name" /></label>
+      </div>
+
+      <div class="platforms" id="platforms" role="group" aria-label="Platform"></div>
+
+      <div class="bar">
+        <div class="progress" id="progress" aria-hidden="true"></div>
+        <div class="tally" id="tally"></div>
+      </div>
+
+      <div id="sections"></div>
+
+      <h2>Report</h2>
+      <p class="muted">
+        Save as PDF uses the print dialog: choose “Save as PDF” as the printer. Email opens your
+        mail app with a summary to admin@mentis.ink; attach the PDF there.
+      </p>
+      <div class="actions">
+        <button class="primary" id="pdf">Save as PDF</button>
+        <button id="email">Email report</button>
+        <button id="copy">Copy summary</button>
+        <button id="reset">Clear this platform</button>
+      </div>
+
+      <footer class="muted">Mentis · <a href="/">Open the app</a></footer>
+    </main>
+
+    <section id="report" aria-hidden="true"></section>
+
+    <script src="/testing.js"></script>
+  </body>
+</html>
