@@ -24,19 +24,21 @@ export function Row({
   hint?: string
   children: ReactNode
 }) {
+  // The label keeps room to be read: a control too wide to sit beside it
+  // (on a phone) wraps to its own line instead of covering it.
   return (
-    <div className="flex items-start justify-between gap-4 py-3">
-      <div className="min-w-0 flex-1">
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-3">
+      <div className="min-w-40 flex-1">
         <p className="text-fg text-sm font-medium">{label}</p>
         {hint && <p className="text-fg-muted mt-0.5 text-xs leading-relaxed">{hint}</p>}
       </div>
-      <div className="shrink-0">{children}</div>
+      <div className="max-w-full">{children}</div>
     </div>
   )
 }
 
 export const INPUT_CLS =
-  'border-border bg-bg-secondary text-fg rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent/50 w-48'
+  'border-border bg-bg-secondary text-fg rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent/50 w-48 max-w-full'
 
 export const BUTTON_CLS =
   'border-border bg-bg-secondary text-fg hover:bg-bg-hover rounded-md border px-3 py-1.5 text-sm transition-colors disabled:opacity-50'
