@@ -211,13 +211,17 @@ measurement; Android's "Fully drawn" log).
 destination (Journal, Calendar, Task, List, Bookmark, Note, and Chat while chat is on), each shown
 for confirmation first; `@` is reserved for file references. `/file`,
 `/photo` and `/canvas` act at once instead of taking text (a destination's
-`pick`): a file picker, the camera, a new drawing. On a phone, Capture opened
-from Tasks, Calendar, Journal or Bookmarks starts with that destination
-picked. Dates are read by
+`pick`): a file picker, the camera, a new drawing. Capture opened from Tasks,
+Calendar, Journal or Bookmarks (the phone's tab bar, or the floating button on
+a wide screen) starts with that destination picked. The bar's mic records in
+place of the bar; Done saves a voice thought and opens Thoughts with it
+highlighted. Dates are read by
 chrono-node (loaded lazily, English only), never by AI. Capture is reachable
-from the capture bar, the command palette, the desktop's global hotkey and
-overlay window, and on the phone from shares, app shortcuts, a widget and a
-Quick Settings tile.
+from the capture bar, the floating button in the bottom right of a wide
+screen (`capture-fab.tsx`; not in Thoughts, Chat or on a canvas, whose own
+controls sit there), the command palette, the desktop's global hotkey and
+overlay window, and on the phone from the tab bar, shares, app shortcuts, a
+widget and a Quick Settings tile.
 
 **Tasks** are checkbox lines in any note:
 `- [ ] Call the bank >2026-10-30 09:00 !2 #money every friday`. `>date` is

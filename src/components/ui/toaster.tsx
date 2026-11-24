@@ -40,7 +40,7 @@ export function Toaster() {
     <div
       aria-live="polite"
       aria-label="Notifications"
-      className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-4 z-[9999] flex flex-col-reverse gap-2 md:bottom-4 md:left-auto"
+      className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-4 z-[9999] flex flex-col-reverse gap-2 md:bottom-20 md:left-auto"
       style={{ maxWidth: 380 }}
     >
       {toasts.map((t) => {

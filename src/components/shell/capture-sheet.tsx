@@ -11,7 +11,11 @@ const DESTINATION_FOR_VIEW: Record<string, string> = {
   bookmarks: 'bookmark',
 }
 
-/** The tab bar's Capture: the capture bar in a sheet over whatever is showing. */
+/**
+ * Capture over whatever is showing: a sheet from the bottom on a phone (the
+ * tab bar's Capture), a card in the bottom right on a wide screen (the
+ * floating button).
+ */
 export default function CaptureSheet({ onClose }: { onClose: () => void }) {
   const [initial] = useState(() => DESTINATION_FOR_VIEW[useUiStore.getState().activeView])
   return (
@@ -20,7 +24,7 @@ export default function CaptureSheet({ onClose }: { onClose: () => void }) {
         <Dialog.Overlay className="fixed inset-0 z-[240] bg-black/40" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="border-border bg-bg safe-bottom fixed inset-x-0 bottom-0 z-[241] rounded-t-2xl border-t p-2 shadow-xl outline-none"
+          className="border-border bg-bg safe-bottom fixed inset-x-0 bottom-0 z-[241] rounded-t-2xl border-t p-2 shadow-xl outline-none md:inset-x-auto md:right-6 md:bottom-6 md:w-[32rem] md:max-w-[calc(100vw-3rem)] md:rounded-2xl md:border"
         >
           <Dialog.Title className="sr-only">Capture</Dialog.Title>
           <CaptureBar

@@ -89,6 +89,9 @@ async function refreshAfterCapture(vaultFs: FileSystemAdapter, destination?: str
 const MobileNavMasthead = lazy(() =>
   import('@/components/shell/mobile-nav-masthead').then((m) => ({ default: m.MobileNavMasthead })),
 )
+const CaptureFab = lazy(() =>
+  import('@/components/shell/capture-fab').then((m) => ({ default: m.CaptureFab })),
+)
 const MobileTabBar = lazy(() =>
   import('@/components/shell/mobile-tab-bar').then((m) => ({ default: m.MobileTabBar })),
 )
@@ -311,9 +314,13 @@ export function AppShell({ onCloseVault }: { onCloseVault: () => void }) {
         )}
         <VaultSearchBootstrap />
         <ViewRouter />
-        {isPhone && (
+        {isPhone ? (
           <Suspense fallback={null}>
             <MobileTabBar />
+          </Suspense>
+        ) : (
+          <Suspense fallback={null}>
+            <CaptureFab />
           </Suspense>
         )}
       </main>
