@@ -227,7 +227,7 @@ export function BoardView() {
       </div>
 
       {/* Where captures are reviewed: the same bar as everywhere, docked. */}
-      <CaptureBar placement="bottom" onRecord={() => setIsRecording(true)} />
+      <CaptureBar placement="bottom" recordable />
     </div>
   )
 }

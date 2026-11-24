@@ -34,10 +34,7 @@ export default function CaptureSheet({ onClose }: { onClose: () => void }) {
               result.open?.()
             }}
             onEscapeEmpty={onClose}
-            onRecord={() => {
-              onClose()
-              useUiStore.getState().requestRecord()
-            }}
+            recordable
           />
         </Dialog.Content>
       </Dialog.Portal>

@@ -310,7 +310,17 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
   const removeItem = useBoardStore((s) => s.removeItem)
   const moveToVault = useBoardStore((s) => s.moveToVault)
   const isEditing = activeItemPath === item.path
+  const highlighted = useBoardStore((s) => s.highlightPath === item.path)
+  const cardRef = useRef<HTMLDivElement>(null)
   const [hovered, setHovered] = useState(false)
+
+  // Just added from elsewhere: bring it into view and mark it for a moment.
+  useEffect(() => {
+    if (!highlighted) return
+    cardRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    const t = window.setTimeout(() => useBoardStore.getState().setHighlight(null), 2500)
+    return () => window.clearTimeout(t)
+  }, [highlighted])
   const colors = COLOR_CLASSES[item.color] ?? COLOR_CLASSES.yellow
 
   const imageInfo = useMemo(() => parseImageFromBody(item.body), [item.body])
@@ -344,6 +354,8 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
 
   return (
     <div
+      ref={cardRef}
+      data-highlighted={highlighted || undefined}
       className={cn(
         'group relative mb-3 break-inside-avoid overflow-hidden rounded-xl border transition-all duration-200',
         colors.bg,
@@ -351,6 +363,7 @@ export function ThoughtCard({ item }: { item: BoardItem }) {
         isEditing
           ? 'ring-accent/30 shadow-md ring-1'
           : 'shadow-sm hover:-translate-y-0.5 hover:shadow-md',
+        highlighted && 'ring-accent shadow-md ring-2',
       )}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

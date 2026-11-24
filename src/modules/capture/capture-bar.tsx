@@ -13,9 +13,14 @@ import {
 import { toast } from '@/stores/toast'
 import { cn } from '@/utils/cn'
 import { useUiStore } from '@/stores/ui'
+import { useBoardStore } from '@/stores/board'
 
 // The confirmation step loads the first time a destination needs it.
 const CaptureConfirmDialog = lazy(() => import('./confirm-dialog'))
+// The recorder, the first time the mic is used.
+const AudioRecorderBar = lazy(() =>
+  import('@/components/audio/audio-recorder-bar').then((m) => ({ default: m.AudioRecorderBar })),
+)
 
 /** Input that is nothing but a link: pasting one means bookmarking it. */
 const URL_ONLY = /^\s*(https?:\/\/|www\.)\S+\s*$/i
@@ -30,8 +35,11 @@ export interface CaptureBarProps {
   placeholder?: string
   /** Docked at the top of a view (picker opens below) or the bottom (opens above). */
   placement?: 'top' | 'bottom'
-  /** Start a voice thought. The mic shows only when the host view can record. */
-  onRecord?: () => void
+  /**
+   * Show the mic: it records in place of the bar, then saves a voice thought
+   * and opens Thoughts with it highlighted.
+   */
+  recordable?: boolean
   /** Focus the field now, and again whenever this number changes (the overlay being shown). */
   focusSignal?: number
   /** After a save: where it went, and whether Ctrl/⌘+Enter asked to stay open. */
@@ -68,7 +76,7 @@ export function CaptureBar({
   immediate = false,
   placeholder,
   placement = 'top',
-  onRecord,
+  recordable = false,
   focusSignal,
   onSaved,
   onEscapeEmpty,
@@ -85,6 +93,8 @@ export function CaptureBar({
   })
   const [pickerIndex, setPickerIndex] = useState(0)
   const [busy, setBusy] = useState(false)
+  /** The mic was tapped: the recorder stands in for the bar. */
+  const [recording, setRecording] = useState(false)
   const [saved, setSaved] = useState<WriteResult | null>(null)
   /** A destination's confirmation step, open with what was typed. */
   const [confirming, setConfirming] = useState<{
@@ -270,16 +280,46 @@ export function CaptureBar({
     }
   }
 
+  async function saveRecording(bytes: Uint8Array, durationMs: number, mimeType: string) {
+    try {
+      const board = useBoardStore.getState()
+      const item = await board.addAudioThought(vaultFs, bytes, durationMs, undefined, mimeType)
+      setRecording(false)
+      board.setHighlight(item.path)
+      useUiStore.getState().setActiveView('board')
+      onSaved?.({}, { destination: DEFAULT_CAPTURE_DESTINATION, stay: false })
+    } catch (err) {
+      console.error('Saving the voice note failed:', err)
+      toast.error('Could not save the voice note')
+    }
+  }
+
   const Icon = destination.icon
-  const showMic = !!onRecord && !text && destination.id === DEFAULT_CAPTURE_DESTINATION
+  const showMic = recordable && !text && destination.id === DEFAULT_CAPTURE_DESTINATION
+
+  const frame = cn(
+    'border-border relative px-3 py-2.5 sm:px-4',
+    placement === 'top' ? 'border-b' : 'border-t',
+  )
+
+  if (recording) {
+    return (
+      <div className={frame}>
+        <Suspense fallback={<div className="h-14" />}>
+          <AudioRecorderBar
+            onComplete={(bytes, ms, mime) => void saveRecording(bytes, ms, mime)}
+            onCancel={() => {
+              setRecording(false)
+              inputRef.current?.focus()
+            }}
+          />
+        </Suspense>
+      </div>
+    )
+  }
 
   return (
-    <div
-      className={cn(
-        'border-border relative px-3 py-2.5 sm:px-4',
-        placement === 'top' ? 'border-b' : 'border-t',
-      )}
-    >
+    <div className={frame}>
       <div className="flex items-center gap-2.5">
         {picked ? (
           <button
@@ -312,7 +352,7 @@ export function CaptureBar({
         {showMic ? (
           <button
             type="button"
-            onClick={onRecord}
+            onClick={() => setRecording(true)}
             className="text-fg-muted hover:text-fg shrink-0 rounded p-1 transition-colors"
             aria-label="Record a voice thought"
           >

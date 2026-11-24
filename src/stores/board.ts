@@ -20,6 +20,8 @@ interface BoardState {
   items: BoardItem[]
   loading: boolean
   activeItemPath: string | null
+  /** A thought just added from elsewhere (a voice note from the capture bar), shown briefly. */
+  highlightPath: string | null
 
   loadBoard: (fs: FileSystemAdapter) => Promise<void>
   /** A new thought, opened for editing. `body` starts it with text (and names it). */
@@ -44,6 +46,7 @@ interface BoardState {
   /** Move a board item to the vault root. Returns the new vault path. */
   moveToVault: (fs: FileSystemAdapter, path: string) => Promise<string | null>
   setActiveItem: (path: string | null) => void
+  setHighlight: (path: string | null) => void
 }
 
 const currentConfig = () => useVaultStore.getState().config
@@ -60,6 +63,7 @@ export const useBoardStore = create<BoardState>()(
     items: [],
     loading: false,
     activeItemPath: null,
+    highlightPath: null,
 
     loadBoard: async (fs) => {
       set((s) => {
@@ -359,6 +363,11 @@ export const useBoardStore = create<BoardState>()(
     setActiveItem: (path) =>
       set((s) => {
         s.activeItemPath = path
+      }),
+
+    setHighlight: (path) =>
+      set((s) => {
+        s.highlightPath = path
       }),
   })),
 )
