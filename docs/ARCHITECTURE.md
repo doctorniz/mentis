@@ -95,7 +95,8 @@ tabs, from whichever view is up. The vault view, Files and Graph have no
 sidebar entry: the tree opens files, the palette reaches every view, and Graph
 is on the tree's heading. On a phone the sidebar is replaced by the masthead
 menu and the bottom tab bar — Capture between four tabs chosen in Settings ›
-Phone — and the tree is its own full-screen view (`tree`, the Notes tab,
+Phone; until some are chosen, Today, Calendar, Notes and Tasks, with Chat in
+place of Tasks while chat is on (`useTabs`) — and the tree is its own full-screen view (`tree`, the Notes tab,
 `palette: false`). Both load only on a narrow screen.
 
 **Opening a vault.** What a vault opens to is a choice for the device, not the

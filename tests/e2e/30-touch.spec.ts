@@ -84,7 +84,9 @@ test.describe('30 — Touch', () => {
     await expect(tab(page, 'Chat')).toHaveCount(0)
   })
 
-  test('30.1.4 Chat is a tab option only once it is switched on', async ({ vaultPage: page }) => {
+  test('30.1.4 Switching chat on puts Chat in Tasks’ place, unless tabs were picked', async ({
+    vaultPage: page,
+  }) => {
     const pickTabs = async () => {
       await openMenu(page)
       await page.getByRole('dialog').getByRole('button', { name: 'Open settings' }).tap()
@@ -98,14 +100,18 @@ test.describe('30 — Touch', () => {
     await settings.getByRole('button', { name: 'Close settings' }).tap()
 
     await enableChat(page)
-    settings = await pickTabs()
-    await settings.getByRole('checkbox', { name: 'Tasks' }).tap()
-    await settings.getByRole('checkbox', { name: 'Chat' }).tap()
-    await settings.getByRole('button', { name: 'Close settings' }).tap()
-
+    await expect(tab(page, 'Tasks')).toHaveCount(0)
     await tab(page, 'Chat').tap()
     await expect(page.locator('textarea').first()).toBeVisible()
     await expect(tab(page, 'Chat')).toHaveAttribute('aria-current', 'page')
+
+    // Tabs picked by hand stay as picked.
+    settings = await pickTabs()
+    await settings.getByRole('checkbox', { name: 'Chat' }).tap()
+    await settings.getByRole('checkbox', { name: 'Tasks' }).tap()
+    await settings.getByRole('button', { name: 'Close settings' }).tap()
+    await expect(tab(page, 'Tasks')).toBeVisible()
+    await expect(tab(page, 'Chat')).toHaveCount(0)
   })
 
   test('30.1.1 Capture starts on the tab’s destination, and saves a thought', async ({

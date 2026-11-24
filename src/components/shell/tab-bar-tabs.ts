@@ -3,7 +3,15 @@ import { views } from '@/core/registries'
 import type { ViewId } from '@/core/registries/views'
 import { useJournalStore } from '@/stores/journal'
 import { useUiStore } from '@/stores/ui'
-import type { TabKey } from '@/stores/tab-bar'
+import { defaultTabs, useTabBarStore, type TabKey } from '@/stores/tab-bar'
+import { useVaultStore } from '@/stores/vault'
+
+/** The tabs in the bar: those picked in Settings, or the default for whether chat is on. */
+export function useTabs(): TabKey[] {
+  const chosen = useTabBarStore((s) => s.chosen)
+  const chatOn = useVaultStore((s) => s.config?.chat?.enabled === true)
+  return chosen ?? defaultTabs(chatOn)
+}
 
 export interface TabOption {
   key: TabKey

@@ -17,9 +17,14 @@ export type TabKey = (typeof TAB_KEYS)[number]
 export const MAX_TABS = 4
 export const DEFAULT_TABS: readonly TabKey[] = ['today', 'calendar', 'notes', 'tasks']
 
+/** The tabs until some are picked: Chat takes Tasks' place while chat is on. */
+export function defaultTabs(chatOn: boolean): TabKey[] {
+  return chatOn ? ['today', 'calendar', 'notes', 'chat'] : [...DEFAULT_TABS]
+}
+
 const STORAGE_KEY = 'ink-tab-bar'
 
-function readStored(): TabKey[] {
+function readStored(): TabKey[] | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
@@ -32,18 +37,18 @@ function readStored(): TabKey[] {
   } catch {
     /* noop */
   }
-  return [...DEFAULT_TABS]
+  return null
 }
 
 interface TabBarState {
-  /** In order: the first two sit left of Capture, the rest right. */
-  tabs: TabKey[]
+  /** Picked in Settings, in order (the first two sit left of Capture); null until then. */
+  chosen: TabKey[] | null
   setTabs: (tabs: TabKey[]) => void
 }
 
 /** The phone's tab bar, chosen in Settings. This device's, so it lives outside the vault. */
 export const useTabBarStore = create<TabBarState>()((set) => ({
-  tabs: readStored(),
+  chosen: readStored(),
   setTabs: (tabs) => {
     const next = tabs.slice(0, MAX_TABS)
     try {
@@ -51,6 +56,6 @@ export const useTabBarStore = create<TabBarState>()((set) => ({
     } catch {
       /* noop */
     }
-    set({ tabs: next })
+    set({ chosen: next })
   },
 }))

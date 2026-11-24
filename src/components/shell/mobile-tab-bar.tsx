@@ -1,9 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
-import { useTabBarStore } from '@/stores/tab-bar'
 import { views, useRegistryConfig } from '@/core/registries'
-import { tabOptions, type TabOption } from '@/components/shell/tab-bar-tabs'
+import { tabOptions, useTabs, type TabOption } from '@/components/shell/tab-bar-tabs'
 import { cn } from '@/utils/cn'
 
 const CaptureSheet = lazy(() => import('./capture-sheet'))
@@ -29,7 +28,7 @@ function useKeyboardOpen(): boolean {
  */
 export function MobileTabBar() {
   const activeView = useUiStore((s) => s.activeView)
-  const chosen = useTabBarStore((s) => s.tabs)
+  const chosen = useTabs()
   const config = useRegistryConfig()
   const keyboardOpen = useKeyboardOpen()
   const [capturing, setCapturing] = useState(false)
