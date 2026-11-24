@@ -101,12 +101,13 @@ function preprocessTaskLists(md: string): string {
   }
 
   for (const line of lines) {
-    const m = line.match(/^([ \t]*)-\s+\[([ xX])\]\s+(.*)$/)
+    // The text is optional: a task not yet written is `- [ ]`.
+    const m = line.match(/^([ \t]*)-\s+\[([ xX])\](?:\s+(.*))?$/)
     if (m) {
       taskBuf.push({
         indent: m[1]!.length,
         checked: m[2] !== ' ',
-        content: m[3]!,
+        content: m[3] ?? '',
       })
     } else {
       flushTasks()

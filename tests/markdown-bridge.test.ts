@@ -18,6 +18,19 @@ describe('markdownToTiptapJSON', () => {
     expect(tiptapJSONToMarkdown(doc)).toBe('- [ ] Open\n\n\\## Not a heading')
   })
 
+  it('keeps a task with no text yet as a task', () => {
+    for (const md of ['- [ ] Buy some milk\n- [ ]', '- [ ] Buy some milk\n- [ ] ']) {
+      const doc = markdownToTiptapJSON(md)
+      expect(doc.content?.map((n) => n.type)).toEqual(['taskList'])
+      expect(doc.content?.[0]?.content).toHaveLength(2)
+      const saved = tiptapJSONToMarkdown(doc)
+      expect(saved).not.toContain('\\[')
+      expect(tiptapJSONToMarkdown(markdownToTiptapJSON(saved))).toBe(saved)
+    }
+    const done = markdownToTiptapJSON('- [x]').content?.[0]?.content?.[0]
+    expect(done?.attrs?.checked).toBe(true)
+  })
+
   it('converts a heading', () => {
     const doc = markdownToTiptapJSON('# Hello World')
     expect(doc.type).toBe('doc')
