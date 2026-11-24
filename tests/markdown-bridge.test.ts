@@ -5,6 +5,19 @@ import { describe, it, expect } from 'vitest'
 import { markdownToTiptapJSON, tiptapJSONToMarkdown } from '@/lib/editor/markdown-bridge'
 
 describe('markdownToTiptapJSON', () => {
+  it('reads task lines with Windows line endings, and keeps their ticks', () => {
+    const md = '- [ ] Open\r\n- [x] Done\r\n\r\n## Next\r\n'
+    const doc = markdownToTiptapJSON(md)
+    expect(doc.content?.map((n) => n.type)).toEqual(['taskList', 'heading'])
+    expect(tiptapJSONToMarkdown(doc)).toBe('- [ ] Open\n- [x] Done\n\n## Next')
+  })
+
+  it('keeps an escaped # as text, even after a task list', () => {
+    const doc = markdownToTiptapJSON('- [ ] Open\n\\## Not a heading')
+    expect(doc.content?.map((n) => n.type)).toEqual(['taskList', 'paragraph'])
+    expect(tiptapJSONToMarkdown(doc)).toBe('- [ ] Open\n\n\\## Not a heading')
+  })
+
   it('converts a heading', () => {
     const doc = markdownToTiptapJSON('# Hello World')
     expect(doc.type).toBe('doc')

@@ -397,7 +397,8 @@ function createTurndown(): TurndownService {
 }
 
 export function markdownToTiptapJSON(markdown: string): JSONContent {
-  const src = markdown.trim() || ''
+  // Windows line endings would hide every task line from the patterns below.
+  const src = markdown.replace(/\r\n?/g, '\n').trim()
   const preprocessed = preprocessCustomSyntax(src)
   const html = preprocessed ? String(marked.parse(preprocessed, { async: false })) : ''
   const wrapped = html || '<p></p>'
