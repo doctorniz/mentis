@@ -520,6 +520,9 @@
   border-collapse: collapse;
   width: 100%;
   margin: 1em 0;
+  /* Equal columns that stay put while typing; automatic layout re-balanced
+     them on every keystroke. */
+  table-layout: fixed;
 }
 
 .ProseMirror.tiptap-editor table.ink-table th,
@@ -528,6 +531,7 @@
   padding: 0.4em 0.6em;
   vertical-align: top;
   min-width: 80px;
+  overflow-wrap: anywhere;
 }
 
 .ProseMirror.tiptap-editor table.ink-table th {
