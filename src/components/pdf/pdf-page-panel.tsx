@@ -3,6 +3,8 @@ import type { PDFPageProxy } from 'pdfjs-dist'
 import { FilePlus, FileStack, RotateCw, Save, Trash2 } from 'lucide-react'
 import { usePdfStore } from '@/stores/pdf'
 import { cn } from '@/utils/cn'
+import { useNearViewport } from '@/lib/browser/use-near-viewport'
+import { releaseCanvas } from '@/lib/pdf/canvas-limits'
 
 interface Props {
   pages: PDFPageProxy[]
@@ -16,7 +18,27 @@ interface Props {
 
 const THUMB_W = 120
 
-function PageThumbnail({ page, index }: { page: PDFPageProxy; index: number }) {
+/** Drawn only while near the list's visible part, like the pages themselves. */
+function PageThumbnail({
+  page,
+  index,
+  root,
+}: {
+  page: PDFPageProxy
+  index: number
+  root: React.RefObject<HTMLDivElement | null>
+}) {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const near = useNearViewport(boxRef, root)
+  const vp = page.getViewport({ scale: 1 })
+  return (
+    <div ref={boxRef} className="w-full" style={{ aspectRatio: `${vp.width} / ${vp.height}` }}>
+      {near && <ThumbnailCanvas page={page} index={index} />}
+    </div>
+  )
+}
+
+function ThumbnailCanvas({ page, index }: { page: PDFPageProxy; index: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -42,16 +64,22 @@ function PageThumbnail({ page, index }: { page: PDFPageProxy; index: number }) {
         ctx.drawImage(off, 0, 0)
       })
       .catch(() => {})
+      .finally(() => releaseCanvas(off))
     return () => {
       cancelled = true
       task.cancel()
     }
   }, [page, index])
 
+  useEffect(() => {
+    const c = canvasRef.current
+    return () => releaseCanvas(c)
+  }, [])
+
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none w-full rounded"
+      className="pointer-events-none block h-full w-full rounded"
       aria-label={`Page ${index + 1} thumbnail`}
     />
   )
@@ -74,6 +102,7 @@ export function PdfPagePanel({
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const lastClickedRef = useRef<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setSelected(new Set())
@@ -237,7 +266,7 @@ export function PdfPagePanel({
       </div>
 
       {/* Thumbnail list */}
-      <div className="flex-1 overflow-y-auto p-1.5">
+      <div ref={listRef} className="flex-1 overflow-y-auto p-1.5">
         <div className="flex flex-col gap-2">
           {pages.map((page, i) => {
             const isSelected = selected.has(i)
@@ -268,7 +297,7 @@ export function PdfPagePanel({
                   dragIdx === i && 'opacity-40',
                 )}
               >
-                <PageThumbnail page={page} index={i} />
+                <PageThumbnail page={page} index={i} root={listRef} />
                 <span
                   className={cn(
                     'absolute bottom-1 left-1/2 -translate-x-1/2 rounded px-1.5 py-0.5 text-[10px] font-medium',

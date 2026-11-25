@@ -41,7 +41,38 @@ import { PdfCommentDialog } from '@/components/pdf/pdf-comment-dialog'
 import { PdfPageCommentRail } from '@/components/pdf/pdf-page-comment-rail'
 import { Button } from '@/components/ui/button'
 import { searchPdfDocument } from '@/lib/pdf/search-pdf-text'
+import { useNearViewport } from '@/lib/browser/use-near-viewport'
 import type { PdfTextSearchMatch } from '@/lib/pdf/search-pdf-text'
+
+/**
+ * A page is drawn only while it is within a screenful of the view; elsewhere
+ * it is a blank sheet of the same size, so scrolling and page jumps are
+ * unchanged. Drawing every page at once ran an iPad out of memory.
+ */
+function NearPage({
+  root,
+  width,
+  height,
+  children,
+}: {
+  root: React.RefObject<HTMLDivElement | null>
+  width: number
+  height: number
+  children: React.ReactNode
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const near = useNearViewport(ref, root)
+  return (
+    <div
+      ref={ref}
+      data-near={near || undefined}
+      className="shrink-0 bg-white"
+      style={{ width, height }}
+    >
+      {near && children}
+    </div>
+  )
+}
 
 export function PdfViewer({ path }: { path: string }) {
   const { vaultFs } = useVaultSession()
@@ -680,6 +711,7 @@ export function PdfViewer({ path }: { path: string }) {
         />
         <div
           ref={scrollRef}
+          data-testid="pdf-pages"
           className="bg-bg-tertiary min-h-0 min-w-0 flex-1 touch-pan-x touch-pan-y overflow-auto"
         >
           <div ref={pagesRef} className="flex w-max min-w-full flex-col items-center gap-4 py-4">
@@ -694,14 +726,16 @@ export function PdfViewer({ path }: { path: string }) {
                   key={i}
                   className="flex w-full max-w-full flex-col items-stretch gap-2 sm:flex-row sm:items-start sm:justify-center"
                 >
-                  <PdfPageCanvas
-                    page={p}
-                    pageIndex={i}
-                    zoom={zoom}
-                    existingAnnotations={annotations.filter((a) => a.pageIndex === i)}
-                    signatureDataUrl={activeSignature?.imageDataUrl ?? null}
-                    searchHighlights={searchHighlightsByPage.get(i) ?? []}
-                  />
+                  <NearPage root={scrollRef} width={Math.floor(vp.width)} height={pageH}>
+                    <PdfPageCanvas
+                      page={p}
+                      pageIndex={i}
+                      zoom={zoom}
+                      existingAnnotations={annotations.filter((a) => a.pageIndex === i)}
+                      signatureDataUrl={activeSignature?.imageDataUrl ?? null}
+                      searchHighlights={searchHighlightsByPage.get(i) ?? []}
+                    />
+                  </NearPage>
                   <PdfPageCommentRail comments={textComments} railHeightPx={pageH} zoom={zoom} />
                 </div>
               )

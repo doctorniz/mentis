@@ -1,3 +1,4 @@
+import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { test, expect, navigateTo, writeVaultFile } from './fixtures'
 
 /**
@@ -105,9 +106,42 @@ test.describe('PDF Editor', () => {
       await expect(page.getByText('1 / 2')).toBeVisible()
     })
 
-    test.fixme('4.1.6 Large PDF — verify lazy rendering', async () => {
-      // Generating a large multi-page PDF in the browser is impractical for E2E.
-      // Would need a pre-built fixture PDF with 50+ pages to test lazy rendering.
+    test('4.1.6 A long PDF draws only the pages near the screen', async ({ vaultPage: page }) => {
+      const doc = await PDFDocument.create()
+      const font = await doc.embedFont(StandardFonts.Helvetica)
+      for (let i = 1; i <= 60; i++) {
+        doc.addPage([612, 792]).drawText(`Page ${i}`, { x: 72, y: 700, size: 36, font })
+      }
+      await seedPdfInVault(page, 'long-doc.pdf', Buffer.from(await doc.save()).toString('base64'))
+      await navigateTo(page, 'vault')
+      await openPdfFromTree(page, 'long-doc.pdf')
+      await expect(page.getByText('1 / 60')).toBeVisible()
+
+      const pages = page.getByTestId('pdf-pages')
+      const drawn = page.getByLabel('PDF page background')
+      // Which pages (1-based) have a picture.
+      const drawnPages = () =>
+        pages.evaluate((el) =>
+          [...el.firstElementChild!.children].flatMap((row, i) =>
+            row.querySelector('canvas[aria-label="PDF page background"]') ? [i + 1] : [],
+          ),
+        )
+
+      await expect.poll(drawnPages).toContain(1)
+      expect((await drawnPages()).length).toBeLessThan(10)
+      expect(await drawn.count()).toBeLessThan(10)
+
+      // At the end: the last pages are drawn, the first are freed.
+      await pages.evaluate((el) => el.scrollTo(0, el.scrollHeight))
+      await expect.poll(drawnPages).toContain(60)
+      const atEnd = await drawnPages()
+      expect(atEnd).not.toContain(1)
+      expect(atEnd.length).toBeLessThan(10)
+
+      // Back at the start, the first page is drawn again and the last freed.
+      await pages.evaluate((el) => el.scrollTo(0, 0))
+      await expect.poll(drawnPages).toContain(1)
+      expect(await drawnPages()).not.toContain(60)
     })
   })
 

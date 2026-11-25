@@ -188,6 +188,12 @@ keeps the name, so nothing is rewritten.
   `{ title, content, tags, links, tasks }` (`src/core/index/extract-worker.ts`).
 - **PDF edits** (pdf-lib: saving annotations, page operations, forms) run in
   a worker too (`src/lib/pdf/pdf-ops.ts`), started on the first edit.
+- **PDF viewing** draws only the pages, and page thumbnails, within a
+  screenful of the view (`src/lib/browser/use-near-viewport.ts`); the rest are
+  blank sheets of the same size, and a page that leaves frees its canvases.
+  Each canvas has a pixel limit (`src/lib/pdf/canvas-limits.ts`, PDF.js's
+  figures, lower on phones and tablets); past it a page is drawn softer.
+  Drawing every page at once ran an iPad out of memory.
 - **Launch:** the tree and search answer from the index at once; a background
   reconcile then lists the vault (metadata only) and re-extracts only new or
   changed files. On the desktop a watcher (`watch.rs`) reports changes; on

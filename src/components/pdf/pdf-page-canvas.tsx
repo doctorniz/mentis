@@ -23,6 +23,7 @@ import type {
 import { fabricPathCommandsToPdfPoints } from '@/lib/pdf/fabric-path-to-pdf-points'
 import { fingersDraw, isPenEraser, notePointer } from '@/lib/browser/pen'
 import { inkTouched } from '@/lib/pdf/ink-hit'
+import { canvasScale, releaseCanvas } from '@/lib/pdf/canvas-limits'
 
 // Fabric 7 places objects by their centre by default; every annotation here
 // is placed by its top-left corner, as in Fabric 6.
@@ -66,26 +67,49 @@ export function PdfPageCanvas({
   const w = Math.floor(vp.width)
   const h = Math.floor(vp.height)
 
+  // Drawn off screen and then swapped in, so a zoom keeps the old picture
+  // (stretched) until the new one is ready instead of flashing blank. Past the
+  // pixel limit the page is drawn smaller and stretched.
   useEffect(() => {
     const rc = renderRef.current
     if (!rc) return
-    const ctx = rc.getContext('2d')!
-    rc.width = w
-    rc.height = h
+    const k = canvasScale(w, h)
+    const off = document.createElement('canvas')
+    off.width = Math.max(1, Math.floor(w * k))
+    off.height = Math.max(1, Math.floor(h * k))
     let cancel = false
-    const task = page.render({ canvasContext: ctx, viewport: vp })
+    const task = page.render({
+      canvasContext: off.getContext('2d')!,
+      viewport: page.getViewport({ scale: zoom * k }),
+    })
     task.promise
       .then(() => {
-        if (!cancel) setReady(true)
+        if (cancel) return
+        rc.width = off.width
+        rc.height = off.height
+        rc.getContext('2d')!.drawImage(off, 0, 0)
+        setReady(true)
       })
       .catch(() => {})
+      .finally(() => releaseCanvas(off))
     return () => {
       cancel = true
       task.cancel()
     }
-    // vp is derived from page + zoom (both listed); w/h derived from vp
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, w, h, zoom])
+
+  // Leaving the screen: free the picture and PDF.js's cached drawing data for the page.
+  // (Declared before the annotation layer's effect, so on unmount this cleanup runs first.)
+  const leftRef = useRef(false)
+  useEffect(() => {
+    const rc = renderRef.current
+    leftRef.current = false
+    return () => {
+      leftRef.current = true
+      releaseCanvas(rc)
+      page.cleanup()
+    }
+  }, [page])
 
   useEffect(() => {
     const el = fabricRef.current
@@ -93,11 +117,14 @@ export function PdfPageCanvas({
     // Fabric cancels touches on its layer, so a finger could not pan the page. It pans unless the
     // tool needs the drag itself (pinching is the viewer's). Decided here: the layer is rebuilt often.
     const dragTool = activeTool === PdfTool.Draw || activeTool === PdfTool.Highlight
+    const dpr = window.devicePixelRatio || 1
     const fc = new FabricCanvas(el, {
       width: w,
       height: h,
       selection: false,
       allowTouchScrolling: !dragTool,
+      // Sharp on a high-density screen only while the layer stays within the pixel limit.
+      enableRetinaScaling: canvasScale(w * dpr, h * dpr) === 1,
     })
     fcRef.current = fc
     fc.upperCanvasEl.style.touchAction = dragTool ? 'none' : 'pan-x pan-y'
@@ -259,7 +286,13 @@ export function PdfPageCanvas({
     return () => {
       fc.off('text:editing:exited', onSyncFreeText)
       fc.off('object:modified', onObjectModified)
-      fc.dispose()
+      // Fabric leaves its canvases' memory to the collector: free them now, the
+      // drawing canvas only when the page has left (otherwise the next layer reuses it).
+      const upper = fc.upperCanvasEl
+      void Promise.resolve(fc.dispose()).then(() => {
+        releaseCanvas(upper)
+        if (leftRef.current) releaseCanvas(el)
+      })
       fcRef.current = null
     }
   }, [ready, page, w, h, existingAnnotations, zoom, activeTool, searchHighlights])
